@@ -11,8 +11,5 @@ set(Boost_COMPONENTS
 find_package(Boost 1.61.0 REQUIRED COMPONENTS ${Boost_COMPONENTS})
 
 #### deal.II #################################################################
-if(ENABLE_DEAL_II)
-    find_package(deal.II 8.4 REQUIRED PATHS ${DEAL_II_DIR})
-    add_definitions(-DWITH_DEAL_II)
-endif()
-
+find_package(deal.II 8.5 REQUIRED PATHS ${DEAL_II_DIR})
+add_definitions(-DWITH_DEAL_II)

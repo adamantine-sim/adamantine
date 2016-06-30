@@ -2,7 +2,7 @@ set(adamantine_VERSION_MAJOR 0)
 set(adamantine_VERSION_MINOR 1)
 set(adamantine_VERSION_PATCH 0)
 set(adamantine_VERSION
-    ${adamantine_VERSION_MAJOR}.${adamantine_VERSION_MINOR}.${adamatine_VERSION_PATCH})
+    ${adamantine_VERSION_MAJOR}.${adamantine_VERSION_MINOR}.${adamantine_VERSION_PATCH})
 message("adamatine version: ${adamantine_VERSION}")
     
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")

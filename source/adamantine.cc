@@ -5,14 +5,15 @@
  * for the text and further information on this license.
  */
 
+#include <deal.II/base/mpi.h>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <iostream>
 
 int main(int argc, char* argv[])
 {
- // dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv,
- //     dealii::numbers::invalid_unsigned_int);
+  dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv,
+      dealii::numbers::invalid_unsigned_int);
 
   try
   {                                           
