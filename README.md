@@ -1,2 +1,2 @@
 # adamantine
-adamantine is a ADditive (A) MANunifacTuring sImulator 
+adamantine stands for ADditive (A) MANunifacTuring sImulator 
