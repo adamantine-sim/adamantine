@@ -6,6 +6,8 @@ if(DEFINED BOOST_DIR)
     set(BOOST_ROOT ${BOOST_DIR})
 endif()
 set(Boost_COMPONENTS
+    filesystem
+    mpi
     program_options
 )
 find_package(Boost 1.61.0 REQUIRED COMPONENTS ${Boost_COMPONENTS})

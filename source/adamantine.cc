@@ -5,8 +5,11 @@
  * for the text and further information on this license.
  */
 
+#include "utils.hh"
 #include <deal.II/base/mpi.h>
+#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+#include <boost/property_tree/info_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <iostream>
 
@@ -38,12 +41,29 @@ int main(int argc, char* argv[])
       return 1;
     }
 
+    // Read the input.
+    adamantine::ASSERT_THROW(map.count("input-file") == 0, "No input file.");
+    std::string const filename = map["input-file"].as<std::string>();
+    adamantine::ASSERT_THROW(boost::filesystem::exists(filename) == true, 
+        "The file " + filename + " does not exist.");
+    boost::property_tree::ptree database;
+    boost::property_tree::info_parser::read_info(filename, database);
+
+    int const dim = database.get<int>("dim");
+    adamantine::ASSERT_THROW((dim == 2) || (dim == 3), 
+        "dim should be 2 or 3");
+    if (dim == 2)
+    {
+    }
+    else
+    {
+    }
   }
   catch(std::exception &exception)
   {
     std::cerr<<std::endl;
     std::cerr<<"Aborting."<<std::endl;
-    std::cerr<<"The error message is: "<<exception.what()<<std::endl;
+    std::cerr<<"Error: "<<exception.what()<<std::endl;
 
     return 1;
   }

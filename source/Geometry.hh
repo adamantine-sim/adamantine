@@ -8,16 +8,24 @@
 #ifndef _GEOMETRY_HH_
 #define _GEOMETRY_HH_
 
+#include <boost/mpi/communicator.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <deal.II/distributed/tria.h>
 
 namespace adamantine
 {
 
+enum Material {powder, solid, liquid};
+
 template <int dim>
-Geometry
+class Geometry
 {
   public:
-    Geometry(boost::property_tree::ptree const &database)
+    Geometry(boost::mpi::communicator const &communicator,
+        boost::property_tree::ptree const &database);
+
+  private:
+      dealii::parallel::distributed::Triangulation<dim> _triangulation;
 };
 
 }
