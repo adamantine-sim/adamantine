@@ -5,9 +5,11 @@
  * for the text and further information on this license.
  */
 
+#include "Geometry.hh"
 #include "utils.hh"
 #include <deal.II/base/mpi.h>
 #include <boost/filesystem.hpp>
+#include <boost/mpi.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/info_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -17,6 +19,7 @@ int main(int argc, char* argv[])
 {
   dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv,
       dealii::numbers::invalid_unsigned_int);
+  boost::mpi::communicator communicator;
 
   try
   {                                           
@@ -54,9 +57,11 @@ int main(int argc, char* argv[])
         "dim should be 2 or 3");
     if (dim == 2)
     {
+      adamantine::Geometry<2> geometry(communicator, database);
     }
     else
     {
+      adamantine::Geometry<2> geometry(communicator, database);
     }
   }
   catch(std::exception &exception)

@@ -8,9 +8,9 @@
 #ifndef _GEOMETRY_HH_
 #define _GEOMETRY_HH_
 
+#include <deal.II/distributed/tria.h>
 #include <boost/mpi/communicator.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <deal.II/distributed/tria.h>
 
 namespace adamantine
 {

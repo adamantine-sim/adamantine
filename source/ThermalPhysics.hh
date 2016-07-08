@@ -13,6 +13,10 @@
 namespace adamantine
 {
 
+/**
+ * This class takes care of building the linear operator and the
+ * right-hand-side.
+ */
 class ThermalPhysics
 {
   public:
