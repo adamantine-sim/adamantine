@@ -9,9 +9,8 @@
 
 namespace adamantine
 {
-  
-  // Instantiate the templates.
-  template class Geometry<2>;
-  template class Geometry<3>;
 
+// Instantiate the templates.
+template class Geometry<2>;
+template class Geometry<3>;
 }

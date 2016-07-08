@@ -10,9 +10,9 @@
 
 namespace dealii
 {
-  namespace LinearAlgebra
-  {
-  }
+namespace LinearAlgebra
+{
+}
 
 /**
  * Shorten dealii::LinearAlgebra to dealii::LA.

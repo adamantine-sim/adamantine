@@ -22,5 +22,4 @@ void ASSERT_THROW(bool cond, std::string const &message)
   if (cond == false)
     throw std::runtime_error(message);
 }
-
 }

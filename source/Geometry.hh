@@ -15,19 +15,23 @@
 namespace adamantine
 {
 
-enum Material {powder, solid, liquid};
+enum Material
+{
+  powder,
+  solid,
+  liquid
+};
 
 template <int dim>
 class Geometry
 {
-  public:
-    Geometry(boost::mpi::communicator const &communicator,
-        boost::property_tree::ptree const &database);
+public:
+  Geometry(boost::mpi::communicator const &communicator,
+           boost::property_tree::ptree const &database);
 
-  private:
-      dealii::parallel::distributed::Triangulation<dim> _triangulation;
+private:
+  dealii::parallel::distributed::Triangulation<dim> _triangulation;
 };
-
 }
 
 #endif

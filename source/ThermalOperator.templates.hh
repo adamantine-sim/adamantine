@@ -14,17 +14,18 @@
 namespace adamantine
 {
 template <int dim, int fe_degree, typename NumberType>
-ThermalOperator<dim, fe_degree, NumberType>::ThermalOperator(boost::mpi::communicator &communicator) 
-:
-_communicator(communicator)
+ThermalOperator<dim, fe_degree, NumberType>::ThermalOperator(
+    boost::mpi::communicator &communicator)
+    : _communicator(communicator)
 {
 }
 
 template <int dim, int fe_degree, typename NumberType>
 template <typename QuadratureType>
-void ThermalOperator<dim, fe_degree, NumberType>::reinit(dealii::DoFHandler<dim> const &dof_handler,
-                                                         dealii::ConstraintMatrix const &constraint_matrix,
-                                                         QuadratureType const &quad)
+void ThermalOperator<dim, fe_degree, NumberType>::reinit(
+    dealii::DoFHandler<dim> const &dof_handler,
+    dealii::ConstraintMatrix const &constraint_matrix,
+    QuadratureType const &quad)
 {
   _data(dof_handler, constraint_matrix, quad);
   _inverse_mass_matrix.reinit(_data.get_locally_owned_set, _communicator);
