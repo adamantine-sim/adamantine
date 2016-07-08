@@ -14,6 +14,7 @@
 
 namespace adamantine
 {
+
 template <int dim>
 Geometry<dim>::Geometry(boost::mpi::communicator const &communicator,
                         boost::property_tree::ptree const &database)
@@ -36,7 +37,8 @@ Geometry<dim>::Geometry(boost::mpi::communicator const &communicator,
   dealii::GridGenerator::subdivided_hyper_rectangle(_triangulation, repetitions,
                                                     p1, p2, true);
 
-  // Assign the material IDs
+  // Assign the material IDs. This is not done on the artificial cells, so we
+  // need to reset the material IDs when the mesh is refined/repartioned.
   dealii::types::boundary_id const top_boundary = 3;
   for (auto cell :
        dealii::filter_iterators(_triangulation.active_cell_iterators(),
@@ -44,6 +46,7 @@ Geometry<dim>::Geometry(boost::mpi::communicator const &communicator,
   {
     if (cell->at_boundary())
     {
+      bool is_powder = false;
       for (unsigned int i = 0; i < dealii::GeometryInfo<dim>::faces_per_cell;
            ++i)
       {
@@ -51,11 +54,12 @@ Geometry<dim>::Geometry(boost::mpi::communicator const &communicator,
             (cell->face(i)->boundary_id() == top_boundary))
         {
           cell->set_material_id(powder);
+          is_powder = true;
           break;
         }
-        else
-          cell->set_material_id(solid);
       }
+      if (is_powder == false)
+        cell->set_material_id(solid);
     }
     else
       cell->set_material_id(solid);

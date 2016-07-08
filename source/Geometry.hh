@@ -29,9 +29,19 @@ public:
   Geometry(boost::mpi::communicator const &communicator,
            boost::property_tree::ptree const &database);
 
+  dealii::parallel::distributed::Triangulation<dim> const &
+  get_triangulation() const;
+
 private:
   dealii::parallel::distributed::Triangulation<dim> _triangulation;
 };
+
+template <int dim>
+inline dealii::parallel::distributed::Triangulation<dim> const &
+Geometry<dim>::get_triangulation() const
+{
+  return _triangulation;
+}
 }
 
 #endif
