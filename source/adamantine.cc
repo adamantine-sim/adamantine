@@ -44,7 +44,8 @@ int main(int argc, char *argv[])
     }
 
     // Read the input.
-    adamantine::ASSERT_THROW(map.count("input-file") == 0, "No input file.");
+    adamantine::ASSERT_THROW(map.count("input-file") == 0,
+                             "Input file not found.");
     std::string const filename = map["input-file"].as<std::string>();
     adamantine::ASSERT_THROW(boost::filesystem::exists(filename) == true,
                              "The file " + filename + " does not exist.");

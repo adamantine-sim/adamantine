@@ -8,6 +8,7 @@
 #ifndef _THERMAL_OPERATOR_HH_
 #define _THERMAL_OPERATOR_HH_
 
+#include "MaterialProperty.hh"
 #include "Operator.hh"
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/lac/constraint_matrix.h>
@@ -34,21 +35,24 @@ public:
 
   dealii::types::global_dof_index n() const override;
 
-  void vmult(
-      dealii::LA::distributed::Vector<NumberType> &dst,
-      dealii::LA::distributed::Vector<NumberType> const &src) const override{};
+  /**
+   * This performs \f$ dst = -\nabla k \nabla src \f$.
+   */
+  void
+  vmult(dealii::LA::distributed::Vector<NumberType> &dst,
+        dealii::LA::distributed::Vector<NumberType> const &src) const override;
 
-  void Tvmult(
-      dealii::LA::distributed::Vector<NumberType> &dst,
-      dealii::LA::distributed::Vector<NumberType> const &src) const override{};
+  void
+  Tvmult(dealii::LA::distributed::Vector<NumberType> &dst,
+         dealii::LA::distributed::Vector<NumberType> const &src) const override;
 
   void vmult_add(
       dealii::LA::distributed::Vector<NumberType> &dst,
-      dealii::LA::distributed::Vector<NumberType> const &src) const override{};
+      dealii::LA::distributed::Vector<NumberType> const &src) const override;
 
   void Tvmult_add(
       dealii::LA::distributed::Vector<NumberType> &dst,
-      dealii::LA::distributed::Vector<NumberType> const &src) const override{};
+      dealii::LA::distributed::Vector<NumberType> const &src) const override;
 
 private:
   void
@@ -57,7 +61,12 @@ private:
               dealii::LA::distributed::Vector<NumberType> const &src,
               std::pair<unsigned int, unsigned int> const &cell_range) const;
 
+  void evaluate_thermal_conductivity(
+      dealii::LA::distributed::Vector<NumberType> const &state);
+
   boost::mpi::communicator _communicator;
+  dealii::Table<2, dealii::VectorizedArray<NumberType>> _thermal_conductivity;
+  std::shared_ptr<MaterialProperty> _material_properties;
   dealii::MatrixFree<dim, NumberType> _data;
   /**
    * Compute the inverse of the mass matrix using an inexact Gauss-Lobatto

@@ -15,13 +15,6 @@
 namespace adamantine
 {
 
-enum Material
-{
-  powder,
-  solid,
-  liquid
-};
-
 template <int dim>
 class Geometry
 {

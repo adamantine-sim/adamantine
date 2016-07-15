@@ -1,5 +1,6 @@
 set(adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/Geometry.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Operator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/utils.hh
@@ -8,6 +9,7 @@ set(adamantine_HEADERS
 set(adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/adamantine.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/Geometry.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.cc
   )
 

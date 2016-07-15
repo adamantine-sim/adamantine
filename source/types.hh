@@ -20,4 +20,25 @@ namespace LinearAlgebra
 namespace LA = LinearAlgebra;
 }
 
+namespace adamantine
+{
+/**
+ * Enum on the possible materials.
+ */
+enum MaterialState
+{
+  powder,
+  solid,
+  liquid
+};
+
+/**
+ * Enum of the possible material properties.
+ */
+enum Property
+{
+  thermal_conductivity
+};
+}
+
 #endif

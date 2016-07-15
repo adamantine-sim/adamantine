@@ -9,6 +9,8 @@
 #define _GEOMETRY_TEMPLATES_HH_
 
 #include "Geometry.hh"
+#include "types.hh"
+#include "utils.hh"
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/grid_generator.h>
 
@@ -37,13 +39,15 @@ Geometry<dim>::Geometry(boost::mpi::communicator const &communicator,
   dealii::GridGenerator::subdivided_hyper_rectangle(_triangulation, repetitions,
                                                     p1, p2, true);
 
-  // Assign the material IDs. This is not done on the artificial cells, so we
-  // need to reset the material IDs when the mesh is refined/repartioned.
+  // Assign the MaterialState. We need to reset the MaterialState when the mesh
+  // is
+  // refined/repartioned.
   dealii::types::boundary_id const top_boundary = 3;
   for (auto cell :
        dealii::filter_iterators(_triangulation.active_cell_iterators(),
                                 dealii::IteratorFilters::LocallyOwnedCell()))
   {
+    cell->set_material_id(0);
     if (cell->at_boundary())
     {
       bool is_powder = false;
@@ -53,16 +57,16 @@ Geometry<dim>::Geometry(boost::mpi::communicator const &communicator,
         if ((cell->face(i)->at_boundary()) &&
             (cell->face(i)->boundary_id() == top_boundary))
         {
-          cell->set_material_id(powder);
+          cell->set_user_index(powder);
           is_powder = true;
           break;
         }
       }
       if (is_powder == false)
-        cell->set_material_id(solid);
+        cell->set_user_index(solid);
     }
     else
-      cell->set_material_id(solid);
+      cell->set_user_index(solid);
   }
 }
 }

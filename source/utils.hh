@@ -5,6 +5,9 @@
  * for the text and further information on this license.
  */
 
+#ifndef _UTILS_HH_
+#define _UTILS_HH_
+
 #include <boost/assert.hpp>
 #include <stdexcept>
 #include <string>
@@ -12,14 +15,16 @@
 namespace adamantine
 {
 
-void ASSERT(bool cond, std::string const &message)
+inline void ASSERT(bool cond, std::string const &message)
 {
   BOOST_ASSERT_MSG(cond, message.c_str());
 }
 
-void ASSERT_THROW(bool cond, std::string const &message)
+inline void ASSERT_THROW(bool cond, std::string const &message)
 {
   if (cond == false)
     throw std::runtime_error(message);
 }
 }
+
+#endif

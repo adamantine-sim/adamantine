@@ -10,6 +10,7 @@
 #include "main.cc"
 
 #include "Geometry.hh"
+#include "types.hh"
 #include <deal.II/grid/filtered_iterator.h>
 #include <boost/mpi.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -32,16 +33,16 @@ void check_material_id(
         if ((cell->face(i)->at_boundary()) &&
             (cell->face(i)->boundary_id() == top_boundary))
         {
-          BOOST_CHECK(cell->material_id() == adamantine::Material::powder);
+          BOOST_CHECK(cell->user_index() == adamantine::MaterialState::powder);
           powder = true;
           break;
         }
       }
       if (powder == false)
-        BOOST_CHECK(cell->material_id() == adamantine::Material::solid);
+        BOOST_CHECK(cell->user_index() == adamantine::MaterialState::solid);
     }
     else
-      BOOST_CHECK(cell->material_id() == adamantine::Material::solid);
+      BOOST_CHECK(cell->user_index() == adamantine::MaterialState::solid);
   }
 }
 
