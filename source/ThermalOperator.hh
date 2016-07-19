@@ -22,8 +22,13 @@ template <int dim, int fe_degree, typename NumberType>
 class ThermalOperator : public Operator<NumberType>
 {
 public:
-  ThermalOperator(boost::mpi::communicator &communicator);
+  ThermalOperator(boost::mpi::communicator &communicator,
+                  std::shared_ptr<MaterialProperty> material_properties);
 
+  /**
+   * Reinit must be called after the constructor. The reason is that we cannot
+   * create a templated constructor.
+   */
   template <typename QuadratureType>
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::ConstraintMatrix const &constraint_matrix,

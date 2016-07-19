@@ -44,7 +44,7 @@ double MaterialProperty::get(
     Property prop,
     dealii::LA::distributed::Vector<NumberType> const &field_state) const
 {
-  // TODO: For now, ignore fied_state since we have a linear problem. Also for
+  // TODO: For now, ignore field_state since we have a linear problem. Also for
   // now can only be in one state. It can't be half powder and half liquid.
   (void)field_state;
   dealii::types::material_id material_id = cell->material_id();

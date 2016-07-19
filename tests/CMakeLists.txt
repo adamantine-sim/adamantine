@@ -8,12 +8,9 @@ set(TESTS "")
 list(APPEND
      TESTS
      test_geometry
+     test_material_property
+     test_thermal_operator
      )
-
-set(tests_SOURCES
-    ${CMAKE_SOURCE_DIR}/source/Geometry.cc
-    ${CMAKE_SOURCE_DIR}/source/ThermalOperator.cc
-  )
 
 foreach(TEST_NAME ${TESTS})
   adamantine_ADD_BOOST_TEST(${TEST_NAME})

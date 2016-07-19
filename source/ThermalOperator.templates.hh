@@ -17,8 +17,9 @@ namespace adamantine
 
 template <int dim, int fe_degree, typename NumberType>
 ThermalOperator<dim, fe_degree, NumberType>::ThermalOperator(
-    boost::mpi::communicator &communicator)
-    : _communicator(communicator)
+    boost::mpi::communicator &communicator,
+    std::shared_ptr<MaterialProperty> material_properties)
+    : _communicator(communicator), _material_properties(material_properties)
 {
 }
 
@@ -29,8 +30,8 @@ void ThermalOperator<dim, fe_degree, NumberType>::reinit(
     dealii::ConstraintMatrix const &constraint_matrix,
     QuadratureType const &quad)
 {
-  _data(dof_handler, constraint_matrix, quad);
-  _inverse_mass_matrix.reinit(_data.get_locally_owned_set, _communicator);
+  _data.reinit(dof_handler, constraint_matrix, quad);
+  _inverse_mass_matrix.reinit(_data.get_locally_owned_set(), _communicator);
   // TODO: for now we only solve linear problem so we can evaluate the thermal
   // conductivity once. Since the thermal conductivity is independent of the
   // current temperature, we use a dummy temperature vector.

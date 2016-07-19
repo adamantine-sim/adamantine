@@ -12,6 +12,7 @@ include(UnitTesting)
 enable_testing()
 include(CTest)
 
+add_subdirectory(application)
 add_subdirectory(source)
 add_subdirectory(tests)
 

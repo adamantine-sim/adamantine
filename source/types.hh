@@ -33,7 +33,7 @@ enum MaterialState
 };
 
 /**
- * Enum of the possible material properties.
+ * Enum on the possible material properties.
  */
 enum Property
 {
