@@ -45,29 +45,39 @@ MaterialProperty::MaterialProperty(boost::property_tree::ptree const &database)
     boost::property_tree::ptree const &material_database =
         database.get_child("material_" + std::to_string(material_id));
     // For each material, loop over the possible states.
+    bool valid_state = false;
     for (unsigned int state = MaterialState::powder; state < n_material_states;
          ++state)
     {
-      boost::property_tree::ptree const &state_database =
-          material_database.get_child(material_state[state]);
-      // For each state, loop overt the possible properties.
-      for (unsigned int p = Property::thermal_conductivity; p < n_properties;
-           ++p)
+      // The state may or may not exist for the material.
+      boost::optional<boost::property_tree::ptree const &> state_database =
+          material_database.get_child_optional(material_state[state]);
+      if (state_database)
       {
-        // The property may or may not exist for that state
-        boost::optional<std::string> const property =
-            state_database.get_optional<std::string>(properties[p]);
-        // If the property exists, put it in the map. If the property does not
-        // exist, we have a nullptr.
-        if (property)
+        valid_state = true;
+        // For each state, loop overt the possible properties.
+        for (unsigned int p = Property::thermal_conductivity; p < n_properties;
+             ++p)
         {
-          _properties[material_id][state][p] =
-              std::make_unique<dealii::FunctionParser<1>>(1);
-          _properties[material_id][state][p]->initialize(
-              variable, property.get(), std::map<std::string, double>());
+          // The property may or may not exist for that state
+          boost::optional<std::string> const property =
+              state_database.get().get_optional<std::string>(properties[p]);
+          // If the property exists, put it in the map. If the property does not
+          // exist, we have a nullptr.
+          if (property)
+          {
+            _properties[material_id][state][p] =
+                std::make_unique<dealii::FunctionParser<1>>(1);
+            _properties[material_id][state][p]->initialize(
+                variable, property.get(), std::map<std::string, double>());
+          }
         }
       }
     }
+    // Check that there is at least one valid MaterialState
+    ASSERT_THROW(
+        valid_state == true,
+        "Material without any valid state (solid, powder, or liquid).");
   }
 }
 }

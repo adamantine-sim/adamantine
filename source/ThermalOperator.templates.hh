@@ -30,8 +30,9 @@ void ThermalOperator<dim, fe_degree, NumberType>::reinit(
     dealii::ConstraintMatrix const &constraint_matrix,
     QuadratureType const &quad)
 {
-  _data.reinit(dof_handler, constraint_matrix, quad);
-  _inverse_mass_matrix.reinit(_data.get_locally_owned_set(), _communicator);
+  _matrix_free.reinit(dof_handler, constraint_matrix, quad);
+  _inverse_mass_matrix.reinit(_matrix_free.get_locally_owned_set(),
+                              _communicator);
   // TODO: for now we only solve linear problem so we can evaluate the thermal
   // conductivity once. Since the thermal conductivity is independent of the
   // current temperature, we use a dummy temperature vector.
@@ -42,7 +43,7 @@ void ThermalOperator<dim, fe_degree, NumberType>::reinit(
 template <int dim, int fe_degree, typename NumberType>
 void ThermalOperator<dim, fe_degree, NumberType>::clear()
 {
-  _data.clear();
+  _matrix_free.clear();
   _inverse_mass_matrix.reinit(0);
 }
 
@@ -70,7 +71,7 @@ void ThermalOperator<dim, fe_degree, NumberType>::vmult_add(
     dealii::LA::distributed::Vector<NumberType> const &src) const
 {
   // Execute the matrix-free matrix-vector multiplication
-  _data.cell_loop(&ThermalOperator::local_apply, this, dst, src);
+  _matrix_free.cell_loop(&ThermalOperator::local_apply, this, dst, src);
 
   // Because cell_loop resolves the constraints, the constrained dofs are not
   // called they stay at zero. Thus, we need to force the value on the
@@ -79,7 +80,7 @@ void ThermalOperator<dim, fe_degree, NumberType>::vmult_add(
   // TODO: for now the value of scaling is set to 1
   NumberType const scaling = 1.;
   std::vector<dealii::types::global_dof_index> const &constrained_dofs =
-      _data.get_constrained_dofs();
+      _matrix_free.get_constrained_dofs();
   for (auto &dof : constrained_dofs)
     dst[dof] += scaling * src[dof];
 }
@@ -128,21 +129,21 @@ template <int dim, int fe_degree, typename NumberType>
 void ThermalOperator<dim, fe_degree, NumberType>::evaluate_thermal_conductivity(
     dealii::LA::distributed::Vector<NumberType> const &state)
 {
-  unsigned int const n_cells = _data.n_macro_cells();
+  unsigned int const n_cells = _matrix_free.n_macro_cells();
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, NumberType> fe_eval(
-      _data);
+      _matrix_free);
   _thermal_conductivity.reinit(n_cells, fe_eval.n_q_points);
   for (unsigned int cell = 0; cell < n_cells; ++cell)
   {
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
-      for (unsigned int i = 0; i < _data.n_components_filled(cell); ++i)
+      for (unsigned int i = 0; i < _matrix_free.n_components_filled(cell); ++i)
       {
         typename dealii::DoFHandler<dim>::cell_iterator cell_it =
-            _data.get_cell_iterator(cell, i);
+            _matrix_free.get_cell_iterator(cell, i);
         // Cast to Triangulation<dim>::cell_iterator to access the material_id
         typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
             cell_it);
-        _data.get_cell_iterator(cell, i);
+        _matrix_free.get_cell_iterator(cell, i);
         _thermal_conductivity(cell, q)[i] =
             _material_properties->get<dim, NumberType>(
                 cell_tria, Property::thermal_conductivity, state);

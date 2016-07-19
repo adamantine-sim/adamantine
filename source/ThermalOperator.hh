@@ -40,6 +40,8 @@ public:
 
   dealii::types::global_dof_index n() const override;
 
+  dealii::MatrixFree<dim, NumberType> const &get_matrix_free() const;
+
   /**
    * This performs \f$ dst = -\nabla k \nabla src \f$.
    */
@@ -72,7 +74,7 @@ private:
   boost::mpi::communicator _communicator;
   dealii::Table<2, dealii::VectorizedArray<NumberType>> _thermal_conductivity;
   std::shared_ptr<MaterialProperty> _material_properties;
-  dealii::MatrixFree<dim, NumberType> _data;
+  dealii::MatrixFree<dim, NumberType> _matrix_free;
   /**
    * Compute the inverse of the mass matrix using an inexact Gauss-Lobatto
    * quadrature. This inexact quadrature makes the mass matrix and therefore
@@ -85,14 +87,21 @@ template <int dim, int fe_degree, typename NumberType>
 inline dealii::types::global_dof_index
 ThermalOperator<dim, fe_degree, NumberType>::m() const
 {
-  _data.get_vector_partitioner()->size();
+  return _matrix_free.get_vector_partitioner()->size();
 }
 
 template <int dim, int fe_degree, typename NumberType>
 inline dealii::types::global_dof_index
 ThermalOperator<dim, fe_degree, NumberType>::n() const
 {
-  _data.get_vector_partitioner()->size();
+  return _matrix_free.get_vector_partitioner()->size();
+}
+
+template <int dim, int fe_degree, typename NumberType>
+inline dealii::MatrixFree<dim, NumberType> const &
+ThermalOperator<dim, fe_degree, NumberType>::get_matrix_free() const
+{
+  return _matrix_free;
 }
 }
 
