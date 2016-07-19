@@ -19,7 +19,7 @@ MaterialProperty::MaterialProperty(boost::property_tree::ptree const &database)
   std::array<std::string, n_material_states> material_state = {
       {"powder", "solid", "liquid"}};
   unsigned int constexpr n_properties = 1;
-  std::array<std::string, n_properties> properties = {{"themal_conductivity"}};
+  std::array<std::string, n_properties> properties = {{"thermal_conductivity"}};
 
   unsigned int const n_materials = database.get<unsigned int>("n_materials");
   dealii::types::material_id next_material_id = 0;
@@ -56,7 +56,7 @@ MaterialProperty::MaterialProperty(boost::property_tree::ptree const &database)
       {
         // The property may or may not exist for that state
         boost::optional<std::string> const property =
-            state_database.get<std::string>(properties[p]);
+            state_database.get_optional<std::string>(properties[p]);
         // If the property exists, put it in the map. If the property does not
         // exist, we have a nullptr.
         if (property)
@@ -70,22 +70,4 @@ MaterialProperty::MaterialProperty(boost::property_tree::ptree const &database)
     }
   }
 }
-
-//  // Instantiate the templates
-//  template double MaterialProperty::get<2, float>(
-//      typename dealii::Triangulation<2>::active_cell_iterator const &cell,
-//      Property prop, dealii::LA::distributed::Vector<float> const
-//      &field_state) const;
-//  template double MaterialProperty::get<2, double>(
-//      typename dealii::Triangulation<2>::active_cell_iterator const &cell,
-//      Property prop, dealii::LA::distributed::Vector<double> const
-//      &field_state) const;
-//  template double MaterialProperty::get<3, float>(
-//      typename dealii::Triangulation<3>::active_cell_iterator const &cell,
-//      Property prop, dealii::LA::distributed::Vector<float> const
-//      &field_state) const;
-//  template double MaterialProperty::get<3, double>(
-//      typename dealii::Triangulation<3>::active_cell_iterator const &cell,
-//      Property prop, dealii::LA::distributed::Vector<double> const
-//      &field_state) const;
 }
