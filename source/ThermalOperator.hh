@@ -40,6 +40,8 @@ public:
 
   dealii::types::global_dof_index n() const override;
 
+  dealii::LA::distributed::Vector<NumberType> const &get_inverse_mass_matrix() const;
+
   dealii::MatrixFree<dim, NumberType> const &get_matrix_free() const;
 
   /**
@@ -80,7 +82,7 @@ private:
    * quadrature. This inexact quadrature makes the mass matrix and therefore
    * also its inverse, a diagonal matrix.
    */
-  dealii::LA::distributed::Vector<double> _inverse_mass_matrix;
+  dealii::LA::distributed::Vector<NumberType> _inverse_mass_matrix;
 };
 
 template <int dim, int fe_degree, typename NumberType>
@@ -95,6 +97,13 @@ inline dealii::types::global_dof_index
 ThermalOperator<dim, fe_degree, NumberType>::n() const
 {
   return _matrix_free.get_vector_partitioner()->size();
+}
+
+template <int dim, int fe_degree, typename NumberType>
+inline dealii::LA::distributed::Vector<NumberType> const &
+ThermalOperator<dim, fe_degree, NumberType>::get_inverse_mass_matrix() const
+{
+  return _inverse_mass_matrix;
 }
 
 template <int dim, int fe_degree, typename NumberType>

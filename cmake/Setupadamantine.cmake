@@ -5,7 +5,7 @@ set(adamantine_VERSION
     ${adamantine_VERSION_MAJOR}.${adamantine_VERSION_MINOR}.${adamantine_VERSION_PATCH})
 message("adamatine version: ${adamantine_VERSION}")
     
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -flto")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
 message("Build type: ${CMAKE_BUILD_TYPE}")

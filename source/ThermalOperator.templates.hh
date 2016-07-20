@@ -30,9 +30,37 @@ void ThermalOperator<dim, fe_degree, NumberType>::reinit(
     dealii::ConstraintMatrix const &constraint_matrix,
     QuadratureType const &quad)
 {
+  typename dealii::MatrixFree<dim, NumberType>::AdditionalData additional_data;
+  additional_data.tasks_parallel_scheme =
+      dealii::MatrixFree<dim, NumberType>::AdditionalData::partition_color;
   _matrix_free.reinit(dof_handler, constraint_matrix, quad);
-  _inverse_mass_matrix.reinit(_matrix_free.get_locally_owned_set(),
-                              _communicator);
+
+  // Compute the inverse of the mass matrix
+  _matrix_free.initialize_dof_vector(_inverse_mass_matrix);
+  dealii::VectorizedArray<NumberType> one =
+      dealii::make_vectorized_array(static_cast<NumberType>(1.));
+  dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, NumberType> fe_eval(
+      _matrix_free);
+  unsigned int const n_q_points = fe_eval.n_q_points;
+  for (unsigned int cell = 0; cell < _matrix_free.n_macro_cells(); ++cell)
+  {
+    fe_eval.reinit(cell);
+    for (unsigned int q = 0; q < n_q_points; ++q)
+      fe_eval.submit_value(one, q);
+    fe_eval.integrate(true, false);
+    fe_eval.distribute_local_to_global(_inverse_mass_matrix);
+  }
+  _inverse_mass_matrix.compress(dealii::VectorOperation::add);
+  unsigned int const local_size = _inverse_mass_matrix.local_size();
+  for (unsigned int k = 0; k < local_size; ++k)
+  {
+    if (_inverse_mass_matrix.local_element(k) > 1e-15)
+      _inverse_mass_matrix.local_element(k) =
+          1. / _inverse_mass_matrix.local_element(k);
+    else
+      _inverse_mass_matrix.local_element(k) = 0.;
+  }
+
   // TODO: for now we only solve linear problem so we can evaluate the thermal
   // conductivity once. Since the thermal conductivity is independent of the
   // current temperature, we use a dummy temperature vector.
@@ -134,7 +162,6 @@ void ThermalOperator<dim, fe_degree, NumberType>::evaluate_thermal_conductivity(
       _matrix_free);
   _thermal_conductivity.reinit(n_cells, fe_eval.n_q_points);
   for (unsigned int cell = 0; cell < n_cells; ++cell)
-  {
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
       for (unsigned int i = 0; i < _matrix_free.n_components_filled(cell); ++i)
       {
@@ -148,7 +175,6 @@ void ThermalOperator<dim, fe_degree, NumberType>::evaluate_thermal_conductivity(
             _material_properties->get<dim, NumberType>(
                 cell_tria, Property::thermal_conductivity, state);
       }
-  }
 }
 }
 

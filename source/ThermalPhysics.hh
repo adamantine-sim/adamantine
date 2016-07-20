@@ -20,7 +20,7 @@ namespace adamantine
 class ThermalPhysics
 {
 public:
-  TermalPhysics(boost::property_tree::tree const &database);
+  ThermalPhysics(boost::property_tree::tree const &database);
 };
 }
 

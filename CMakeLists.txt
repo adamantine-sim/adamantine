@@ -14,7 +14,9 @@ include(CTest)
 
 add_subdirectory(application)
 add_subdirectory(source)
-add_subdirectory(tests)
+if (adamantine_ENABLE_TESTS)
+  add_subdirectory(tests)
+endif()
 
 # Provide "indent" target for indenting all the header and the source files.
 add_custom_target(indent
