@@ -7,6 +7,7 @@ include_directories(${CMAKE_SOURCE_DIR}/source)
 set(TESTS "")
 list(APPEND
      TESTS
+     test_electron_beam
      test_geometry
      test_material_property
      test_thermal_operator

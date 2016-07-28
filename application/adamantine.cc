@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-      adamantine::Geometry<2> geometry(communicator, geometry_database);
+      adamantine::Geometry<3> geometry(communicator, geometry_database);
     }
   }
   catch (std::exception &exception)

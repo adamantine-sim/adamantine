@@ -63,7 +63,10 @@ void ThermalOperator<dim, fe_degree, NumberType>::reinit(
 
   // TODO: for now we only solve linear problem so we can evaluate the thermal
   // conductivity once. Since the thermal conductivity is independent of the
-  // current temperature, we use a dummy temperature vector.
+  // current temperature, we use a dummy temperature vector. This needs to be
+  // moved out of reinit when the problem is nonlinear because it needs to be
+  // called for each Newton iterations even though the mesh hasn't been
+  // modified.
   dealii::LA::distributed::Vector<NumberType> dummy;
   evaluate_thermal_conductivity(dummy);
 }

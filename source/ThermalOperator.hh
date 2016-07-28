@@ -40,7 +40,8 @@ public:
 
   dealii::types::global_dof_index n() const override;
 
-  dealii::LA::distributed::Vector<NumberType> const &get_inverse_mass_matrix() const;
+  dealii::LA::distributed::Vector<NumberType> const &
+  get_inverse_mass_matrix() const;
 
   dealii::MatrixFree<dim, NumberType> const &get_matrix_free() const;
 
