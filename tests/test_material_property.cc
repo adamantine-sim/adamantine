@@ -19,6 +19,7 @@ BOOST_AUTO_TEST_CASE(material_property)
 {
   boost::property_tree::ptree database;
   database.put("n_materials", 1);
+  database.put("material_0.solid.density", 1.);
   database.put("material_0.solid.thermal_conductivity", 10.);
   database.put("material_0.powder.conductivity", 10.);
   database.put("material_0.liquid", "");
@@ -35,8 +36,11 @@ BOOST_AUTO_TEST_CASE(material_property)
 
   for (auto cell : tria.active_cell_iterators())
   {
-    double const value = mat_prop.get<2, double>(
+    double const density =
+        mat_prop.get<2, double>(cell, adamantine::Property::density, dummy);
+    BOOST_CHECK(density == 1.);
+    double const th_conduc = mat_prop.get<2, double>(
         cell, adamantine::Property::thermal_conductivity, dummy);
-    BOOST_CHECK(value == 10.);
+    BOOST_CHECK(th_conduc == 10.);
   }
 }

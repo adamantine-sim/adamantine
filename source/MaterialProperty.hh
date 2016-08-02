@@ -9,6 +9,7 @@
 #define _MATERIAL_PROPERTY_HH_
 
 #include "types.hh"
+#include "utils.hh"
 #include <deal.II/base/function_parser.h>
 #include <deal.II/grid/tria.h>
 #include <deal.II/lac/la_parallel_vector.h>
@@ -32,10 +33,13 @@ public:
 
 private:
   // material_id - (powder/solid/liquid, property)
+  static unsigned int constexpr _n_material_states = 3;
+  static unsigned int constexpr _n_properties = 3;
   std::unordered_map<
       dealii::types::material_id,
-      std::array<std::array<std::unique_ptr<dealii::FunctionParser<1>>, 1>, 3>>
-      _properties;
+      std::array<
+          std::array<std::unique_ptr<dealii::FunctionParser<1>>, _n_properties>,
+          3>> _properties;
 };
 
 template <int dim, typename NumberType>
@@ -52,6 +56,8 @@ double MaterialProperty::get(
 
   // We cannot use operator[] because the function is constant.
   auto const tmp = _properties.find(material_id);
+  ASSERT(tmp != _properties.end(), "Material not found.");
+  ASSERT((tmp->second)[state][prop] != nullptr, "Property not found.");
   return (tmp->second)[state][prop]->value(dealii::Point<1>());
 }
 }

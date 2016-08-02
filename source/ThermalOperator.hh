@@ -71,10 +71,11 @@ private:
               dealii::LA::distributed::Vector<NumberType> const &src,
               std::pair<unsigned int, unsigned int> const &cell_range) const;
 
-  void evaluate_thermal_conductivity(
+  void evaluate_material_properties(
       dealii::LA::distributed::Vector<NumberType> const &state);
 
   boost::mpi::communicator _communicator;
+  dealii::Table<2, dealii::VectorizedArray<NumberType>> _rho_cp;
   dealii::Table<2, dealii::VectorizedArray<NumberType>> _thermal_conductivity;
   std::shared_ptr<MaterialProperty> _material_properties;
   dealii::MatrixFree<dim, NumberType> _matrix_free;

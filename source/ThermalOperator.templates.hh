@@ -68,7 +68,7 @@ void ThermalOperator<dim, fe_degree, NumberType>::reinit(
   // called for each Newton iterations even though the mesh hasn't been
   // modified.
   dealii::LA::distributed::Vector<NumberType> dummy;
-  evaluate_thermal_conductivity(dummy);
+  evaluate_material_properties(dummy);
 }
 
 template <int dim, int fe_degree, typename NumberType>
@@ -149,7 +149,9 @@ void ThermalOperator<dim, fe_degree, NumberType>::local_apply(
     // coefficients and the quadrature points
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
       fe_eval.submit_gradient(
-          _thermal_conductivity(cell, q) * fe_eval.get_gradient(q), q);
+          -(_thermal_conductivity(cell, q) / _rho_cp(cell, q)) *
+              fe_eval.get_gradient(q),
+          q);
     // Sum over the quadrature points.
     fe_eval.integrate(false, true);
     fe_eval.distribute_local_to_global(dst);
@@ -157,12 +159,13 @@ void ThermalOperator<dim, fe_degree, NumberType>::local_apply(
 }
 
 template <int dim, int fe_degree, typename NumberType>
-void ThermalOperator<dim, fe_degree, NumberType>::evaluate_thermal_conductivity(
+void ThermalOperator<dim, fe_degree, NumberType>::evaluate_material_properties(
     dealii::LA::distributed::Vector<NumberType> const &state)
 {
   unsigned int const n_cells = _matrix_free.n_macro_cells();
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, NumberType> fe_eval(
       _matrix_free);
+  _rho_cp.reinit(n_cells, fe_eval.n_q_points);
   _thermal_conductivity.reinit(n_cells, fe_eval.n_q_points);
   for (unsigned int cell = 0; cell < n_cells; ++cell)
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
@@ -173,7 +176,13 @@ void ThermalOperator<dim, fe_degree, NumberType>::evaluate_thermal_conductivity(
         // Cast to Triangulation<dim>::cell_iterator to access the material_id
         typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
             cell_it);
+        // TODO use three vectors to describe cells which have a mix of powder,
+        // solid, and liquid.
         _matrix_free.get_cell_iterator(cell, i);
+        _rho_cp(cell, q)[i] = _material_properties->get<dim, NumberType>(
+                                  cell_tria, Property::density, state) *
+                              _material_properties->get<dim, NumberType>(
+                                  cell_tria, Property::specific_heat, state);
         _thermal_conductivity(cell, q)[i] =
             _material_properties->get<dim, NumberType>(
                 cell_tria, Property::thermal_conductivity, state);

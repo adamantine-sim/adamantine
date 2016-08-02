@@ -42,7 +42,7 @@ ElectronBeam<dim>::ElectronBeam(boost::property_tree::ptree const &database)
 
 template <int dim>
 double ElectronBeam<dim>::value(dealii::Point<dim> const &point,
-                                unsigned int const) const
+                                unsigned int const /*component*/) const
 {
   double const z = point[1] - _max_height;
   double const distribution_z =

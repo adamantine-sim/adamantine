@@ -15,17 +15,24 @@ materials
   {
     solid 
     {
-      thermal_conductivity 10. ; The value can be constant or an equation
-                               ; 10*exp(T)*sin(2.*T)
+      density 754.1 ; [kg/m^3] For now all the states needs to have the same
+                    ; density. The value can be constant or an equation
+      specific_heat 600 ; [J/kg K]  The value can be constant or an equation
+      thermal_conductivity 26.6 ; [W/m K] The value can be constant or an 
+                                ; equation like 10*exp(T)*sin(2.*T)
     }
     powder
     {
-      thermal_conductivity 5.
+      specific_heat 600 ; [J/kg K] 
+      density 754.1 ; [kg/m^3]
+      thermal_conductivity 0.266 ; [W/m K]
     }
     liquid
     {
-      thermal_conductivity 7.5 ; Not all three states need to define the same
-                               ; properties or to exist
+      specific_heat 775 ; [J/kg K] 
+      density 754.1 ; [kg/m^3]
+      thermal_conductivity 29.0 ; [W/m k] Not all three states need to define
+                                ; the same properties or to exist
     }
   }
 }

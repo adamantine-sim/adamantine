@@ -10,6 +10,7 @@
 
 #include "Geometry.hh"
 #include "ThermalOperator.hh"
+#include <deal.II/base/time_stepping.h>
 #include <boost/property_tree/ptree.hpp>
 
 namespace adamantine
@@ -32,10 +33,24 @@ public:
    */
   void reinit();
 
-  double evolve_one_time_step(double t, double delta_t,
-                              dealii::LA::distributed::Vector<NumberType> &y);
+  double
+  evolve_one_time_step(double t, double delta_t,
+                       dealii::LA::distributed::Vector<NumberType> &solution);
+
+  double get_delta_t_guess() const;
 
 private:
+  typedef typename dealii::LA::distributed::Vector<NumberType> LA_Vector;
+
+  LA_Vector evaluate_thermal_physics(double const t, LA_Vector const &y) const;
+
+  // For now, this is a dummy function which does nothing. It is only necessary
+  // for implicit methods.
+  LA_Vector id_minus_tau_J_inverse(double const t, double const tau,
+                                   LA_Vector const &y) const;
+
+  bool _embedded_method;
+  double _delta_t_guess;
   Geometry<dim> &_geometry;
   dealii::FE_Q<dim> _fe;
   dealii::DoFHandler<dim> _dof_handler;
@@ -43,7 +58,15 @@ private:
   QuadratureType _quadrature;
   std::unique_ptr<ThermalOperator<dim, fe_degree, NumberType>>
       _thermal_operator;
+  std::unique_ptr<dealii::TimeStepping::RungeKutta<LA_Vector>> _time_stepping;
 };
+
+template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
+inline double ThermalPhysics<dim, fe_degree, NumberType,
+                             QuadratureType>::get_delta_t_guess() const
+{
+  return _delta_t_guess;
+}
 }
 
 #endif

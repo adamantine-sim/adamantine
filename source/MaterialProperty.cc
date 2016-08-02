@@ -6,7 +6,6 @@
  */
 
 #include "MaterialProperty.hh"
-#include "utils.hh"
 #include <deal.II/base/point.h>
 #include <boost/optional.hpp>
 
@@ -15,11 +14,10 @@ namespace adamantine
 
 MaterialProperty::MaterialProperty(boost::property_tree::ptree const &database)
 {
-  unsigned int constexpr n_material_states = 3;
-  std::array<std::string, n_material_states> material_state = {
+  std::array<std::string, _n_material_states> material_state = {
       {"powder", "solid", "liquid"}};
-  unsigned int constexpr n_properties = 1;
-  std::array<std::string, n_properties> properties = {{"thermal_conductivity"}};
+  std::array<std::string, _n_properties> properties = {
+      {"density", "specific_heat", "thermal_conductivity"}};
 
   unsigned int const n_materials = database.get<unsigned int>("n_materials");
   dealii::types::material_id next_material_id = 0;
@@ -46,7 +44,7 @@ MaterialProperty::MaterialProperty(boost::property_tree::ptree const &database)
         database.get_child("material_" + std::to_string(material_id));
     // For each material, loop over the possible states.
     bool valid_state = false;
-    for (unsigned int state = MaterialState::powder; state < n_material_states;
+    for (unsigned int state = MaterialState::powder; state < _n_material_states;
          ++state)
     {
       // The state may or may not exist for the material.
@@ -56,8 +54,7 @@ MaterialProperty::MaterialProperty(boost::property_tree::ptree const &database)
       {
         valid_state = true;
         // For each state, loop overt the possible properties.
-        for (unsigned int p = Property::thermal_conductivity; p < n_properties;
-             ++p)
+        for (unsigned int p = 0; p < _n_properties; ++p)
         {
           // The property may or may not exist for that state
           boost::optional<std::string> const property =

@@ -37,6 +37,8 @@ enum MaterialState
  */
 enum Property
 {
+  density,
+  specific_heat,
   thermal_conductivity
 };
 }
