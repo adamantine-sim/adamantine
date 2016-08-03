@@ -8,6 +8,7 @@
 #ifndef _THERMAL_PHYSICS_HH_
 #define _THERMAL_PHYSICS_HH_
 
+#include "ElectronBeam.hh"
 #include "Geometry.hh"
 #include "ThermalOperator.hh"
 #include <deal.II/base/time_stepping.h>
@@ -39,6 +40,9 @@ public:
 
   double get_delta_t_guess() const;
 
+  void
+  initialize_dof_vector(dealii::LA::distributed::Vector<NumberType> &vector);
+
 private:
   typedef typename dealii::LA::distributed::Vector<NumberType> LA_Vector;
 
@@ -56,6 +60,10 @@ private:
   dealii::DoFHandler<dim> _dof_handler;
   dealii::ConstraintMatrix _constraint_matrix;
   QuadratureType _quadrature;
+  std::shared_ptr<MaterialProperty> _material_properties;
+  // Use unique_ptr due to a strange bug involving TBB, std::vector, and
+  // dealii::FunctionParser.
+  std::vector<std::unique_ptr<ElectronBeam<dim>>> _electron_beams;
   std::unique_ptr<ThermalOperator<dim, fe_degree, NumberType>>
       _thermal_operator;
   std::unique_ptr<dealii::TimeStepping::RungeKutta<LA_Vector>> _time_stepping;
@@ -66,6 +74,13 @@ inline double ThermalPhysics<dim, fe_degree, NumberType,
                              QuadratureType>::get_delta_t_guess() const
 {
   return _delta_t_guess;
+}
+
+template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
+inline void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
+    initialize_dof_vector(dealii::LA::distributed::Vector<NumberType> &vector)
+{
+  _thermal_operator->get_matrix_free().initialize_dof_vector(vector);
 }
 }
 

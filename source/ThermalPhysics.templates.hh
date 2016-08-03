@@ -10,6 +10,8 @@
 
 #include "ThermalPhysics.hh"
 #include "MaterialProperty.hh"
+#include <deal.II/fe/fe_values.h>
+#include <deal.II/grid/filtered_iterator.h>
 #include <algorithm>
 
 namespace adamantine
@@ -24,13 +26,26 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
   // Create the material properties
   boost::property_tree::ptree const &material_database =
       database.get_child("materials");
-  std::shared_ptr<MaterialProperty> material_properties(
-      new MaterialProperty(material_database));
+  _material_properties.reset(new MaterialProperty(material_database));
+
+  // Create the electron beams
+  boost::property_tree::ptree const &source_database =
+      database.get_child("sources");
+  unsigned int const n_beams = source_database.get<unsigned int>("n_beams");
+  _electron_beams.resize(n_beams);
+  for (unsigned int i = 0; i < n_beams; ++i)
+  {
+    boost::property_tree::ptree const &beam_database =
+        source_database.get_child("beam_" + std::to_string(i));
+    _electron_beams[i] = std::make_unique<ElectronBeam<dim>>(beam_database);
+    // TODO this is correct as long as the top surface is flat
+    _electron_beams[i]->set_max_height(_geometry.get_max_height());
+  }
 
   // Create the thermal operator
   _thermal_operator =
       std::make_unique<ThermalOperator<dim, fe_degree, NumberType>>(
-          communicator, material_properties);
+          communicator, _material_properties);
 
   // Create the time stepping scheme
   boost::property_tree::ptree const &time_stepping_database =
@@ -159,6 +174,59 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
         double const t,
         dealii::LA::distributed::Vector<NumberType> const &y) const
 {
+  LA_Vector value(y.get_partitioner());
+  value = 0.;
+
+  // Compute the source term.
+  for (auto &beam : _electron_beams)
+    beam->set_time(t);
+  dealii::QGauss<dim> source_quadrature(fe_degree + 1);
+  dealii::FEValues<dim> fe_values(_fe, source_quadrature,
+                                  dealii::update_quadrature_points |
+                                      dealii::update_values |
+                                      dealii::update_JxW_values);
+  unsigned int const dofs_per_cell = _fe.dofs_per_cell;
+  unsigned int const n_q_points = source_quadrature.size();
+  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
+  dealii::Vector<NumberType> cell_source(dofs_per_cell);
+
+  for (auto cell :
+       dealii::filter_iterators(_dof_handler.active_cell_iterators(),
+                                dealii::IteratorFilters::LocallyOwnedCell()))
+  {
+    cell_source = 0.;
+    fe_values.reinit(cell);
+    NumberType const rho_cp =
+        _material_properties->get<dim, NumberType>(cell, Property::density, y) *
+        _material_properties->get<dim, NumberType>(cell,
+                                                   Property::specific_heat, y);
+
+    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+    {
+      for (unsigned int q = 0; q < n_q_points; ++q)
+      {
+        double source = 0.;
+        dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
+        for (auto &beam : _electron_beams)
+          source += beam->value(q_point);
+        source /= rho_cp;
+
+        cell_source[i] +=
+            source * fe_values.shape_value(i, q) * fe_values.JxW(q);
+      }
+    }
+    cell->get_dof_indices(local_dof_indices);
+    _constraint_matrix.distribute_local_to_global(cell_source,
+                                                  local_dof_indices, value);
+  }
+
+  // Apply the Thermal Operator.
+  _thermal_operator->vmult_add(value, y);
+
+  // Multiply by the inverse of the mass matrix.
+  value.scale(_thermal_operator->get_inverse_mass_matrix());
+
+  return value;
 }
 
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>

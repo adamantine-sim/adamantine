@@ -32,6 +32,7 @@ Geometry<dim>::Geometry(boost::mpi::communicator const &communicator,
   dealii::Point<dim> p2;
   p2[0] = database.get<double>("length");
   p2[1] = database.get<double>("height");
+  _max_height = p2[1];
   if (dim == 3)
     p2[2] = database.get<double>("width");
 

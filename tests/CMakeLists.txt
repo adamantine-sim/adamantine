@@ -11,6 +11,7 @@ list(APPEND
      test_geometry
      test_material_property
      test_thermal_operator
+     test_thermal_physics
      )
 
 foreach(TEST_NAME ${TESTS})

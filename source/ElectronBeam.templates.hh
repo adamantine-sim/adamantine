@@ -24,7 +24,16 @@ ElectronBeam<dim>::ElectronBeam(boost::property_tree::ptree const &database)
       database.get<double>("energy_conversion_efficiency");
   _beam.control_eff = database.get<double>("control_efficiency");
   _beam.diameter_squared = pow(database.get<double>("diameter"), 2);
-  _beam.max_power = database.get<double>("max_power");
+  boost::optional<double> max_power =
+      database.get_optional<double>("max_power");
+  if (max_power)
+    _beam.max_power = max_power.get();
+  else
+  {
+    double const current = database.get<double>("current");
+    double const voltage = database.get<double>("voltage");
+    _beam.max_power = current * voltage;
+  }
 
   // The only variable that can be used to define the position is the time t.
   std::string variable = "t";

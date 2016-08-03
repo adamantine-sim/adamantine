@@ -24,9 +24,18 @@ public:
 
   dealii::parallel::distributed::Triangulation<dim> &get_triangulation();
 
+  double get_max_height() const;
+
 private:
+  double _max_height;
   dealii::parallel::distributed::Triangulation<dim> _triangulation;
 };
+
+template <int dim>
+inline double Geometry<dim>::get_max_height() const
+{
+  return _max_height;
+}
 
 template <int dim>
 inline dealii::parallel::distributed::Triangulation<dim> &
