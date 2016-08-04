@@ -36,3 +36,20 @@ materials
     }
   }
 }
+
+sources
+{
+  n_beams 1
+
+  beam_0
+  {
+    depth 1e-3 ; [m] maximum depth reached by the laser
+    energy_conversion_efficiency 0.5 ; number between 0 and 1
+    control_efficiency 0.6 ; number between 0 and 1
+    diameter 1e-3 ; [m]
+    current 0.02 ; [A]
+    voltage 60 ; [V]
+    abscissa "if(t<5, 1e3*t, -1e3*t)" ; if(condition, value_if_true,
+                                      ; value_it_else)
+  }
+}
