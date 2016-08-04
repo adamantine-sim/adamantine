@@ -16,6 +16,10 @@ add_subdirectory(application)
 add_subdirectory(source)
 if (adamantine_ENABLE_TESTS)
   add_subdirectory(tests)
+  add_test(NAME indent_code
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ./indent
+    )
 endif()
 
 # Provide "indent" target for indenting all the header and the source files.
