@@ -48,6 +48,8 @@ void PostProcessor<dim>::output_pvtu(
       dealii::Utilities::int_to_string(time_step, 6) + "." +
       dealii::Utilities::int_to_string(subdomain_id, 6);
   std::ofstream output((local_filename + ".vtu").c_str());
+  dealii::DataOutBase::VtkFlags flags(time, cycle);
+  _data_out.set_flags(flags);
   _data_out.write_vtu(output);
 
   // Output the master record.
