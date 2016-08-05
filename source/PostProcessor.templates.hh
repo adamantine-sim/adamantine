@@ -59,7 +59,7 @@ void PostProcessor<dim>::output_pvtu(
       std::string local_name =
           _filename + "." + dealii::Utilities::int_to_string(cycle, 2) + "." +
           dealii::Utilities::int_to_string(time_step, 6) + "." +
-          dealii::Utilities::int_to_string(i, 6);
+          dealii::Utilities::int_to_string(i, 6) + ".vtu";
       filenames.push_back(local_name);
     }
     std::string master_filename =
