@@ -10,6 +10,7 @@
 
 #include "ElectronBeam.hh"
 #include "Geometry.hh"
+#include "Physics.hh"
 #include "ThermalOperator.hh"
 #include <deal.II/base/time_stepping.h>
 #include <boost/property_tree/ptree.hpp>
@@ -22,7 +23,7 @@ namespace adamantine
  * right-hand-side. Also used to evolve the system in time.
  */
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-class ThermalPhysics
+class ThermalPhysics : public Physics<NumberType>
 {
 public:
   ThermalPhysics(boost::mpi::communicator &communicator,
