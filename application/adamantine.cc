@@ -6,6 +6,7 @@
  */
 
 #include "Geometry.hh"
+#include "PostProcessor.hh"
 #include "ThermalPhysics.hh"
 #include "utils.hh"
 #include <deal.II/base/mpi.h>
@@ -17,10 +18,11 @@
 #include <iostream>
 
 template <int dim, int fe_degree, typename QuadratureType>
-void initialize(boost::mpi::communicator &communicator,
-                boost::property_tree::ptree const &database,
-                adamantine::Geometry<dim> &geometry,
-                std::unique_ptr<adamantine::Physics<double>> &thermal_physics)
+void initialize(
+    boost::mpi::communicator &communicator,
+    boost::property_tree::ptree const &database,
+    adamantine::Geometry<dim> &geometry,
+    std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics)
 {
   thermal_physics.reset(
       new adamantine::ThermalPhysics<dim, fe_degree, double, QuadratureType>(
@@ -32,7 +34,7 @@ void initialize_quadrature(
     std::string const &quadrature_type, boost::mpi::communicator &communicator,
     boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
-    std::unique_ptr<adamantine::Physics<double>> &thermal_physics)
+    std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics)
 {
   if (quadrature_type.compare("gauss") == 0)
     initialize<dim, fe_degree, dealii::QGauss<1>>(communicator, database,
@@ -50,7 +52,7 @@ void initialize_thermal_physics(
     boost::mpi::communicator &communicator,
     boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
-    std::unique_ptr<adamantine::Physics<double>> &thermal_physics)
+    std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics)
 {
   switch (fe_degree)
   {
@@ -131,6 +133,40 @@ void initialize_thermal_physics(
   }
 }
 
+template <int dim>
+void run(std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics,
+         adamantine::PostProcessor<dim> &post_processor,
+         boost::property_tree::ptree const &time_stepping_database)
+{
+  thermal_physics->reinit();
+  dealii::LA::distributed::Vector<double> solution;
+  thermal_physics->initialize_dof_vector(solution);
+  unsigned int cycle = 0;
+  unsigned int n_time_step = 0;
+  double time = 0.;
+  // Output the initial solution
+  post_processor.output_pvtu(cycle, n_time_step, time, solution);
+  ++n_time_step;
+
+  double time_step = time_stepping_database.get<double>("time_step");
+  double const duration = time_stepping_database.get<double>("duration");
+  while (time < duration)
+  {
+    if ((time + time_step) > duration)
+      time_step = duration - time;
+    // time can be different than time + time_step if an embedded scheme is
+    // used.
+    time = thermal_physics->evolve_one_time_step(time, time_step, solution);
+
+    // Get the new time step
+    time_step = thermal_physics->get_delta_t_guess();
+
+    // Output the solution
+    post_processor.output_pvtu(cycle, n_time_step, time, solution);
+    ++n_time_step;
+  }
+}
+
 int main(int argc, char *argv[])
 {
   dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
@@ -184,17 +220,33 @@ int main(int argc, char *argv[])
 
     if (dim == 2)
     {
+      boost::property_tree::ptree time_stepping_database =
+          database.get_child("time_stepping");
+      boost::property_tree::ptree post_processor_database =
+          database.get_child("post_processor");
       adamantine::Geometry<2> geometry(communicator, geometry_database);
-      std::unique_ptr<adamantine::Physics<double>> thermal_physics;
+      std::unique_ptr<adamantine::Physics<2, double>> thermal_physics;
       initialize_thermal_physics<2>(fe_degree, quadrature_type, communicator,
                                     database, geometry, thermal_physics);
+      adamantine::PostProcessor<2> post_processor(
+          communicator, post_processor_database,
+          thermal_physics->get_dof_handler());
+      run(thermal_physics, post_processor, time_stepping_database);
     }
     else
     {
+      boost::property_tree::ptree time_stepping_database =
+          database.get_child("time_stepping");
+      boost::property_tree::ptree post_processor_database =
+          database.get_child("post_processor");
       adamantine::Geometry<3> geometry(communicator, geometry_database);
-      std::unique_ptr<adamantine::Physics<double>> thermal_physics;
+      std::unique_ptr<adamantine::Physics<3, double>> thermal_physics;
       initialize_thermal_physics<3>(fe_degree, quadrature_type, communicator,
                                     database, geometry, thermal_physics);
+      adamantine::PostProcessor<3> post_processor(
+          communicator, post_processor_database,
+          thermal_physics->get_dof_handler());
+      run(thermal_physics, post_processor, time_stepping_database);
     }
   }
   catch (std::exception &exception)

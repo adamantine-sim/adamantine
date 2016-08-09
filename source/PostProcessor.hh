@@ -21,9 +21,9 @@ template <int dim>
 class PostProcessor
 {
 public:
-  PostProcessor(boost::property_tree::ptree const &database,
-                dealii::DoFHandler<dim> &dof_handler,
-                boost::mpi::communicator &communicator);
+  PostProcessor(boost::mpi::communicator &communicator,
+                boost::property_tree::ptree const &database,
+                dealii::DoFHandler<dim> &dof_handler);
 
   void output_pvtu(unsigned int cycle, unsigned int n_time_step, double time,
                    dealii::LA::distributed::Vector<double> const &solution);

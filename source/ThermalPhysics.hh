@@ -23,7 +23,7 @@ namespace adamantine
  * right-hand-side. Also used to evolve the system in time.
  */
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-class ThermalPhysics : public Physics<NumberType>
+class ThermalPhysics : public Physics<dim, NumberType>
 {
 public:
   ThermalPhysics(boost::mpi::communicator &communicator,
@@ -33,16 +33,18 @@ public:
   /**
    * Reinit needs to be called everytime the mesh is modified.
    */
-  void reinit();
+  void reinit() override;
 
-  double
-  evolve_one_time_step(double t, double delta_t,
-                       dealii::LA::distributed::Vector<NumberType> &solution);
+  double evolve_one_time_step(
+      double t, double delta_t,
+      dealii::LA::distributed::Vector<NumberType> &solution) override;
 
-  double get_delta_t_guess() const;
+  double get_delta_t_guess() const override;
 
-  void
-  initialize_dof_vector(dealii::LA::distributed::Vector<NumberType> &vector);
+  void initialize_dof_vector(
+      dealii::LA::distributed::Vector<NumberType> &vector) const override;
+
+  dealii::DoFHandler<dim> &get_dof_handler() override;
 
 private:
   typedef typename dealii::LA::distributed::Vector<NumberType> LA_Vector;
@@ -79,9 +81,17 @@ inline double ThermalPhysics<dim, fe_degree, NumberType,
 
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
 inline void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
-    initialize_dof_vector(dealii::LA::distributed::Vector<NumberType> &vector)
+    initialize_dof_vector(
+        dealii::LA::distributed::Vector<NumberType> &vector) const
 {
   _thermal_operator->get_matrix_free().initialize_dof_vector(vector);
+}
+
+template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
+inline dealii::DoFHandler<dim> &
+ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::get_dof_handler()
+{
+  return _dof_handler;
 }
 }
 

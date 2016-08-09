@@ -14,9 +14,9 @@
 namespace adamantine
 {
 template <int dim>
-PostProcessor<dim>::PostProcessor(boost::property_tree::ptree const &database,
-                                  dealii::DoFHandler<dim> &dof_handler,
-                                  boost::mpi::communicator &communicator)
+PostProcessor<dim>::PostProcessor(boost::mpi::communicator &communicator,
+                                  boost::property_tree::ptree const &database,
+                                  dealii::DoFHandler<dim> &dof_handler)
     : _communicator(communicator), _dof_handler(dof_handler)
 {
   _filename = database.get<std::string>("file_name");

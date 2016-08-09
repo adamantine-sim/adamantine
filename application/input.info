@@ -53,3 +53,23 @@ sources
                                       ; value_it_else)
   }
 }
+
+time_stepping
+{
+  method rk_fourth_order ; Possibilities: forward_euler, rk_third_order,
+                         ; rk_fourth_order, bogacki_shampine, dopri,
+                         ; fehlberg, cash_karp
+  duration 2. ; [s]
+  time_step 0.1 ; [s]
+}
+
+post_processor
+{
+  file_name output
+}
+
+discretization
+{
+  fe_degree 3
+  quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+}

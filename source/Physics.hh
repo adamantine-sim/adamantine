@@ -9,16 +9,19 @@
 #define _PHYSICS_HH_
 
 #include "types.hh"
+#include <deal.II/dofs/dof_handler.h>
 #include <deal.II/lac/la_parallel_vector.h>
 
 namespace adamantine
 {
 
-template <typename NumberType>
+template <int dim, typename NumberType>
 class Physics
 {
 public:
   Physics() = default;
+
+  virtual ~Physics() = default;
 
   virtual void reinit() = 0;
 
@@ -29,7 +32,9 @@ public:
   virtual double get_delta_t_guess() const = 0;
 
   virtual void initialize_dof_vector(
-      dealii::LA::distributed::Vector<NumberType> &vector) = 0;
+      dealii::LA::distributed::Vector<NumberType> &vector) const = 0;
+
+  virtual dealii::DoFHandler<dim> &get_dof_handler() = 0;
 };
 }
 #endif
