@@ -6,10 +6,6 @@
  */
 
 #include "PostProcessor.templates.hh"
+#include "instantiation.hh"
 
-namespace adamantine
-{
-// Instantiate the templates
-template class PostProcessor<2>;
-template class PostProcessor<3>;
-}
+INSTANTIATE_DIM(PostProcessor)

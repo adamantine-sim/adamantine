@@ -6,10 +6,6 @@
  */
 
 #include "ElectronBeam.templates.hh"
+#include "instantiation.hh"
 
-namespace adamantine
-{
-// Instantiate the templates
-template class ElectronBeam<2>;
-template class ElectronBeam<3>;
-}
+INSTANTIATE_DIM(ElectronBeam)
