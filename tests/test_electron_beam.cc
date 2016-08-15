@@ -38,6 +38,24 @@ BOOST_AUTO_TEST_CASE(beam_2d)
   point[1] = 0.15;
   value = beam.value(point);
   BOOST_CHECK_CLOSE(value, 33.422260, tolerance);
+
+  database.put("depth", 1e100);
+  database.put("energy_conversion_efficiency", 0.1);
+  database.put("control_efficiency", 1.0);
+  database.put("diameter", 1e100);
+  database.put("max_power", 1e300);
+  database.put("abscissa", "t");
+
+  adamantine::ElectronBeam<2> beam_2(database);
+  beam_2.set_time(1.0);
+  beam_2.set_max_height(0.2);
+  value = beam_2.value(point);
+  BOOST_CHECK_CLOSE(value, 0.29317423955177113, tolerance);
+
+  point[0] = 1.;
+  point[1] = 0.2;
+  value = beam_2.value(point);
+  BOOST_CHECK_CLOSE(value, 0.29317423955177113, tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(beam_3d)

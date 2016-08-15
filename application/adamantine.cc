@@ -165,6 +165,7 @@ void run(std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics,
     post_processor.output_pvtu(cycle, n_time_step, time, solution);
     ++n_time_step;
   }
+  post_processor.output_pvd();
 }
 
 int main(int argc, char *argv[])
@@ -249,11 +250,24 @@ int main(int argc, char *argv[])
       run(thermal_physics, post_processor, time_stepping_database);
     }
   }
+  catch (boost::bad_any_cast &exception)
+  {
+    std::cerr << std::endl;
+    std::cerr << "Aborting." << std::endl;
+    std::cerr << "Error: " << exception.what() << std::endl;
+    std::cerr << "There is a problem with the input file." << std::endl;
+    std::cerr << "Make sure that the input file is correct" << std::endl;
+    std::cerr << "and that you are using the following command" << std::endl;
+    std::cerr << "to run adamantine:" << std::endl;
+    std::cerr << "./adamantine --input-file=my_input_file" << std::endl;
+    std::cerr << std::endl;
+  }
   catch (std::exception &exception)
   {
     std::cerr << std::endl;
     std::cerr << "Aborting." << std::endl;
     std::cerr << "Error: " << exception.what() << std::endl;
+    std::cerr << std::endl;
 
     return 1;
   }
@@ -262,6 +276,7 @@ int main(int argc, char *argv[])
     std::cerr << std::endl;
     std::cerr << "Aborting." << std::endl;
     std::cerr << "No error message." << std::endl;
+    std::cerr << std::endl;
 
     return 1;
   }
