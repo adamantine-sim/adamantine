@@ -16,6 +16,7 @@
 #include <boost/property_tree/info_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <iostream>
+#include <cmath>
 
 template <int dim, int fe_degree, typename QuadratureType>
 void initialize(
@@ -135,13 +136,15 @@ void initialize_thermal_physics(
 }
 
 template <int dim>
-void run(std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics,
+void run(boost::mpi::communicator const &communicator,
+         std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics,
          adamantine::PostProcessor<dim> &post_processor,
          boost::property_tree::ptree const &time_stepping_database)
 {
   thermal_physics->reinit();
   dealii::LA::distributed::Vector<double> solution;
   thermal_physics->initialize_dof_vector(solution);
+  unsigned int progress = 1;
   unsigned int cycle = 0;
   unsigned int n_time_step = 0;
   double time = 0.;
@@ -161,6 +164,21 @@ void run(std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics,
 
     // Get the new time step
     time_step = thermal_physics->get_delta_t_guess();
+
+    // Output progress on screen
+    if (communicator.rank() == 0)
+    {
+      double adim_time = time / (duration / 10.);
+      double frac_part = 0;
+      double int_part = 0;
+      frac_part = std::modf(adim_time, &int_part);
+      if ((frac_part < 0.5 * time_step) ||
+          (std::fabs(frac_part - 1.) < 0.5 * time_step))
+      {
+        std::cout << progress * 10 << '%' << " completed" << std::endl;
+        ++progress;
+      }
+    }
 
     // Output the solution
     post_processor.output_pvtu(cycle, n_time_step, time, solution);
@@ -220,6 +238,9 @@ int main(int argc, char *argv[])
                      return std::tolower(c);
                    });
 
+    if (communicator.rank() == 0)
+      std::cout << "Starting simulation" << std::endl;
+
     if (dim == 2)
     {
       boost::property_tree::ptree time_stepping_database =
@@ -233,7 +254,8 @@ int main(int argc, char *argv[])
       adamantine::PostProcessor<2> post_processor(
           communicator, post_processor_database,
           thermal_physics->get_dof_handler());
-      run(thermal_physics, post_processor, time_stepping_database);
+      run(communicator, thermal_physics, post_processor,
+          time_stepping_database);
     }
     else
     {
@@ -248,8 +270,12 @@ int main(int argc, char *argv[])
       adamantine::PostProcessor<3> post_processor(
           communicator, post_processor_database,
           thermal_physics->get_dof_handler());
-      run(thermal_physics, post_processor, time_stepping_database);
+      run(communicator, thermal_physics, post_processor,
+          time_stepping_database);
     }
+
+    if (communicator.rank() == 0)
+      std::cout << "Simulation done" << std::endl;
   }
   catch (boost::bad_any_cast &exception)
   {
