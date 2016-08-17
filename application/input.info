@@ -1,10 +1,10 @@
 geometry
 {
   dim 2 ; dimension of the domain
-  length 1e-2 ; [m]
-  height 2e-2 ; [m] In 3D, the third parameters is width
-  length_divisions 10 ; Number of cell layers in the length direction
-  height_divisions 20 ; Number of cell layers in the height direction
+  length 2e-2 ; [m]
+  height 1e-2 ; [m] In 3D, the third parameters is width
+  length_divisions 20 ; Number of cell layers in the length direction
+  height_divisions 10 ; Number of cell layers in the height direction
 }
 
 materials
@@ -49,8 +49,8 @@ sources
     diameter 1e-3 ; [m]
     current 0.02 ; [A]
     voltage 60 ; [V]
-    abscissa "if(t<5, 1e3*t, -1e3*t)" ; if(condition, value_if_true,
-                                      ; value_it_else)
+    abscissa "if(t<5e-10, 4e7*t, 0.02-4e7*(t-(5e-10)))" ; if(condition, value_if_true,
+                                                        ; value_it_else)
   }
 }
 
@@ -59,8 +59,8 @@ time_stepping
   method rk_fourth_order ; Possibilities: forward_euler, rk_third_order,
                          ; rk_fourth_order, bogacki_shampine, dopri,
                          ; fehlberg, cash_karp
-  duration 2. ; [s]
-  time_step 0.1 ; [s]
+  duration 1e-9 ; [s]
+  time_step 5e-11 ; [s]
 }
 
 post_processor

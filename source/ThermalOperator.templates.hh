@@ -33,9 +33,10 @@ void ThermalOperator<dim, fe_degree, NumberType>::reinit(
   typename dealii::MatrixFree<dim, NumberType>::AdditionalData additional_data;
   additional_data.tasks_parallel_scheme =
       dealii::MatrixFree<dim, NumberType>::AdditionalData::partition_color;
-  _matrix_free.reinit(dof_handler, constraint_matrix, quad);
 
   // Compute the inverse of the mass matrix
+  dealii::QGaussLobatto<1> mass_matrix_quad(fe_degree + 1);
+  _matrix_free.reinit(dof_handler, constraint_matrix, mass_matrix_quad);
   _matrix_free.initialize_dof_vector(_inverse_mass_matrix);
   dealii::VectorizedArray<NumberType> one =
       dealii::make_vectorized_array(static_cast<NumberType>(1.));
@@ -60,6 +61,8 @@ void ThermalOperator<dim, fe_degree, NumberType>::reinit(
     else
       _inverse_mass_matrix.local_element(k) = 0.;
   }
+
+  _matrix_free.reinit(dof_handler, constraint_matrix, quad);
 
   // TODO: for now we only solve linear problem so we can evaluate the thermal
   // conductivity once. Since the thermal conductivity is independent of the
