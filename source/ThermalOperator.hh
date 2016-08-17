@@ -22,7 +22,7 @@ template <int dim, int fe_degree, typename NumberType>
 class ThermalOperator : public Operator<NumberType>
 {
 public:
-  ThermalOperator(boost::mpi::communicator &communicator,
+  ThermalOperator(boost::mpi::communicator const &communicator,
                   std::shared_ptr<MaterialProperty> material_properties);
 
   /**
@@ -74,7 +74,7 @@ private:
   void evaluate_material_properties(
       dealii::LA::distributed::Vector<NumberType> const &state);
 
-  boost::mpi::communicator _communicator;
+  boost::mpi::communicator const &_communicator;
   dealii::Table<2, dealii::VectorizedArray<NumberType>> _rho_cp;
   dealii::Table<2, dealii::VectorizedArray<NumberType>> _thermal_conductivity;
   std::shared_ptr<MaterialProperty> _material_properties;

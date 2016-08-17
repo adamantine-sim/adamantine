@@ -18,7 +18,7 @@ namespace adamantine
 {
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
 ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
-    boost::mpi::communicator &communicator,
+    boost::mpi::communicator const &communicator,
     boost::property_tree::ptree const &database, Geometry<dim> &geometry)
     : _embedded_method(false), _geometry(geometry), _fe(fe_degree),
       _dof_handler(_geometry.get_triangulation()), _quadrature(fe_degree + 1)

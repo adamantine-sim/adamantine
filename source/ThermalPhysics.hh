@@ -26,7 +26,7 @@ template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
 class ThermalPhysics : public Physics<dim, NumberType>
 {
 public:
-  ThermalPhysics(boost::mpi::communicator &communicator,
+  ThermalPhysics(boost::mpi::communicator const &communicator,
                  boost::property_tree::ptree const &database,
                  Geometry<dim> &geometry);
 

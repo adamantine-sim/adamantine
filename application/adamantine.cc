@@ -19,7 +19,7 @@
 
 template <int dim, int fe_degree, typename QuadratureType>
 void initialize(
-    boost::mpi::communicator &communicator,
+    boost::mpi::communicator const &communicator,
     boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
     std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics)
@@ -31,7 +31,8 @@ void initialize(
 
 template <int dim, int fe_degree>
 void initialize_quadrature(
-    std::string const &quadrature_type, boost::mpi::communicator &communicator,
+    std::string const &quadrature_type,
+    boost::mpi::communicator const &communicator,
     boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
     std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics)
@@ -49,7 +50,7 @@ void initialize_quadrature(
 template <int dim>
 void initialize_thermal_physics(
     unsigned int fe_degree, std::string const &quadrature_type,
-    boost::mpi::communicator &communicator,
+    boost::mpi::communicator const &communicator,
     boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
     std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics)

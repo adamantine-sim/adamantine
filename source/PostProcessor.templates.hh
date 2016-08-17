@@ -30,6 +30,7 @@ void PostProcessor<dim>::output_pvtu(
   // Add the DoFHandler and the temperature.
   _data_out.clear();
   _data_out.attach_dof_handler(_dof_handler);
+  solution.update_ghost_values();
   _data_out.add_data_vector(solution, "temperature");
 
   // Add the subdomain IDs.
