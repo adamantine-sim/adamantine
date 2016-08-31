@@ -40,7 +40,7 @@ public:
 
   dealii::types::global_dof_index n() const override;
 
-  dealii::LA::distributed::Vector<NumberType> const &
+  std::shared_ptr<dealii::LA::distributed::Vector<NumberType>>
   get_inverse_mass_matrix() const;
 
   dealii::MatrixFree<dim, NumberType> const &get_matrix_free() const;
@@ -64,6 +64,10 @@ public:
       dealii::LA::distributed::Vector<NumberType> &dst,
       dealii::LA::distributed::Vector<NumberType> const &src) const override;
 
+  void jacobian_vmult(
+      dealii::LA::distributed::Vector<NumberType> &dst,
+      dealii::LA::distributed::Vector<NumberType> const &src) const override;
+
 private:
   void
   local_apply(dealii::MatrixFree<dim, NumberType> const &data,
@@ -84,7 +88,8 @@ private:
    * quadrature. This inexact quadrature makes the mass matrix and therefore
    * also its inverse, a diagonal matrix.
    */
-  dealii::LA::distributed::Vector<NumberType> _inverse_mass_matrix;
+  std::shared_ptr<dealii::LA::distributed::Vector<NumberType>>
+      _inverse_mass_matrix;
 };
 
 template <int dim, int fe_degree, typename NumberType>
@@ -102,7 +107,7 @@ ThermalOperator<dim, fe_degree, NumberType>::n() const
 }
 
 template <int dim, int fe_degree, typename NumberType>
-inline dealii::LA::distributed::Vector<NumberType> const &
+inline std::shared_ptr<dealii::LA::distributed::Vector<NumberType>>
 ThermalOperator<dim, fe_degree, NumberType>::get_inverse_mass_matrix() const
 {
   return _inverse_mass_matrix;
@@ -113,6 +118,14 @@ inline dealii::MatrixFree<dim, NumberType> const &
 ThermalOperator<dim, fe_degree, NumberType>::get_matrix_free() const
 {
   return _matrix_free;
+}
+
+template <int dim, int fe_degree, typename NumberType>
+inline void ThermalOperator<dim, fe_degree, NumberType>::jacobian_vmult(
+    dealii::LA::distributed::Vector<NumberType> &dst,
+    dealii::LA::distributed::Vector<NumberType> const &src) const
+{
+  vmult(dst, src);
 }
 }
 

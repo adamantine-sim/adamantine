@@ -19,7 +19,8 @@ template <int dim, int fe_degree, typename NumberType>
 ThermalOperator<dim, fe_degree, NumberType>::ThermalOperator(
     boost::mpi::communicator const &communicator,
     std::shared_ptr<MaterialProperty> material_properties)
-    : _communicator(communicator), _material_properties(material_properties)
+    : _communicator(communicator), _material_properties(material_properties),
+      _inverse_mass_matrix(new dealii::LA::distributed::Vector<NumberType>())
 {
 }
 
@@ -39,7 +40,7 @@ void ThermalOperator<dim, fe_degree, NumberType>::reinit(
   dealii::QGaussLobatto<1> mass_matrix_quad(fe_degree + 1);
   _matrix_free.reinit(dof_handler, constraint_matrix, mass_matrix_quad,
                       additional_data);
-  _matrix_free.initialize_dof_vector(_inverse_mass_matrix);
+  _matrix_free.initialize_dof_vector(*_inverse_mass_matrix);
   dealii::VectorizedArray<NumberType> one =
       dealii::make_vectorized_array(static_cast<NumberType>(1.));
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, NumberType> fe_eval(
@@ -51,17 +52,17 @@ void ThermalOperator<dim, fe_degree, NumberType>::reinit(
     for (unsigned int q = 0; q < n_q_points; ++q)
       fe_eval.submit_value(one, q);
     fe_eval.integrate(true, false);
-    fe_eval.distribute_local_to_global(_inverse_mass_matrix);
+    fe_eval.distribute_local_to_global(*_inverse_mass_matrix);
   }
-  _inverse_mass_matrix.compress(dealii::VectorOperation::add);
-  unsigned int const local_size = _inverse_mass_matrix.local_size();
+  _inverse_mass_matrix->compress(dealii::VectorOperation::add);
+  unsigned int const local_size = _inverse_mass_matrix->local_size();
   for (unsigned int k = 0; k < local_size; ++k)
   {
-    if (_inverse_mass_matrix.local_element(k) > 1e-15)
-      _inverse_mass_matrix.local_element(k) =
-          1. / _inverse_mass_matrix.local_element(k);
+    if (_inverse_mass_matrix->local_element(k) > 1e-15)
+      _inverse_mass_matrix->local_element(k) =
+          1. / _inverse_mass_matrix->local_element(k);
     else
-      _inverse_mass_matrix.local_element(k) = 0.;
+      _inverse_mass_matrix->local_element(k) = 0.;
   }
 
   _matrix_free.reinit(dof_handler, constraint_matrix, quad, additional_data);
@@ -80,7 +81,7 @@ template <int dim, int fe_degree, typename NumberType>
 void ThermalOperator<dim, fe_degree, NumberType>::clear()
 {
   _matrix_free.clear();
-  _inverse_mass_matrix.reinit(0);
+  _inverse_mass_matrix->reinit(0);
 }
 
 template <int dim, int fe_degree, typename NumberType>

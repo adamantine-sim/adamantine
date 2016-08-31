@@ -10,6 +10,7 @@
 
 #include "ElectronBeam.hh"
 #include "Geometry.hh"
+#include "ImplicitOperator.hh"
 #include "Physics.hh"
 #include "ThermalOperator.hh"
 #include <deal.II/base/time_stepping.h>
@@ -57,7 +58,12 @@ private:
                                    LA_Vector const &y) const;
 
   bool _embedded_method;
+  bool _implicit_method;
+  bool _right_preconditioning;
+  unsigned int _max_iter;
+  unsigned int _max_n_tmp_vectors;
   double _delta_t_guess;
+  double _tolerance;
   Geometry<dim> &_geometry;
   dealii::FE_Q<dim> _fe;
   dealii::DoFHandler<dim> _dof_handler;
@@ -67,8 +73,9 @@ private:
   // Use unique_ptr due to a strange bug involving TBB, std::vector, and
   // dealii::FunctionParser.
   std::vector<std::unique_ptr<ElectronBeam<dim>>> _electron_beams;
-  std::unique_ptr<ThermalOperator<dim, fe_degree, NumberType>>
+  std::shared_ptr<ThermalOperator<dim, fe_degree, NumberType>>
       _thermal_operator;
+  std::unique_ptr<ImplicitOperator<NumberType>> _implicit_operator;
   std::unique_ptr<dealii::TimeStepping::RungeKutta<LA_Vector>> _time_stepping;
 };
 
