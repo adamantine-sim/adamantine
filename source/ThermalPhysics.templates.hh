@@ -12,6 +12,8 @@
 #include "MaterialProperty.hh"
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/grid/filtered_iterator.h>
+#include <deal.II/lac/precondition.h>
+#include <deal.II/lac/solver_gmres.h>
 #include <algorithm>
 
 namespace adamantine
@@ -20,8 +22,9 @@ template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
 ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
     boost::mpi::communicator const &communicator,
     boost::property_tree::ptree const &database, Geometry<dim> &geometry)
-    : _embedded_method(false), _geometry(geometry), _fe(fe_degree),
-      _dof_handler(_geometry.get_triangulation()), _quadrature(fe_degree + 1)
+    : _embedded_method(false), _implicit_method(false), _geometry(geometry),
+      _fe(fe_degree), _dof_handler(_geometry.get_triangulation()),
+      _quadrature(fe_degree + 1)
 {
   // Create the material properties
   boost::property_tree::ptree const &material_database =
@@ -44,7 +47,7 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
 
   // Create the thermal operator
   _thermal_operator =
-      std::make_unique<ThermalOperator<dim, fe_degree, NumberType>>(
+      std::make_shared<ThermalOperator<dim, fe_degree, NumberType>>(
           communicator, _material_properties);
 
   // Create the time stepping scheme
@@ -103,6 +106,34 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
         dealii::TimeStepping::CASH_KARP);
     _embedded_method = true;
   }
+  else if (method.compare("backward_euler") == 0)
+  {
+    _time_stepping =
+        std::make_unique<dealii::TimeStepping::ImplicitRungeKutta<LA_Vector>>(
+            dealii::TimeStepping::BACKWARD_EULER);
+    _implicit_method = true;
+  }
+  else if (method.compare("implicit_midpoint") == 0)
+  {
+    _time_stepping =
+        std::make_unique<dealii::TimeStepping::ImplicitRungeKutta<LA_Vector>>(
+            dealii::TimeStepping::IMPLICIT_MIDPOINT);
+    _implicit_method = true;
+  }
+  else if (method.compare("crank_nicolson") == 0)
+  {
+    _time_stepping =
+        std::make_unique<dealii::TimeStepping::ImplicitRungeKutta<LA_Vector>>(
+            dealii::TimeStepping::CRANK_NICOLSON);
+    _implicit_method = true;
+  }
+  else if (method.compare("sdirk2") == 0)
+  {
+    _time_stepping =
+        std::make_unique<dealii::TimeStepping::ImplicitRungeKutta<LA_Vector>>(
+            dealii::TimeStepping::SDIRK_TWO_STAGES);
+    _implicit_method = true;
+  }
 
   if (_embedded_method == true)
   {
@@ -122,6 +153,29 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
                                                 min_delta, max_delta,
                                                 refine_tol, coarsen_tol);
   }
+
+  // If the time stepping scheme is implicit, set the parameters for the solver
+  // and create the implicit operator.
+  if (_implicit_method == true)
+  {
+    _max_iter = time_stepping_database.get("max_iteration", 1000);
+    _tolerance = time_stepping_database.get("tolerance", 1e-12);
+    _right_preconditioning =
+        time_stepping_database.get("right_preconditioning", false);
+    _max_n_tmp_vectors = time_stepping_database.get("n_tmp_vectors", 30);
+    unsigned int newton_max_iter =
+        time_stepping_database.get("newton_max_iteration", 100);
+    double newton_tolerance =
+        time_stepping_database.get("newton_tolerance", 1e-6);
+    dealii::TimeStepping::ImplicitRungeKutta<LA_Vector> *implicit_rk =
+        static_cast<dealii::TimeStepping::ImplicitRungeKutta<LA_Vector> *>(
+            _time_stepping.get());
+    implicit_rk->set_newton_solver_parameters(newton_max_iter,
+                                              newton_tolerance);
+    bool jfnk = time_stepping_database.get("jfnk", false);
+    _implicit_operator =
+        std::make_unique<ImplicitOperator<NumberType>>(_thermal_operator, jfnk);
+  }
 }
 
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
@@ -132,6 +186,9 @@ void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::reinit()
   _constraint_matrix.clear();
   _constraint_matrix.close();
   _thermal_operator->reinit(_dof_handler, _constraint_matrix, _quadrature);
+  if (_implicit_method == true)
+    _implicit_operator->set_inverse_mass_matrix(
+        _thermal_operator->get_inverse_mass_matrix());
 }
 
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
@@ -224,7 +281,7 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   _thermal_operator->vmult_add(value, y);
 
   // Multiply by the inverse of the mass matrix.
-  value.scale(_thermal_operator->get_inverse_mass_matrix());
+  value.scale(*_thermal_operator->get_inverse_mass_matrix());
 
   return value;
 }
@@ -233,12 +290,26 @@ template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
 dealii::LA::distributed::Vector<NumberType>
 ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
     id_minus_tau_J_inverse(
-        double const /*t*/, double const /*tau*/,
+        double const /*t*/, double const tau,
         dealii::LA::distributed::Vector<NumberType> const &y) const
 {
-  // This function is not used since we don't allow implicit method. So just
-  // return y.
-  return y;
+  _implicit_operator->set_tau(tau);
+  dealii::LA::distributed::Vector<NumberType> solution(y.get_partitioner());
+
+  // TODO Add a geometric multigrid preconditioner.
+  dealii::PreconditionIdentity preconditioner;
+
+  dealii::SolverControl solver_control(_max_iter, _tolerance * y.l2_norm());
+  // TODO Check why we need to use GMRES instead of CG and why it is so hard to
+  // converge.
+  typename dealii::SolverGMRES<
+      dealii::LA::distributed::Vector<NumberType>>::AdditionalData
+      additional_data(_max_n_tmp_vectors, _right_preconditioning);
+  dealii::SolverGMRES<dealii::LA::distributed::Vector<NumberType>> solver(
+      solver_control, additional_data);
+  solver.solve(*_implicit_operator, solution, y, preconditioner);
+
+  return solution;
 }
 }
 

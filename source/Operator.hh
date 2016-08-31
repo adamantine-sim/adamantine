@@ -9,6 +9,7 @@
 #define _OPERATOR_HH_
 
 #include "types.hh"
+#include "utils.hh"
 #include <deal.II/base/subscriptor.h>
 #include <deal.II/lac/la_parallel_vector.h>
 
@@ -21,9 +22,11 @@ class Operator : public dealii::Subscriptor
 public:
   Operator() = default;
 
-  virtual unsigned int m() const = 0;
+  virtual ~Operator() = default;
 
-  virtual unsigned int n() const = 0;
+  virtual dealii::types::global_dof_index m() const = 0;
+
+  virtual dealii::types::global_dof_index n() const = 0;
 
   virtual void
   vmult(dealii::LA::distributed::Vector<NumberType> &dst,
@@ -40,6 +43,15 @@ public:
   virtual void
   Tvmult_add(dealii::LA::distributed::Vector<NumberType> &dst,
              dealii::LA::distributed::Vector<NumberType> const &src) const = 0;
+
+  virtual void
+  jacobian_vmult(dealii::LA::distributed::Vector<NumberType> &dst,
+                 dealii::LA::distributed::Vector<NumberType> const &src) const
+  {
+    (void)dst;
+    (void)src;
+    ASSERT_THROW(false, "Function not implemented.");
+  }
 };
 }
 
