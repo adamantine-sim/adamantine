@@ -1,0 +1,20 @@
+sudo: required
+
+language: cpp
+
+notifications:
+  email: false
+
+services:
+  - docker
+
+before_install:
+  - docker pull rombur/adamantine-stack
+  - docker run --detach --tty --name=test-machine
+               --volume ${TRAVIS_BUILD_DIR}:/home/docker/adamantine
+               --env TRAVIS_PULL_REQUEST=${TRAVIS_PULL_REQUEST}
+               rombur/adamantine-stack
+  - docker exec -u docker test-machine bash -xe /home/docker/adamantine/ci/run_test.sh
+
+script:
+  - echo "Tests completed."
