@@ -61,13 +61,13 @@ private:
 template <typename NumberType>
 inline dealii::types::global_dof_index ImplicitOperator<NumberType>::m() const
 {
-  _explicit_operator->m();
+  return _explicit_operator->m();
 }
 
 template <typename NumberType>
 inline dealii::types::global_dof_index ImplicitOperator<NumberType>::n() const
 {
-  _explicit_operator->n();
+  return _explicit_operator->n();
 }
 
 template <typename NumberType>
