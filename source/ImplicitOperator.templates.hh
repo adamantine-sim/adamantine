@@ -27,7 +27,7 @@ void ImplicitOperator<NumberType>::vmult(
 {
   if (_jfnk == true)
   {
-    dealii::LA::distributed::Vector<NumberType> tmp_dst(dst.get_partitioner);
+    dealii::LA::distributed::Vector<NumberType> tmp_dst(dst.get_partitioner());
     dealii::LA::distributed::Vector<NumberType> tmp_src(src);
     tmp_src *= (1. + 1e-10);
     vmult(dst, tmp_src);
