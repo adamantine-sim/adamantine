@@ -57,7 +57,7 @@ void PostProcessor<dim>::output_pvtu(
   if (_communicator.rank() == 0)
   {
     std::vector<std::string> filenames;
-    for (unsigned int i = 0; i < _communicator.size(); ++i)
+    for (int i = 0; i < _communicator.size(); ++i)
     {
       std::string local_name =
           _filename + "." + dealii::Utilities::int_to_string(cycle, 2) + "." +
