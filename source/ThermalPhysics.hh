@@ -18,7 +18,6 @@
 
 namespace adamantine
 {
-
 /**
  * This class takes care of building the linear operator and the
  * right-hand-side. Also used to evolve the system in time.
@@ -27,13 +26,44 @@ template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
 class ThermalPhysics : public Physics<dim, NumberType>
 {
 public:
+  /**
+   * Constructor.
+   * \param[in] database requires the following entries:
+   *   - <B>materials</B>: property tree
+   *   - <B>sources</B>: property tree
+   *   - <B>sources.n_beams</B>: unsigned int in \f$[0,\infty)\f$
+   *   - <B>sources.beam_X</B>: property tree with X the number associated to
+   *   the electron beam
+   *   - <B>time_stepping</B>: property tree
+   *   - <B>time_stepping.method</B>: string
+   *   - <B>time_stepping.coarsening_parameter</B>: double in \f$[0,\infty)\f$
+   *   [optional, default value of 1.2]
+   *   - <B>time_stepping.refining_parameter</B>: double in \f$(0,1)\f$
+   *   [optional, default value of 0.8]
+   *   - <B>time_stepping.min_time_step</B>: double in \f$[0,\infty)\f$
+   *   [optional, default value of 1e-14]
+   *   - <B>time_stepping.max_time_step</B>: double in \f$(0,\infty)\f$
+   *   [optional, default value of 1e100]
+   *   - <B>time_stepping.refining_tolerance</B>: double in \f$(0,\infty)\f$
+   *   [optional, default value of 1e-8]
+   *   - <B>time_stepping.coarsening_tolerance</B>: double in \f$(0, \infty)\f$
+   *   [optional, default value of 1e-12]
+   *   - <B>time_stepping.max_iteration</B>: unsigned int \f$[0,\infty)\f$
+   *   [optional, default value of 1000]
+   *   - <B>time_stepping.right_preconditioning</B>: boolean [optional, default
+   *   value is false]
+   *   - <B>time_stepping.n_tmp_vectors</B>: unsigned int in \f$[0,\infty)\f$
+   *   [optional, default of 30]
+   *   - <B>time_stepping.newton_max_iteration</B>: unsigned int in
+   *   \f$[0,\infty)\f$ [optional, default valie of 100]
+   *   - <B>time_stepping.newton_tolerance</B>: double in \f$(0,\infty)\f$
+   *   [optional, default of 1e-6]
+   *   - <B>time_stepping.jfnk</B>: boolean [optional, default value of false]
+   */
   ThermalPhysics(boost::mpi::communicator const &communicator,
                  boost::property_tree::ptree const &database,
                  Geometry<dim> &geometry);
 
-  /**
-   * Reinit needs to be called everytime the mesh is modified.
-   */
   void reinit() override;
 
   double evolve_one_time_step(
@@ -50,32 +80,88 @@ public:
 private:
   typedef typename dealii::LA::distributed::Vector<NumberType> LA_Vector;
 
+  /**
+   * Compute the right-hand side and apply the TermalOperator.
+   */
   LA_Vector evaluate_thermal_physics(double const t, LA_Vector const &y) const;
 
-  // For now, this is a dummy function which does nothing. It is only necessary
-  // for implicit methods.
+  /**
+   * Compute the inverse of the ImplicitOperator.
+   */
   LA_Vector id_minus_tau_J_inverse(double const t, double const tau,
                                    LA_Vector const &y) const;
 
+  /**
+   * This flag is true if the time stepping method is embedded.
+   */
   bool _embedded_method;
+  /**
+   * This flag is true if the time stepping method is implicit.
+   */
   bool _implicit_method;
+  /**
+   * This flag is true if right preconditioning is used to invert the
+   * ImplicitOperator.
+   */
   bool _right_preconditioning;
+  /**
+   * Maximum number of iterations to invert the ImplicitOperator.
+   */
   unsigned int _max_iter;
+  /**
+   * Maximum number of temporary vectors when inverting the ImplicitOperator.
+   */
   unsigned int _max_n_tmp_vectors;
+  /**
+   * Guess of the next time step.
+   */
   double _delta_t_guess;
+  /**
+   * Tolerance to inverte the ImplicitOperator.
+   */
   double _tolerance;
+  /**
+   * Associated geometry.
+   */
   Geometry<dim> &_geometry;
+  /**
+   * Associated Lagrange finite elements.
+   */
   dealii::FE_Q<dim> _fe;
+  /**
+   * Associated DoFHandler.
+   */
   dealii::DoFHandler<dim> _dof_handler;
+  /**
+   * Associated ConstraintMatrix.
+   */
   dealii::ConstraintMatrix _constraint_matrix;
+  /**
+   * Associated quadature, either Gauss or Gauss-Lobatto.
+   */
   QuadratureType _quadrature;
+  /**
+   * Shared pointer to the material properties associated to the domain.
+   */
   std::shared_ptr<MaterialProperty> _material_properties;
+  /**
+   * Vector of electron beam sources.
+   */
   // Use unique_ptr due to a strange bug involving TBB, std::vector, and
   // dealii::FunctionParser.
   std::vector<std::unique_ptr<ElectronBeam<dim>>> _electron_beams;
+  /**
+   * Shared pointer to the underlying ThermalOperator.
+   */
   std::shared_ptr<ThermalOperator<dim, fe_degree, NumberType>>
       _thermal_operator;
+  /**
+   * Unique pointer to the underlying ImplicitOperator.
+   */
   std::unique_ptr<ImplicitOperator<NumberType>> _implicit_operator;
+  /**
+   * Shared pointer to the underlying time stepping scheme.
+   */
   std::unique_ptr<dealii::TimeStepping::RungeKutta<LA_Vector>> _time_stepping;
 };
 

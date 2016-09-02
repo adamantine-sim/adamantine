@@ -14,20 +14,48 @@
 
 namespace adamantine
 {
-
+/**
+ * This class generates and stores a Triangulation given a database.
+ */
 template <int dim>
 class Geometry
 {
 public:
+  /**
+   * Constructor.
+   * \param[in] database requires the following entries:
+   *   - <B>length_divisions</B>: unsigned int in \f$[1,\infty)\f$ [optional:
+   *   default value is 10]
+   *   - <B>height_divisions</B>: unsigned int in \f$[1,\infty)\f$ [optional:
+   *   default value is 10]
+   *   - <B>width_divisions</B>: unsigned int in \f$[1,\infty)\f$ [optional:
+   *   default value is 10, only used in three dimensional calculation]
+   *   - <B>length</B>: double in \f$(0,\infty)\f$
+   *   - <B>height</B>: double in \f$(0,\infty)\f$
+   *   - <B>width</B>: double in \f$(0,\infty)\f$ [only used in three
+   *   dimensional calculation]
+   */
   Geometry(boost::mpi::communicator const &communicator,
            boost::property_tree::ptree const &database);
 
+  /**
+   * Return the underlying Triangulation.
+   */
   dealii::parallel::distributed::Triangulation<dim> &get_triangulation();
 
+  /**
+   * Return the maximum height of the domain.
+   */
   double get_max_height() const;
 
 private:
+  /**
+   * Maximum height of the domain.
+   */
   double _max_height;
+  /**
+   * Shared pointer to the underlying Triangulation.
+   */
   dealii::parallel::distributed::Triangulation<dim> _triangulation;
 };
 

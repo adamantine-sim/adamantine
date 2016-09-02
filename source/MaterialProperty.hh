@@ -19,12 +19,30 @@
 
 namespace adamantine
 {
-
+/**
+ * This class stores the material properties for all the materials
+ */
 class MaterialProperty
 {
 public:
+  /**
+   * Constructor.
+   * \param[in] database requires the following entries:
+   *   - <B>n_materials</B>: unsigned int in \f$(0,\infty)\f$
+   *   - <B>material_X</B>: property tree associated with material_X
+   *   where X is a number
+   *   - <B>material_X.Y</B>: property_tree where Y is either liquid, powder, or
+   *   solid [optional]
+   *   - <B>material_X.Y.Z</B>: string where Z is either density, specific_heat,
+   *   or thermal_conductivity, describe the behavior of the property as a
+   *   function of the temperatur (e.g. "2.*T") [optional]
+   */
   MaterialProperty(boost::property_tree::ptree const &database);
 
+  /**
+   * Return the value of the given property, for a given cell and a given field
+   * state.
+   */
   template <int dim, typename NumberType>
   double
   get(typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
@@ -32,14 +50,22 @@ public:
       dealii::LA::distributed::Vector<NumberType> const &field_state) const;
 
 private:
-  // material_id - (powder/solid/liquid, property)
+  /**
+   * Maximum different number of states a given material can be.
+   */
   static unsigned int constexpr _n_material_states = 3;
+  /**
+   * Number of properties defined.
+   */
   static unsigned int constexpr _n_properties = 3;
+  /**
+   * Map that stores functions describing the properties of the material.
+   */
   std::unordered_map<
       dealii::types::material_id,
       std::array<
           std::array<std::unique_ptr<dealii::FunctionParser<1>>, _n_properties>,
-          3>> _properties;
+          _n_material_states>> _properties;
 };
 
 template <int dim, typename NumberType>

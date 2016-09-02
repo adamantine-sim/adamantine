@@ -13,9 +13,9 @@
 namespace adamantine
 {
 /**
- * This class uses an operator F and creates an operator
- * \f$I-\tau M^{-1} \frac{F}{dy}\f$.
- * This operator is used when using an implicit time stepping scheme.
+ * This class uses an operator \f$F\f$ and creates an operator
+ * \f$I-\tau M^{-1} \frac{F}{dy}\f$. This operator is then inverted when using
+ * an implicit time stepping scheme.
  */
 template <typename NumberType>
 class ImplicitOperator : public Operator<NumberType>
@@ -44,17 +44,36 @@ public:
       dealii::LA::distributed::Vector<NumberType> &dst,
       dealii::LA::distributed::Vector<NumberType> const &src) const override;
 
+  /**
+   * Set the parameter \f$\tau\f$ defined by the Runge-Kutta method.
+   */
   void set_tau(double tau);
 
+  /**
+   * Set the shared pointer of the inverse of the mass matrix.
+   */
   void set_inverse_mass_matrix(
       std::shared_ptr<dealii::LA::distributed::Vector<NumberType>>
           inverse_mass_matrix);
 
 private:
+  /**
+   * Flag to switch between Jacobian-Free Newton Krylov method and exact
+   * Jacobian method.
+   */
   bool _jfnk;
+  /**
+   * Parameter of the Runge-Kutta method used.
+   */
   double _tau;
+  /**
+   * Shared pointer of the inverse of the mass matrix.
+   */
   std::shared_ptr<dealii::LA::distributed::Vector<NumberType>>
       _inverse_mass_matrix;
+  /**
+   * Shared pointer of the operator \f$F\f$.
+   */
   std::shared_ptr<Operator<NumberType>> _explicit_operator;
 };
 

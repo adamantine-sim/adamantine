@@ -19,7 +19,7 @@ mkdir -p /home/docker/build
 cd /home/docker/build
 cmake \
   -D CMAKE_BUILD_TYPE=Debug \
-  -D adamantine_ENABLE_TESTS=ON \
+  -D ADAMANTINE_ENABLE_TESTS=ON \
   -D DEAL_II_DIR=/home/docker/install_debug \
   -D CMAKE_CXX_FLAGS="-Wall -std=c++14" \
 ../adamantine

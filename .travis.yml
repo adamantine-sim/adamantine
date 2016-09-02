@@ -14,7 +14,6 @@ before_install:
                --volume ${TRAVIS_BUILD_DIR}:/home/docker/adamantine
                --env TRAVIS_PULL_REQUEST=${TRAVIS_PULL_REQUEST}
                rombur/adamantine-stack
-  - docker exec -u docker test-machine bash -xe /home/docker/adamantine/ci/run_test.sh
 
 script:
-  - echo "Tests completed."
+  - docker exec -u docker test-machine bash -xe /home/docker/adamantine/ci/run_test.sh

@@ -139,7 +139,7 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
   {
     double coarsen_param =
         time_stepping_database.get("coarsening_parameter", 1.2);
-    double refine_param = time_stepping_database.get("refining_parmeter", 0.8);
+    double refine_param = time_stepping_database.get("refining_parameter", 0.8);
     double min_delta = time_stepping_database.get("min_time_step", 1e-14);
     double max_delta = time_stepping_database.get("max_time_step", 1e100);
     double refine_tol = time_stepping_database.get("refining_tolerance", 1e-8);

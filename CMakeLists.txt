@@ -14,7 +14,7 @@ include(CTest)
 
 add_subdirectory(application)
 add_subdirectory(source)
-if (adamantine_ENABLE_TESTS)
+if (ADAMANTINE_ENABLE_TESTS)
   add_subdirectory(tests)
   add_test(NAME indent_code
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -27,3 +27,7 @@ add_custom_target(indent
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   COMMAND ./indent
   )
+
+if(ADAMANTINE_ENABLE_DOCUMENTATION)
+    add_subdirectory(doc)
+endif()
