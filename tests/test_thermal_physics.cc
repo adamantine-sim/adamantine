@@ -45,6 +45,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, double, dealii::QGauss<1>> physics(
       communicator, database, geometry);
+  physics.setup_dofs();
   physics.reinit();
 
   dealii::LA::distributed::Vector<double> solution;
@@ -117,6 +118,7 @@ BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution)
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, double, dealii::QGauss<1>> physics(
       communicator, database, geometry);
+  physics.setup_dofs();
   physics.reinit();
 
   dealii::LA::distributed::Vector<double> solution;

@@ -22,31 +22,38 @@ ThermalOperator<dim, fe_degree, NumberType>::ThermalOperator(
     : _communicator(communicator), _material_properties(material_properties),
       _inverse_mass_matrix(new dealii::LA::distributed::Vector<NumberType>())
 {
+  _matrix_free_data.mpi_communicator = _communicator;
+  _matrix_free_data.tasks_parallel_scheme =
+      dealii::MatrixFree<dim, NumberType>::AdditionalData::partition_color;
 }
 
 template <int dim, int fe_degree, typename NumberType>
 template <typename QuadratureType>
-void ThermalOperator<dim, fe_degree, NumberType>::reinit(
+void ThermalOperator<dim, fe_degree, NumberType>::setup_dofs(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::ConstraintMatrix const &constraint_matrix,
     QuadratureType const &quad)
 {
-  typename dealii::MatrixFree<dim, NumberType>::AdditionalData additional_data;
-  additional_data.mpi_communicator = _communicator;
-  additional_data.tasks_parallel_scheme =
-      dealii::MatrixFree<dim, NumberType>::AdditionalData::partition_color;
+  _matrix_free.reinit(dof_handler, constraint_matrix, quad, _matrix_free_data);
+}
 
+template <int dim, int fe_degree, typename NumberType>
+void ThermalOperator<dim, fe_degree, NumberType>::reinit(
+    dealii::DoFHandler<dim> const &dof_handler,
+    dealii::ConstraintMatrix const &constraint_matrix)
+{
   // Compute the inverse of the mass matrix
   dealii::QGaussLobatto<1> mass_matrix_quad(fe_degree + 1);
-  _matrix_free.reinit(dof_handler, constraint_matrix, mass_matrix_quad,
-                      additional_data);
-  _matrix_free.initialize_dof_vector(*_inverse_mass_matrix);
+  dealii::MatrixFree<dim, NumberType> mass_matrix_free;
+  mass_matrix_free.reinit(dof_handler, constraint_matrix, mass_matrix_quad,
+                          _matrix_free_data);
+  mass_matrix_free.initialize_dof_vector(*_inverse_mass_matrix);
   dealii::VectorizedArray<NumberType> one =
       dealii::make_vectorized_array(static_cast<NumberType>(1.));
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, NumberType> fe_eval(
-      _matrix_free);
+      mass_matrix_free);
   unsigned int const n_q_points = fe_eval.n_q_points;
-  for (unsigned int cell = 0; cell < _matrix_free.n_macro_cells(); ++cell)
+  for (unsigned int cell = 0; cell < mass_matrix_free.n_macro_cells(); ++cell)
   {
     fe_eval.reinit(cell);
     for (unsigned int q = 0; q < n_q_points; ++q)
@@ -64,8 +71,6 @@ void ThermalOperator<dim, fe_degree, NumberType>::reinit(
     else
       _inverse_mass_matrix->local_element(k) = 0.;
   }
-
-  _matrix_free.reinit(dof_handler, constraint_matrix, quad, additional_data);
 
   // TODO: for now we only solve linear problem so we can evaluate the thermal
   // conductivity once. Since the thermal conductivity is independent of the
@@ -119,7 +124,7 @@ void ThermalOperator<dim, fe_degree, NumberType>::vmult_add(
   std::vector<dealii::types::global_dof_index> const &constrained_dofs =
       _matrix_free.get_constrained_dofs();
   for (auto &dof : constrained_dofs)
-    dst[dof] += scaling * src[dof];
+    dst.local_element(dof) += scaling * src.local_element(dof);
 }
 
 template <int dim, int fe_degree, typename NumberType>

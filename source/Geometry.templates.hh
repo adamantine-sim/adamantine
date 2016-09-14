@@ -40,13 +40,9 @@ Geometry<dim>::Geometry(boost::mpi::communicator const &communicator,
   dealii::GridGenerator::subdivided_hyper_rectangle(_triangulation, repetitions,
                                                     p1, p2, true);
 
-  // Assign the MaterialState. We need to reset the MaterialState when the mesh
-  // is
-  // refined/repartioned.
+  // Assign the MaterialID and the MaterialState.
   dealii::types::boundary_id const top_boundary = 3;
-  for (auto cell :
-       dealii::filter_iterators(_triangulation.active_cell_iterators(),
-                                dealii::IteratorFilters::LocallyOwnedCell()))
+  for (auto cell : _triangulation.active_cell_iterators())
   {
     cell->set_material_id(0);
     if (cell->at_boundary())

@@ -29,13 +29,19 @@ public:
                   std::shared_ptr<MaterialProperty> material_properties);
 
   /**
-   * Reinit must be called after the constructor. The reason is that we cannot
-   * create a templated constructor.
+   * Associate the ConstraintMatrix and the MatrixFree objects to the
+   * underlying Triangulation.
    */
   template <typename QuadratureType>
+  void setup_dofs(dealii::DoFHandler<dim> const &dof_handler,
+                  dealii::ConstraintMatrix const &constraint_matrix,
+                  QuadratureType const &quad);
+
+  /**
+   * Compute the inverse of the mass matrix and update the material properties.
+   */
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
-              dealii::ConstraintMatrix const &constraint_matrix,
-              QuadratureType const &quad);
+              dealii::ConstraintMatrix const &constraint_matrix);
 
   /**
    * Clear the MatrixFree object and resize the inverse of the mass matrix to
@@ -99,6 +105,11 @@ private:
    * MPI communicator.
    */
   boost::mpi::communicator const &_communicator;
+  /**
+   * Data to configure the MatrixFree object.
+   */
+  typename dealii::MatrixFree<dim, NumberType>::AdditionalData
+      _matrix_free_data;
   /**
    * Table of density times specific heat coefficients.
    */

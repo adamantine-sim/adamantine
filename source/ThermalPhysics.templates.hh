@@ -10,6 +10,7 @@
 
 #include "ThermalPhysics.hh"
 #include "MaterialProperty.hh"
+#include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/lac/precondition.h>
@@ -179,13 +180,25 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
 }
 
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::reinit()
+void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::setup_dofs()
 {
   _dof_handler.distribute_dofs(_fe);
-  // TODO: For now only homogeneous Neumann boundary conditions and uniform mesh
+  dealii::IndexSet locally_relevant_dofs;
+  dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler,
+                                                  locally_relevant_dofs);
   _constraint_matrix.clear();
+  _constraint_matrix.reinit(locally_relevant_dofs);
+  dealii::DoFTools::make_hanging_node_constraints(_dof_handler,
+                                                  _constraint_matrix);
   _constraint_matrix.close();
-  _thermal_operator->reinit(_dof_handler, _constraint_matrix, _quadrature);
+
+  _thermal_operator->setup_dofs(_dof_handler, _constraint_matrix, _quadrature);
+}
+
+template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::reinit()
+{
+  _thermal_operator->reinit(_dof_handler, _constraint_matrix);
   if (_implicit_method == true)
     _implicit_operator->set_inverse_mass_matrix(
         _thermal_operator->get_inverse_mass_matrix());

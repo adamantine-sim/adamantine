@@ -10,6 +10,7 @@
 
 #include "types.hh"
 #include <deal.II/dofs/dof_handler.h>
+#include <deal.II/lac/constraint_matrix.h>
 #include <deal.II/lac/la_parallel_vector.h>
 
 namespace adamantine
@@ -26,14 +27,20 @@ public:
   virtual ~Physics() = default;
 
   /**
-   * Reinitalize the physics and the associated operator.
+   * Associate the ConstraintMatrix and the MatrixFree objects to the
+   * underlying Triangulation.
+   */
+  virtual void setup_dofs() = 0;
+
+  /**
+   * Reinitialize the physics and the associated operator.
    */
   virtual void reinit() = 0;
 
   /**
    * Evolve the physics from time t to time t+delta_t. solution first contains
    * the field at time t and after execution of the function, the field at time
-   * t+delta_t
+   * t+delta_t.
    */
   virtual double evolve_one_time_step(
       double t, double delta_t,
@@ -54,6 +61,11 @@ public:
    * Return the DoFHandler.
    */
   virtual dealii::DoFHandler<dim> &get_dof_handler() = 0;
+
+  /**
+   * Return the ConstraintMatrix.
+   */
+  virtual dealii::ConstraintMatrix &get_constraint_matrix() = 0;
 };
 }
 #endif

@@ -53,7 +53,8 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, double> thermal_operator(communicator,
                                                              mat_properties);
-  thermal_operator.reinit(dof_handler, constraint_matrix, quad);
+  thermal_operator.setup_dofs(dof_handler, constraint_matrix, quad);
+  thermal_operator.reinit(dof_handler, constraint_matrix);
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
 
@@ -122,7 +123,8 @@ BOOST_AUTO_TEST_CASE(spmv)
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, double> thermal_operator(communicator,
                                                              mat_properties);
-  thermal_operator.reinit(dof_handler, constraint_matrix, quad);
+  thermal_operator.setup_dofs(dof_handler, constraint_matrix, quad);
+  thermal_operator.reinit(dof_handler, constraint_matrix);
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
 

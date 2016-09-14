@@ -64,6 +64,8 @@ public:
                  boost::property_tree::ptree const &database,
                  Geometry<dim> &geometry);
 
+  void setup_dofs() override;
+
   void reinit() override;
 
   double evolve_one_time_step(
@@ -76,6 +78,13 @@ public:
       dealii::LA::distributed::Vector<NumberType> &vector) const override;
 
   dealii::DoFHandler<dim> &get_dof_handler() override;
+
+  dealii::ConstraintMatrix &get_constraint_matrix() override;
+
+  /**
+   * Return the heat sources.
+   */
+  std::vector<std::unique_ptr<ElectronBeam<dim>>> &get_electron_beams();
 
 private:
   typedef typename dealii::LA::distributed::Vector<NumberType> LA_Vector;
@@ -185,6 +194,21 @@ inline dealii::DoFHandler<dim> &
 ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::get_dof_handler()
 {
   return _dof_handler;
+}
+
+template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
+inline dealii::ConstraintMatrix &
+ThermalPhysics<dim, fe_degree, NumberType,
+               QuadratureType>::get_constraint_matrix()
+{
+  return _constraint_matrix;
+}
+
+template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
+inline std::vector<std::unique_ptr<ElectronBeam<dim>>> &
+ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::get_electron_beams()
+{
+  return _electron_beams;
 }
 }
 
