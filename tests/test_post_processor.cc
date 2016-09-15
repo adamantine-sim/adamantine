@@ -50,7 +50,8 @@ BOOST_AUTO_TEST_CASE(post_processor)
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, double> thermal_operator(communicator,
                                                              mat_properties);
-  thermal_operator.reinit(dof_handler, constraint_matrix, quad);
+  thermal_operator.setup_dofs(dof_handler, constraint_matrix, quad);
+  thermal_operator.reinit(dof_handler, constraint_matrix);
 
   // Create the PostProcessor
   boost::property_tree::ptree post_processor_database;
