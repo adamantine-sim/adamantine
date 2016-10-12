@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(post_processor)
   boost::property_tree::ptree post_processor_database;
   post_processor_database.put("file_name", "test");
   adamantine::PostProcessor<2> post_processor(
-      communicator, post_processor_database, dof_handler);
+      communicator, post_processor_database, dof_handler, mat_properties);
   dealii::LA::distributed::Vector<double> src;
   dealii::MatrixFree<2, double> const &matrix_free =
       thermal_operator.get_matrix_free();

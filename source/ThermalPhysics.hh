@@ -81,6 +81,8 @@ public:
 
   dealii::ConstraintMatrix &get_constraint_matrix() override;
 
+  std::shared_ptr<MaterialProperty> get_material_property() override;
+
   /**
    * Return the heat sources.
    */
@@ -202,6 +204,14 @@ ThermalPhysics<dim, fe_degree, NumberType,
                QuadratureType>::get_constraint_matrix()
 {
   return _constraint_matrix;
+}
+
+template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
+inline std::shared_ptr<MaterialProperty>
+ThermalPhysics<dim, fe_degree, NumberType,
+               QuadratureType>::get_material_property()
+{
+  return _material_properties;
 }
 
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>

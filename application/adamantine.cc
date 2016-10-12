@@ -510,7 +510,8 @@ int main(int argc, char *argv[])
                                             thermal_physics);
       adamantine::PostProcessor<2> post_processor(
           communicator, post_processor_database,
-          thermal_physics->get_dof_handler());
+          thermal_physics->get_dof_handler(),
+          thermal_physics->get_material_property());
       run<2>(communicator, thermal_physics, post_processor, electron_beams,
              time_stepping_database, refinement_database, fe_degree);
     }
@@ -531,7 +532,8 @@ int main(int argc, char *argv[])
                                             thermal_physics);
       adamantine::PostProcessor<3> post_processor(
           communicator, post_processor_database,
-          thermal_physics->get_dof_handler());
+          thermal_physics->get_dof_handler(),
+          thermal_physics->get_material_property());
       run<3>(communicator, thermal_physics, post_processor, electron_beams,
              time_stepping_database, refinement_database, fe_degree);
     }

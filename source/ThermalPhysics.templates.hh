@@ -266,10 +266,6 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   {
     cell_source = 0.;
     fe_values.reinit(cell);
-    NumberType const rho_cp =
-        _material_properties->get<dim, NumberType>(cell, Property::density, y) *
-        _material_properties->get<dim, NumberType>(cell,
-                                                   Property::specific_heat, y);
 
     for (unsigned int i = 0; i < dofs_per_cell; ++i)
     {
@@ -279,7 +275,6 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
         for (auto &beam : _electron_beams)
           source += beam->value(q_point);
-        source /= rho_cp;
 
         cell_source[i] +=
             source * fe_values.shape_value(i, q) * fe_values.JxW(q);
