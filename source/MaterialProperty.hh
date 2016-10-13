@@ -53,11 +53,13 @@ private:
   /**
    * Maximum different number of states a given material can be.
    */
-  static unsigned int constexpr _n_material_states = 3;
+  static unsigned int constexpr _n_material_states =
+      static_cast<unsigned int>(MaterialState::SIZE);
   /**
    * Number of properties defined.
    */
-  static unsigned int constexpr _n_properties = 3;
+  static unsigned int constexpr _n_properties =
+      static_cast<unsigned int>(Property::SIZE);
   /**
    * Map that stores functions describing the properties of the material.
    */
@@ -78,13 +80,15 @@ double MaterialProperty::get(
   // now can only be in one state. It can't be half powder and half liquid.
   (void)field_state;
   dealii::types::material_id material_id = cell->material_id();
-  MaterialState state = static_cast<MaterialState>(cell->user_index());
+  unsigned int state = cell->user_index();
+  unsigned int property = static_cast<unsigned int>(prop);
 
   // We cannot use operator[] because the function is constant.
   auto const tmp = _properties.find(material_id);
   ASSERT(tmp != _properties.end(), "Material not found.");
-  ASSERT((tmp->second)[state][prop] != nullptr, "Property not found.");
-  return (tmp->second)[state][prop]->value(dealii::Point<1>());
+  ASSERT((tmp->second)[state][property] != nullptr, "Property not found.");
+
+  return (tmp->second)[state][property]->value(dealii::Point<1>());
 }
 }
 

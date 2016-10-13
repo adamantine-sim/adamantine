@@ -23,6 +23,7 @@ BOOST_AUTO_TEST_CASE(material_property)
   database.put("material_0.solid.thermal_conductivity", 10.);
   database.put("material_0.powder.conductivity", 10.);
   database.put("material_0.liquid", "");
+  database.put("material_0.liquidus", "100");
   adamantine::MaterialProperty mat_prop(database);
 
   dealii::Triangulation<2> tria;
@@ -30,7 +31,7 @@ BOOST_AUTO_TEST_CASE(material_property)
   for (auto cell : tria.active_cell_iterators())
   {
     cell->set_material_id(0);
-    cell->set_user_index(adamantine::MaterialState::solid);
+    cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
   }
   dealii::LA::distributed::Vector<double> dummy;
 
@@ -42,5 +43,8 @@ BOOST_AUTO_TEST_CASE(material_property)
     double const th_conduc = mat_prop.get<2, double>(
         cell, adamantine::Property::thermal_conductivity, dummy);
     BOOST_CHECK(th_conduc == 10.);
+    double const liquidus =
+        mat_prop.get<2, double>(cell, adamantine::Property::liquidus, dummy);
+    BOOST_CHECK(liquidus == 100.);
   }
 }

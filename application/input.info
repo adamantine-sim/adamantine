@@ -30,12 +30,14 @@ materials
       thermal_conductivity 26.6 ; [W/m K] The value can be constant or an 
                                 ; equation like 10*exp(T)*sin(2.*T)
     }
+    
     powder
     {
       specific_heat 600 ; [J/kg K] 
       density 7541 ; [kg/m^3]
       thermal_conductivity 0.266 ; [W/m K]
     }
+    
     liquid
     {
       specific_heat 775 ; [J/kg K] 
@@ -43,6 +45,10 @@ materials
       thermal_conductivity 29.0 ; [W/m k] Not all three states need to define
                                 ; the same properties or to exist
     }
+
+    solidus 1528 ; [K]
+    liquidus 1610 ; [K]
+    latent_heat 227000 ; [J/kg]
   }
 }
 

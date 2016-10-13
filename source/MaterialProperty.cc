@@ -17,7 +17,8 @@ MaterialProperty::MaterialProperty(boost::property_tree::ptree const &database)
   std::array<std::string, _n_material_states> material_state = {
       {"powder", "solid", "liquid"}};
   std::array<std::string, _n_properties> properties = {
-      {"density", "specific_heat", "thermal_conductivity"}};
+      {"density", "latent_heat", "liquidus", "solidus", "specific_heat",
+       "thermal_conductivity"}};
 
   unsigned int const n_materials = database.get<unsigned int>("n_materials");
   dealii::types::material_id next_material_id = 0;
@@ -44,8 +45,7 @@ MaterialProperty::MaterialProperty(boost::property_tree::ptree const &database)
         database.get_child("material_" + std::to_string(material_id));
     // For each material, loop over the possible states.
     bool valid_state = false;
-    for (unsigned int state = MaterialState::powder; state < _n_material_states;
-         ++state)
+    for (unsigned int state = 0; state < _n_material_states; ++state)
     {
       // The state may or may not exist for the material.
       boost::optional<boost::property_tree::ptree const &> state_database =
@@ -53,7 +53,7 @@ MaterialProperty::MaterialProperty(boost::property_tree::ptree const &database)
       if (state_database)
       {
         valid_state = true;
-        // For each state, loop overt the possible properties.
+        // For each state, loop over the possible properties.
         for (unsigned int p = 0; p < _n_properties; ++p)
         {
           // The property may or may not exist for that state
@@ -75,6 +75,28 @@ MaterialProperty::MaterialProperty(boost::property_tree::ptree const &database)
     ASSERT_THROW(
         valid_state == true,
         "Material without any valid state (solid, powder, or liquid).");
+
+    // Check for the properties that are associated to a material but that
+    // are independent of an individual state. These properties are duplicated
+    // for every state.
+    for (unsigned int p = 0; p < _n_properties; ++p)
+    {
+      // The property may or may not exist for that state
+      boost::optional<std::string> const property =
+          material_database.get_optional<std::string>(properties[p]);
+      // If the property exists, put it in the map. If the property does not
+      // exist, we have a nullptr.
+      if (property)
+      {
+        for (unsigned int state = 0; state < _n_material_states; ++state)
+        {
+          _properties[material_id][state][p] =
+              std::make_unique<dealii::FunctionParser<1>>(1);
+          _properties[material_id][state][p]->initialize(
+              variable, property.get(), std::map<std::string, double>());
+        }
+      }
+    }
   }
 }
 }
