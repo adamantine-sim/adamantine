@@ -12,7 +12,7 @@ message("Build type: ${CMAKE_BUILD_TYPE}")
 if(CMAKE_BUILD_TYPE MATCHES "Release")
     add_definitions(-DBOOST_DISABLE_ASSERTS)
 elseif(CMAKE_BUILD_TYPE MATCHES "Debug")
-    # DO NOTHING
+  add_definitions(-DADAMANTINE_DEBUG)
 else()
     message(FATAL_ERROR
         "Possible values for CMAKE_BUILD_TYPE are Debug and Release"
