@@ -19,7 +19,7 @@ PostProcessor<dim>::PostProcessor(
     boost::mpi::communicator &communicator,
     boost::property_tree::ptree const &database,
     dealii::DoFHandler<dim> &dof_handler,
-    std::shared_ptr<MaterialProperty> material_properties)
+    std::shared_ptr<MaterialProperty<dim>> material_properties)
     : _communicator(communicator), _dof_handler(dof_handler),
       _material_properties(material_properties)
 {
@@ -110,10 +110,8 @@ dealii::LA::distributed::Vector<double> PostProcessor<dim>::compute_temperature(
   {
     // TODO: for now, assume that the property is constant per cell
     double const enthalpy_to_temp =
-        1. / (_material_properties->get<dim, double>(cell, Property::density,
-                                                     state) *
-              _material_properties->get<dim, double>(
-                  cell, Property::specific_heat, state));
+        1. / (_material_properties->get(cell, Property::density, state) *
+              _material_properties->get(cell, Property::specific_heat, state));
 
     cell->get_dof_indices(local_dof_indices);
 

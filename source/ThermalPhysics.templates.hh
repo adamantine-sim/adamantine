@@ -9,7 +9,6 @@
 #define _THERMAL_PHYSICS_TEMPLATES_HH_
 
 #include "ThermalPhysics.hh"
-#include "MaterialProperty.hh"
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/grid/filtered_iterator.h>
@@ -30,7 +29,8 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
   // Create the material properties
   boost::property_tree::ptree const &material_database =
       database.get_child("materials");
-  _material_properties.reset(new MaterialProperty(material_database));
+  _material_properties.reset(new MaterialProperty<dim>(
+      communicator, _geometry.get_triangulation(), material_database));
 
   // Create the electron beams
   boost::property_tree::ptree const &source_database =

@@ -33,7 +33,7 @@ public:
   PostProcessor(boost::mpi::communicator &communicator,
                 boost::property_tree::ptree const &database,
                 dealii::DoFHandler<dim> &dof_handler,
-                std::shared_ptr<MaterialProperty> material_properties);
+                std::shared_ptr<MaterialProperty<dim>> material_properties);
 
   /**
    * Output the different vtu and pvtu files.
@@ -76,7 +76,7 @@ private:
   /**
    * Material properties associated with the simulation.
    */
-  std::shared_ptr<MaterialProperty> _material_properties;
+  std::shared_ptr<MaterialProperty<dim>> _material_properties;
 };
 }
 #endif

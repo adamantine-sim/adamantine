@@ -26,7 +26,7 @@ class ThermalOperator : public Operator<NumberType>
 {
 public:
   ThermalOperator(boost::mpi::communicator const &communicator,
-                  std::shared_ptr<MaterialProperty> material_properties);
+                  std::shared_ptr<MaterialProperty<dim>> material_properties);
 
   /**
    * Associate the ConstraintMatrix and the MatrixFree objects to the
@@ -121,7 +121,7 @@ private:
   /**
    * Material properties associated with the domain.
    */
-  std::shared_ptr<MaterialProperty> _material_properties;
+  std::shared_ptr<MaterialProperty<dim>> _material_properties;
   /**
    * Underlying MatrixFree object.
    */

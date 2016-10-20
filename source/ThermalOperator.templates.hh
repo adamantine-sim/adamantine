@@ -18,7 +18,7 @@ namespace adamantine
 template <int dim, int fe_degree, typename NumberType>
 ThermalOperator<dim, fe_degree, NumberType>::ThermalOperator(
     boost::mpi::communicator const &communicator,
-    std::shared_ptr<MaterialProperty> material_properties)
+    std::shared_ptr<MaterialProperty<dim>> material_properties)
     : _communicator(communicator), _material_properties(material_properties),
       _inverse_mass_matrix(new dealii::LA::distributed::Vector<NumberType>())
 {
@@ -190,13 +190,12 @@ void ThermalOperator<dim, fe_degree, NumberType>::evaluate_material_properties(
         // TODO use three vectors to describe cells which have a mix of powder,
         // solid, and liquid.
         _matrix_free.get_cell_iterator(cell, i);
-        _rho_cp(cell, q)[i] = _material_properties->get<dim, NumberType>(
-                                  cell_tria, Property::density, state) *
-                              _material_properties->get<dim, NumberType>(
-                                  cell_tria, Property::specific_heat, state);
-        _thermal_conductivity(cell, q)[i] =
-            _material_properties->get<dim, NumberType>(
-                cell_tria, Property::thermal_conductivity, state);
+        _rho_cp(cell, q)[i] =
+            _material_properties->get(cell_tria, Property::density, state) *
+            _material_properties->get(cell_tria, Property::specific_heat,
+                                      state);
+        _thermal_conductivity(cell, q)[i] = _material_properties->get(
+            cell_tria, Property::thermal_conductivity, state);
       }
 }
 }

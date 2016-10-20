@@ -71,7 +71,7 @@ public:
   /**
    * Return a shared pointer of the MaterialProperty.
    */
-  virtual std::shared_ptr<MaterialProperty> get_material_property() = 0;
+  virtual std::shared_ptr<MaterialProperty<dim>> get_material_property() = 0;
 };
 }
 #endif
