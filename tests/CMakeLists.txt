@@ -10,6 +10,7 @@ list(APPEND
      test_electron_beam
      test_geometry
      test_material_property
+     test_newton_solver
      test_post_processor
      test_thermal_operator
      test_thermal_physics
