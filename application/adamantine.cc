@@ -164,7 +164,7 @@ compute_cells_to_refine(
     std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams)
 {
   // Compute the position of the beams between time and next_refinement_time and
-  // refine the mesh where the source is greater than 1e-12. This cut-off is due
+  // refine the mesh where the source is greater than 1e-15. This cut-off is due
   // to the fact that the source is gaussian and thus never strictly zero. If
   // the beams intersect, some cells will appear twice in the vector. This is
   // not a problem.
@@ -182,7 +182,7 @@ compute_cells_to_refine(
       for (auto cell : dealii::filter_iterators(
                triangulation.active_cell_iterators(),
                dealii::IteratorFilters::LocallyOwnedCell()))
-        if (beam->value(cell->center()) > 1e-12)
+        if (beam->value(cell->center()) > 1e-15)
           cells_to_refine.push_back(cell);
     }
   }
@@ -205,7 +205,7 @@ void refine_mesh(
   unsigned int const n_kelly_refinements =
       refinement_database.get("n_heat_refinements", 2);
   double coarsening_fraction = 0.3;
-  double refining_fraction = 0.7;
+  double refining_fraction = 0.6;
   double cells_fraction = refinement_database.get("heat_cell_ratio", 1.);
   dealii::parallel::distributed::Triangulation<dim> &triangulation =
       dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
@@ -234,6 +234,13 @@ void refine_mesh(
     dealii::GridRefinement::refine_and_coarsen_fixed_fraction(
         triangulation, estimated_error_per_cell, refining_fraction,
         coarsening_fraction, new_n_cells);
+
+    // Don't refine cells that are already as much refined as it is allowed.
+    for (auto cell :
+         dealii::filter_iterators(triangulation.active_cell_iterators(),
+                                  dealii::IteratorFilters::LocallyOwnedCell()))
+      if (cell->level() >= max_level)
+        cell->clear_refine_flag();
 
     // Execute the refinement and transfer the solution onto the new mesh.
     refine_and_transfer(thermal_physics, dof_handler, solution);
