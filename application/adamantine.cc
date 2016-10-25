@@ -235,6 +235,13 @@ void refine_mesh(
         triangulation, estimated_error_per_cell, refining_fraction,
         coarsening_fraction, new_n_cells);
 
+    // Don't refine cells that are already as much refined as it is allowed.
+    for (auto cell :
+         dealii::filter_iterators(triangulation.active_cell_iterators(),
+                                  dealii::IteratorFilters::LocallyOwnedCell()))
+      if (cell->level() >= max_level)
+        cell->clear_refine_flag();
+
     // Execute the refinement and transfer the solution onto the new mesh.
     refine_and_transfer(thermal_physics, dof_handler, solution);
   }
