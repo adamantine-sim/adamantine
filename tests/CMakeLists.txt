@@ -1,12 +1,12 @@
-include(${CMAKE_SOURCE_DIR}/cmake/UnitTesting.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/Testing.cmake)
 
 add_definitions(-DBOOST_TEST_DYN_LINK)
 
 include_directories(${CMAKE_SOURCE_DIR}/source)
 
-set(TESTS "")
+set(UNIT_TESTS "")
 list(APPEND
-     TESTS
+     UNIT_TESTS
      test_electron_beam
      test_geometry
      test_material_property
@@ -16,6 +16,18 @@ list(APPEND
      test_thermal_physics
      )
 
-foreach(TEST_NAME ${TESTS})
+foreach(TEST_NAME ${UNIT_TESTS})
   adamantine_ADD_BOOST_TEST(${TEST_NAME})
+endforeach()
+
+# For now integration tests only run adamantine but they don't check the 
+# results
+set(INTEGRATION_TESTS "")
+list(APPEND
+     INTEGRATION_TESTS
+     test_integration_2d
+     )
+
+foreach(TEST_NAME ${INTEGRATION_TESTS})
+  adamantine_ADD_INTEGRATION_TEST(${TEST_NAME})
 endforeach()
