@@ -144,10 +144,10 @@ void refine_and_transfer(
       solution_transfer(dof_handler);
   std::vector<dealii::parallel::distributed::SolutionTransfer<
       dim, dealii::LA::distributed::Vector<double>>>
-  material_state(
-      static_cast<unsigned int>(adamantine::MaterialState::SIZE),
-      dealii::parallel::distributed::SolutionTransfer<
-          dim, dealii::LA::distributed::Vector<double>>(dof_handler));
+  material_state(static_cast<unsigned int>(adamantine::MaterialState::SIZE),
+                 dealii::parallel::distributed::SolutionTransfer<
+                     dim, dealii::LA::distributed::Vector<double>>(
+                     material_property->get_dof_handler()));
 
   // Prepare the Triangulation and the diffent SolutionTransfers for refinement
   triangulation.prepare_coarsening_and_refinement();

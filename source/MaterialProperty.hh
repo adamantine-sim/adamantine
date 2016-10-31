@@ -16,6 +16,7 @@
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/lac/la_parallel_vector.h>
+#include <deal.II/lac/la_vector.h>
 #include <boost/mpi.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <array>
@@ -64,6 +65,11 @@ public:
   void reinit_dofs();
 
   /**
+   * Update the material state, i.e, the ratio of liquid, powder, and solid.
+   */
+  void update_state(dealii::LA::Vector<double> const &enthalpy);
+
+  /**
    * Get the array of material state vectors. The order of the different state
    * vectos is given by the MaterialState enum. Each entry in the vector
    * correspond to a cell in the mesh and has a value between 0 and 1. The sum
@@ -72,6 +78,37 @@ public:
   std::array<dealii::LA::distributed::Vector<double>,
              static_cast<unsigned int>(MaterialState::SIZE)> &
   get_state();
+
+  double get_state_ratio(
+      typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
+      MaterialState material_state) const;
+
+  /**
+   * Return \f$ -\frac{H_{liquidus}}{\rho C_P} + T_{liquidus} \f$
+   */
+  double get_liquid_beta(
+      typename dealii::Triangulation<dim>::active_cell_iterator const &cell)
+      const;
+
+  /**
+   * Return \f$ \frac{T_{liquidus}-T_{solidus}{\mathcal{L}} \f$
+   */
+  double get_mushy_alpha(
+      typename dealii::Triangulation<dim>::active_cell_iterator const &cell)
+      const;
+
+  /**
+   * Return \f$ -H_{solidus} \frac{T_{liquidus}-T_{solidus}{\mathcal{L}} +
+   * T_{solidus} \f$
+   */
+  double get_mushy_beta(
+      typename dealii::Triangulation<dim>::active_cell_iterator const &cell)
+      const;
+
+  /**
+   * Return the underlying the DoFHandler.
+   */
+  dealii::DoFHandler<dim> const &get_dof_handler() const;
 
 private:
   /**
@@ -98,9 +135,39 @@ private:
   void fill_properties(boost::property_tree::ptree const &database);
 
   /**
+   * If the density and the specific heat do not depend on the temperature, the
+   * relationship between the temperature and the enthalpy can be written by
+   * piecewise function \f$ T = \alpha H + \beta \f$. This function computes the
+   * constants \f$ \alpha \f$ and \f$ \beta \f$.
+   */
+  void compute_constants();
+
+  /**
+   * Return the index of the dof associated to the cell.
+   */
+  double get_dof_index(
+      typename dealii::Triangulation<dim>::active_cell_iterator const &cell)
+      const;
+
+  /**
    * MPI communicator.
    */
   boost::mpi::communicator _communicator;
+  /**
+   * Map of \f$ -\frac{H_{liquidus}}{\rho C_P} + T_{liquidus} \f$ for each
+   * material.
+   */
+  std::unordered_map<dealii::types::material_id, double> _liquid_beta;
+  /**
+   * Map of \f$ \frac{T_{liquidus}-T_{solidus}{\mathcal{L}} \f$ for each
+   * material.
+   */
+  std::unordered_map<dealii::types::material_id, double> _mushy_alpha;
+  /**
+   * Map of \f$ -H_{solidus} \frac{T_{liquidus}-T_{solidus}{\mathcal{L}} +
+   * T_{solidus} \f$ for each material.
+   */
+  std::unordered_map<dealii::types::material_id, double> _mushy_beta;
   /**
    * Map that stores functions describing the properties of the material.
    */
@@ -136,12 +203,7 @@ double MaterialProperty<dim>::get(
   dealii::types::material_id material_id = cell->material_id();
   unsigned int property = static_cast<unsigned int>(prop);
 
-  // Get a DoFCellAccessor from a Triangulation::active_cell_iterator.
-  dealii::DoFAccessor<dim, dealii::DoFHandler<dim>, false> dof_accessor(
-      &_mp_dof_handler.get_triangulation(), cell->level(), cell->index(),
-      &_mp_dof_handler);
-  std::vector<dealii::types::global_dof_index> mp_dof(1.);
-  dof_accessor.get_dof_indices(mp_dof);
+  double const mp_dof_index = get_dof_index(cell);
 
   for (unsigned int i = 0; i < _n_material_states; ++i)
   {
@@ -149,7 +211,7 @@ double MaterialProperty<dim>::get(
     auto const tmp = _properties.find(material_id);
     ASSERT(tmp != _properties.end(), "Material not found.");
     if ((tmp->second)[i][property] != nullptr)
-      value += _state[i][mp_dof[0]] *
+      value += _state[i][mp_dof_index] *
                (tmp->second)[i][property]->value(dealii::Point<1>());
   }
 
@@ -162,6 +224,71 @@ inline std::array<dealii::LA::distributed::Vector<double>,
 MaterialProperty<dim>::get_state()
 {
   return _state;
+}
+
+template <int dim>
+inline double MaterialProperty<dim>::get_state_ratio(
+    typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
+    MaterialState material_state) const
+{
+  double const mp_dof_index = get_dof_index(cell);
+  unsigned int const mat_state = static_cast<unsigned int>(material_state);
+
+  return _state[mat_state][mp_dof_index];
+}
+
+template <int dim>
+inline double MaterialProperty<dim>::get_liquid_beta(
+    typename dealii::Triangulation<dim>::active_cell_iterator const &cell) const
+{
+  dealii::types::material_id material_id = cell->material_id();
+  auto const liquid_beta = _liquid_beta.find(material_id);
+  ASSERT(liquid_beta != _liquid_beta.end(), "Material not found.");
+
+  return liquid_beta->second;
+}
+
+template <int dim>
+inline double MaterialProperty<dim>::get_mushy_alpha(
+    typename dealii::Triangulation<dim>::active_cell_iterator const &cell) const
+{
+  dealii::types::material_id material_id = cell->material_id();
+  auto const mushy_alpha = _mushy_alpha.find(material_id);
+  ASSERT(mushy_alpha != _mushy_alpha.end(), "Material not found.");
+
+  return mushy_alpha->second;
+}
+
+template <int dim>
+inline double MaterialProperty<dim>::get_mushy_beta(
+    typename dealii::Triangulation<dim>::active_cell_iterator const &cell) const
+{
+  dealii::types::material_id material_id = cell->material_id();
+  auto const mushy_beta = _mushy_beta.find(material_id);
+  ASSERT(mushy_beta != _mushy_beta.end(), "Material not found.");
+
+  return mushy_beta->second;
+}
+
+template <int dim>
+inline double MaterialProperty<dim>::get_dof_index(
+    typename dealii::Triangulation<dim>::active_cell_iterator const &cell) const
+{
+  // Get a DoFCellAccessor from a Triangulation::active_cell_iterator.
+  dealii::DoFAccessor<dim, dealii::DoFHandler<dim>, false> dof_accessor(
+      &_mp_dof_handler.get_triangulation(), cell->level(), cell->index(),
+      &_mp_dof_handler);
+  std::vector<dealii::types::global_dof_index> mp_dof(1.);
+  dof_accessor.get_dof_indices(mp_dof);
+
+  return mp_dof[0];
+}
+
+template <int dim>
+inline dealii::DoFHandler<dim> const &
+MaterialProperty<dim>::get_dof_handler() const
+{
+  return _mp_dof_handler;
 }
 }
 

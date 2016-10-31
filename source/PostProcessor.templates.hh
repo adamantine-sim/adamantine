@@ -42,6 +42,17 @@ void PostProcessor<dim>::output_pvtu(
       compute_temperature(solution);
   _data_out.add_data_vector(temperature, "temperature");
 
+  // Add MaterialState ratio
+  std::array<dealii::LA::distributed::Vector<double>,
+             static_cast<unsigned int>(MaterialState::SIZE)> state =
+      _material_properties->get_state();
+  _data_out.add_data_vector(
+      state[static_cast<unsigned int>(MaterialState::powder)], "powder");
+  _data_out.add_data_vector(
+      state[static_cast<unsigned int>(MaterialState::liquid)], "liquid");
+  _data_out.add_data_vector(
+      state[static_cast<unsigned int>(MaterialState::solid)], "solid");
+
   // Add the subdomain IDs.
   dealii::types::subdomain_id subdomain_id =
       _dof_handler.get_triangulation().locally_owned_subdomain();
