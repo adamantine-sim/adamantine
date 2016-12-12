@@ -48,7 +48,7 @@ void ImplicitOperator<NumberType>::Tvmult(
     dealii::LA::distributed::Vector<NumberType> & /*dst*/,
     dealii::LA::distributed::Vector<NumberType> const & /*src*/) const
 {
-  ASSERT_THROW(false, "Function not implemented.");
+  ASSERT_THROW_NOT_IMPLEMENTED();
 }
 
 template <typename NumberType>
@@ -56,7 +56,7 @@ void ImplicitOperator<NumberType>::vmult_add(
     dealii::LA::distributed::Vector<NumberType> & /*dst*/,
     dealii::LA::distributed::Vector<NumberType> const & /*src*/) const
 {
-  ASSERT_THROW(false, "Function not implemented.");
+  ASSERT_THROW_NOT_IMPLEMENTED();
 }
 
 template <typename NumberType>
@@ -64,7 +64,7 @@ void ImplicitOperator<NumberType>::Tvmult_add(
     dealii::LA::distributed::Vector<NumberType> & /*dst*/,
     dealii::LA::distributed::Vector<NumberType> const & /*src*/) const
 {
-  ASSERT_THROW(false, "Function not implemented.");
+  ASSERT_THROW_NOT_IMPLEMENTED();
 }
 }
 
