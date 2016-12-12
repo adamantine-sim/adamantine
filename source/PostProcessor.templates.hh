@@ -101,7 +101,7 @@ template <int dim>
 void PostProcessor<dim>::output_pvd()
 {
   std::ofstream output(_filename + ".pvd");
-  _data_out.write_pvd_record(output, _times_filenames);
+  dealii::DataOutBase::write_pvd_record(output, _times_filenames);
 }
 
 template <int dim>
