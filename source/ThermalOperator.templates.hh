@@ -72,18 +72,6 @@ void ThermalOperator<dim, fe_degree, NumberType>::reinit(
     else
       _inverse_mass_matrix->local_element(k) = 0.;
   }
-
-  // TODO: for now we only solve linear problem so we can evaluate the thermal
-  // conductivity once. Since the thermal conductivity is independent of the
-  // current temperature, we use a dummy temperature vector. This needs to be
-  // moved out of reinit when the problem is nonlinear because it needs to be
-  // called for each Newton iterations even though the mesh hasn't been
-  // modified. MaterialProperty::update_state and evaluate_material_properties
-  // need to be call in ThermalPhysics. Instead of simply calling
-  // evaluate_thermal_physics and id_minus_tau_J_inverse, we need to call a
-  // Newton solver to compute the new material properties.
-  dealii::LA::distributed::Vector<NumberType> dummy;
-  evaluate_material_properties(dummy);
 }
 
 template <int dim, int fe_degree, typename NumberType>
@@ -180,6 +168,9 @@ template <int dim, int fe_degree, typename NumberType>
 void ThermalOperator<dim, fe_degree, NumberType>::evaluate_material_properties(
     dealii::LA::distributed::Vector<NumberType> const &state)
 {
+  // Update the state of the materials
+  _material_properties->update_state(_matrix_free.get_dof_handler(), state);
+
   unsigned int const n_cells = _matrix_free.n_macro_cells();
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, NumberType> fe_eval(
       _matrix_free);

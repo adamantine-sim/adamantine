@@ -11,6 +11,7 @@
 
 #include "Geometry.hh"
 #include "MaterialProperty.hh"
+#include <deal.II/fe/fe_q.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/tria.h>
 #include <deal.II/lac/la_parallel_vector.h>
@@ -83,7 +84,9 @@ BOOST_AUTO_TEST_CASE(ratios)
     cell->set_material_id(0);
     cell->set_user_index(static_cast<int>(adamantine::MaterialState::powder));
   }
-  unsigned int const n_active_cells = tria.n_active_cells();
+  dealii::FE_Q<2> fe(1);
+  dealii::DoFHandler<2> dof_handler(tria);
+  dof_handler.distribute_dofs(fe);
   dealii::LA::distributed::Vector<double> dummy;
 
   // Create the MaterialProperty
@@ -146,10 +149,11 @@ BOOST_AUTO_TEST_CASE(ratios)
   }
 
   // Check the material properties of the liquid
-  dealii::LA::Vector<double> avg_enthalpy(n_active_cells);
-  for (unsigned int i = 0; i < n_active_cells; ++i)
+  dealii::types::global_dof_index const n_dofs = dof_handler.n_dofs();
+  dealii::LA::distributed::Vector<double> avg_enthalpy(n_dofs);
+  for (unsigned int i = 0; i < n_dofs; ++i)
     avg_enthalpy[i] = 100000.;
-  mat_prop.update_state(avg_enthalpy);
+  mat_prop.update_state(dof_handler, avg_enthalpy);
   for (auto cell : tria.active_cell_iterators())
   {
     double powder_ratio =
@@ -184,7 +188,7 @@ BOOST_AUTO_TEST_CASE(ratios)
 
   // Check the material properties of the solid
   avg_enthalpy = 0.;
-  mat_prop.update_state(avg_enthalpy);
+  mat_prop.update_state(dof_handler, avg_enthalpy);
   for (auto cell : tria.active_cell_iterators())
   {
     double powder_ratio =

@@ -42,7 +42,6 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
     boost::property_tree::ptree const &beam_database =
         source_database.get_child("beam_" + std::to_string(i));
     _electron_beams[i] = std::make_unique<ElectronBeam<dim>>(beam_database);
-    // TODO this is correct as long as the top surface is flat
     _electron_beams[i]->set_max_height(_geometry.get_max_height());
   }
 
@@ -209,6 +208,10 @@ double ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
     evolve_one_time_step(double t, double delta_t,
                          dealii::LA::distributed::Vector<NumberType> &solution)
 {
+  // TODO: this assume that the material properties do no change during the time
+  // steps. This is wrong and needs to be changed.
+  _thermal_operator->evaluate_material_properties(solution);
+
   double time = _time_stepping->evolve_one_time_step(
       std::bind(&ThermalPhysics<dim, fe_degree, NumberType,
                                 QuadratureType>::evaluate_thermal_physics,

@@ -84,6 +84,12 @@ public:
       dealii::LA::distributed::Vector<NumberType> &dst,
       dealii::LA::distributed::Vector<NumberType> const &src) const override;
 
+  /**
+   * Evaluate the material properties for a given state field.
+   */
+  void evaluate_material_properties(
+      dealii::LA::distributed::Vector<NumberType> const &state);
+
 private:
   /**
    * Apply the operator on a given set of quadrature points.
@@ -93,12 +99,6 @@ private:
               dealii::LA::distributed::Vector<NumberType> &dst,
               dealii::LA::distributed::Vector<NumberType> const &src,
               std::pair<unsigned int, unsigned int> const &cell_range) const;
-
-  /**
-   * Evaluate the material properties for a given state field.
-   */
-  void evaluate_material_properties(
-      dealii::LA::distributed::Vector<NumberType> const &state);
 
   /**
    * Compute the average enthalpy on each cell.

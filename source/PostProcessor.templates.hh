@@ -104,22 +104,24 @@ void PostProcessor<dim>::output_pvd()
   dealii::DataOutBase::write_pvd_record(output, _times_filenames);
 }
 
+// TODO remove this function
 template <int dim>
 dealii::LA::distributed::Vector<double> PostProcessor<dim>::compute_temperature(
     dealii::LA::distributed::Vector<double> const &enthalpy)
 {
   dealii::LA::distributed::Vector<double> temperature(
       enthalpy.get_partitioner());
-  // TODO: to change.
+  // This is not used for now because the material properties are independent of
+  // the temperatures.
   dealii::LA::distributed::Vector<double> state;
 
+  // TODO the computation does not work if there is a phase change
   unsigned int const dofs_per_cell = _dof_handler.get_fe().dofs_per_cell;
   std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
   for (auto cell :
        dealii::filter_iterators(_dof_handler.active_cell_iterators(),
                                 dealii::IteratorFilters::LocallyOwnedCell()))
   {
-    // TODO: for now, assume that the property is constant per cell
     double const enthalpy_to_temp =
         1. / (_material_properties->get(cell, Property::density, state) *
               _material_properties->get(cell, Property::specific_heat, state));

@@ -10,7 +10,8 @@
 
 #include "MaterialProperty.hh"
 #include <deal.II/base/point.h>
-#include <deal.II/grid/filtered_iterator.h>
+#include <deal.II/base/quadrature_lib.h>
+#include <deal.II/fe/fe_values.h>
 #include <boost/optional.hpp>
 
 namespace adamantine
@@ -40,6 +41,95 @@ MaterialProperty<dim>::MaterialProperty(
 }
 
 template <int dim>
+template <typename NumberType>
+double MaterialProperty<dim>::get(
+    typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
+    Property prop, dealii::LA::distributed::Vector<NumberType> const &) const
+{
+  // TODO: For now, ignore field_state since we have a linear problem.
+  double value = 0.;
+  dealii::types::material_id material_id = cell->material_id();
+  unsigned int property = static_cast<unsigned int>(prop);
+
+  double const mp_dof_index = get_dof_index(cell);
+
+  for (unsigned int i = 0; i < _n_material_states; ++i)
+  {
+    // We cannot use operator[] because the function is constant.
+    auto const tmp = _properties.find(material_id);
+    ASSERT(tmp != _properties.end(), "Material not found.");
+    if ((tmp->second)[i][property] != nullptr)
+      value += _state[i][mp_dof_index] *
+               (tmp->second)[i][property]->value(dealii::Point<1>());
+  }
+
+  return value;
+}
+
+template <int dim>
+template <typename NumberType>
+dealii::LA::distributed::Vector<NumberType>
+MaterialProperty<dim>::enthalpy_to_temperature(
+    dealii::DoFHandler<dim> const &enthalpy_dof_handler,
+    dealii::LA::distributed::Vector<NumberType> const &enthalpy)
+{
+  dealii::LA::distributed::Vector<NumberType> temperature(
+      enthalpy.get_partitioner());
+  dealii::LA::distributed::Vector<NumberType> dummy;
+
+  update_state(enthalpy_dof_handler, enthalpy);
+
+  unsigned int const dofs_per_cell =
+      enthalpy_dof_handler.get_fe().dofs_per_cell;
+  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
+  for (auto cell :
+       dealii::filter_iterators(enthalpy_dof_handler.active_cell_iterators(),
+                                dealii::IteratorFilters::LocallyOwnedCell()))
+  {
+    cell->get_dof_indices(local_dof_indices);
+
+    double const liquid_ratio = get_state_ratio(cell, MaterialState::liquid);
+    double const density = get(cell, Property::density, dummy);
+    double const specific_heat = get(cell, Property::specific_heat, dummy);
+    double const liquidus = get(cell, Property::liquidus, dummy);
+    double const solidus = get(cell, Property::solidus, dummy);
+    double const solidus_enthalpy = solidus * density * specific_heat;
+    double const latent_heat = get(cell, Property::latent_heat, dummy);
+    double const liquidus_enthalpy = solidus_enthalpy + latent_heat;
+
+    NumberType enth_to_temp = [liquid_ratio, liquidus, solidus,
+                               liquidus_enthalpy, solidus_enthalpy, density,
+                               specific_heat](double const enthalpy)
+    {
+      if (liquid_ratio > 0.)
+      {
+        if (liquid_ratio == 1.)
+        {
+          return liquidus +
+                 (enthalpy - liquidus_enthalpy) / (density * specific_heat);
+        }
+        else
+        {
+          return solidus +
+                 (liquidus - solidus) * (enthalpy - solidus_enthalpy) /
+                     (liquidus_enthalpy - solidus_enthalpy);
+        }
+      }
+      else
+      {
+        return enthalpy / (density * specific_heat);
+      }
+    };
+
+    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+      temperature[local_dof_indices[i]] =
+          enth_to_temp(enthalpy[local_dof_indices[i]]);
+  }
+
+  return temperature;
+}
+
+template <int dim>
 void MaterialProperty<dim>::reinit_dofs()
 {
   _mp_dof_handler.distribute_dofs(_fe);
@@ -49,10 +139,14 @@ void MaterialProperty<dim>::reinit_dofs()
 }
 
 template <int dim>
+template <typename NumberType>
 void MaterialProperty<dim>::update_state(
-    dealii::LA::Vector<double> const &enthalpy)
+    dealii::DoFHandler<dim> const &enthalpy_dof_handler,
+    dealii::LA::distributed::Vector<NumberType> const &enthalpy)
 {
-  unsigned int pos = 0;
+  dealii::LA::distributed::Vector<NumberType> enthalpy_average =
+      compute_enthalpy_average(enthalpy_dof_handler, enthalpy);
+
   std::vector<dealii::types::global_dof_index> mp_dof(1);
   for (auto cell :
        dealii::filter_iterators(_mp_dof_handler.active_cell_iterators(),
@@ -72,21 +166,26 @@ void MaterialProperty<dim>::update_state(
         static_cast<unsigned int>(MaterialState::solid);
     unsigned int constexpr prop_latent_heat =
         static_cast<unsigned int>(Property::latent_heat);
-    unsigned int constexpr solidus =
+    unsigned int constexpr prop_solidus =
         static_cast<unsigned int>(Property::solidus);
-    unsigned int constexpr density =
+    unsigned int constexpr prop_density =
         static_cast<unsigned int>(Property::density);
-    unsigned int constexpr specific_heat =
+    unsigned int constexpr prop_specific_heat =
         static_cast<unsigned int>(Property::specific_heat);
 
     dealii::Point<1> const empty_pt;
 
     double const latent_heat =
-        (tmp->second)[solid][prop_latent_heat]->value(empty_pt);
+        ((tmp->second)[solid][prop_latent_heat] == nullptr)
+            ? std::numeric_limits<double>::max()
+            : (tmp->second)[solid][prop_latent_heat]->value(empty_pt);
+    double const solidus =
+        ((tmp->second)[solid][prop_solidus] == nullptr)
+            ? std::numeric_limits<double>::max()
+            : (tmp->second)[solid][prop_solidus]->value(empty_pt);
     double const solidus_enthalpy =
-        (tmp->second)[solid][solidus]->value(empty_pt) *
-        (tmp->second)[solid][density]->value(empty_pt) *
-        (tmp->second)[solid][specific_heat]->value(empty_pt);
+        solidus * (tmp->second)[solid][prop_density]->value(empty_pt) *
+        (tmp->second)[solid][prop_specific_heat]->value(empty_pt);
     double const liquidus_enthalpy = solidus_enthalpy + latent_heat;
     cell->get_dof_indices(mp_dof);
     unsigned int const dof = mp_dof[0];
@@ -95,12 +194,12 @@ void MaterialProperty<dim>::update_state(
     double liquid_ratio = -1.;
     double powder_ratio = -1.;
     double solid_ratio = -1.;
-    if (enthalpy[pos] < solidus_enthalpy)
+    if (enthalpy_average[dof] < solidus_enthalpy)
       liquid_ratio = 0.;
-    else if (enthalpy[pos] > liquidus_enthalpy)
+    else if (enthalpy_average[dof] > liquidus_enthalpy)
       liquid_ratio = 1.;
     else
-      liquid_ratio = (enthalpy[pos] - solidus_enthalpy) / latent_heat;
+      liquid_ratio = (enthalpy_average[dof] - solidus_enthalpy) / latent_heat;
     // Because the powder can only become liquid, the solid can only become
     // liquid, and the liquid can only become solid, the ratio of powder can
     // only decrease.
@@ -112,8 +211,6 @@ void MaterialProperty<dim>::update_state(
     _state[liquid][dof] = liquid_ratio;
     _state[powder][dof] = powder_ratio;
     _state[solid][dof] = solid_ratio;
-
-    ++pos;
   }
 }
 
@@ -281,6 +378,54 @@ void MaterialProperty<dim>::compute_constants()
           prop->second[liquid][liquidus]->value(empty_pt);
     }
   }
+}
+
+template <int dim>
+template <typename NumberType>
+dealii::LA::distributed::Vector<NumberType>
+MaterialProperty<dim>::compute_enthalpy_average(
+    dealii::DoFHandler<dim> const &enthalpy_dof_handler,
+    dealii::LA::distributed::Vector<NumberType> const &enthalpy) const
+{
+  // TODO: this should probably done in a matrix-free fashion.
+  // The triangulation is the same for both DoFHandler
+  dealii::LA::distributed::Vector<NumberType> enthalpy_average(
+      _mp_dof_handler.locally_owned_dofs(), enthalpy.get_mpi_communicator());
+  enthalpy_average = 0.;
+  auto mp_cell = _mp_dof_handler.begin_active();
+  auto mp_end_cell = _mp_dof_handler.end();
+  auto enth_cell = enthalpy_dof_handler.begin_active();
+  dealii::FiniteElement<dim> const &fe = enthalpy_dof_handler.get_fe();
+  // We can use a lower degree of quadrature since we are projecting on a
+  // piecewise constant space
+  dealii::QGauss<dim> quadrature(fe.degree);
+  dealii::FEValues<dim> fe_values(
+      fe, quadrature, dealii::UpdateFlags::update_values |
+                          dealii::UpdateFlags::update_quadrature_points |
+                          dealii::UpdateFlags::update_JxW_values);
+  unsigned int const dofs_per_cell = fe.dofs_per_cell;
+  std::vector<dealii::types::global_dof_index> mp_dof_indices(1);
+  std::vector<dealii::types::global_dof_index> enth_dof_indices(dofs_per_cell);
+  unsigned int const n_q_points = quadrature.size();
+  for (; mp_cell != mp_end_cell; ++enth_cell, ++mp_cell)
+  {
+    fe_values.reinit(enth_cell);
+    mp_cell->get_dof_indices(mp_dof_indices);
+    dealii::types::global_dof_index const mp_dof_index = mp_dof_indices[0];
+    enth_cell->get_dof_indices(enth_dof_indices);
+    double area = 0.;
+    for (unsigned int q = 0; q < n_q_points; ++q)
+      for (unsigned int i = 0; i < dofs_per_cell; ++i)
+      {
+        area += fe_values.shape_value(i, q) * fe_values.JxW(q);
+        enthalpy_average[mp_dof_index] += fe_values.shape_value(i, q) *
+                                          enthalpy[enth_dof_indices[i]] *
+                                          fe_values.JxW(q);
+      }
+    enthalpy_average[mp_dof_index] /= area;
+  }
+
+  return enthalpy_average;
 }
 }
 

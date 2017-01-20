@@ -15,11 +15,13 @@
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/fe_dgq.h>
+#include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/la_vector.h>
 #include <boost/mpi.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <array>
+#include <limits>
 #include <unordered_map>
 
 namespace adamantine
@@ -59,6 +61,14 @@ public:
       dealii::LA::distributed::Vector<NumberType> const &field_state) const;
 
   /**
+   * Return the average temperature on every cell given the enthalpy.
+   */
+  template <typename NumberType>
+  dealii::LA::distributed::Vector<NumberType> enthalpy_to_temperature(
+      dealii::DoFHandler<dim> const &enthalpy_dof_handler,
+      dealii::LA::distributed::Vector<NumberType> const &enthalpy);
+
+  /**
    * Reinitialize the DoFHandler associated with MaterialProperty and resize the
    * state vectors.
    */
@@ -67,7 +77,10 @@ public:
   /**
    * Update the material state, i.e, the ratio of liquid, powder, and solid.
    */
-  void update_state(dealii::LA::Vector<double> const &enthalpy);
+  template <typename NumberType>
+  void
+  update_state(dealii::DoFHandler<dim> const &enthalpy_dof_handler,
+               dealii::LA::distributed::Vector<NumberType> const &enthalpy);
 
   /**
    * Get the array of material state vectors. The order of the different state
@@ -150,6 +163,14 @@ private:
       const;
 
   /**
+   * Compute the average of the enthalpy on every cell.
+   */
+  template <typename NumberType>
+  dealii::LA::distributed::Vector<NumberType> compute_enthalpy_average(
+      dealii::DoFHandler<dim> const &enthalpy_dof_handler,
+      dealii::LA::distributed::Vector<NumberType> const &enthalpy) const;
+
+  /**
    * MPI communicator.
    */
   boost::mpi::communicator _communicator;
@@ -178,7 +199,7 @@ private:
           _n_material_states>> _properties;
   /**
    * Array of vector describing the ratio of each state in each cell. Each
-   * vector corresponds to a state defined in the MateralState enum.
+   * vector corresponds to a state defined in the MaterialState enum.
    */
   std::array<dealii::LA::distributed::Vector<double>, _n_material_states>
       _state;
@@ -191,32 +212,6 @@ private:
    */
   dealii::DoFHandler<dim> _mp_dof_handler;
 };
-
-template <int dim>
-template <typename NumberType>
-double MaterialProperty<dim>::get(
-    typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
-    Property prop, dealii::LA::distributed::Vector<NumberType> const &) const
-{
-  // TODO: For now, ignore field_state since we have a linear problem.
-  double value = 0.;
-  dealii::types::material_id material_id = cell->material_id();
-  unsigned int property = static_cast<unsigned int>(prop);
-
-  double const mp_dof_index = get_dof_index(cell);
-
-  for (unsigned int i = 0; i < _n_material_states; ++i)
-  {
-    // We cannot use operator[] because the function is constant.
-    auto const tmp = _properties.find(material_id);
-    ASSERT(tmp != _properties.end(), "Material not found.");
-    if ((tmp->second)[i][property] != nullptr)
-      value += _state[i][mp_dof_index] *
-               (tmp->second)[i][property]->value(dealii::Point<1>());
-  }
-
-  return value;
-}
 
 template <int dim>
 inline std::array<dealii::LA::distributed::Vector<double>,
