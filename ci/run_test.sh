@@ -13,6 +13,7 @@ source ~/.bashrc
 spack load openmpi
 spack load boost
 spack load dealii
+spack load metis
 
 # Install adamantine
 mkdir -p /home/docker/build
