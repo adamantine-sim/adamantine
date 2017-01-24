@@ -135,13 +135,27 @@ void refine_and_transfer(
       dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
           const_cast<dealii::Triangulation<dim> &>(
               dof_handler.get_triangulation()));
+
+  std::shared_ptr<adamantine::MaterialProperty<dim>> material_property =
+      thermal_physics->get_material_property();
+
   dealii::parallel::distributed::SolutionTransfer<
       dim, dealii::LA::distributed::Vector<double>>
       solution_transfer(dof_handler);
+  std::vector<dealii::parallel::distributed::SolutionTransfer<
+      dim, dealii::LA::distributed::Vector<double>>>
+  material_state(static_cast<unsigned int>(adamantine::MaterialState::SIZE),
+                 dealii::parallel::distributed::SolutionTransfer<
+                     dim, dealii::LA::distributed::Vector<double>>(
+                     material_property->get_dof_handler()));
 
-  // Prepare the Triangulation and the SolutionTransfer for refinement
+  // Prepare the Triangulation and the diffent SolutionTransfers for refinement
   triangulation.prepare_coarsening_and_refinement();
   solution_transfer.prepare_for_coarsening_and_refinement(solution);
+  for (unsigned int i = 0;
+       i < static_cast<unsigned int>(adamantine::MaterialState::SIZE); ++i)
+    material_state[i].prepare_for_coarsening_and_refinement(
+        material_property->get_state()[i]);
 
   // Execute the refinement
   triangulation.execute_coarsening_and_refinement();
@@ -150,8 +164,32 @@ void refine_and_transfer(
   thermal_physics->setup_dofs();
   thermal_physics->initialize_dof_vector(solution);
 
-  // Interpolate the solution onto the new mesh
+  // Update MaterialProperty DoFHandler and resize the state vectors
+  material_property->reinit_dofs();
+
+  // Interpolate the solution and the state onto the new mesh
   solution_transfer.interpolate(solution);
+  for (unsigned int i = 0;
+       i < static_cast<unsigned int>(adamantine::MaterialState::SIZE); ++i)
+    material_state[i].interpolate(material_property->get_state()[i]);
+
+#if ADAMANTINE_DEBUG
+  // Check that we are not losing material
+  std::array<dealii::LA::distributed::Vector<double>,
+             static_cast<unsigned int>(adamantine::MaterialState::SIZE)> state =
+      material_property->get_state();
+  unsigned int const local_size = state[0].local_size();
+  unsigned int constexpr n_material_states =
+      static_cast<unsigned int>(adamantine::MaterialState::SIZE);
+  for (unsigned int i = 0; i < local_size; ++i)
+  {
+    double material_ratio = 0.;
+    for (unsigned int j = 0; j < n_material_states; ++j)
+      material_ratio += state[j][i];
+    adamantine::ASSERT(std::abs(material_ratio - 1.) < 1e-14,
+                       "Material is lost.");
+  }
+#endif
 }
 
 template <int dim>
@@ -510,7 +548,8 @@ int main(int argc, char *argv[])
                                             thermal_physics);
       adamantine::PostProcessor<2> post_processor(
           communicator, post_processor_database,
-          thermal_physics->get_dof_handler());
+          thermal_physics->get_dof_handler(),
+          thermal_physics->get_material_property());
       run<2>(communicator, thermal_physics, post_processor, electron_beams,
              time_stepping_database, refinement_database, fe_degree);
     }
@@ -531,7 +570,8 @@ int main(int argc, char *argv[])
                                             thermal_physics);
       adamantine::PostProcessor<3> post_processor(
           communicator, post_processor_database,
-          thermal_physics->get_dof_handler());
+          thermal_physics->get_dof_handler(),
+          thermal_physics->get_material_property());
       run<3>(communicator, thermal_physics, post_processor, electron_beams,
              time_stepping_database, refinement_database, fe_degree);
     }

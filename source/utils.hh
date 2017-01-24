@@ -9,6 +9,7 @@
 #define _UTILS_HH_
 
 #include <boost/assert.hpp>
+#include <exception>
 #include <stdexcept>
 #include <string>
 
@@ -24,6 +25,21 @@ inline void ASSERT_THROW(bool cond, std::string const &message)
 {
   if (cond == false)
     throw std::runtime_error(message);
+}
+
+// ----------- Custom Exceptions --------------//
+class NotImplementedExc : public std::exception
+{
+  virtual const char *what() const throw() override
+  {
+    return "The function is not implemented";
+  }
+};
+
+inline void ASSERT_THROW_NOT_IMPLEMENTED()
+{
+  NotImplementedExc exception;
+  throw exception;
 }
 }
 

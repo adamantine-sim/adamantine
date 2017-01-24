@@ -10,6 +10,7 @@
 
 #include "ThermalOperator.hh"
 #include <deal.II/base/index_set.h>
+#include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
 
 namespace adamantine
@@ -18,7 +19,7 @@ namespace adamantine
 template <int dim, int fe_degree, typename NumberType>
 ThermalOperator<dim, fe_degree, NumberType>::ThermalOperator(
     boost::mpi::communicator const &communicator,
-    std::shared_ptr<MaterialProperty> material_properties)
+    std::shared_ptr<MaterialProperty<dim>> material_properties)
     : _communicator(communicator), _material_properties(material_properties),
       _inverse_mass_matrix(new dealii::LA::distributed::Vector<NumberType>())
 {
@@ -71,15 +72,6 @@ void ThermalOperator<dim, fe_degree, NumberType>::reinit(
     else
       _inverse_mass_matrix->local_element(k) = 0.;
   }
-
-  // TODO: for now we only solve linear problem so we can evaluate the thermal
-  // conductivity once. Since the thermal conductivity is independent of the
-  // current temperature, we use a dummy temperature vector. This needs to be
-  // moved out of reinit when the problem is nonlinear because it needs to be
-  // called for each Newton iterations even though the mesh hasn't been
-  // modified.
-  dealii::LA::distributed::Vector<NumberType> dummy;
-  evaluate_material_properties(dummy);
 }
 
 template <int dim, int fe_degree, typename NumberType>
@@ -145,6 +137,9 @@ void ThermalOperator<dim, fe_degree, NumberType>::local_apply(
 {
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, NumberType> fe_eval(
       data);
+  dealii::Tensor<1, dim> unit_tensor;
+  for (unsigned int i = 0; i < dim; ++i)
+    unit_tensor[i] = 1.;
 
   // Loop over the "cells". Note that we don't really work on a cell but on a
   // set of quadrature point.
@@ -159,10 +154,10 @@ void ThermalOperator<dim, fe_degree, NumberType>::local_apply(
     // Apply the Jacobian of the transformation, multiply by the variable
     // coefficients and the quadrature points
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
-      fe_eval.submit_gradient(
-          -(_thermal_conductivity(cell, q) / _rho_cp(cell, q)) *
-              fe_eval.get_gradient(q),
-          q);
+      fe_eval.submit_gradient(-_thermal_conductivity(cell, q) *
+                                  (fe_eval.get_gradient(q) * _alpha(cell, q) +
+                                   unit_tensor * _beta(cell, q)),
+                              q);
     // Sum over the quadrature points.
     fe_eval.integrate(false, true);
     fe_eval.distribute_local_to_global(dst);
@@ -173,10 +168,14 @@ template <int dim, int fe_degree, typename NumberType>
 void ThermalOperator<dim, fe_degree, NumberType>::evaluate_material_properties(
     dealii::LA::distributed::Vector<NumberType> const &state)
 {
+  // Update the state of the materials
+  _material_properties->update_state(_matrix_free.get_dof_handler(), state);
+
   unsigned int const n_cells = _matrix_free.n_macro_cells();
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, NumberType> fe_eval(
       _matrix_free);
-  _rho_cp.reinit(n_cells, fe_eval.n_q_points);
+  _alpha.reinit(n_cells, fe_eval.n_q_points);
+  _beta.reinit(n_cells, fe_eval.n_q_points);
   _thermal_conductivity.reinit(n_cells, fe_eval.n_q_points);
   for (unsigned int cell = 0; cell < n_cells; ++cell)
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
@@ -187,17 +186,85 @@ void ThermalOperator<dim, fe_degree, NumberType>::evaluate_material_properties(
         // Cast to Triangulation<dim>::cell_iterator to access the material_id
         typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
             cell_it);
-        // TODO use three vectors to describe cells which have a mix of powder,
-        // solid, and liquid.
-        _matrix_free.get_cell_iterator(cell, i);
-        _rho_cp(cell, q)[i] = _material_properties->get<dim, NumberType>(
-                                  cell_tria, Property::density, state) *
-                              _material_properties->get<dim, NumberType>(
-                                  cell_tria, Property::specific_heat, state);
-        _thermal_conductivity(cell, q)[i] =
-            _material_properties->get<dim, NumberType>(
-                cell_tria, Property::thermal_conductivity, state);
+
+        _thermal_conductivity(cell, q)[i] = _material_properties->get(
+            cell_tria, Property::thermal_conductivity, state);
+
+        double liquid_ratio = _material_properties->get_state_ratio(
+            cell_tria, MaterialState::liquid);
+
+        // If there is less than 1e-13% of liquid, assume that there is no
+        // liquid.
+        if (liquid_ratio < 1e-15)
+        {
+          _alpha(cell, q)[i] =
+              1. /
+              (_material_properties->get(cell_tria, Property::density, state) *
+               _material_properties->get(cell_tria, Property::specific_heat,
+                                         state));
+        }
+        else
+        {
+          // If there is less than 1e-13% of solid, assume that there is no
+          // solid. Otherwise, we have a mix of liquid and solid (mushy zone).
+          if (liquid_ratio > (1 - 1e-15))
+          {
+            _alpha(cell, q)[i] =
+                1. / (_material_properties->get(cell_tria, Property::density,
+                                                state) *
+                      _material_properties->get(
+                          cell_tria, Property::specific_heat, state));
+            _beta(cell, q)[i] =
+                _material_properties->get_liquid_beta(cell_tria);
+          }
+          else
+          {
+            _alpha(cell, q)[i] =
+                _material_properties->get_mushy_alpha(cell_tria);
+            _beta(cell, q)[i] = _material_properties->get_mushy_beta(cell_tria);
+          }
+        }
       }
+}
+
+template <int dim, int fe_degree, typename NumberType>
+dealii::LA::Vector<NumberType>
+ThermalOperator<dim, fe_degree, NumberType>::compute_average_enthalpy(
+    dealii::LA::distributed::Vector<NumberType> const &enthalpy) const
+{
+  dealii::DoFHandler<dim> const &dof_handler = _matrix_free.get_dof_handler();
+  dealii::LA::Vector<NumberType> average_enthalpy(
+      dof_handler.get_triangulation().n_active_cells());
+
+  dealii::Quadrature<dim> const &quad = _matrix_free.get_quadrature();
+  dealii::FEValues<dim> fe_values(dof_handler.get_fe(), quad,
+                                  dealii::update_values |
+                                      dealii::update_quadrature_points |
+                                      dealii::update_JxW_values);
+  unsigned int const n_q_points = quad.size();
+  unsigned int const dofs_per_cell = dof_handler.get_fe().dofs_per_cell;
+  std::vector<NumberType> enthalpy_local(dofs_per_cell);
+
+  unsigned int pos = 0;
+  for (auto cell :
+       dealii::filter_iterators(dof_handler.active_cell_iterators(),
+                                dealii::IteratorFilters::LocallyOwnedCell()))
+  {
+    fe_values.reinit(cell);
+    fe_values.get_function_values(enthalpy, enthalpy_local);
+    double area = 0.;
+    for (unsigned int q_index = 0; q_index < n_q_points; ++q_index)
+    {
+      average_enthalpy[pos] += enthalpy_local[q_index] * fe_values.JxW(q_index);
+      for (unsigned int i = 0; i < dofs_per_cell; ++i)
+        area += fe_values.shape_value(i, q_index) * fe_values.JxW(q_index);
+    }
+    average_enthalpy[pos] /= area;
+
+    ++pos;
+  }
+
+  return average_enthalpy;
 }
 }
 

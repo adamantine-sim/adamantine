@@ -9,7 +9,6 @@
 #define _THERMAL_PHYSICS_TEMPLATES_HH_
 
 #include "ThermalPhysics.hh"
-#include "MaterialProperty.hh"
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/grid/filtered_iterator.h>
@@ -30,7 +29,8 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
   // Create the material properties
   boost::property_tree::ptree const &material_database =
       database.get_child("materials");
-  _material_properties.reset(new MaterialProperty(material_database));
+  _material_properties.reset(new MaterialProperty<dim>(
+      communicator, _geometry.get_triangulation(), material_database));
 
   // Create the electron beams
   boost::property_tree::ptree const &source_database =
@@ -42,7 +42,6 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
     boost::property_tree::ptree const &beam_database =
         source_database.get_child("beam_" + std::to_string(i));
     _electron_beams[i] = std::make_unique<ElectronBeam<dim>>(beam_database);
-    // TODO this is correct as long as the top surface is flat
     _electron_beams[i]->set_max_height(_geometry.get_max_height());
   }
 
@@ -209,6 +208,10 @@ double ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
     evolve_one_time_step(double t, double delta_t,
                          dealii::LA::distributed::Vector<NumberType> &solution)
 {
+  // TODO: this assume that the material properties do no change during the time
+  // steps. This is wrong and needs to be changed.
+  _thermal_operator->evaluate_material_properties(solution);
+
   double time = _time_stepping->evolve_one_time_step(
       std::bind(&ThermalPhysics<dim, fe_degree, NumberType,
                                 QuadratureType>::evaluate_thermal_physics,
@@ -266,10 +269,6 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   {
     cell_source = 0.;
     fe_values.reinit(cell);
-    NumberType const rho_cp =
-        _material_properties->get<dim, NumberType>(cell, Property::density, y) *
-        _material_properties->get<dim, NumberType>(cell,
-                                                   Property::specific_heat, y);
 
     for (unsigned int i = 0; i < dofs_per_cell; ++i)
     {
@@ -279,7 +278,6 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
         for (auto &beam : _electron_beams)
           source += beam->value(q_point);
-        source /= rho_cp;
 
         cell_source[i] +=
             source * fe_values.shape_value(i, q) * fe_values.JxW(q);

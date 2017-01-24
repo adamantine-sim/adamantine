@@ -9,15 +9,19 @@
 #define _POST_PROCESSOR_TEMPLATES_HH_
 
 #include "PostProcessor.hh"
+#include <deal.II/grid/filtered_iterator.h>
 #include <fstream>
 
 namespace adamantine
 {
 template <int dim>
-PostProcessor<dim>::PostProcessor(boost::mpi::communicator &communicator,
-                                  boost::property_tree::ptree const &database,
-                                  dealii::DoFHandler<dim> &dof_handler)
-    : _communicator(communicator), _dof_handler(dof_handler)
+PostProcessor<dim>::PostProcessor(
+    boost::mpi::communicator &communicator,
+    boost::property_tree::ptree const &database,
+    dealii::DoFHandler<dim> &dof_handler,
+    std::shared_ptr<MaterialProperty<dim>> material_properties)
+    : _communicator(communicator), _dof_handler(dof_handler),
+      _material_properties(material_properties)
 {
   _filename = database.get<std::string>("file_name");
 }
@@ -27,11 +31,27 @@ void PostProcessor<dim>::output_pvtu(
     unsigned int cycle, unsigned int time_step, double time,
     dealii::LA::distributed::Vector<double> const &solution)
 {
-  // Add the DoFHandler and the temperature.
+  // Add the DoFHandler and the enthalpy.
   _data_out.clear();
   _data_out.attach_dof_handler(_dof_handler);
   solution.update_ghost_values();
-  _data_out.add_data_vector(solution, "temperature");
+  _data_out.add_data_vector(solution, "enthalpy");
+
+  // Add the temperature.
+  dealii::LA::distributed::Vector<double> temperature =
+      compute_temperature(solution);
+  _data_out.add_data_vector(temperature, "temperature");
+
+  // Add MaterialState ratio
+  std::array<dealii::LA::distributed::Vector<double>,
+             static_cast<unsigned int>(MaterialState::SIZE)> state =
+      _material_properties->get_state();
+  _data_out.add_data_vector(
+      state[static_cast<unsigned int>(MaterialState::powder)], "powder");
+  _data_out.add_data_vector(
+      state[static_cast<unsigned int>(MaterialState::liquid)], "liquid");
+  _data_out.add_data_vector(
+      state[static_cast<unsigned int>(MaterialState::solid)], "solid");
 
   // Add the subdomain IDs.
   dealii::types::subdomain_id subdomain_id =
@@ -81,7 +101,39 @@ template <int dim>
 void PostProcessor<dim>::output_pvd()
 {
   std::ofstream output(_filename + ".pvd");
-  _data_out.write_pvd_record(output, _times_filenames);
+  dealii::DataOutBase::write_pvd_record(output, _times_filenames);
+}
+
+// TODO remove this function
+template <int dim>
+dealii::LA::distributed::Vector<double> PostProcessor<dim>::compute_temperature(
+    dealii::LA::distributed::Vector<double> const &enthalpy)
+{
+  dealii::LA::distributed::Vector<double> temperature(
+      enthalpy.get_partitioner());
+  // This is not used for now because the material properties are independent of
+  // the temperatures.
+  dealii::LA::distributed::Vector<double> state;
+
+  // TODO the computation does not work if there is a phase change
+  unsigned int const dofs_per_cell = _dof_handler.get_fe().dofs_per_cell;
+  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
+  for (auto cell :
+       dealii::filter_iterators(_dof_handler.active_cell_iterators(),
+                                dealii::IteratorFilters::LocallyOwnedCell()))
+  {
+    double const enthalpy_to_temp =
+        1. / (_material_properties->get(cell, Property::density, state) *
+              _material_properties->get(cell, Property::specific_heat, state));
+
+    cell->get_dof_indices(local_dof_indices);
+
+    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+      temperature[local_dof_indices[i]] =
+          enthalpy_to_temp * enthalpy[local_dof_indices[i]];
+  }
+
+  return temperature;
 }
 }
 

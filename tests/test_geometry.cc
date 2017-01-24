@@ -33,16 +33,19 @@ void check_material_id(
         if ((cell->face(i)->at_boundary()) &&
             (cell->face(i)->boundary_id() == top_boundary))
         {
-          BOOST_CHECK(cell->user_index() == adamantine::MaterialState::powder);
+          BOOST_CHECK(cell->user_index() ==
+                      static_cast<int>(adamantine::MaterialState::powder));
           powder = true;
           break;
         }
       }
       if (powder == false)
-        BOOST_CHECK(cell->user_index() == adamantine::MaterialState::solid);
+        BOOST_CHECK(cell->user_index() ==
+                    static_cast<int>(adamantine::MaterialState::solid));
     }
     else
-      BOOST_CHECK(cell->user_index() == adamantine::MaterialState::solid);
+      BOOST_CHECK(cell->user_index() ==
+                  static_cast<int>(adamantine::MaterialState::solid));
   }
 }
 

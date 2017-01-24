@@ -21,19 +21,6 @@
 BOOST_AUTO_TEST_CASE(thermal_operator)
 {
   boost::mpi::communicator communicator;
-  boost::property_tree::ptree mat_prop_database;
-  mat_prop_database.put("n_materials", 1);
-  mat_prop_database.put("material_0.solid.density", 1.);
-  mat_prop_database.put("material_0.powder.density", 1.);
-  mat_prop_database.put("material_0.liquid.density", 1.);
-  mat_prop_database.put("material_0.solid.specific_heat", 1.);
-  mat_prop_database.put("material_0.powder.specific_heat", 1.);
-  mat_prop_database.put("material_0.liquid.specific_heat", 1.);
-  mat_prop_database.put("material_0.solid.thermal_conductivity", 10.);
-  mat_prop_database.put("material_0.powder.thermal_conductivity", 10.);
-  mat_prop_database.put("material_0.liquid.thermal_conductivity", 10.);
-  std::shared_ptr<adamantine::MaterialProperty> mat_properties(
-      new adamantine::MaterialProperty(mat_prop_database));
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database;
@@ -50,11 +37,29 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
   constraint_matrix.close();
   dealii::QGauss<1> quad(3);
 
+  // Create the MaterialProperty
+  boost::property_tree::ptree mat_prop_database;
+  mat_prop_database.put("n_materials", 1);
+  mat_prop_database.put("material_0.solid.density", 1.);
+  mat_prop_database.put("material_0.powder.density", 1.);
+  mat_prop_database.put("material_0.liquid.density", 1.);
+  mat_prop_database.put("material_0.solid.specific_heat", 1.);
+  mat_prop_database.put("material_0.powder.specific_heat", 1.);
+  mat_prop_database.put("material_0.liquid.specific_heat", 1.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity", 10.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity", 10.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity", 10.);
+  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
+      new adamantine::MaterialProperty<2>(
+          communicator, geometry.get_triangulation(), mat_prop_database));
+
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, double> thermal_operator(communicator,
                                                              mat_properties);
   thermal_operator.setup_dofs(dof_handler, constraint_matrix, quad);
   thermal_operator.reinit(dof_handler, constraint_matrix);
+  dealii::LA::distributed::Vector<double> dummy(thermal_operator.m());
+  thermal_operator.evaluate_material_properties(dummy);
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
 
@@ -91,19 +96,6 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
 BOOST_AUTO_TEST_CASE(spmv)
 {
   boost::mpi::communicator communicator;
-  boost::property_tree::ptree mat_prop_database;
-  mat_prop_database.put("n_materials", 1);
-  mat_prop_database.put("material_0.solid.density", 1.);
-  mat_prop_database.put("material_0.powder.density", 1.);
-  mat_prop_database.put("material_0.liquid.density", 1.);
-  mat_prop_database.put("material_0.solid.specific_heat", 1.);
-  mat_prop_database.put("material_0.powder.specific_heat", 1.);
-  mat_prop_database.put("material_0.liquid.specific_heat", 1.);
-  mat_prop_database.put("material_0.solid.thermal_conductivity", 1.);
-  mat_prop_database.put("material_0.powder.thermal_conductivity", 1.);
-  mat_prop_database.put("material_0.liquid.thermal_conductivity", 1.);
-  std::shared_ptr<adamantine::MaterialProperty> mat_properties(
-      new adamantine::MaterialProperty(mat_prop_database));
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database;
@@ -120,11 +112,29 @@ BOOST_AUTO_TEST_CASE(spmv)
   constraint_matrix.close();
   dealii::QGauss<1> quad(3);
 
+  // Create the MaterialProperty
+  boost::property_tree::ptree mat_prop_database;
+  mat_prop_database.put("n_materials", 1);
+  mat_prop_database.put("material_0.solid.density", 1.);
+  mat_prop_database.put("material_0.powder.density", 1.);
+  mat_prop_database.put("material_0.liquid.density", 1.);
+  mat_prop_database.put("material_0.solid.specific_heat", 1.);
+  mat_prop_database.put("material_0.powder.specific_heat", 1.);
+  mat_prop_database.put("material_0.liquid.specific_heat", 1.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity", 1.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity", 1.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity", 1.);
+  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
+      new adamantine::MaterialProperty<2>(
+          communicator, geometry.get_triangulation(), mat_prop_database));
+
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, double> thermal_operator(communicator,
                                                              mat_properties);
   thermal_operator.setup_dofs(dof_handler, constraint_matrix, quad);
   thermal_operator.reinit(dof_handler, constraint_matrix);
+  dealii::LA::distributed::Vector<double> dummy(thermal_operator.m());
+  thermal_operator.evaluate_material_properties(dummy);
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
 

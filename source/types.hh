@@ -25,21 +25,26 @@ namespace adamantine
 /**
  * Enum on the possible materials.
  */
-enum MaterialState
+enum class MaterialState
 {
   powder,
   solid,
-  liquid
+  liquid,
+  SIZE
 };
 
 /**
  * Enum on the possible material properties.
  */
-enum Property
+enum class Property
 {
   density,
+  latent_heat,
+  liquidus,
+  solidus,
   specific_heat,
-  thermal_conductivity
+  thermal_conductivity,
+  SIZE
 };
 }
 

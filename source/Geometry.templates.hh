@@ -54,16 +54,16 @@ Geometry<dim>::Geometry(boost::mpi::communicator const &communicator,
         if ((cell->face(i)->at_boundary()) &&
             (cell->face(i)->boundary_id() == top_boundary))
         {
-          cell->set_user_index(powder);
+          cell->set_user_index(static_cast<int>(MaterialState::powder));
           is_powder = true;
           break;
         }
       }
       if (is_powder == false)
-        cell->set_user_index(solid);
+        cell->set_user_index(static_cast<int>(MaterialState::solid));
     }
     else
-      cell->set_user_index(solid);
+      cell->set_user_index(static_cast<int>(MaterialState::solid));
   }
 }
 }

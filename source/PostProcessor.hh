@@ -8,6 +8,7 @@
 #ifndef _POST_PROCESSOR_HH_
 #define _POST_PROCESSOR_HH_
 
+#include "MaterialProperty.hh"
 #include "types.hh"
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/lac/la_parallel_vector.h>
@@ -31,7 +32,8 @@ public:
    */
   PostProcessor(boost::mpi::communicator &communicator,
                 boost::property_tree::ptree const &database,
-                dealii::DoFHandler<dim> &dof_handler);
+                dealii::DoFHandler<dim> &dof_handler,
+                std::shared_ptr<MaterialProperty<dim>> material_properties);
 
   /**
    * Output the different vtu and pvtu files.
@@ -45,6 +47,12 @@ public:
   void output_pvd();
 
 private:
+  /**
+   * Compute the temperature given the enthalpy.
+   */
+  dealii::LA::distributed::Vector<double>
+  compute_temperature(dealii::LA::distributed::Vector<double> const &enthalpy);
+
   /**
    * MPI communicator.
    */
@@ -65,6 +73,10 @@ private:
    * DoFHandler associated with the simulation.
    */
   dealii::DoFHandler<dim> &_dof_handler;
+  /**
+   * Material properties associated with the simulation.
+   */
+  std::shared_ptr<MaterialProperty<dim>> _material_properties;
 };
 }
 #endif

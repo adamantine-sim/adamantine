@@ -26,7 +26,7 @@ class ThermalOperator : public Operator<NumberType>
 {
 public:
   ThermalOperator(boost::mpi::communicator const &communicator,
-                  std::shared_ptr<MaterialProperty> material_properties);
+                  std::shared_ptr<MaterialProperty<dim>> material_properties);
 
   /**
    * Associate the ConstraintMatrix and the MatrixFree objects to the
@@ -84,6 +84,12 @@ public:
       dealii::LA::distributed::Vector<NumberType> &dst,
       dealii::LA::distributed::Vector<NumberType> const &src) const override;
 
+  /**
+   * Evaluate the material properties for a given state field.
+   */
+  void evaluate_material_properties(
+      dealii::LA::distributed::Vector<NumberType> const &state);
+
 private:
   /**
    * Apply the operator on a given set of quadrature points.
@@ -95,11 +101,10 @@ private:
               std::pair<unsigned int, unsigned int> const &cell_range) const;
 
   /**
-   * Populate _rho_cp and _thermal_conductivity by evaluating the material
-   * properties for a given state field.
+   * Compute the average enthalpy on each cell.
    */
-  void evaluate_material_properties(
-      dealii::LA::distributed::Vector<NumberType> const &state);
+  dealii::LA::Vector<NumberType> compute_average_enthalpy(
+      dealii::LA::distributed::Vector<NumberType> const &enthalpy) const;
 
   /**
    * MPI communicator.
@@ -111,9 +116,15 @@ private:
   typename dealii::MatrixFree<dim, NumberType>::AdditionalData
       _matrix_free_data;
   /**
-   * Table of density times specific heat coefficients.
+   * Store the \f$ \alpha \f$ coefficient described in
+   * MaterialProperty::compute_constants()
    */
-  dealii::Table<2, dealii::VectorizedArray<NumberType>> _rho_cp;
+  dealii::Table<2, dealii::VectorizedArray<NumberType>> _alpha;
+  /**
+   * Store the \f$ \beta \f$ coefficient described in
+   * MaterialProperty::compute_constants()
+   */
+  dealii::Table<2, dealii::VectorizedArray<NumberType>> _beta;
   /**
    * Table of thermal conductivity coefficient.
    */
@@ -121,7 +132,7 @@ private:
   /**
    * Material properties associated with the domain.
    */
-  std::shared_ptr<MaterialProperty> _material_properties;
+  std::shared_ptr<MaterialProperty<dim>> _material_properties;
   /**
    * Underlying MatrixFree object.
    */

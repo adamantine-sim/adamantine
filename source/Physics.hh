@@ -8,6 +8,7 @@
 #ifndef _PHYSICS_HH_
 #define _PHYSICS_HH_
 
+#include "MaterialProperty.hh"
 #include "types.hh"
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/lac/constraint_matrix.h>
@@ -66,6 +67,11 @@ public:
    * Return the ConstraintMatrix.
    */
   virtual dealii::ConstraintMatrix &get_constraint_matrix() = 0;
+
+  /**
+   * Return a shared pointer of the MaterialProperty.
+   */
+  virtual std::shared_ptr<MaterialProperty<dim>> get_material_property() = 0;
 };
 }
 #endif

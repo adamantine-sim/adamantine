@@ -1,0 +1,98 @@
+\documentclass[letterpaper]{article}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{float} % utiliser H pour forcer a mettre l'image ou on veut
+\usepackage{lscape} % utilisation du mode paysage
+\usepackage{mathbbol} % permet d'avoir le vrai symbol pour les reels grace a mathbb
+\usepackage{enumerate} % permet d'utiliser enumerate
+\usepackage{moreverb} % permet d'utiliser verbatimtab : conservation la tabulation
+\usepackage{stmaryrd} % permet d'utiliser \llbrackedt et \rrbracket : double crochet
+\usepackage[noabbrev]{cleveref} % permet d'utiliser cref and Cref
+\usepackage{caption} % permet d'utiliser subcaption
+\usepackage{subcaption} % permet d'utiliser subfigure, subtable, etc
+\usepackage[margin=1.in]{geometry} % controle les marges du document
+
+
+\newcommand\bn{\boldsymbol{\nabla}}
+\newcommand\bo{\boldsymbol{\Omega}}
+\newcommand\br{\mathbf{r}}
+\newcommand\la{\left\langle}
+\newcommand\ra{\right\rangle}
+\newcommand\bs{\boldsymbol}
+\newcommand\red{\textcolor{red}}
+\newcommand\ldb{\{\!\!\{}
+\newcommand\rdb{\}\!\!\}}
+\newcommand\llb{\llbracket}
+\newcommand\rrb{\rrbracket}
+
+\renewcommand{\(}{\left(}
+\renewcommand{\)}{\right)}
+\renewcommand{\[}{\left[}
+\renewcommand{\]}{\right]}
+
+
+\begin{document}
+\title{Adamantine}
+\author{Bruno Turcksin} 
+\date{}
+\maketitle
+
+\section{Introduction}
+Adamantine is software design to simulate additive manufacturing. It is based on
+deal.II and p4est. The first goal is to accurately represent the heat transfer
+and the phase transition between the powder, the solid, and the liquid.
+
+\section{Governing equations}
+\subsection{Assumptions}
+\begin{itemize}
+  \item No movement in the liquid (Marangoni effect).
+  \item No the evaporation of the material.
+  \item No change of volume when the material changes phase.
+  \item No loss of heat by radiative transfer.
+  \item Material properties are constant per cell.
+  \item If the change of phase is isothermal, i.e., no mushy zone, the enthalpy
+    is discontinuous and belongs to $L^2$. Thus we should use discontinuous
+    finite element. However, the temperature is always continuous and belongs to
+    $H^1$. We assume that the there is always a mushy zone, so that we can use
+    continuous finite element.
+\end{itemize}
+\subsection{Heat equation}
+The heat equation without phase change is given by:
+\begin{equation}
+  \rho(T) C_p(T) \frac{\partial T}{\partial t} - \bn \cdot \(k\bn T\) = Q,
+\end{equation}
+where $\rho$ is the mass density, $C_p$ is the specific heat, $T$, is the
+temperature, $k$ is the thermal conductivity, and $Q$ is the volumetric heat
+source.
+
+If there are phase changes, the heat equation becomes
+\begin{equation}
+  \rho(T) \frac{\partial h(T)}{\partial t} - \bn \cdot \(k\bn T\) = Q,
+\end{equation}
+where $h$ is the enthalpy per unit of mass.
+
+\section{Algorithmic choice}
+\subsection{Matrix-free implementation}
+The implementation is done matrix-free for the following reasons:
+\begin{itemize}
+  \item New architecture have little memory per core and so not having to store
+    the memory is very interesting.
+  \item Because the latency of the memory, a very important part of our problem
+    is memory bound. It is therefore interesting to decrease memory access even
+    at the cost of more computation.
+  \item Because we have time-dependent nonlinear problem, we would need to
+    rebuild the matrix at least every time step. Since the assembly needs to be
+    redone so often, storing the matrix is not advantageous.
+\end{itemize}
+
+\subsection{Adaptive mesh refinement}
+Usually, the powder layer is about 50 microns thick but the piece that is being
+built is several centimeters long. Moreover, since the material is melted using
+an electron beam or a laser, the melting zone is very localized. This means that
+a uniform would require a very large number of cells in place where nothing
+happens (material not heated yet or already cooled). Using AMR, we can refine
+the zones that are of interest for during a given time.
+
+\end{document}
