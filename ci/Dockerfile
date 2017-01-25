@@ -11,7 +11,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
       environment-modules \
       bison \
       python \
-      git
+      git \
+      lcov
 
 # Create a user
 RUN useradd -ms /bin/bash docker

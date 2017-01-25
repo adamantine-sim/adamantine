@@ -15,5 +15,13 @@ before_install:
                --env TRAVIS_PULL_REQUEST=${TRAVIS_PULL_REQUEST}
                rombur/adamantine-stack
 
+install:
+  - pip install -q codecov
+
 script:
   - docker exec -u docker test-machine bash -xe /home/docker/adamantine/ci/run_test.sh
+  - docker cp test-machine:/home/docker/build/lcov.info .
+
+after_success:
+  - codecov
+    --file lcov.info
