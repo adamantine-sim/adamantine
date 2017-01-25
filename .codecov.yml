@@ -2,6 +2,7 @@ codecov:
   branch: master
   notify:
     require_ci_to_pass: no
+    after_n_builds: 1
 
 coverage:
   precision: 2
