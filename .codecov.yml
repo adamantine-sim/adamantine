@@ -1,0 +1,15 @@
+codecov:
+  branch: master
+  notify:
+    require_ci_to_pass: no
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+comment:
+  layout: "header, diff, tree, changes, sunburst"
+  behavior: default
+  require_changes: false
+  branches: null
