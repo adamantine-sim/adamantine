@@ -113,7 +113,7 @@ void ThermalOperator<dim, fe_degree, NumberType>::vmult_add(
   // right order of magnitude.
   // TODO: for now the value of scaling is set to 1
   NumberType const scaling = 1.;
-  std::vector<dealii::types::global_dof_index> const &constrained_dofs =
+  std::vector<unsigned int> const &constrained_dofs =
       _matrix_free.get_constrained_dofs();
   for (auto &dof : constrained_dofs)
     dst.local_element(dof) += scaling * src.local_element(dof);
