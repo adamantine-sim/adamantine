@@ -166,7 +166,7 @@ private:
    * Compute the average of the enthalpy on every cell.
    */
   template <typename NumberType>
-  dealii::LA::distributed::Vector<NumberType> compute_enthalpy_average(
+  dealii::LA::distributed::Vector<NumberType> compute_average_enthalpy(
       dealii::DoFHandler<dim> const &enthalpy_dof_handler,
       dealii::LA::distributed::Vector<NumberType> const &enthalpy) const;
 
