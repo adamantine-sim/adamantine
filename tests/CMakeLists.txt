@@ -9,11 +9,13 @@ list(APPEND
      UNIT_TESTS
      test_electron_beam
      test_geometry
+     test_implicit_operator
      test_material_property
      test_newton_solver
      test_post_processor
      test_thermal_operator
      test_thermal_physics
+     test_utils
      )
 
 foreach(TEST_NAME ${UNIT_TESTS})

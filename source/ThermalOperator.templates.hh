@@ -226,46 +226,6 @@ void ThermalOperator<dim, fe_degree, NumberType>::evaluate_material_properties(
         }
       }
 }
-
-template <int dim, int fe_degree, typename NumberType>
-dealii::LA::Vector<NumberType>
-ThermalOperator<dim, fe_degree, NumberType>::compute_average_enthalpy(
-    dealii::LA::distributed::Vector<NumberType> const &enthalpy) const
-{
-  dealii::DoFHandler<dim> const &dof_handler = _matrix_free.get_dof_handler();
-  dealii::LA::Vector<NumberType> average_enthalpy(
-      dof_handler.get_triangulation().n_active_cells());
-
-  dealii::Quadrature<dim> const &quad = _matrix_free.get_quadrature();
-  dealii::FEValues<dim> fe_values(dof_handler.get_fe(), quad,
-                                  dealii::update_values |
-                                      dealii::update_quadrature_points |
-                                      dealii::update_JxW_values);
-  unsigned int const n_q_points = quad.size();
-  unsigned int const dofs_per_cell = dof_handler.get_fe().dofs_per_cell;
-  std::vector<NumberType> enthalpy_local(dofs_per_cell);
-
-  unsigned int pos = 0;
-  for (auto cell :
-       dealii::filter_iterators(dof_handler.active_cell_iterators(),
-                                dealii::IteratorFilters::LocallyOwnedCell()))
-  {
-    fe_values.reinit(cell);
-    fe_values.get_function_values(enthalpy, enthalpy_local);
-    double area = 0.;
-    for (unsigned int q_index = 0; q_index < n_q_points; ++q_index)
-    {
-      average_enthalpy[pos] += enthalpy_local[q_index] * fe_values.JxW(q_index);
-      for (unsigned int i = 0; i < dofs_per_cell; ++i)
-        area += fe_values.shape_value(i, q_index) * fe_values.JxW(q_index);
-    }
-    average_enthalpy[pos] /= area;
-
-    ++pos;
-  }
-
-  return average_enthalpy;
-}
 }
 
 #endif

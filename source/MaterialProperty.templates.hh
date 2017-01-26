@@ -145,7 +145,7 @@ void MaterialProperty<dim>::update_state(
     dealii::LA::distributed::Vector<NumberType> const &enthalpy)
 {
   dealii::LA::distributed::Vector<NumberType> enthalpy_average =
-      compute_enthalpy_average(enthalpy_dof_handler, enthalpy);
+      compute_average_enthalpy(enthalpy_dof_handler, enthalpy);
 
   std::vector<dealii::types::global_dof_index> mp_dof(1);
   for (auto cell :
@@ -383,7 +383,7 @@ void MaterialProperty<dim>::compute_constants()
 template <int dim>
 template <typename NumberType>
 dealii::LA::distributed::Vector<NumberType>
-MaterialProperty<dim>::compute_enthalpy_average(
+MaterialProperty<dim>::compute_average_enthalpy(
     dealii::DoFHandler<dim> const &enthalpy_dof_handler,
     dealii::LA::distributed::Vector<NumberType> const &enthalpy) const
 {

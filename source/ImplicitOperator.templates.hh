@@ -30,8 +30,8 @@ void ImplicitOperator<NumberType>::vmult(
     dealii::LA::distributed::Vector<NumberType> tmp_dst(dst.get_partitioner());
     dealii::LA::distributed::Vector<NumberType> tmp_src(src);
     tmp_src *= (1. + 1e-10);
-    vmult(dst, tmp_src);
-    vmult(tmp_dst, src);
+    _explicit_operator->vmult(dst, tmp_src);
+    _explicit_operator->vmult(tmp_dst, src);
     dst -= tmp_dst;
     dst /= 1e-10;
   }

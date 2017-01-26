@@ -101,12 +101,6 @@ private:
               std::pair<unsigned int, unsigned int> const &cell_range) const;
 
   /**
-   * Compute the average enthalpy on each cell.
-   */
-  dealii::LA::Vector<NumberType> compute_average_enthalpy(
-      dealii::LA::distributed::Vector<NumberType> const &enthalpy) const;
-
-  /**
    * MPI communicator.
    */
   boost::mpi::communicator const &_communicator;
