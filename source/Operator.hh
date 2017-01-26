@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, the adamantine authors.
+/* Copyright (c) 2016 - 2017, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -92,7 +92,7 @@ public:
   {
     (void)dst;
     (void)src;
-    ASSERT_THROW(false, "Function not implemented.");
+    ASSERT_THROW_NOT_IMPLEMENTED();
   }
 };
 }
