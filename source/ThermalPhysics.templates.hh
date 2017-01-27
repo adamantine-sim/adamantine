@@ -241,6 +241,47 @@ double ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
 }
 
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
+    initialize_dof_vector(
+        NumberType const value,
+        dealii::LA::distributed::Vector<NumberType> &vector) const
+{
+  // Resize the vector
+  initialize_dof_vector(vector);
+
+  // TODO this should be done in a matrix free fashion.
+  // TODO this assumes that the material properties are constant
+  dealii::QGauss<dim> quadrature(1);
+  dealii::FEValues<dim> fe_values(_fe, quadrature, dealii::update_values);
+  unsigned int const dofs_per_cell = _fe.dofs_per_cell;
+  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
+  dealii::IndexSet local_elements = vector.locally_owned_elements();
+  for (auto cell :
+       dealii::filter_iterators(_dof_handler.active_cell_iterators(),
+                                dealii::IteratorFilters::LocallyOwnedCell()))
+  {
+    fe_values.reinit(cell);
+    cell->get_dof_indices(local_dof_indices);
+
+    // Compute the enthalpy
+    dealii::LA::distributed::Vector<NumberType> dummy;
+    // Cast to Triangulation<dim>::cell_iterator to access the material_id
+    typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
+    double const density =
+        _material_properties->get(cell_tria, Property::density, dummy);
+    double const specific_heat =
+        _material_properties->get(cell_tria, Property::specific_heat, dummy);
+    NumberType const enthalpy_value = value / (density * specific_heat);
+    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+    {
+      dealii::types::global_dof_index const dof_index = local_dof_indices[i];
+      if (local_elements.is_element(dof_index) == true)
+        vector[dof_index] = enthalpy_value;
+    }
+  }
+}
+
+template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
 dealii::LA::distributed::Vector<NumberType>
 ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
     evaluate_thermal_physics(

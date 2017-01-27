@@ -57,6 +57,9 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   double const tolerance = 1e-3;
   BOOST_CHECK(time == 0.1);
   BOOST_CHECK_CLOSE(solution.l2_norm(), 0.291705, tolerance);
+
+  physics.initialize_dof_vector(1000., solution);
+  BOOST_CHECK(solution.l1_norm() == 1000. * solution.size());
 }
 
 BOOST_AUTO_TEST_CASE(thermal_2d_explicit)

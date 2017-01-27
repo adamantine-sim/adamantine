@@ -77,6 +77,14 @@ public:
   void initialize_dof_vector(
       dealii::LA::distributed::Vector<NumberType> &vector) const override;
 
+  /**
+   * Initialize the given vector. The value is assumed to be a temperature and
+   * is converted to an enthalpy.
+   */
+  void initialize_dof_vector(
+      NumberType const value,
+      dealii::LA::distributed::Vector<NumberType> &vector) const override;
+
   dealii::DoFHandler<dim> &get_dof_handler() override;
 
   dealii::ConstraintMatrix &get_constraint_matrix() override;
