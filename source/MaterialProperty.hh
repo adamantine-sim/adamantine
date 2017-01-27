@@ -104,14 +104,14 @@ public:
       const;
 
   /**
-   * Return \f$ \frac{T_{liquidus}-T_{solidus}{\mathcal{L}} \f$
+   * Return \f$ \frac{T_{liquidus}-T_{solidus}}{\mathcal{L}} \f$
    */
   double get_mushy_alpha(
       typename dealii::Triangulation<dim>::active_cell_iterator const &cell)
       const;
 
   /**
-   * Return \f$ -H_{solidus} \frac{T_{liquidus}-T_{solidus}{\mathcal{L}} +
+   * Return \f$ -H_{solidus} \frac{T_{liquidus}-T_{solidus}}{\mathcal{L}} +
    * T_{solidus} \f$
    */
   double get_mushy_beta(
@@ -180,12 +180,12 @@ private:
    */
   std::unordered_map<dealii::types::material_id, double> _liquid_beta;
   /**
-   * Map of \f$ \frac{T_{liquidus}-T_{solidus}{\mathcal{L}} \f$ for each
+   * Map of \f$ \frac{T_{liquidus}-T_{solidus}}{\mathcal{L}} \f$ for each
    * material.
    */
   std::unordered_map<dealii::types::material_id, double> _mushy_alpha;
   /**
-   * Map of \f$ -H_{solidus} \frac{T_{liquidus}-T_{solidus}{\mathcal{L}} +
+   * Map of \f$ -H_{solidus} \frac{T_{liquidus}-T_{solidus}}{\mathcal{L}} +
    * T_{solidus} \f$ for each material.
    */
   std::unordered_map<dealii::types::material_id, double> _mushy_beta;
