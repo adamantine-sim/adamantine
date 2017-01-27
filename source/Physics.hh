@@ -59,6 +59,13 @@ public:
       dealii::LA::distributed::Vector<NumberType> &vector) const = 0;
 
   /**
+   * Initialize the given vector with the given value.
+   */
+  virtual void initialize_dof_vector(
+      NumberType const value,
+      dealii::LA::distributed::Vector<NumberType> &vector) const = 0;
+
+  /**
    * Return the DoFHandler.
    */
   virtual dealii::DoFHandler<dim> &get_dof_handler() = 0;

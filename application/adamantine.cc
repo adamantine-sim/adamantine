@@ -404,12 +404,12 @@ void run(
     std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams,
     boost::property_tree::ptree const &time_stepping_database,
     boost::property_tree::ptree const &refinement_database,
-    unsigned int const fe_degree)
+    unsigned int const fe_degree, double const initial_temperature)
 {
   thermal_physics->setup_dofs();
   thermal_physics->reinit();
   dealii::LA::distributed::Vector<double> solution;
-  thermal_physics->initialize_dof_vector(solution);
+  thermal_physics->initialize_dof_vector(initial_temperature, solution);
   unsigned int progress = 1;
   unsigned int cycle = 0;
   unsigned int n_time_step = 0;
@@ -550,8 +550,11 @@ int main(int argc, char *argv[])
           communicator, post_processor_database,
           thermal_physics->get_dof_handler(),
           thermal_physics->get_material_property());
+      double const initial_temperature =
+          database.get("materials.initial_temperature", 300.);
       run<2>(communicator, thermal_physics, post_processor, electron_beams,
-             time_stepping_database, refinement_database, fe_degree);
+             time_stepping_database, refinement_database, fe_degree,
+             initial_temperature);
     }
     else
     {
@@ -572,8 +575,11 @@ int main(int argc, char *argv[])
           communicator, post_processor_database,
           thermal_physics->get_dof_handler(),
           thermal_physics->get_material_property());
+      double const initial_temperature =
+          database.get("materials.initial_temperature", 300.);
       run<3>(communicator, thermal_physics, post_processor, electron_beams,
-             time_stepping_database, refinement_database, fe_degree);
+             time_stepping_database, refinement_database, fe_degree,
+             initial_temperature);
     }
 
     if (communicator.rank() == 0)
