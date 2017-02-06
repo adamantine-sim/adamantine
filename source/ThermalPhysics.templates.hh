@@ -271,7 +271,7 @@ void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
         _material_properties->get(cell_tria, Property::density, dummy);
     double const specific_heat =
         _material_properties->get(cell_tria, Property::specific_heat, dummy);
-    NumberType const enthalpy_value = value / (density * specific_heat);
+    NumberType const enthalpy_value = value * density * specific_heat;
     for (unsigned int i = 0; i < dofs_per_cell; ++i)
     {
       dealii::types::global_dof_index const dof_index = local_dof_indices[i];
