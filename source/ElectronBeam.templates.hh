@@ -23,7 +23,7 @@ ElectronBeam<dim>::ElectronBeam(boost::property_tree::ptree const &database)
   _beam.energy_conversion_eff =
       database.get<double>("energy_conversion_efficiency");
   _beam.control_eff = database.get<double>("control_efficiency");
-  _beam.diameter_squared = pow(database.get<double>("diameter"), 2);
+  _beam.diameter_squared = pow(database.get("diameter", 2e-3), 2);
   boost::optional<double> max_power =
       database.get_optional<double>("max_power");
   if (max_power)
