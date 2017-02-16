@@ -1,12 +1,12 @@
-/* Copyright (c) 2016, the adamantine authors.
+/* Copyright (c) 2016 - 2017, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
  * for the text and further information on this license.
  */
 
-#ifndef _NEWTON_SOLVER_HH_
-#define _NEWTON_SOLVER_HH_
+#ifndef NEWTON_SOLVER_HH
+#define NEWTON_SOLVER_HH
 
 #include "types.hh"
 #include <deal.II/lac/la_parallel_vector.h>

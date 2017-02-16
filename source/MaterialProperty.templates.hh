@@ -1,12 +1,12 @@
-/* Copyright (c) 2016, the adamantine authors.
+/* Copyright (c) 2016 - 2017, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
  * for the text and further information on this license.
  */
 
-#ifndef _MATERIAL_PROPERTY_TEMPLATES_HH
-#define _MATERIAL_PROPERTY_TEMPLATES_HH
+#ifndef MATERIAL_PROPERTY_TEMPLATES_HH
+#define MATERIAL_PROPERTY_TEMPLATES_HH
 
 #include "MaterialProperty.hh"
 #include <deal.II/base/point.h>

@@ -1,12 +1,12 @@
-/* Copyright (c) 2016, the adamantine authors.
+/* Copyright (c) 2016 - 2017, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
  * for the text and further information on this license.
  */
 
-#ifndef _POST_PROCESSOR_TEMPLATES_HH_
-#define _POST_PROCESSOR_TEMPLATES_HH_
+#ifndef POST_PROCESSOR_TEMPLATES_HH
+#define POST_PROCESSOR_TEMPLATES_HH
 
 #include "PostProcessor.hh"
 #include <deal.II/grid/filtered_iterator.h>
