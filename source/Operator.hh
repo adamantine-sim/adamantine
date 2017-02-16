@@ -5,8 +5,8 @@
  * for the text and further information on this license.
  */
 
-#ifndef _OPERATOR_HH_
-#define _OPERATOR_HH_
+#ifndef OPERATOR_HH
+#define OPERATOR_HH
 
 #include "types.hh"
 #include "utils.hh"

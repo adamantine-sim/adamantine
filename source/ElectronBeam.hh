@@ -1,12 +1,12 @@
-/* Copyright (c) 2016, the adamantine authors.
+/* Copyright (c) 2016 - 2017, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
  * for the text and further information on this license.
  */
 
-#ifndef _ELECTRON_BEAM_HH_
-#define _ELECTRON_BEAM_HH_
+#ifndef ELECTRON_BEAM_HH
+#define ELECTRON_BEAM_HH
 
 #include <deal.II/base/function_parser.h>
 #include <boost/property_tree/ptree.hpp>
