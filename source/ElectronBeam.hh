@@ -65,10 +65,17 @@ public:
    *   - <B>voltage</B>: double in \f$[0,\infty)\f$ [optional: if defined
    *   <i>current</i> should be defined too, if not defined <i>max_power</i>
    *   should be defined]
+   *   - <B>input_file</B>: name of the csv file that contains the successive
+   *   position of the electron beam [optional: if not defined then
+   *   <i>abscissa</i> and, in 3D, <i>ordinate</i> need to be defined]
+   *   - <B>delimiter</B>: delimiting character used in <i>input_file</i>
+   *   [required if <i>input_file</i> is defined]
    *   - <B>abscissa</B>: string, abscissa of the beam as a function of time
-   *   (e.g. "(t-1) * (t-2)")
+   *   (e.g. "(t-1) * (t-2)") [optional: need to be defined if <i>input_file</i>
+   *   is not defined]
    *   - <B>ordinate</B>: string, ordinate of the beam as a function of time
-   *   [required only for three dimensional calculation]
+   *   [required only for three dimensional calculation and if <i>input_file</i>
+   *   is not defined]
    */
   ElectronBeam(boost::property_tree::ptree const &database);
 
@@ -96,7 +103,7 @@ private:
   /**
    * Function that describes the position of the beam on the surface.
    */
-  std::array<dealii::FunctionParser<1>, dim - 1> _position;
+  std::array<std::unique_ptr<dealii::Function<1>>, dim - 1> _position;
 };
 
 template <int dim>

@@ -44,3 +44,20 @@ function(adamantine_ADD_INTEGRATION_TEST TEST_NAME)
     )
     endforeach()
 endfunction()
+
+function(adamantine_COPY_INPUT_FILE INPUT_FILE PATH_TO_FILE)
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/bin/${INPUT_FILE}
+    DEPENDS ${CMAKE_SOURCE_DIR}/${PATH_TO_FILE}/${INPUT_FILE}
+    COMMAND ${CMAKE_COMMAND}
+    ARGS -E copy ${CMAKE_SOURCE_DIR}/${PATH_TO_FILE}/${INPUT_FILE} ${CMAKE_BINARY_DIR}/bin/${INPUT_FILE}
+    COMMAND ${CMAKE_COMMAND}
+    ARGS -E copy ${CMAKE_SOURCE_DIR}/${PATH_TO_FILE}/${INPUT_FILE} ${CMAKE_CURRENT_BINARY_DIR}/${INPUT_FILE}
+    COMMENT "Copying ${INPUT_FILE}"
+    )
+  string(REGEX REPLACE "/" "_" DUMMY ${CMAKE_BINARY_DIR}/bin/${INPUT_FILE})
+  add_custom_target(
+    ${DUMMY} ALL
+    DEPENDS ${CMAKE_BINARY_DIR}/bin/${INPUT_FILE}
+    )
+endfunction()

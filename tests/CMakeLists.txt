@@ -33,3 +33,5 @@ list(APPEND
 foreach(TEST_NAME ${INTEGRATION_TESTS})
   adamantine_ADD_INTEGRATION_TEST(${TEST_NAME})
 endforeach()
+
+adamantine_COPY_INPUT_FILE(beam_position.csv tests/data)

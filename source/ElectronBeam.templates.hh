@@ -9,11 +9,50 @@
 #define ELECTRON_BEAM_TEMPLATES_HH
 
 #include "ElectronBeam.hh"
+#include "utils.hh"
+#include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
+#include <cstdlib>
 
 using std::pow;
 
 namespace adamantine
 {
+namespace internal
+{
+class PointSource : public dealii::Function<1>
+{
+public:
+  PointSource(std::vector<double> const &position);
+
+  double value(dealii::Point<1> const &time,
+               unsigned int const component = 0) const override;
+
+private:
+  mutable unsigned int current_pos;
+  mutable dealii::Point<1> current_time;
+  std::vector<double> _position;
+};
+
+PointSource::PointSource(std::vector<double> const &position)
+    : current_pos(0), _position(position)
+{
+}
+
+double PointSource::value(dealii::Point<1> const &time,
+                          unsigned int const) const
+{
+  // If the time is greater than the current one, we use the next entry in the
+  // vector.
+  if (time[0] > current_time[0])
+  {
+    ++current_pos;
+    current_time[0] = time[0];
+  }
+  return _position[current_pos];
+}
+}
+
 template <int dim>
 ElectronBeam<dim>::ElectronBeam(boost::property_tree::ptree const &database)
     : dealii::Function<dim>(), _max_height(0.)
@@ -41,11 +80,49 @@ ElectronBeam<dim>::ElectronBeam(boost::property_tree::ptree const &database)
   std::map<std::string, double> constants;
   constants["pi"] = dealii::numbers::PI;
 
-  std::array<std::string, 2> position_expression = {{"abscissa", "ordinate"}};
-  for (unsigned int i = 0; i < dim - 1; ++i)
+  boost::optional<std::string> input_file =
+      database.get_optional<std::string>("input_file");
+  if (input_file)
   {
-    std::string expression = database.get<std::string>(position_expression[i]);
-    _position[i].initialize(variable, expression, constants);
+    std::array<std::vector<double>, dim - 1> points;
+    std::string delimiter = database.get<std::string>("delimiter");
+    ASSERT_THROW(boost::filesystem::exists(input_file.get()) == true,
+                 "The file " + input_file.get() + " does not exist.");
+    std::ifstream file(input_file.get());
+    std::string line;
+    // Read the file line by line, split the strings, and convert the strings
+    // into double.
+    if (file)
+    {
+      while (std::getline(file, line))
+      {
+        std::vector<std::string> split_strings;
+        boost::algorithm::split(split_strings, line,
+                                boost::is_any_of(delimiter),
+                                boost::algorithm::token_compress_on);
+        ASSERT_THROW(split_strings.size() == dim - 1,
+                     "Problem parsing the source input file.");
+        for (unsigned int i = 0; i < dim - 1; ++i)
+          points[i].push_back(std::atof(split_strings[i].c_str()));
+      }
+      file.close();
+    }
+
+    // Create the point source.
+    for (unsigned int i = 0; i < dim - 1; ++i)
+      _position[i].reset(new internal::PointSource(points[i]));
+  }
+  else
+  {
+    std::array<std::string, 2> position_expression = {{"abscissa", "ordinate"}};
+    for (unsigned int i = 0; i < dim - 1; ++i)
+    {
+      std::string expression =
+          database.get<std::string>(position_expression[i]);
+      _position[i].reset(new dealii::FunctionParser<1>());
+      static_cast<dealii::FunctionParser<1> *>(_position[i].get())
+          ->initialize(variable, expression, constants);
+    }
   }
 }
 
@@ -63,11 +140,11 @@ double ElectronBeam<dim>::value(dealii::Point<dim> const &point,
 
     dealii::Point<1> time;
     time[0] = this->get_time();
-    double const beam_center_x = _position[0].value(time);
+    double const beam_center_x = _position[0]->value(time);
     double xpy_squared = pow(point[0] - beam_center_x, 2);
     if (dim == 3)
     {
-      double const beam_center_y = _position[1].value(time);
+      double const beam_center_y = _position[1]->value(time);
       xpy_squared += pow(point[2] - beam_center_y, 2);
     }
 
