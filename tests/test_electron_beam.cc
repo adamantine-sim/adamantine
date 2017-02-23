@@ -89,3 +89,36 @@ BOOST_AUTO_TEST_CASE(beam_3d)
   value = beam.value(point);
   BOOST_CHECK_CLOSE(value, 7.65659755, tolerance);
 }
+
+BOOST_AUTO_TEST_CASE(input_file)
+{
+  boost::property_tree::ptree database;
+
+  database.put("depth", 0.1);
+  database.put("energy_conversion_efficiency", 1.0);
+  database.put("control_efficiency", 1.0);
+  database.put("diameter", 1.0);
+  database.put("max_power", 1.0);
+  database.put("input_file", "beam_position.csv");
+  database.put("delimiter", " ");
+
+  adamantine::ElectronBeam<3> beam(database);
+  beam.set_time(0.);
+  beam.set_max_height(0.2);
+
+  dealii::Point<3> point;
+  point[0] = 1.0;
+  point[1] = 0.2;
+  point[2] = 1.0;
+
+  double const tolerance = 1e-5;
+  double value = beam.value(point);
+  BOOST_CHECK_CLOSE(value, 29.317423, tolerance);
+
+  beam.set_time(1.);
+  point[0] = 2.0;
+  point[1] = 0.2;
+  point[2] = 2.0;
+  value = beam.value(point);
+  BOOST_CHECK_CLOSE(value, 29.317423, tolerance);
+}
