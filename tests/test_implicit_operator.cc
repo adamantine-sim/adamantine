@@ -101,6 +101,6 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   implicit_operator.vmult(dst, source);
   implicit_operator_jfnk.vmult(dst_jfnk, source);
 
-  double const tolerance = 1e-10;
+  double const tolerance = 1e-7;
   BOOST_CHECK_CLOSE(dst.l2_norm(), dst_jfnk.l2_norm(), tolerance);
 }
