@@ -185,7 +185,7 @@ void refine_and_transfer(
   {
     double material_ratio = 0.;
     for (unsigned int j = 0; j < n_material_states; ++j)
-      material_ratio += state[j][i];
+      material_ratio += state[j].local_element(i);
     adamantine::ASSERT(std::abs(material_ratio - 1.) < 1e-14,
                        "Material is lost.");
   }

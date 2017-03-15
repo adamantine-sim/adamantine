@@ -42,22 +42,44 @@ void PostProcessor<dim>::output_pvtu(
       compute_temperature(solution);
   _data_out.add_data_vector(temperature, "temperature");
 
-  // Add MaterialState ratio
+  // Add MaterialState ratio. We need to copy the data because state is attached
+  // to a different DoFHandler.
   std::array<dealii::LA::distributed::Vector<double>,
              static_cast<unsigned int>(MaterialState::SIZE)> state =
       _material_properties->get_state();
-  _data_out.add_data_vector(
-      state[static_cast<unsigned int>(MaterialState::powder)], "powder");
-  _data_out.add_data_vector(
-      state[static_cast<unsigned int>(MaterialState::liquid)], "liquid");
-  _data_out.add_data_vector(
-      state[static_cast<unsigned int>(MaterialState::solid)], "solid");
+  unsigned int const n_active_cells =
+      _dof_handler.get_triangulation().n_active_cells();
+  dealii::DoFHandler<dim> const &material_dof_handler =
+      _material_properties->get_dof_handler();
+  dealii::Vector<double> powder(n_active_cells);
+  dealii::Vector<double> liquid(n_active_cells);
+  dealii::Vector<double> solid(n_active_cells);
+  unsigned int constexpr powder_index =
+      static_cast<unsigned int>(MaterialState::powder);
+  unsigned int constexpr liquid_index =
+      static_cast<unsigned int>(MaterialState::liquid);
+  unsigned int constexpr solid_index =
+      static_cast<unsigned int>(MaterialState::solid);
+  auto mp_cell = material_dof_handler.begin_active();
+  auto mp_end_cell = material_dof_handler.end();
+  std::vector<dealii::types::global_dof_index> mp_dof_indices(1);
+  for (unsigned int i = 0; mp_cell != mp_end_cell; ++i, ++mp_cell)
+    if (mp_cell->is_locally_owned())
+    {
+      mp_cell->get_dof_indices(mp_dof_indices);
+      dealii::types::global_dof_index const mp_dof_index = mp_dof_indices[0];
+      powder[i] = state[powder_index][mp_dof_index];
+      liquid[i] = state[liquid_index][mp_dof_index];
+      solid[i] = state[solid_index][mp_dof_index];
+    }
+  _data_out.add_data_vector(powder, "powder");
+  _data_out.add_data_vector(liquid, "liquid");
+  _data_out.add_data_vector(solid, "solid");
 
   // Add the subdomain IDs.
   dealii::types::subdomain_id subdomain_id =
       _dof_handler.get_triangulation().locally_owned_subdomain();
-  dealii::Vector<float> subdomain(
-      _dof_handler.get_triangulation().n_active_cells());
+  dealii::Vector<float> subdomain(n_active_cells);
   for (unsigned int i = 0; i < subdomain.size(); ++i)
     subdomain[i] = subdomain_id;
   _data_out.add_data_vector(subdomain, "subdomain");
