@@ -24,14 +24,6 @@ endforeach()
 
 # For now integration tests only run adamantine but they don't check the 
 # results
-set(INTEGRATION_TESTS "")
-list(APPEND
-     INTEGRATION_TESTS
-     test_integration_2d
-     )
-
-foreach(TEST_NAME ${INTEGRATION_TESTS})
-  adamantine_ADD_INTEGRATION_TEST(${TEST_NAME})
-endforeach()
+adamantine_ADD_INTEGRATION_TEST(test_integration_2d 1 2)
 
 adamantine_COPY_INPUT_FILE(beam_position.csv tests/data)

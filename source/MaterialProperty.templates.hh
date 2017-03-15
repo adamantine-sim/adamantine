@@ -408,22 +408,23 @@ MaterialProperty<dim>::compute_average_enthalpy(
   std::vector<dealii::types::global_dof_index> enth_dof_indices(dofs_per_cell);
   unsigned int const n_q_points = quadrature.size();
   for (; mp_cell != mp_end_cell; ++enth_cell, ++mp_cell)
-  {
-    fe_values.reinit(enth_cell);
-    mp_cell->get_dof_indices(mp_dof_indices);
-    dealii::types::global_dof_index const mp_dof_index = mp_dof_indices[0];
-    enth_cell->get_dof_indices(enth_dof_indices);
-    double area = 0.;
-    for (unsigned int q = 0; q < n_q_points; ++q)
-      for (unsigned int i = 0; i < dofs_per_cell; ++i)
-      {
-        area += fe_values.shape_value(i, q) * fe_values.JxW(q);
-        enthalpy_average[mp_dof_index] += fe_values.shape_value(i, q) *
-                                          enthalpy[enth_dof_indices[i]] *
-                                          fe_values.JxW(q);
-      }
-    enthalpy_average[mp_dof_index] /= area;
-  }
+    if (mp_cell->is_locally_owned())
+    {
+      fe_values.reinit(enth_cell);
+      mp_cell->get_dof_indices(mp_dof_indices);
+      dealii::types::global_dof_index const mp_dof_index = mp_dof_indices[0];
+      enth_cell->get_dof_indices(enth_dof_indices);
+      double area = 0.;
+      for (unsigned int q = 0; q < n_q_points; ++q)
+        for (unsigned int i = 0; i < dofs_per_cell; ++i)
+        {
+          area += fe_values.shape_value(i, q) * fe_values.JxW(q);
+          enthalpy_average[mp_dof_index] += fe_values.shape_value(i, q) *
+                                            enthalpy[enth_dof_indices[i]] *
+                                            fe_values.JxW(q);
+        }
+      enthalpy_average[mp_dof_index] /= area;
+    }
 
   return enthalpy_average;
 }
