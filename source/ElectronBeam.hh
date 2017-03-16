@@ -91,7 +91,25 @@ public:
   double value(dealii::Point<dim> const &point,
                unsigned int const component = 0) const override;
 
+  /**
+   * Reset the current time and the position to the last saved state.
+   */
+  void rewind_time();
+
+  /**
+   * Save the current time and the position in the list of successive positions
+   * of the beam.
+   */
+  void save_time();
+
 private:
+  /**
+   * Flag is true if the beam is a point source of which the position is read
+   * from a
+   * file.
+   */
+  bool _is_point_source;
+
   /**
    * Height of the domain.
    */

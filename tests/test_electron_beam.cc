@@ -105,6 +105,7 @@ BOOST_AUTO_TEST_CASE(input_file)
   adamantine::ElectronBeam<3> beam(database);
   beam.set_time(0.);
   beam.set_max_height(0.2);
+  beam.save_time();
 
   dealii::Point<3> point;
   point[0] = 1.0;
@@ -119,6 +120,15 @@ BOOST_AUTO_TEST_CASE(input_file)
   point[0] = 2.0;
   point[1] = 0.2;
   point[2] = 2.0;
+  value = beam.value(point);
+  BOOST_CHECK_CLOSE(value, 29.317423, tolerance);
+
+  beam.rewind_time();
+  beam.set_time(0.);
+  point[0] = 1.0;
+  point[1] = 0.2;
+  point[2] = 1.0;
+
   value = beam.value(point);
   BOOST_CHECK_CLOSE(value, 29.317423, tolerance);
 }
