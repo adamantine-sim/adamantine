@@ -201,6 +201,12 @@ compute_cells_to_refine(
     unsigned int const n_time_steps,
     std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams)
 {
+  // The save_time()/rewind_time() functions are used to save the current time
+  // and row in the list of beam positions. It does nothing when the position is
+  // given by an analytic formula.
+  for (auto &beam : electron_beams)
+    beam->save_time();
+
   // Compute the position of the beams between time and next_refinement_time and
   // refine the mesh where the source is greater than 1e-15. This cut-off is due
   // to the fact that the source is gaussian and thus never strictly zero. If
@@ -224,6 +230,9 @@ compute_cells_to_refine(
           cells_to_refine.push_back(cell);
     }
   }
+
+  for (auto &beam : electron_beams)
+    beam->rewind_time();
 
   return cells_to_refine;
 }

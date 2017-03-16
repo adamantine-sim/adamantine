@@ -28,15 +28,22 @@ public:
   double value(dealii::Point<1> const &time,
                unsigned int const component = 0) const override;
 
+  void rewind_time();
+
+  void save_time();
+
 private:
-  mutable unsigned int current_pos;
-  mutable dealii::Point<1> current_time;
+  mutable unsigned int _current_pos;
+  unsigned int _saved_pos;
+  mutable dealii::Point<1> _current_time;
+  dealii::Point<1> _saved_time;
   std::vector<double> _position;
 };
 
 PointSource::PointSource(std::vector<double> const &position)
-    : current_pos(0), _position(position)
+    : _current_pos(-1), _saved_pos(-1), _position(position)
 {
+  _current_time[0] = -1.;
 }
 
 double PointSource::value(dealii::Point<1> const &time,
@@ -44,18 +51,31 @@ double PointSource::value(dealii::Point<1> const &time,
 {
   // If the time is greater than the current one, we use the next entry in the
   // vector.
-  if (time[0] > current_time[0])
+  if (time[0] > _current_time[0])
   {
-    ++current_pos;
-    current_time[0] = time[0];
+    ++_current_pos;
+    _current_time[0] = time[0];
   }
-  return _position[current_pos];
+
+  return _position[_current_pos];
+}
+
+void PointSource::rewind_time()
+{
+  _current_pos = _saved_pos;
+  _current_time = _saved_time;
+}
+
+void PointSource::save_time()
+{
+  _saved_pos = _current_pos;
+  _saved_time = _current_time;
 }
 }
 
 template <int dim>
 ElectronBeam<dim>::ElectronBeam(boost::property_tree::ptree const &database)
-    : dealii::Function<dim>(), _max_height(0.)
+    : dealii::Function<dim>(), _is_point_source(false), _max_height(0.)
 {
   // Set the properties of the electron beam.
   _beam.depth = database.get<double>("depth");
@@ -111,6 +131,7 @@ ElectronBeam<dim>::ElectronBeam(boost::property_tree::ptree const &database)
     // Create the point source.
     for (unsigned int i = 0; i < dim - 1; ++i)
       _position[i].reset(new internal::PointSource(points[i]));
+    _is_point_source = true;
   }
   else
   {
@@ -124,6 +145,22 @@ ElectronBeam<dim>::ElectronBeam(boost::property_tree::ptree const &database)
           ->initialize(variable, expression, constants);
     }
   }
+}
+
+template <int dim>
+void ElectronBeam<dim>::rewind_time()
+{
+  if (_is_point_source)
+    for (unsigned int i = 0; i < dim - 1; ++i)
+      static_cast<internal::PointSource *>(_position[i].get())->rewind_time();
+}
+
+template <int dim>
+void ElectronBeam<dim>::save_time()
+{
+  if (_is_point_source)
+    for (unsigned int i = 0; i < dim - 1; ++i)
+      static_cast<internal::PointSource *>(_position[i].get())->save_time();
 }
 
 template <int dim>
