@@ -9,6 +9,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/Timer.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/utils.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/types.hh
   )
@@ -21,6 +22,7 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/Timer.cc
   )
 
 # Because the Adamantine library is just used to simplify testing, we make it
@@ -34,6 +36,7 @@ set_target_properties(Adamantine PROPERTIES
 )
 
 target_include_directories(Adamantine SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
+target_link_libraries(Adamantine PUBLIC ${Boost_CHRONO_LIBRARY})
 target_link_libraries(Adamantine PUBLIC ${Boost_FILESYSTEM_LIBRARY})
 target_link_libraries(Adamantine PUBLIC ${Boost_MPI_LIBRARY})
 target_link_libraries(Adamantine PUBLIC ${Boost_PROGRAM_OPTIONS_LIBRARY})
