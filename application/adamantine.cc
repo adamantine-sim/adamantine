@@ -8,6 +8,7 @@
 #include "Geometry.hh"
 #include "PostProcessor.hh"
 #include "ThermalPhysics.hh"
+#include "Timer.hh"
 #include "utils.hh"
 #include <deal.II/base/mpi.h>
 #include <deal.II/distributed/solution_transfer.h>
@@ -413,13 +414,14 @@ void run(
     std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams,
     boost::property_tree::ptree const &time_stepping_database,
     boost::property_tree::ptree const &refinement_database,
-    unsigned int const fe_degree, double const initial_temperature)
+    unsigned int const fe_degree, double const initial_temperature,
+    std::vector<adamantine::Timer> &timers)
 {
   thermal_physics->setup_dofs();
   thermal_physics->reinit();
   dealii::LA::distributed::Vector<double> solution;
   thermal_physics->initialize_dof_vector(initial_temperature, solution);
-  unsigned int progress = 1;
+  unsigned int progress = 0;
   unsigned int cycle = 0;
   unsigned int n_time_step = 0;
   double time = 0.;
@@ -436,6 +438,10 @@ void run(
   double next_refinement_time = time;
   double time_step = time_stepping_database.get<double>("time_step");
   double const duration = time_stepping_database.get<double>("duration");
+  timers.push_back(adamantine::Timer(communicator, "Refinement"));
+  timers.push_back(adamantine::Timer(communicator, "Evolve One Time Step"));
+  unsigned int ref_timer = 1;
+  unsigned int evol_timer = 2;
   while (time < duration)
   {
     if ((time + time_step) > duration)
@@ -448,9 +454,11 @@ void run(
         (time >= next_refinement_time))
     {
       next_refinement_time = time + time_steps_refinement * time_step;
+      timers[ref_timer].start();
       refine_mesh(thermal_physics, solution, electron_beams, time,
                   next_refinement_time, time_steps_refinement,
                   refinement_database, fe_degree);
+      timers[ref_timer].stop();
       if ((communicator.rank() == 0) && (verbose_refinement == true))
         std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
                   << std::endl;
@@ -458,7 +466,9 @@ void run(
 
     // time can be different than time + time_step if an embedded scheme is
     // used.
+    timers[evol_timer].start();
     time = thermal_physics->evolve_one_time_step(time, time_step, solution);
+    timers[evol_timer].stop();
 
     // Get the new time step
     time_step = thermal_physics->get_delta_t_guess();
@@ -470,10 +480,9 @@ void run(
       double frac_part = 0;
       double int_part = 0;
       frac_part = std::modf(adim_time, &int_part);
-      if ((frac_part < 0.5 * time_step) ||
-          (std::fabs(frac_part - 1.) < 0.5 * time_step))
+      if (int_part > progress)
       {
-        std::cout << progress * 10 << '%' << " completed" << std::endl;
+        std::cout << int_part * 10 << '%' << " completed" << std::endl;
         ++progress;
       }
     }
@@ -492,6 +501,10 @@ int main(int argc, char *argv[])
       argc, argv, dealii::numbers::invalid_unsigned_int);
   boost::mpi::communicator communicator;
 
+  std::vector<adamantine::Timer> timers;
+  timers.push_back(adamantine::Timer(communicator, "Main"));
+  timers[0].start();
+  bool profiling = false;
   try
   {
     namespace boost_po = boost::program_options;
@@ -520,6 +533,11 @@ int main(int argc, char *argv[])
                              "The file " + filename + " does not exist.");
     boost::property_tree::ptree database;
     boost::property_tree::info_parser::read_info(filename, database);
+
+    boost::optional<boost::property_tree::ptree &> profiling_database =
+        database.get_child_optional("profiling");
+    if ((profiling_database) && (profiling_database.get().get("timer", 0) != 0))
+      profiling = true;
 
     boost::property_tree::ptree geometry_database =
         database.get_child("geometry");
@@ -563,7 +581,7 @@ int main(int argc, char *argv[])
           database.get("materials.initial_temperature", 300.);
       run<2>(communicator, thermal_physics, post_processor, electron_beams,
              time_stepping_database, refinement_database, fe_degree,
-             initial_temperature);
+             initial_temperature, timers);
     }
     else
     {
@@ -588,7 +606,7 @@ int main(int argc, char *argv[])
           database.get("materials.initial_temperature", 300.);
       run<3>(communicator, thermal_physics, post_processor, electron_beams,
              time_stepping_database, refinement_database, fe_degree,
-             initial_temperature);
+             initial_temperature, timers);
     }
 
     if (communicator.rank() == 0)
@@ -624,6 +642,11 @@ int main(int argc, char *argv[])
 
     return 1;
   }
+
+  timers[0].stop();
+  if (profiling == true)
+    for (auto &timer : timers)
+      timer.print();
 
   return 0;
 }

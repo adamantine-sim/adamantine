@@ -15,6 +15,7 @@ list(APPEND
      test_post_processor
      test_thermal_operator
      test_thermal_physics
+     test_timer
      test_utils
      )
 
