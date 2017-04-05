@@ -68,9 +68,10 @@ public:
 
   void reinit() override;
 
-  double evolve_one_time_step(
-      double t, double delta_t,
-      dealii::LA::distributed::Vector<NumberType> &solution) override;
+  double
+  evolve_one_time_step(double t, double delta_t,
+                       dealii::LA::distributed::Vector<NumberType> &solution,
+                       std::vector<Timer> &timers) override;
 
   double get_delta_t_guess() const override;
 
@@ -102,13 +103,15 @@ private:
   /**
    * Compute the right-hand side and apply the TermalOperator.
    */
-  LA_Vector evaluate_thermal_physics(double const t, LA_Vector const &y) const;
+  LA_Vector evaluate_thermal_physics(double const t, LA_Vector const &y,
+                                     std::vector<Timer> &timers) const;
 
   /**
    * Compute the inverse of the ImplicitOperator.
    */
   LA_Vector id_minus_tau_J_inverse(double const t, double const tau,
-                                   LA_Vector const &y) const;
+                                   LA_Vector const &y,
+                                   std::vector<Timer> &timers) const;
 
   /**
    * This flag is true if the time stepping method is embedded.

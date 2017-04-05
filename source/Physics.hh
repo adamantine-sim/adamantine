@@ -9,6 +9,7 @@
 #define PHYSICS_HH
 
 #include "MaterialProperty.hh"
+#include "Timer.hh"
 #include "types.hh"
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/lac/constraint_matrix.h>
@@ -43,9 +44,10 @@ public:
    * the field at time t and after execution of the function, the field at time
    * t+delta_t.
    */
-  virtual double evolve_one_time_step(
-      double t, double delta_t,
-      dealii::LA::distributed::Vector<NumberType> &solution) = 0;
+  virtual double
+  evolve_one_time_step(double t, double delta_t,
+                       dealii::LA::distributed::Vector<NumberType> &solution,
+                       std::vector<Timer> &timers) = 0;
 
   /**
    * Return a guess of what should be the nex time step.

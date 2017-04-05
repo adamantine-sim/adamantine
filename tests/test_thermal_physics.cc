@@ -50,9 +50,10 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
 
   dealii::LA::distributed::Vector<double> solution;
   physics.initialize_dof_vector(solution);
+  std::vector<adamantine::Timer> timers(5);
   double time = 0;
   while (time < 0.1)
-    time = physics.evolve_one_time_step(time, time_step, solution);
+    time = physics.evolve_one_time_step(time, time_step, solution, timers);
 
   double const tolerance = 1e-3;
   BOOST_CHECK(time == 0.1);
@@ -125,8 +126,9 @@ BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution)
   physics.reinit();
 
   dealii::LA::distributed::Vector<double> solution;
+  std::vector<adamantine::Timer> timers(5);
   physics.initialize_dof_vector(solution);
-  double time = physics.evolve_one_time_step(0., 0.1, solution);
+  double time = physics.evolve_one_time_step(0., 0.1, solution, timers);
 
   double const tolerance = 1e-5;
   BOOST_CHECK(time == 0.1);
