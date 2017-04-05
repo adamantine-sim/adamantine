@@ -211,7 +211,9 @@ double ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
 {
   // TODO: this assume that the material properties do no change during the time
   // steps. This is wrong and needs to be changed.
+  timers[evol_time_eval_mat_prop].start();
   _thermal_operator->evaluate_material_properties(solution);
+  timers[evol_time_eval_mat_prop].stop();
 
   double time = _time_stepping->evolve_one_time_step(
       std::bind(&ThermalPhysics<dim, fe_degree, NumberType,

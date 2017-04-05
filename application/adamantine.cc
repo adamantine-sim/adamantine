@@ -33,6 +33,8 @@ void initialize_timers(boost::mpi::communicator const &communicator,
       communicator, "Evolve One Time Step: evaluate_thermal_physics"));
   timers.push_back(adamantine::Timer(
       communicator, "Evolve One Time Step: id_minus_tau_J_inverse"));
+  timers.push_back(adamantine::Timer(
+      communicator, "Evolve One Time Step: evaluate_material_properties"));
 }
 
 template <int dim, int fe_degree, typename QuadratureType>
