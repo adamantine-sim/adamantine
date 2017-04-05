@@ -360,8 +360,8 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   dealii::PreconditionIdentity preconditioner;
 
   dealii::SolverControl solver_control(_max_iter, _tolerance * y.l2_norm());
-  // TODO Check why we need to use GMRES instead of CG and why it is so hard to
-  // converge.
+  // We need to inverse (I - tau M^{-1} J). While M^{-1} and J are SPD,
+  // (I - tau M^{-1} J) is symmetric indefinite in the general case.
   typename dealii::SolverGMRES<
       dealii::LA::distributed::Vector<NumberType>>::AdditionalData
       additional_data(_max_n_tmp_vectors, _right_preconditioning);
