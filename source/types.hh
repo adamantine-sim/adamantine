@@ -46,6 +46,18 @@ enum class Property
   thermal_conductivity,
   SIZE
 };
+
+/**
+ * Enum on the possible timers.
+ */
+enum Timing
+{
+  main,
+  refine,
+  evol_time,
+  evol_time_eval_th_ph,
+  evol_time_J_inv
+};
 }
 
 #endif

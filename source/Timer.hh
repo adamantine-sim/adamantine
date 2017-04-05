@@ -23,6 +23,11 @@ class Timer
 {
 public:
   /**
+   * Default constructor.
+   */
+  Timer() = default;
+
+  /**
    * Constructor. The string @p section is used when the timing is output.
    */
   Timer(boost::mpi::communicator communicator, std::string const &section);

@@ -206,7 +206,8 @@ void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::reinit()
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
 double ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
     evolve_one_time_step(double t, double delta_t,
-                         dealii::LA::distributed::Vector<NumberType> &solution)
+                         dealii::LA::distributed::Vector<NumberType> &solution,
+                         std::vector<Timer> &timers)
 {
   // TODO: this assume that the material properties do no change during the time
   // steps. This is wrong and needs to be changed.
@@ -215,11 +216,12 @@ double ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   double time = _time_stepping->evolve_one_time_step(
       std::bind(&ThermalPhysics<dim, fe_degree, NumberType,
                                 QuadratureType>::evaluate_thermal_physics,
-                this, std::placeholders::_1, std::placeholders::_2),
+                this, std::placeholders::_1, std::placeholders::_2,
+                std::ref(timers)),
       std::bind(&ThermalPhysics<dim, fe_degree, NumberType,
                                 QuadratureType>::id_minus_tau_J_inverse,
                 this, std::placeholders::_1, std::placeholders::_2,
-                std::placeholders::_3),
+                std::placeholders::_3, std::ref(timers)),
       t, delta_t, solution);
 
   // If the method is embedded, get the next time step. Otherwise, just use the
@@ -285,9 +287,10 @@ template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
 dealii::LA::distributed::Vector<NumberType>
 ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
     evaluate_thermal_physics(
-        double const t,
-        dealii::LA::distributed::Vector<NumberType> const &y) const
+        double const t, dealii::LA::distributed::Vector<NumberType> const &y,
+        std::vector<Timer> &timers) const
 {
+  timers[evol_time_eval_th_ph].start();
   LA_Vector value(y.get_partitioner());
   value = 0.;
 
@@ -335,16 +338,19 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   // Multiply by the inverse of the mass matrix.
   value.scale(*_thermal_operator->get_inverse_mass_matrix());
 
+  timers[evol_time_eval_th_ph].stop();
+
   return value;
 }
 
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
 dealii::LA::distributed::Vector<NumberType>
 ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
-    id_minus_tau_J_inverse(
-        double const /*t*/, double const tau,
-        dealii::LA::distributed::Vector<NumberType> const &y) const
+    id_minus_tau_J_inverse(double const /*t*/, double const tau,
+                           dealii::LA::distributed::Vector<NumberType> const &y,
+                           std::vector<Timer> &timers) const
 {
+  timers[evol_time_J_inv].start();
   _implicit_operator->set_tau(tau);
   dealii::LA::distributed::Vector<NumberType> solution(y.get_partitioner());
 
@@ -360,6 +366,8 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   dealii::SolverGMRES<dealii::LA::distributed::Vector<NumberType>> solver(
       solver_control, additional_data);
   solver.solve(*_implicit_operator, solution, y, preconditioner);
+
+  timers[evol_time_J_inv].stop();
 
   return solution;
 }
