@@ -164,6 +164,10 @@ void refine_and_transfer(
                      dim, dealii::LA::distributed::Vector<double>>(
                      material_property->get_dof_handler()));
 
+  // We need to update the ghost values before we can do the interpolation on
+  // the new mesh.
+  solution.update_ghost_values();
+
   // Prepare the Triangulation and the diffent SolutionTransfers for refinement
   triangulation.prepare_coarsening_and_refinement();
   solution_transfer.prepare_for_coarsening_and_refinement(solution);
