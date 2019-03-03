@@ -12,7 +12,6 @@
 #include "Geometry.hh"
 #include "types.hh"
 #include <deal.II/grid/filtered_iterator.h>
-#include <boost/mpi.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 template <int dim>
@@ -51,7 +50,7 @@ void check_material_id(
 
 BOOST_AUTO_TEST_CASE(geometry_2D)
 {
-  boost::mpi::communicator communicator;
+  MPI_Comm communicator = MPI_COMM_WORLD;
   boost::property_tree::ptree database;
   database.put("length", 12);
   database.put("length_divisions", 4);
@@ -68,7 +67,7 @@ BOOST_AUTO_TEST_CASE(geometry_2D)
 
 BOOST_AUTO_TEST_CASE(geometry_3D)
 {
-  boost::mpi::communicator communicator;
+  MPI_Comm communicator = MPI_COMM_WORLD;
   boost::property_tree::ptree database;
   database.put("length", 12);
   database.put("length_divisions", 4);

@@ -13,7 +13,6 @@
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/numerics/data_out.h>
-#include <boost/mpi/communicator.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 namespace adamantine
@@ -30,7 +29,7 @@ public:
    * \param database requires the following entries:
    *   - <B>file_name</B>: string
    */
-  PostProcessor(boost::mpi::communicator &communicator,
+  PostProcessor(MPI_Comm &communicator,
                 boost::property_tree::ptree const &database,
                 dealii::DoFHandler<dim> &dof_handler,
                 std::shared_ptr<MaterialProperty<dim>> material_properties);
@@ -56,7 +55,7 @@ private:
   /**
    * MPI communicator.
    */
-  boost::mpi::communicator _communicator;
+  MPI_Comm _communicator;
   /**
    * Root of the different output files.
    */

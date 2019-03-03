@@ -13,7 +13,6 @@
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/lac/constraint_matrix.h>
 #include <deal.II/matrix_free/matrix_free.h>
-#include <boost/mpi.hpp>
 
 namespace adamantine
 {
@@ -25,7 +24,7 @@ template <int dim, int fe_degree, typename NumberType>
 class ThermalOperator : public Operator<NumberType>
 {
 public:
-  ThermalOperator(boost::mpi::communicator const &communicator,
+  ThermalOperator(MPI_Comm const &communicator,
                   std::shared_ptr<MaterialProperty<dim>> material_properties);
 
   /**
@@ -103,7 +102,7 @@ private:
   /**
    * MPI communicator.
    */
-  boost::mpi::communicator const &_communicator;
+  MPI_Comm const &_communicator;
   /**
    * Data to configure the MatrixFree object.
    */
@@ -175,6 +174,6 @@ inline void ThermalOperator<dim, fe_degree, NumberType>::jacobian_vmult(
 {
   vmult(dst, src);
 }
-}
+} // namespace adamantine
 
 #endif

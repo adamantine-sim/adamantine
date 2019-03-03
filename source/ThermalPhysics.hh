@@ -60,7 +60,7 @@ public:
    *   [optional, default of 1e-6]
    *   - <B>time_stepping.jfnk</B>: boolean [optional, default value of false]
    */
-  ThermalPhysics(boost::mpi::communicator const &communicator,
+  ThermalPhysics(MPI_Comm const &communicator,
                  boost::property_tree::ptree const &database,
                  Geometry<dim> &geometry);
 

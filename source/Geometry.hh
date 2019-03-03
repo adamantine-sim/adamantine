@@ -9,7 +9,6 @@
 #define GEOMETRY_HH
 
 #include <deal.II/distributed/tria.h>
-#include <boost/mpi/communicator.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 namespace adamantine
@@ -35,7 +34,7 @@ public:
    *   - <B>width</B>: double in \f$(0,\infty)\f$ [only used in three
    *   dimensional calculation]
    */
-  Geometry(boost::mpi::communicator const &communicator,
+  Geometry(MPI_Comm const &communicator,
            boost::property_tree::ptree const &database);
 
   /**

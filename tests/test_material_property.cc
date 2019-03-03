@@ -15,12 +15,11 @@
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/tria.h>
 #include <deal.II/lac/la_parallel_vector.h>
-#include <boost/mpi/communicator.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 BOOST_AUTO_TEST_CASE(material_property)
 {
-  boost::mpi::communicator communicator;
+  MPI_Comm communicator = MPI_COMM_WORLD;
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database;
@@ -67,7 +66,7 @@ BOOST_AUTO_TEST_CASE(material_property)
 
 BOOST_AUTO_TEST_CASE(ratios)
 {
-  boost::mpi::communicator communicator;
+  MPI_Comm communicator = MPI_COMM_WORLD;
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database;

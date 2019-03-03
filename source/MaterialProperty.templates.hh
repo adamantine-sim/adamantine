@@ -19,7 +19,7 @@ namespace adamantine
 
 template <int dim>
 MaterialProperty<dim>::MaterialProperty(
-    boost::mpi::communicator const &communicator,
+    MPI_Comm const &communicator,
     dealii::parallel::distributed::Triangulation<dim> const &tria,
     boost::property_tree::ptree const &database)
     : _communicator(communicator), _fe(0), _mp_dof_handler(tria)

@@ -15,12 +15,11 @@
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/numerics/matrix_tools.h>
-#include <boost/mpi.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 BOOST_AUTO_TEST_CASE(thermal_operator)
 {
-  boost::mpi::communicator communicator;
+  MPI_Comm communicator = MPI_COMM_WORLD;
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database;
@@ -95,7 +94,7 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
 
 BOOST_AUTO_TEST_CASE(spmv)
 {
-  boost::mpi::communicator communicator;
+  MPI_Comm communicator = MPI_COMM_WORLD;
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database;

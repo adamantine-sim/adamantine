@@ -17,7 +17,7 @@
 
 BOOST_AUTO_TEST_CASE(post_processor)
 {
-  boost::mpi::communicator communicator;
+  MPI_Comm communicator = MPI_COMM_WORLD;
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database;
