@@ -18,7 +18,6 @@
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/la_vector.h>
-#include <boost/mpi.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <array>
 #include <limits>
@@ -48,7 +47,7 @@ public:
    *   [optional]
    */
   MaterialProperty(
-      boost::mpi::communicator const &communicator,
+      MPI_Comm const &communicator,
       dealii::parallel::distributed::Triangulation<dim> const &tria,
       boost::property_tree::ptree const &database);
 
@@ -175,7 +174,7 @@ private:
   /**
    * MPI communicator.
    */
-  boost::mpi::communicator _communicator;
+  MPI_Comm _communicator;
   /**
    * Map of \f$ -\frac{H_{liquidus}}{\rho C_P} + T_{liquidus} \f$ for each
    * material.

@@ -18,12 +18,11 @@ namespace adamantine
 
 template <int dim, int fe_degree, typename NumberType>
 ThermalOperator<dim, fe_degree, NumberType>::ThermalOperator(
-    boost::mpi::communicator const &communicator,
+    MPI_Comm const &communicator,
     std::shared_ptr<MaterialProperty<dim>> material_properties)
     : _communicator(communicator), _material_properties(material_properties),
       _inverse_mass_matrix(new dealii::LA::distributed::Vector<NumberType>())
 {
-  _matrix_free_data.mpi_communicator = _communicator;
   _matrix_free_data.tasks_parallel_scheme =
       dealii::MatrixFree<dim, NumberType>::AdditionalData::partition_color;
 }
@@ -226,6 +225,6 @@ void ThermalOperator<dim, fe_degree, NumberType>::evaluate_material_properties(
         }
       }
 }
-}
+} // namespace adamantine
 
 #endif

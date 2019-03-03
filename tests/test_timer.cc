@@ -18,7 +18,7 @@
 BOOST_AUTO_TEST_CASE(test_timer)
 {
   unsigned int const tolerance = 15;
-  adamantine::Timer timer(boost::mpi::communicator(), "test");
+  adamantine::Timer timer(MPI_COMM_WORLD, "test");
 
   timer.start();
   std::this_thread::sleep_for(std::chrono::milliseconds(200));

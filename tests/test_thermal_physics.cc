@@ -13,7 +13,7 @@
 
 void thermal_2d(boost::property_tree::ptree &database, double time_step)
 {
-  boost::mpi::communicator communicator;
+  MPI_Comm communicator = MPI_COMM_WORLD;
 
   // Geometry database
   boost::property_tree::ptree geometry_database;
@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(thermal_2d_implicit)
 
 BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution)
 {
-  boost::mpi::communicator communicator;
+  MPI_Comm communicator = MPI_COMM_WORLD;
 
   // Geometry database
   boost::property_tree::ptree geometry_database;
@@ -138,7 +138,7 @@ BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution)
 
 BOOST_AUTO_TEST_CASE(initial_temperature)
 {
-  boost::mpi::communicator communicator;
+  MPI_Comm communicator = MPI_COMM_WORLD;
 
   // Geometry database
   boost::property_tree::ptree geometry_database;

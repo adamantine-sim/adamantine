@@ -10,20 +10,19 @@
 #include "ThermalPhysics.hh"
 #include "Timer.hh"
 #include "utils.hh"
+#include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
+#include <boost/property_tree/info_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <cmath>
 #include <deal.II/base/mpi.h>
 #include <deal.II/distributed/solution_transfer.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/grid_refinement.h>
 #include <deal.II/numerics/error_estimator.h>
-#include <boost/filesystem.hpp>
-#include <boost/mpi.hpp>
-#include <boost/program_options.hpp>
-#include <boost/property_tree/info_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
 #include <iostream>
-#include <cmath>
 
-void initialize_timers(boost::mpi::communicator const &communicator,
+void initialize_timers(MPI_Comm const &communicator,
                        std::vector<adamantine::Timer> &timers)
 {
   timers.push_back(adamantine::Timer(communicator, "Main"));
@@ -39,7 +38,7 @@ void initialize_timers(boost::mpi::communicator const &communicator,
 
 template <int dim, int fe_degree, typename QuadratureType>
 std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &
-initialize(boost::mpi::communicator const &communicator,
+initialize(MPI_Comm const &communicator,
            boost::property_tree::ptree const &database,
            adamantine::Geometry<dim> &geometry,
            std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics)
@@ -56,8 +55,7 @@ initialize(boost::mpi::communicator const &communicator,
 template <int dim, int fe_degree>
 std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &
 initialize_quadrature(
-    std::string const &quadrature_type,
-    boost::mpi::communicator const &communicator,
+    std::string const &quadrature_type, MPI_Comm const &communicator,
     boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
     std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics)
@@ -78,8 +76,7 @@ template <int dim>
 std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &
 initialize_thermal_physics(
     unsigned int fe_degree, std::string const &quadrature_type,
-    boost::mpi::communicator const &communicator,
-    boost::property_tree::ptree const &database,
+    MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
     std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics)
 {
@@ -195,8 +192,8 @@ void refine_and_transfer(
 #if ADAMANTINE_DEBUG
   // Check that we are not losing material
   std::array<dealii::LA::distributed::Vector<double>,
-             static_cast<unsigned int>(adamantine::MaterialState::SIZE)> state =
-      material_property->get_state();
+             static_cast<unsigned int>(adamantine::MaterialState::SIZE)>
+      state = material_property->get_state();
   unsigned int const local_size = state[0].local_size();
   unsigned int constexpr n_material_states =
       static_cast<unsigned int>(adamantine::MaterialState::SIZE);
@@ -232,13 +229,13 @@ compute_cells_to_refine(
   // the beams intersect, some cells will appear twice in the vector. This is
   // not a problem.
   std::vector<typename dealii::parallel::distributed::Triangulation<
-      dim>::active_cell_iterator> cells_to_refine;
+      dim>::active_cell_iterator>
+      cells_to_refine;
   for (unsigned int i = 0; i < n_time_steps; ++i)
   {
-    double const current_time = time +
-                                static_cast<double>(i) /
-                                    static_cast<double>(n_time_steps) *
-                                    (next_refinement_time - time);
+    double const current_time = time + static_cast<double>(i) /
+                                           static_cast<double>(n_time_steps) *
+                                           (next_refinement_time - time);
     for (auto &beam : electron_beams)
     {
       beam->set_time(current_time);
@@ -317,9 +314,10 @@ void refine_mesh(
   {
     // Compute the cells to be refined.
     std::vector<typename dealii::parallel::distributed::Triangulation<
-        dim>::active_cell_iterator> cells_to_refine =
-        compute_cells_to_refine(triangulation, time, next_refinement_time,
-                                time_steps_refinement, electron_beams);
+        dim>::active_cell_iterator>
+        cells_to_refine =
+            compute_cells_to_refine(triangulation, time, next_refinement_time,
+                                    time_steps_refinement, electron_beams);
 
     // Flag the cells for refinement.
     for (auto &cell : cells_to_refine)
@@ -426,7 +424,7 @@ void refine_mesh(
 
 template <int dim>
 void run(
-    boost::mpi::communicator const &communicator,
+    MPI_Comm const &communicator,
     std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics,
     adamantine::PostProcessor<dim> &post_processor,
     std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams,
@@ -460,6 +458,7 @@ void run(
   {
     if ((time + time_step) > duration)
       time_step = duration - time;
+    unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
     // Refine the mesh after time_steps_refinement time steps or when time is
     // greater or equal than the next predicted time for refinement. This is
@@ -473,7 +472,7 @@ void run(
                   next_refinement_time, time_steps_refinement,
                   refinement_database, fe_degree);
       timers[adamantine::refine].stop();
-      if ((communicator.rank() == 0) && (verbose_refinement == true))
+      if ((rank == 0) && (verbose_refinement == true))
         std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
                   << std::endl;
     }
@@ -489,7 +488,7 @@ void run(
     time_step = thermal_physics->get_delta_t_guess();
 
     // Output progress on screen
-    if (communicator.rank() == 0)
+    if (rank == 0)
     {
       double adim_time = time / (duration / 10.);
       double int_part = 0;
@@ -513,7 +512,7 @@ int main(int argc, char *argv[])
 {
   dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
-  boost::mpi::communicator communicator;
+  MPI_Comm communicator = MPI_COMM_WORLD;
 
   std::vector<adamantine::Timer> timers;
   initialize_timers(communicator, timers);
@@ -564,12 +563,11 @@ int main(int argc, char *argv[])
     std::string quadrature_type =
         discretization_database.get("quadrature", "gauss");
     std::transform(quadrature_type.begin(), quadrature_type.end(),
-                   quadrature_type.begin(), [](unsigned char c)
-                   {
-                     return std::tolower(c);
-                   });
+                   quadrature_type.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
 
-    if (communicator.rank() == 0)
+    unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
+    if (rank == 0)
       std::cout << "Starting simulation" << std::endl;
 
     if (dim == 2)
@@ -623,7 +621,7 @@ int main(int argc, char *argv[])
              initial_temperature, timers);
     }
 
-    if (communicator.rank() == 0)
+    if (rank == 0)
       std::cout << "Simulation done" << std::endl;
   }
   catch (boost::bad_any_cast &exception)

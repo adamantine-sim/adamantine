@@ -9,7 +9,7 @@
 #define TIMER_H
 
 #include <boost/chrono/include.hpp>
-#include <boost/mpi.hpp>
+#include "mpi.h"
 #include <string>
 
 namespace adamantine
@@ -30,7 +30,7 @@ public:
   /**
    * Constructor. The string @p section is used when the timing is output.
    */
-  Timer(boost::mpi::communicator communicator, std::string const &section);
+  Timer(MPI_Comm communicator, std::string const &section);
 
   /**
    * Start the clock.
@@ -59,7 +59,7 @@ public:
   boost::chrono::process_real_cpu_clock::duration get_elapsed_time();
 
 private:
-  boost::mpi::communicator _communicator;
+  MPI_Comm _communicator;
   std::string _section;
   boost::chrono::process_cpu_clock _clock;
   boost::chrono::process_cpu_clock::time_point _t_start;

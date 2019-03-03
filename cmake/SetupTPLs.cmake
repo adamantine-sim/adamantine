@@ -8,7 +8,6 @@ endif()
 set(Boost_COMPONENTS
     chrono
     filesystem
-    mpi
     program_options
     timer
     unit_test_framework

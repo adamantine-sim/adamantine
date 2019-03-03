@@ -18,7 +18,7 @@ namespace adamantine
 {
 
 template <int dim>
-Geometry<dim>::Geometry(boost::mpi::communicator const &communicator,
+Geometry<dim>::Geometry(MPI_Comm const &communicator,
                         boost::property_tree::ptree const &database)
     : _triangulation(communicator)
 {

@@ -16,8 +16,7 @@ namespace adamantine
 {
 template <int dim>
 PostProcessor<dim>::PostProcessor(
-    boost::mpi::communicator &communicator,
-    boost::property_tree::ptree const &database,
+    MPI_Comm &communicator, boost::property_tree::ptree const &database,
     dealii::DoFHandler<dim> &dof_handler,
     std::shared_ptr<MaterialProperty<dim>> material_properties)
     : _communicator(communicator), _dof_handler(dof_handler),
@@ -45,8 +44,8 @@ void PostProcessor<dim>::output_pvtu(
   // Add MaterialState ratio. We need to copy the data because state is attached
   // to a different DoFHandler.
   std::array<dealii::LA::distributed::Vector<double>,
-             static_cast<unsigned int>(MaterialState::SIZE)> state =
-      _material_properties->get_state();
+             static_cast<unsigned int>(MaterialState::SIZE)>
+      state = _material_properties->get_state();
   unsigned int const n_active_cells =
       _dof_handler.get_triangulation().n_active_cells();
   dealii::DoFHandler<dim> const &material_dof_handler =
@@ -96,10 +95,13 @@ void PostProcessor<dim>::output_pvtu(
   _data_out.write_vtu(output);
 
   // Output the master record.
-  if (_communicator.rank() == 0)
+  unsigned int rank = dealii::Utilities::MPI::this_mpi_process(_communicator);
+  if (rank == 0)
   {
     std::vector<std::string> filenames;
-    for (int i = 0; i < _communicator.size(); ++i)
+    unsigned int comm_size =
+        dealii::Utilities::MPI::n_mpi_processes(_communicator);
+    for (unsigned int i = 0; i < comm_size; ++i)
     {
       std::string local_name =
           _filename + "." + dealii::Utilities::int_to_string(cycle, 2) + "." +
@@ -157,6 +159,6 @@ dealii::LA::distributed::Vector<double> PostProcessor<dim>::compute_temperature(
 
   return temperature;
 }
-}
+} // namespace adamantine
 
 #endif
