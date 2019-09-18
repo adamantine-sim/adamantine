@@ -12,11 +12,11 @@
 #include "Geometry.hh"
 #include "ImplicitOperator.hh"
 #include "ThermalOperator.hh"
+#include <boost/property_tree/ptree.hpp>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/numerics/matrix_tools.h>
-#include <boost/property_tree/ptree.hpp>
 
 BOOST_AUTO_TEST_CASE(implicit_operator)
 {
@@ -33,8 +33,8 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   dealii::FE_Q<2> fe(2);
   dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
   dof_handler.distribute_dofs(fe);
-  dealii::ConstraintMatrix constraint_matrix;
-  constraint_matrix.close();
+  dealii::AffineConstraints<double> affine_constraints;
+  affine_constraints.close();
   dealii::QGauss<1> quad(3);
 
   // Create the MaterialProperty
@@ -57,8 +57,8 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   std::shared_ptr<adamantine::ThermalOperator<2, 2, double>> thermal_operator =
       std::make_shared<adamantine::ThermalOperator<2, 2, double>>(
           communicator, mat_properties);
-  thermal_operator->setup_dofs(dof_handler, constraint_matrix, quad);
-  thermal_operator->reinit(dof_handler, constraint_matrix);
+  thermal_operator->setup_dofs(dof_handler, affine_constraints, quad);
+  thermal_operator->reinit(dof_handler, affine_constraints);
   dealii::LA::distributed::Vector<double> dummy(thermal_operator->m());
   thermal_operator->evaluate_material_properties(dummy);
 

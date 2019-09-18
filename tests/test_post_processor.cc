@@ -30,8 +30,8 @@ BOOST_AUTO_TEST_CASE(post_processor)
   dealii::FE_Q<2> fe(2);
   dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
   dof_handler.distribute_dofs(fe);
-  dealii::ConstraintMatrix constraint_matrix;
-  constraint_matrix.close();
+  dealii::AffineConstraints<double> affine_constraints;
+  affine_constraints.close();
   dealii::QGauss<1> quad(3);
 
   // Create the MaterialProperty
@@ -53,8 +53,8 @@ BOOST_AUTO_TEST_CASE(post_processor)
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, double> thermal_operator(communicator,
                                                              mat_properties);
-  thermal_operator.setup_dofs(dof_handler, constraint_matrix, quad);
-  thermal_operator.reinit(dof_handler, constraint_matrix);
+  thermal_operator.setup_dofs(dof_handler, affine_constraints, quad);
+  thermal_operator.reinit(dof_handler, affine_constraints);
 
   // Create the PostProcessor
   boost::property_tree::ptree post_processor_database;

@@ -55,4 +55,4 @@ void NewtonSolver::solve(
     ++i;
   }
 }
-}
+} // namespace adamantine

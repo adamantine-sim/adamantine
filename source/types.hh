@@ -18,7 +18,7 @@ namespace LinearAlgebra
  * Shorten dealii::LinearAlgebra to dealii::LA.
  */
 namespace LA = LinearAlgebra;
-}
+} // namespace dealii
 
 namespace adamantine
 {
@@ -59,6 +59,6 @@ enum Timing
   evol_time_J_inv,
   evol_time_eval_mat_prop
 };
-}
+} // namespace adamantine
 
 #endif

@@ -8,8 +8,8 @@
 #ifndef GEOMETRY_HH
 #define GEOMETRY_HH
 
-#include <deal.II/distributed/tria.h>
 #include <boost/property_tree/ptree.hpp>
+#include <deal.II/distributed/tria.h>
 
 namespace adamantine
 {
@@ -70,6 +70,6 @@ Geometry<dim>::get_triangulation()
 {
   return _triangulation;
 }
-}
+} // namespace adamantine
 
 #endif

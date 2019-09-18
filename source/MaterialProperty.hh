@@ -10,6 +10,8 @@
 
 #include "types.hh"
 #include "utils.hh"
+#include <array>
+#include <boost/property_tree/ptree.hpp>
 #include <deal.II/base/function_parser.h>
 #include <deal.II/distributed/tria.h>
 #include <deal.II/dofs/dof_accessor.h>
@@ -18,8 +20,6 @@
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/la_vector.h>
-#include <boost/property_tree/ptree.hpp>
-#include <array>
 #include <limits>
 #include <unordered_map>
 
@@ -197,7 +197,8 @@ private:
       dealii::types::material_id,
       std::array<
           std::array<std::unique_ptr<dealii::FunctionParser<1>>, _n_properties>,
-          _n_material_states>> _properties;
+          _n_material_states>>
+      _properties;
   /**
    * Array of vector describing the ratio of each state in each cell. Each
    * vector corresponds to a state defined in the MaterialState enum.
@@ -286,6 +287,6 @@ MaterialProperty<dim>::get_dof_handler() const
 {
   return _mp_dof_handler;
 }
-}
+} // namespace adamantine
 
 #endif

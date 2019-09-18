@@ -11,8 +11,8 @@
 
 #include "Geometry.hh"
 #include "types.hh"
-#include <deal.II/grid/filtered_iterator.h>
 #include <boost/property_tree/ptree.hpp>
+#include <deal.II/grid/filtered_iterator.h>
 
 template <int dim>
 void check_material_id(

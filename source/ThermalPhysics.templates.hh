@@ -9,19 +9,19 @@
 #define THERMAL_PHYSICS_TEMPLATES_HH
 
 #include "ThermalPhysics.hh"
+#include <algorithm>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_gmres.h>
-#include <algorithm>
 
 namespace adamantine
 {
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
 ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
-    MPI_Comm const &communicator,
-    boost::property_tree::ptree const &database, Geometry<dim> &geometry)
+    MPI_Comm const &communicator, boost::property_tree::ptree const &database,
+    Geometry<dim> &geometry)
     : _embedded_method(false), _implicit_method(false), _geometry(geometry),
       _fe(fe_degree), _dof_handler(_geometry.get_triangulation()),
       _quadrature(fe_degree + 1)
@@ -55,10 +55,7 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
       database.get_child("time_stepping");
   std::string method = time_stepping_database.get<std::string>("method");
   std::transform(method.begin(), method.end(), method.begin(),
-                 [](unsigned char c)
-                 {
-                   return std::tolower(c);
-                 });
+                 [](unsigned char c) { return std::tolower(c); });
   if (method.compare("forward_euler") == 0)
     _time_stepping =
         std::make_unique<dealii::TimeStepping::ExplicitRungeKutta<LA_Vector>>(
@@ -185,19 +182,19 @@ void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::setup_dofs()
   dealii::IndexSet locally_relevant_dofs;
   dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler,
                                                   locally_relevant_dofs);
-  _constraint_matrix.clear();
-  _constraint_matrix.reinit(locally_relevant_dofs);
+  _affine_constraints.clear();
+  _affine_constraints.reinit(locally_relevant_dofs);
   dealii::DoFTools::make_hanging_node_constraints(_dof_handler,
-                                                  _constraint_matrix);
-  _constraint_matrix.close();
+                                                  _affine_constraints);
+  _affine_constraints.close();
 
-  _thermal_operator->setup_dofs(_dof_handler, _constraint_matrix, _quadrature);
+  _thermal_operator->setup_dofs(_dof_handler, _affine_constraints, _quadrature);
 }
 
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
 void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::reinit()
 {
-  _thermal_operator->reinit(_dof_handler, _constraint_matrix);
+  _thermal_operator->reinit(_dof_handler, _affine_constraints);
   if (_implicit_method == true)
     _implicit_operator->set_inverse_mass_matrix(
         _thermal_operator->get_inverse_mass_matrix());
@@ -330,8 +327,8 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
       }
     }
     cell->get_dof_indices(local_dof_indices);
-    _constraint_matrix.distribute_local_to_global(cell_source,
-                                                  local_dof_indices, value);
+    _affine_constraints.distribute_local_to_global(cell_source,
+                                                   local_dof_indices, value);
   }
 
   // Apply the Thermal Operator.
@@ -362,9 +359,9 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   dealii::SolverControl solver_control(_max_iter, _tolerance * y.l2_norm());
   // We need to inverse (I - tau M^{-1} J). While M^{-1} and J are SPD,
   // (I - tau M^{-1} J) is symmetric indefinite in the general case.
-  typename dealii::SolverGMRES<
-      dealii::LA::distributed::Vector<NumberType>>::AdditionalData
-      additional_data(_max_n_tmp_vectors, _right_preconditioning);
+  typename dealii::SolverGMRES<dealii::LA::distributed::Vector<NumberType>>::
+      AdditionalData additional_data(_max_n_tmp_vectors,
+                                     _right_preconditioning);
   dealii::SolverGMRES<dealii::LA::distributed::Vector<NumberType>> solver(
       solver_control, additional_data);
   solver.solve(*_implicit_operator, solution, y, preconditioner);
@@ -373,6 +370,6 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
 
   return solution;
 }
-}
+} // namespace adamantine
 
 #endif

@@ -25,6 +25,6 @@ endforeach()
 
 # For now integration tests only run adamantine but they don't check the 
 # results
-adamantine_ADD_INTEGRATION_TEST(test_integration_2d 1 2)
+adamantine_ADD_INTEGRATION_TEST(test_integration_2d 1)
 
 adamantine_COPY_INPUT_FILE(beam_position.csv tests/data)

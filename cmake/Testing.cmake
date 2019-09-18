@@ -9,6 +9,7 @@ function(adamantine_ADD_BOOST_TEST TEST_NAME)
     target_link_libraries(${TEST_NAME} PUBLIC ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
     target_include_directories(${TEST_NAME} SYSTEM PUBLIC ${DEAL_II_INCLUDE_DIRS})
     target_link_libraries(${TEST_NAME} PUBLIC ${DEAL_II_LIBRARIES})
+    target_link_libraries(${TEST_NAME} PUBLIC MPI::MPI_CXX)
     target_link_libraries(${TEST_NAME} LINK_PUBLIC Adamantine)
     set_target_properties(${TEST_NAME} PROPERTIES
         CXX_STANDARD 14

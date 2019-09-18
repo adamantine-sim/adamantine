@@ -54,6 +54,6 @@ private:
    */
   double _tolerance;
 };
-}
+} // namespace adamantine
 
 #endif

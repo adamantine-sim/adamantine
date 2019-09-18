@@ -102,6 +102,6 @@ inline void ImplicitOperator<NumberType>::set_inverse_mass_matrix(
 {
   _inverse_mass_matrix = inverse_mass_matrix;
 }
-}
+} // namespace adamantine
 
 #endif

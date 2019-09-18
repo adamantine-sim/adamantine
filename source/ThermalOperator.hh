@@ -11,7 +11,7 @@
 #include "MaterialProperty.hh"
 #include "Operator.hh"
 #include <deal.II/dofs/dof_handler.h>
-#include <deal.II/lac/constraint_matrix.h>
+#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/matrix_free/matrix_free.h>
 
 namespace adamantine
@@ -28,19 +28,19 @@ public:
                   std::shared_ptr<MaterialProperty<dim>> material_properties);
 
   /**
-   * Associate the ConstraintMatrix and the MatrixFree objects to the
+   * Associate the AffineConstraints<double> and the MatrixFree objects to the
    * underlying Triangulation.
    */
   template <typename QuadratureType>
   void setup_dofs(dealii::DoFHandler<dim> const &dof_handler,
-                  dealii::ConstraintMatrix const &constraint_matrix,
+                  dealii::AffineConstraints<double> const &affine_constraints,
                   QuadratureType const &quad);
 
   /**
    * Compute the inverse of the mass matrix and update the material properties.
    */
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
-              dealii::ConstraintMatrix const &constraint_matrix);
+              dealii::AffineConstraints<double> const &affine_constraints);
 
   /**
    * Clear the MatrixFree object and resize the inverse of the mass matrix to

@@ -13,8 +13,8 @@
 #include "ImplicitOperator.hh"
 #include "Physics.hh"
 #include "ThermalOperator.hh"
-#include <deal.II/base/time_stepping.h>
 #include <boost/property_tree/ptree.hpp>
+#include <deal.II/base/time_stepping.h>
 
 namespace adamantine
 {
@@ -88,7 +88,7 @@ public:
 
   dealii::DoFHandler<dim> &get_dof_handler() override;
 
-  dealii::ConstraintMatrix &get_constraint_matrix() override;
+  dealii::AffineConstraints<double> &get_affine_constraints() override;
 
   std::shared_ptr<MaterialProperty<dim>> get_material_property() override;
 
@@ -155,9 +155,9 @@ private:
    */
   dealii::DoFHandler<dim> _dof_handler;
   /**
-   * Associated ConstraintMatrix.
+   * Associated AffineConstraints<double>.
    */
-  dealii::ConstraintMatrix _constraint_matrix;
+  dealii::AffineConstraints<double> _affine_constraints;
   /**
    * Associated quadature, either Gauss or Gauss-Lobatto.
    */
@@ -188,8 +188,9 @@ private:
 };
 
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-inline double ThermalPhysics<dim, fe_degree, NumberType,
-                             QuadratureType>::get_delta_t_guess() const
+inline double
+ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::get_delta_t_guess()
+    const
 {
   return _delta_t_guess;
 }
@@ -210,11 +211,11 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::get_dof_handler()
 }
 
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-inline dealii::ConstraintMatrix &
+inline dealii::AffineConstraints<double> &
 ThermalPhysics<dim, fe_degree, NumberType,
-               QuadratureType>::get_constraint_matrix()
+               QuadratureType>::get_affine_constraints()
 {
-  return _constraint_matrix;
+  return _affine_constraints;
 }
 
 template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
@@ -231,6 +232,6 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::get_electron_beams()
 {
   return _electron_beams;
 }
-}
+} // namespace adamantine
 
 #endif

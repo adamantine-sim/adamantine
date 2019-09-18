@@ -176,7 +176,7 @@ void refine_and_transfer(
   // Execute the refinement
   triangulation.execute_coarsening_and_refinement();
 
-  // Update the ConstraintMatrix and resize the solution
+  // Update the AffineConstraints and resize the solution
   thermal_physics->setup_dofs();
   thermal_physics->initialize_dof_vector(solution);
 
@@ -286,8 +286,9 @@ void refine_mesh(
         triangulation.n_active_cells());
     dealii::KellyErrorEstimator<dim>::estimate(
         dof_handler, dealii::QGauss<dim - 1>(fe_degree + 1),
-        typename dealii::FunctionMap<dim>::type(), solution,
-        estimated_error_per_cell, dealii::ComponentMask(), nullptr, 0,
+        std::map<dealii::types::boundary_id,
+                 const dealii::Function<dim, double> *>(),
+        solution, estimated_error_per_cell, dealii::ComponentMask(), nullptr, 0,
         triangulation.locally_owned_subdomain());
 
     // Flag the cells for refinement.
@@ -442,9 +443,9 @@ void run(
   unsigned int n_time_step = 0;
   double time = 0.;
   // Output the initial solution
-  dealii::ConstraintMatrix &constraint_matrix =
-      thermal_physics->get_constraint_matrix();
-  constraint_matrix.distribute(solution);
+  dealii::AffineConstraints<double> &affine_constraints =
+      thermal_physics->get_affine_constraints();
+  affine_constraints.distribute(solution);
   post_processor.output_pvtu(cycle, n_time_step, time, solution);
   ++n_time_step;
 
@@ -501,7 +502,7 @@ void run(
     }
 
     // Output the solution
-    constraint_matrix.distribute(solution);
+    affine_constraints.distribute(solution);
     post_processor.output_pvtu(cycle, n_time_step, time, solution);
     ++n_time_step;
   }

@@ -31,21 +31,21 @@ template <int dim, int fe_degree, typename NumberType>
 template <typename QuadratureType>
 void ThermalOperator<dim, fe_degree, NumberType>::setup_dofs(
     dealii::DoFHandler<dim> const &dof_handler,
-    dealii::ConstraintMatrix const &constraint_matrix,
+    dealii::AffineConstraints<double> const &affine_constraints,
     QuadratureType const &quad)
 {
-  _matrix_free.reinit(dof_handler, constraint_matrix, quad, _matrix_free_data);
+  _matrix_free.reinit(dof_handler, affine_constraints, quad, _matrix_free_data);
 }
 
 template <int dim, int fe_degree, typename NumberType>
 void ThermalOperator<dim, fe_degree, NumberType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
-    dealii::ConstraintMatrix const &constraint_matrix)
+    dealii::AffineConstraints<double> const &affine_constraints)
 {
   // Compute the inverse of the mass matrix
   dealii::QGaussLobatto<1> mass_matrix_quad(fe_degree + 1);
   dealii::MatrixFree<dim, NumberType> mass_matrix_free;
-  mass_matrix_free.reinit(dof_handler, constraint_matrix, mass_matrix_quad,
+  mass_matrix_free.reinit(dof_handler, affine_constraints, mass_matrix_quad,
                           _matrix_free_data);
   mass_matrix_free.initialize_dof_vector(*_inverse_mass_matrix);
   dealii::VectorizedArray<NumberType> one =

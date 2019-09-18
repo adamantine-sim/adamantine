@@ -39,4 +39,4 @@ template void MaterialProperty<3>::update_state(
 template void MaterialProperty<3>::update_state(
     dealii::DoFHandler<3> const &,
     dealii::LA::distributed::Vector<double> const &);
-}
+} // namespace adamantine
