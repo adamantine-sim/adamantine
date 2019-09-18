@@ -3,18 +3,6 @@
 # Number of processors with default value
 : ${N_PROCS:=2}
 
-# To use module we need to source the bashrc and make sure than bashrc does not
-# return because the shell is not interactive
-sed -i '/return/d' ~/.bashrc
-source ~/.bashrc
-. /home/docker/spack/share/spack/setup-env.sh
-
-# Load the modules
-spack load openmpi
-spack load boost
-spack load dealii
-spack load metis
-
 # Install adamantine
 mkdir -p /home/docker/build
 cd /home/docker/build
@@ -23,6 +11,7 @@ cmake \
   -D ADAMANTINE_ENABLE_TESTS=ON \
   -D ADAMANTINE_ENABLE_COVERAGE=ON \
   -D CMAKE_CXX_FLAGS="-Wall -std=c++14" \
+  -D DEAL_II_DIR=/opt/dealii \
 ../adamantine
 
 make -j${N_PROCS}
