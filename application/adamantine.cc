@@ -286,8 +286,9 @@ void refine_mesh(
         triangulation.n_active_cells());
     dealii::KellyErrorEstimator<dim>::estimate(
         dof_handler, dealii::QGauss<dim - 1>(fe_degree + 1),
-        typename dealii::FunctionMap<dim>::type(), solution,
-        estimated_error_per_cell, dealii::ComponentMask(), nullptr, 0,
+        std::map<dealii::types::boundary_id,
+                 const dealii::Function<dim, double> *>(),
+        solution, estimated_error_per_cell, dealii::ComponentMask(), nullptr, 0,
         triangulation.locally_owned_subdomain());
 
     // Flag the cells for refinement.
