@@ -71,7 +71,7 @@ void PointSource::save_time()
   _saved_pos = _current_pos;
   _saved_time = _current_time;
 }
-}
+} // namespace internal
 
 template <int dim>
 ElectronBeam<dim>::ElectronBeam(boost::property_tree::ptree const &database)
@@ -197,6 +197,6 @@ double ElectronBeam<dim>::value(dealii::Point<dim> const &point,
     return heat_source;
   }
 }
-}
+} // namespace adamantine
 
 #endif

@@ -41,6 +41,6 @@ inline void ASSERT_THROW_NOT_IMPLEMENTED()
   NotImplementedExc exception;
   throw exception;
 }
-}
+} // namespace adamantine
 
 #endif

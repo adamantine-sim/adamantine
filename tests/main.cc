@@ -6,8 +6,8 @@
  */
 
 #define BOOST_TEST_NO_MAIN
-#include <deal.II/base/mpi.h>
 #include <boost/test/unit_test.hpp>
+#include <deal.II/base/mpi.h>
 
 bool init_function() { return true; }
 

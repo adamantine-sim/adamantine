@@ -95,6 +95,6 @@ public:
     ASSERT_THROW_NOT_IMPLEMENTED();
   }
 };
-}
+} // namespace adamantine
 
 #endif

@@ -8,8 +8,8 @@
 #ifndef TIMER_H
 #define TIMER_H
 
-#include <boost/chrono/include.hpp>
 #include "mpi.h"
+#include <boost/chrono/include.hpp>
 #include <string>
 
 namespace adamantine
@@ -68,5 +68,5 @@ private:
    */
   boost::chrono::process_cpu_clock::duration _elapsed_time;
 };
-}
+} // namespace adamantine
 #endif

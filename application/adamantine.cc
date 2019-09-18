@@ -176,7 +176,7 @@ void refine_and_transfer(
   // Execute the refinement
   triangulation.execute_coarsening_and_refinement();
 
-  // Update the ConstraintMatrix and resize the solution
+  // Update the AffineConstraints and resize the solution
   thermal_physics->setup_dofs();
   thermal_physics->initialize_dof_vector(solution);
 
@@ -442,9 +442,9 @@ void run(
   unsigned int n_time_step = 0;
   double time = 0.;
   // Output the initial solution
-  dealii::ConstraintMatrix &constraint_matrix =
-      thermal_physics->get_constraint_matrix();
-  constraint_matrix.distribute(solution);
+  dealii::AffineConstraints<double> &affine_constraints =
+      thermal_physics->get_affine_constraints();
+  affine_constraints.distribute(solution);
   post_processor.output_pvtu(cycle, n_time_step, time, solution);
   ++n_time_step;
 
@@ -501,7 +501,7 @@ void run(
     }
 
     // Output the solution
-    constraint_matrix.distribute(solution);
+    affine_constraints.distribute(solution);
     post_processor.output_pvtu(cycle, n_time_step, time, solution);
     ++n_time_step;
   }

@@ -11,11 +11,11 @@
 
 #include "Geometry.hh"
 #include "MaterialProperty.hh"
+#include <boost/property_tree/ptree.hpp>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/tria.h>
 #include <deal.II/lac/la_parallel_vector.h>
-#include <boost/property_tree/ptree.hpp>
 
 BOOST_AUTO_TEST_CASE(material_property)
 {

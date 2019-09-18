@@ -66,6 +66,6 @@ void ImplicitOperator<NumberType>::Tvmult_add(
 {
   ASSERT_THROW_NOT_IMPLEMENTED();
 }
-}
+} // namespace adamantine
 
 #endif

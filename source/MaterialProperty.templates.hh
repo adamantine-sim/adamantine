@@ -9,10 +9,10 @@
 #define MATERIAL_PROPERTY_TEMPLATES_HH
 
 #include "MaterialProperty.hh"
+#include <boost/optional.hpp>
 #include <deal.II/base/point.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/fe/fe_values.h>
-#include <boost/optional.hpp>
 
 namespace adamantine
 {
@@ -99,8 +99,7 @@ MaterialProperty<dim>::enthalpy_to_temperature(
 
     NumberType enth_to_temp = [liquid_ratio, liquidus, solidus,
                                liquidus_enthalpy, solidus_enthalpy, density,
-                               specific_heat](double const enthalpy)
-    {
+                               specific_heat](double const enthalpy) {
       if (liquid_ratio > 0.)
       {
         if (liquid_ratio == 1.)
@@ -110,9 +109,9 @@ MaterialProperty<dim>::enthalpy_to_temperature(
         }
         else
         {
-          return solidus +
-                 (liquidus - solidus) * (enthalpy - solidus_enthalpy) /
-                     (liquidus_enthalpy - solidus_enthalpy);
+          return solidus + (liquidus - solidus) *
+                               (enthalpy - solidus_enthalpy) /
+                               (liquidus_enthalpy - solidus_enthalpy);
         }
       }
       else
@@ -400,9 +399,10 @@ MaterialProperty<dim>::compute_average_enthalpy(
   // piecewise constant space
   dealii::QGauss<dim> quadrature(fe.degree);
   dealii::FEValues<dim> fe_values(
-      fe, quadrature, dealii::UpdateFlags::update_values |
-                          dealii::UpdateFlags::update_quadrature_points |
-                          dealii::UpdateFlags::update_JxW_values);
+      fe, quadrature,
+      dealii::UpdateFlags::update_values |
+          dealii::UpdateFlags::update_quadrature_points |
+          dealii::UpdateFlags::update_JxW_values);
   unsigned int const dofs_per_cell = fe.dofs_per_cell;
   std::vector<dealii::types::global_dof_index> mp_dof_indices(1);
   std::vector<dealii::types::global_dof_index> enth_dof_indices(dofs_per_cell);
@@ -428,6 +428,6 @@ MaterialProperty<dim>::compute_average_enthalpy(
 
   return enthalpy_average;
 }
-}
+} // namespace adamantine
 
 #endif

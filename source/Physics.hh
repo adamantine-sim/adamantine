@@ -12,7 +12,7 @@
 #include "Timer.hh"
 #include "types.hh"
 #include <deal.II/dofs/dof_handler.h>
-#include <deal.II/lac/constraint_matrix.h>
+#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/la_parallel_vector.h>
 
 namespace adamantine
@@ -29,7 +29,7 @@ public:
   virtual ~Physics() = default;
 
   /**
-   * Associate the ConstraintMatrix and the MatrixFree objects to the
+   * Associate the AffineConstraints<double> and the MatrixFree objects to the
    * underlying Triangulation.
    */
   virtual void setup_dofs() = 0;
@@ -73,14 +73,14 @@ public:
   virtual dealii::DoFHandler<dim> &get_dof_handler() = 0;
 
   /**
-   * Return the ConstraintMatrix.
+   * Return the AffineConstraints<double>.
    */
-  virtual dealii::ConstraintMatrix &get_constraint_matrix() = 0;
+  virtual dealii::AffineConstraints<double> &get_affine_constraints() = 0;
 
   /**
    * Return a shared pointer of the MaterialProperty.
    */
   virtual std::shared_ptr<MaterialProperty<dim>> get_material_property() = 0;
 };
-}
+} // namespace adamantine
 #endif

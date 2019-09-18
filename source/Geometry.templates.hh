@@ -66,6 +66,6 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
       cell->set_user_index(static_cast<int>(MaterialState::solid));
   }
 }
-}
+} // namespace adamantine
 
 #endif

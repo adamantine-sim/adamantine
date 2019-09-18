@@ -11,11 +11,11 @@
 
 #include "Geometry.hh"
 #include "ThermalOperator.hh"
+#include <boost/property_tree/ptree.hpp>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/numerics/matrix_tools.h>
-#include <boost/property_tree/ptree.hpp>
 
 BOOST_AUTO_TEST_CASE(thermal_operator)
 {
@@ -32,8 +32,8 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
   dealii::FE_Q<2> fe(2);
   dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
   dof_handler.distribute_dofs(fe);
-  dealii::ConstraintMatrix constraint_matrix;
-  constraint_matrix.close();
+  dealii::AffineConstraints<double> affine_constraints;
+  affine_constraints.close();
   dealii::QGauss<1> quad(3);
 
   // Create the MaterialProperty
@@ -55,8 +55,8 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, double> thermal_operator(communicator,
                                                              mat_properties);
-  thermal_operator.setup_dofs(dof_handler, constraint_matrix, quad);
-  thermal_operator.reinit(dof_handler, constraint_matrix);
+  thermal_operator.setup_dofs(dof_handler, affine_constraints, quad);
+  thermal_operator.reinit(dof_handler, affine_constraints);
   dealii::LA::distributed::Vector<double> dummy(thermal_operator.m());
   thermal_operator.evaluate_material_properties(dummy);
   BOOST_CHECK(thermal_operator.m() == 99);
@@ -107,8 +107,8 @@ BOOST_AUTO_TEST_CASE(spmv)
   dealii::FE_Q<2> fe(2);
   dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
   dof_handler.distribute_dofs(fe);
-  dealii::ConstraintMatrix constraint_matrix;
-  constraint_matrix.close();
+  dealii::AffineConstraints<double> affine_constraints;
+  affine_constraints.close();
   dealii::QGauss<1> quad(3);
 
   // Create the MaterialProperty
@@ -130,8 +130,8 @@ BOOST_AUTO_TEST_CASE(spmv)
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, double> thermal_operator(communicator,
                                                              mat_properties);
-  thermal_operator.setup_dofs(dof_handler, constraint_matrix, quad);
-  thermal_operator.reinit(dof_handler, constraint_matrix);
+  thermal_operator.setup_dofs(dof_handler, affine_constraints, quad);
+  thermal_operator.reinit(dof_handler, affine_constraints);
   dealii::LA::distributed::Vector<double> dummy(thermal_operator.m());
   thermal_operator.evaluate_material_properties(dummy);
   BOOST_CHECK(thermal_operator.m() == 99);
@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE(spmv)
 
   // Build the matrix. This only works in serial.
   dealii::DynamicSparsityPattern dsp(dof_handler.n_dofs());
-  dealii::DoFTools::make_sparsity_pattern(dof_handler, dsp, constraint_matrix);
+  dealii::DoFTools::make_sparsity_pattern(dof_handler, dsp, affine_constraints);
   dealii::SparsityPattern sparsity_pattern;
   sparsity_pattern.copy_from(dsp);
   dealii::SparseMatrix<double> sparse_matrix(sparsity_pattern);
