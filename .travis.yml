@@ -9,18 +9,18 @@ services:
   - docker
 
 before_install:
-  - docker pull rombur/adamantine-stack
+  - docker pull rombur/adamantine-stack:19.08.0
   - docker run --detach --tty --name=test-machine
                --volume ${TRAVIS_BUILD_DIR}:/home/docker/adamantine
                --env TRAVIS_PULL_REQUEST=${TRAVIS_PULL_REQUEST}
-               rombur/adamantine-stack
+               rombur/adamantine-stack:19.08.0
 
 #install:
 #  - pip install -q codecov
 
 script:
-  - docker exec -u docker test-machine bash -xe /home/docker/adamantine/ci/run_test.sh
-    #  - docker cp test-machine:/home/docker/build/lcov.info .
+  - docker exec test-machine bash -xe /home/docker/adamantine/ci/run_test.sh
+#  - docker cp test-machine:/home/docker/build/lcov.info .
 
 #after_success:
 #  - codecov
