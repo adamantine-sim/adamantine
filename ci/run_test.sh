@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+export PATH=/usr/local/bin:$PATH
+
 # Install adamantine
 mkdir -p /home/docker/build
 cd /home/docker/build
