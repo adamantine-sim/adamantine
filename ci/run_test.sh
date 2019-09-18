@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# Number of processors with default value
-: ${N_PROCS:=2}
-
 # Install adamantine
 mkdir -p /home/docker/build
 cd /home/docker/build
@@ -14,15 +11,16 @@ cmake \
   -D DEAL_II_DIR=/opt/dealii \
 ../adamantine
 
-make -j${N_PROCS}
+make
 
-export OMPI_ALLOW_RUN_AS_ROOT=1 
-export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 
+# Variable only work with openmpi 4.0.2 and later
+# export OMPI_ALLOW_RUN_AS_ROOT=1 
+# export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 
 export OMPI_MCA_btl_vader_single_copy_mechanism=none
 
 # indent_code is not a real test. Do not run it because it would required to
 # change the permission of the adamantine directory
-ctest -j${N_PROCS} -R test_
+ctest -V -R test_
 
 # Check code coverage
 make coverage
