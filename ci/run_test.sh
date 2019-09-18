@@ -16,6 +16,10 @@ cmake \
 
 make -j${N_PROCS}
 
+export OMPI_ALLOW_RUN_AS_ROOT=1 
+export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 
+export OMPI_MCA_btl_vader_single_copy_mechanism=none
+
 # indent_code is not a real test. Do not run it because it would required to
 # change the permission of the adamantine directory
 ctest -j${N_PROCS} -R test_
