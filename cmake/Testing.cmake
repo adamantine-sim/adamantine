@@ -1,18 +1,17 @@
 function(adamantine_ADD_BOOST_TEST TEST_NAME)
     add_executable(${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_NAME}.cc ${tests_SOURCES})
-    target_include_directories(${TEST_NAME} SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
-    target_link_libraries(${TEST_NAME} PUBLIC ${Boost_CHRONO_LIBRARY})
-    target_link_libraries(${TEST_NAME} PUBLIC ${Boost_FILESYSTEM_LIBRARY})
-    target_link_libraries(${TEST_NAME} PUBLIC ${Boost_MPI_LIBRARY})
-    target_link_libraries(${TEST_NAME} PUBLIC ${Boost_PROGRAM_OPTIONS_LIBRARY})
-    target_link_libraries(${TEST_NAME} PUBLIC ${Boost_TIMER_LIBRARY})
-    target_link_libraries(${TEST_NAME} PUBLIC ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+    target_link_libraries(${TEST_NAME} PUBLIC Boost::boost)
+    target_link_libraries(${TEST_NAME} PUBLIC Boost::chrono)
+    target_link_libraries(${TEST_NAME} PUBLIC Boost::filesystem)
+    target_link_libraries(${TEST_NAME} PUBLIC Boost::program_options)
+    target_link_libraries(${TEST_NAME} PUBLIC Boost::timer)
+    target_link_libraries(${TEST_NAME} PUBLIC Boost::unit_test_framework)
     target_include_directories(${TEST_NAME} SYSTEM PUBLIC ${DEAL_II_INCLUDE_DIRS})
     target_link_libraries(${TEST_NAME} PUBLIC ${DEAL_II_LIBRARIES})
     target_link_libraries(${TEST_NAME} PUBLIC MPI::MPI_CXX)
-    target_link_libraries(${TEST_NAME} LINK_PUBLIC Adamantine)
+    target_link_libraries(${TEST_NAME} PUBLIC Adamantine)
     set_target_properties(${TEST_NAME} PROPERTIES
-        CXX_STANDARD 14
+        CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
     )
     if(ARGN)

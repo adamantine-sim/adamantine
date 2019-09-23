@@ -1,23 +1,25 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.13)
 
-project(adamantine LANGUAGES CXX VERSION ${adamantine_VERSION})
+project(adamantine LANGUAGES CXX VERSION 0.1.0)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-include(SetupTPLs)
 include(Setupadamantine)
-if(ADAMANTINE_ENABLE_COVERAGE)
-  include(CodeCoverage)
-endif()
-include(Testing)
+include(SetupTPLs)
 
-enable_testing()
-include(CTest)
 
 add_subdirectory(application)
 add_subdirectory(source)
+
+if(ADAMANTINE_ENABLE_COVERAGE)
+  include(CodeCoverage)
+endif()
+
 if (ADAMANTINE_ENABLE_TESTS)
+  include(Testing)
+  enable_testing()
+  include(CTest)
   add_subdirectory(tests)
   add_test(NAME indent_code
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

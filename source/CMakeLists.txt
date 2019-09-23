@@ -31,15 +31,14 @@ set(Adamantine_SOURCES
 add_library(Adamantine STATIC ${Adamantine_SOURCES})
 
 set_target_properties(Adamantine PROPERTIES
-    CXX_STANDARD 14
+    CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON
 )
 
-target_include_directories(Adamantine SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
-target_link_libraries(Adamantine PUBLIC ${Boost_CHRONO_LIBRARY})
-target_link_libraries(Adamantine PUBLIC ${Boost_FILESYSTEM_LIBRARY})
-target_link_libraries(Adamantine PUBLIC ${Boost_MPI_LIBRARY})
-target_link_libraries(Adamantine PUBLIC ${Boost_PROGRAM_OPTIONS_LIBRARY})
+target_link_libraries(Adamantine PUBLIC Boost::boost)
+target_link_libraries(Adamantine PUBLIC Boost::chrono)
+target_link_libraries(Adamantine PUBLIC Boost::filesystem)
+target_link_libraries(Adamantine PUBLIC Boost::program_options)
 target_include_directories(Adamantine SYSTEM PUBLIC ${DEAL_II_INCLUDE_DIRS})
 target_link_libraries(Adamantine PUBLIC ${DEAL_II_LIBRARIES})
 target_link_libraries(Adamantine PUBLIC MPI::MPI_CXX)
