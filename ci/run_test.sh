@@ -9,7 +9,7 @@ cmake \
   -D CMAKE_BUILD_TYPE=Debug \
   -D ADAMANTINE_ENABLE_TESTS=ON \
   -D ADAMANTINE_ENABLE_COVERAGE=ON \
-  -D CMAKE_CXX_FLAGS="-Wall -std=c++14" \
+  -D CMAKE_CXX_FLAGS="-Wall" \
   -D DEAL_II_DIR=/opt/dealii \
 ../adamantine
 
