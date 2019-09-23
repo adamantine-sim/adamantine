@@ -15,7 +15,7 @@ set(Boost_COMPONENTS
 find_package(Boost 1.61.0 REQUIRED COMPONENTS ${Boost_COMPONENTS})
 
 #### deal.II #################################################################
-find_package(deal.II 8.5 REQUIRED PATHS ${DEAL_II_DIR})
+find_package(deal.II 9.1 REQUIRED PATHS ${DEAL_II_DIR})
 
 # If deal.II was configured in DebugRelease mode, then if adamantine was configured
 # in Debug mode, we link against the Debug version of deal.II. If adamatine was
