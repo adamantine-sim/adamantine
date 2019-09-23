@@ -12,6 +12,10 @@ include(SetupTPLs)
 add_subdirectory(application)
 add_subdirectory(source)
 
+if(ADAMANTINE_ENABLE_COVERAGE)
+  include(CodeCoverage)
+endif()
+
 if (ADAMANTINE_ENABLE_TESTS)
   include(Testing)
   enable_testing()
@@ -21,10 +25,6 @@ if (ADAMANTINE_ENABLE_TESTS)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMAND ./indent
     )
-endif()
-
-if(ADAMANTINE_ENABLE_COVERAGE)
-  include(CodeCoverage)
 endif()
 
 # Provide "indent" target for indenting all the header and the source files.
