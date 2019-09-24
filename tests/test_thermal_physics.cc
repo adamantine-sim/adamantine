@@ -9,6 +9,7 @@
 
 #include "main.cc"
 
+#include "Geometry.hh"
 #include "ThermalPhysics.hh"
 
 void thermal_2d(boost::property_tree::ptree &database, double time_step)
