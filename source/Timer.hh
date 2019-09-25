@@ -12,7 +12,7 @@
 
 #include <string>
 
-#include "mpi.h"
+#include <mpi.h>
 
 namespace adamantine
 {

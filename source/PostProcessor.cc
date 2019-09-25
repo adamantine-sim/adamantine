@@ -5,9 +5,8 @@
  * for the text and further information on this license.
  */
 
-#include "PostProcessor.hh"
-
-#include "instantiation.hh"
+#include <PostProcessor.hh>
+#include <instantiation.hh>
 
 #include <deal.II/grid/filtered_iterator.h>
 

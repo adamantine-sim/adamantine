@@ -7,7 +7,7 @@
 
 #define BOOST_TEST_MODULE ElectronBeam
 
-#include "ElectronBeam.hh"
+#include <ElectronBeam.hh>
 
 #include "main.cc"
 

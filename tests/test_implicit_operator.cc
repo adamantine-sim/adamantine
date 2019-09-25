@@ -7,9 +7,9 @@
 
 #define BOOST_TEST_MODULE ImplicitOperator
 
-#include "Geometry.hh"
-#include "ImplicitOperator.hh"
-#include "ThermalOperator.hh"
+#include <Geometry.hh>
+#include <ImplicitOperator.hh>
+#include <ThermalOperator.hh>
 
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>

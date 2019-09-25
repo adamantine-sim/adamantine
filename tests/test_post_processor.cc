@@ -7,10 +7,10 @@
 
 #define BOOST_TEST_MODULE PostProcessor
 
-#include "Geometry.hh"
-#include "MaterialProperty.hh"
-#include "PostProcessor.hh"
-#include "ThermalOperator.hh"
+#include <Geometry.hh>
+#include <MaterialProperty.hh>
+#include <PostProcessor.hh>
+#include <ThermalOperator.hh>
 
 #include <boost/filesystem.hpp>
 

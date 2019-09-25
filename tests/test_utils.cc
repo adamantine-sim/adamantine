@@ -7,7 +7,7 @@
 
 #define BOOST_TEST_MODULE utils
 
-#include "utils.hh"
+#include <utils.hh>
 
 #include "main.cc"
 

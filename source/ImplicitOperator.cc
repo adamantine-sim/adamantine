@@ -5,10 +5,9 @@
  * for the text and further information on this license.
  */
 
-#include "ImplicitOperator.hh"
-
-#include "instantiation.hh"
-#include "utils.hh"
+#include <ImplicitOperator.hh>
+#include <instantiation.hh>
+#include <utils.hh>
 
 namespace adamantine
 {

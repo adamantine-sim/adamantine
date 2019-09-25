@@ -5,9 +5,8 @@
  * for the text and further information on this license.
  */
 
-#include "ThermalPhysics.hh"
-
-#include "instantiation.hh"
+#include <ThermalPhysics.hh>
+#include <instantiation.hh>
 
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_values.h>

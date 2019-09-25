@@ -8,8 +8,8 @@
 #ifndef OPERATOR_HH
 #define OPERATOR_HH
 
-#include "types.hh"
-#include "utils.hh"
+#include <types.hh>
+#include <utils.hh>
 
 #include <deal.II/base/subscriptor.h>
 #include <deal.II/lac/la_parallel_vector.h>

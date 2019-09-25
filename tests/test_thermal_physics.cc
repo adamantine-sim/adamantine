@@ -7,8 +7,8 @@
 
 #define BOOST_TEST_MODULE ThermalPhysics
 
-#include "Geometry.hh"
-#include "ThermalPhysics.hh"
+#include <Geometry.hh>
+#include <ThermalPhysics.hh>
 
 #include "main.cc"
 

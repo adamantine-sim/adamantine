@@ -8,8 +8,8 @@
 #ifndef MATERIAL_PROPERTY_HH
 #define MATERIAL_PROPERTY_HH
 
-#include "types.hh"
-#include "utils.hh"
+#include <types.hh>
+#include <utils.hh>
 
 #include <deal.II/base/function_parser.h>
 #include <deal.II/distributed/tria.h>

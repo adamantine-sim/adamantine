@@ -5,9 +5,8 @@
  * for the text and further information on this license.
  */
 
-#include "MaterialProperty.hh"
-
-#include "instantiation.hh"
+#include <MaterialProperty.hh>
+#include <instantiation.hh>
 
 #include <deal.II/base/point.h>
 #include <deal.II/base/quadrature_lib.h>

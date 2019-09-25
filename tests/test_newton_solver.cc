@@ -7,7 +7,7 @@
 
 #define BOOST_TEST_MODULE Newton_Solver
 
-#include "NewtonSolver.hh"
+#include <NewtonSolver.hh>
 
 #include "main.cc"
 

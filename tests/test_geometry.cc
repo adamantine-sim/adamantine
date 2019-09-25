@@ -7,8 +7,8 @@
 
 #define BOOST_TEST_MODULE Geometry
 
-#include "Geometry.hh"
-#include "types.hh"
+#include <Geometry.hh>
+#include <types.hh>
 
 #include <deal.II/grid/filtered_iterator.h>
 

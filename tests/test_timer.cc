@@ -9,8 +9,6 @@
 
 #include <Timer.hh>
 
-#include <boost/test/unit_test.hpp>
-
 #include <chrono>
 #include <fstream>
 #include <thread>

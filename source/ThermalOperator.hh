@@ -8,8 +8,8 @@
 #ifndef THERMAL_OPERATOR_HH
 #define THERMAL_OPERATOR_HH
 
-#include "MaterialProperty.hh"
-#include "Operator.hh"
+#include <MaterialProperty.hh>
+#include <Operator.hh>
 
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/lac/affine_constraints.h>

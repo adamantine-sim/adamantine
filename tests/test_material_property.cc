@@ -7,8 +7,8 @@
 
 #define BOOST_TEST_MODULE MaterialProperty
 
-#include "Geometry.hh"
-#include "MaterialProperty.hh"
+#include <Geometry.hh>
+#include <MaterialProperty.hh>
 
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/grid/grid_generator.h>
