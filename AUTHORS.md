@@ -1,4 +1,0 @@
-# Authors
-Bruno Turcksin
-
-# Contributors

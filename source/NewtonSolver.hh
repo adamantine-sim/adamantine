@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2017, the adamantine authors.
+/* Copyright (c) 2016 - 2019, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -8,8 +8,10 @@
 #ifndef NEWTON_SOLVER_HH
 #define NEWTON_SOLVER_HH
 
-#include "types.hh"
+#include <types.hh>
+
 #include <deal.II/lac/la_parallel_vector.h>
+
 #include <functional>
 
 namespace adamantine

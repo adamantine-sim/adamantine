@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, the adamantine authors.
+/* Copyright (c) 2016 - 2019, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -7,15 +7,17 @@
 
 #define BOOST_TEST_MODULE MaterialProperty
 
-#include "main.cc"
+#include <Geometry.hh>
+#include <MaterialProperty.hh>
 
-#include "Geometry.hh"
-#include "MaterialProperty.hh"
-#include <boost/property_tree/ptree.hpp>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/tria.h>
 #include <deal.II/lac/la_parallel_vector.h>
+
+#include <boost/property_tree/ptree.hpp>
+
+#include "main.cc"
 
 BOOST_AUTO_TEST_CASE(material_property)
 {

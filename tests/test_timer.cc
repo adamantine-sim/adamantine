@@ -1,4 +1,4 @@
-/* Copyright (c) 2017, the adamantine authors.
+/* Copyright (c) 2017 - 2019, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -7,13 +7,13 @@
 
 #define BOOST_TEST_MODULE Timer
 
-#include "main.cc"
-
 #include <Timer.hh>
-#include <boost/test/unit_test.hpp>
+
 #include <chrono>
 #include <fstream>
 #include <thread>
+
+#include "main.cc"
 
 BOOST_AUTO_TEST_CASE(test_timer)
 {

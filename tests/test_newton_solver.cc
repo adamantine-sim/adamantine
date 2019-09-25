@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, the adamantine authors.
+/* Copyright (c) 2016 - 2019, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -7,9 +7,9 @@
 
 #define BOOST_TEST_MODULE Newton_Solver
 
-#include "main.cc"
+#include <NewtonSolver.hh>
 
-#include "NewtonSolver.hh"
+#include "main.cc"
 
 dealii::LA::distributed::Vector<double>
 compute_residual(dealii::LA::distributed::Vector<double> const &x)

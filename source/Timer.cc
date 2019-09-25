@@ -1,4 +1,4 @@
-/* Copyright (c) 2017, the adamantine authors.
+/* Copyright (c) 2017 - 2019, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -6,6 +6,7 @@
  */
 
 #include <Timer.hh>
+
 #include <iostream>
 
 namespace adamantine

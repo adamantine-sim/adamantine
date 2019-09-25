@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, the adamantine authors.
+/* Copyright (c) 2016 - 2019, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -7,12 +7,14 @@
 
 #define BOOST_TEST_MODULE Geometry
 
-#include "main.cc"
+#include <Geometry.hh>
+#include <types.hh>
 
-#include "Geometry.hh"
-#include "types.hh"
-#include <boost/property_tree/ptree.hpp>
 #include <deal.II/grid/filtered_iterator.h>
+
+#include <boost/property_tree/ptree.hpp>
+
+#include "main.cc"
 
 template <int dim>
 void check_material_id(

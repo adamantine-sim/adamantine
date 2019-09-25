@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, the adamantine authors.
+/* Copyright (c) 2016 - 2019, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -7,9 +7,10 @@
 
 #define BOOST_TEST_MODULE ThermalPhysics
 
-#include "main.cc"
+#include <Geometry.hh>
+#include <ThermalPhysics.hh>
 
-#include "ThermalPhysics.hh"
+#include "main.cc"
 
 void thermal_2d(boost::property_tree::ptree &database, double time_step)
 {

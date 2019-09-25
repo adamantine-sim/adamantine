@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2017, the adamantine authors.
+/* Copyright (c) 2016 - 2019, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -8,10 +8,9 @@
 #ifndef MATERIAL_PROPERTY_HH
 #define MATERIAL_PROPERTY_HH
 
-#include "types.hh"
-#include "utils.hh"
-#include <array>
-#include <boost/property_tree/ptree.hpp>
+#include <types.hh>
+#include <utils.hh>
+
 #include <deal.II/base/function_parser.h>
 #include <deal.II/distributed/tria.h>
 #include <deal.II/dofs/dof_accessor.h>
@@ -20,6 +19,10 @@
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/la_vector.h>
+
+#include <boost/property_tree/ptree.hpp>
+
+#include <array>
 #include <limits>
 #include <unordered_map>
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, the adamantine authors.
+/* Copyright (c) 2016 - 2019, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -7,13 +7,14 @@
 
 #define BOOST_TEST_MODULE PostProcessor
 
-#include "main.cc"
+#include <Geometry.hh>
+#include <MaterialProperty.hh>
+#include <PostProcessor.hh>
+#include <ThermalOperator.hh>
 
-#include "Geometry.hh"
-#include "MaterialProperty.hh"
-#include "PostProcessor.hh"
-#include "ThermalOperator.hh"
 #include <boost/filesystem.hpp>
+
+#include "main.cc"
 
 BOOST_AUTO_TEST_CASE(post_processor)
 {

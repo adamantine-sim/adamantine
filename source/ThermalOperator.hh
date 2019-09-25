@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2017, the adamantine authors.
+/* Copyright (c) 2016 - 2019, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -8,8 +8,9 @@
 #ifndef THERMAL_OPERATOR_HH
 #define THERMAL_OPERATOR_HH
 
-#include "MaterialProperty.hh"
-#include "Operator.hh"
+#include <MaterialProperty.hh>
+#include <Operator.hh>
+
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/matrix_free/matrix_free.h>
