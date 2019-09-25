@@ -8,8 +8,9 @@
 #ifndef ELECTRON_BEAM_HH
 #define ELECTRON_BEAM_HH
 
-#include <boost/property_tree/ptree.hpp>
 #include <deal.II/base/function_parser.h>
+
+#include <boost/property_tree/ptree.hpp>
 
 namespace adamantine
 {

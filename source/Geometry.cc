@@ -9,9 +9,11 @@
 #define GEOMETRY_TEMPLATES_HH
 
 #include "Geometry.hh"
+
 #include "instantiation.hh"
 #include "types.hh"
 #include "utils.hh"
+
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/grid_generator.h>
 

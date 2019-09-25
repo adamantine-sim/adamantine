@@ -9,10 +9,13 @@
 #define ELECTRON_BEAM_TEMPLATES_HH
 
 #include "ElectronBeam.hh"
+
 #include "instantiation.hh"
 #include "utils.hh"
+
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
+
 #include <cstdlib>
 
 using std::pow;

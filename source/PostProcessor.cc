@@ -6,8 +6,11 @@
  */
 
 #include "PostProcessor.hh"
+
 #include "instantiation.hh"
+
 #include <deal.II/grid/filtered_iterator.h>
+
 #include <fstream>
 
 namespace adamantine

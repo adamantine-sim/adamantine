@@ -8,8 +8,9 @@
 #ifndef GEOMETRY_HH
 #define GEOMETRY_HH
 
-#include <boost/property_tree/ptree.hpp>
 #include <deal.II/distributed/tria.h>
+
+#include <boost/property_tree/ptree.hpp>
 
 namespace adamantine
 {

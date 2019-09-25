@@ -10,8 +10,7 @@
 
 #include "types.hh"
 #include "utils.hh"
-#include <array>
-#include <boost/property_tree/ptree.hpp>
+
 #include <deal.II/base/function_parser.h>
 #include <deal.II/distributed/tria.h>
 #include <deal.II/dofs/dof_accessor.h>
@@ -20,6 +19,10 @@
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/la_vector.h>
+
+#include <boost/property_tree/ptree.hpp>
+
+#include <array>
 #include <limits>
 #include <unordered_map>
 

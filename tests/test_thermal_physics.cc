@@ -7,10 +7,10 @@
 
 #define BOOST_TEST_MODULE ThermalPhysics
 
-#include "main.cc"
-
 #include "Geometry.hh"
 #include "ThermalPhysics.hh"
+
+#include "main.cc"
 
 void thermal_2d(boost::property_tree::ptree &database, double time_step)
 {

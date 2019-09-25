@@ -13,8 +13,10 @@
 #include "ImplicitOperator.hh"
 #include "Physics.hh"
 #include "ThermalOperator.hh"
-#include <boost/property_tree/ptree.hpp>
+
 #include <deal.II/base/time_stepping.h>
+
+#include <boost/property_tree/ptree.hpp>
 
 namespace adamantine
 {

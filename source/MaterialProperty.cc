@@ -6,11 +6,14 @@
  */
 
 #include "MaterialProperty.hh"
+
 #include "instantiation.hh"
-#include <boost/optional.hpp>
+
 #include <deal.II/base/point.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/fe/fe_values.h>
+
+#include <boost/optional.hpp>
 
 namespace adamantine
 {

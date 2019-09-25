@@ -7,13 +7,14 @@
 
 #define BOOST_TEST_MODULE PostProcessor
 
-#include "main.cc"
-
 #include "Geometry.hh"
 #include "MaterialProperty.hh"
 #include "PostProcessor.hh"
 #include "ThermalOperator.hh"
+
 #include <boost/filesystem.hpp>
+
+#include "main.cc"
 
 BOOST_AUTO_TEST_CASE(post_processor)
 {

@@ -7,9 +7,9 @@
 
 #define BOOST_TEST_MODULE utils
 
-#include "main.cc"
-
 #include "utils.hh"
+
+#include "main.cc"
 
 BOOST_AUTO_TEST_CASE(utils)
 {

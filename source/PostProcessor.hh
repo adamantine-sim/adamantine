@@ -10,10 +10,12 @@
 
 #include "MaterialProperty.hh"
 #include "types.hh"
-#include <boost/property_tree/ptree.hpp>
+
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/numerics/data_out.h>
+
+#include <boost/property_tree/ptree.hpp>
 
 namespace adamantine
 {

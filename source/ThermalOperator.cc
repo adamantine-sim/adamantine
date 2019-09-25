@@ -6,7 +6,9 @@
  */
 
 #include "ThermalOperator.hh"
+
 #include "instantiation.hh"
+
 #include <deal.II/base/index_set.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/matrix_free/fe_evaluation.h>

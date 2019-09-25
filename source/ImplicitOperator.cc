@@ -6,6 +6,7 @@
  */
 
 #include "ImplicitOperator.hh"
+
 #include "instantiation.hh"
 #include "utils.hh"
 

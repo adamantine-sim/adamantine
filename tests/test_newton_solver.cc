@@ -7,9 +7,9 @@
 
 #define BOOST_TEST_MODULE Newton_Solver
 
-#include "main.cc"
-
 #include "NewtonSolver.hh"
+
+#include "main.cc"
 
 dealii::LA::distributed::Vector<double>
 compute_residual(dealii::LA::distributed::Vector<double> const &x)

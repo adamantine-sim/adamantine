@@ -7,12 +7,14 @@
 
 #define BOOST_TEST_MODULE Geometry
 
-#include "main.cc"
-
 #include "Geometry.hh"
 #include "types.hh"
-#include <boost/property_tree/ptree.hpp>
+
 #include <deal.II/grid/filtered_iterator.h>
+
+#include <boost/property_tree/ptree.hpp>
+
+#include "main.cc"
 
 template <int dim>
 void check_material_id(

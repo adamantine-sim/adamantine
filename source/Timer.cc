@@ -6,6 +6,7 @@
  */
 
 #include <Timer.hh>
+
 #include <iostream>
 
 namespace adamantine

@@ -9,6 +9,7 @@
 #define UTILS_HH
 
 #include <boost/assert.hpp>
+
 #include <exception>
 #include <stdexcept>
 #include <string>

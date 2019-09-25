@@ -7,13 +7,15 @@
 
 #define BOOST_TEST_MODULE Timer
 
-#include "main.cc"
-
 #include <Timer.hh>
+
 #include <boost/test/unit_test.hpp>
+
 #include <chrono>
 #include <fstream>
 #include <thread>
+
+#include "main.cc"
 
 BOOST_AUTO_TEST_CASE(test_timer)
 {

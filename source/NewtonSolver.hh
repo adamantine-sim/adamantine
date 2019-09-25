@@ -9,7 +9,9 @@
 #define NEWTON_SOLVER_HH
 
 #include "types.hh"
+
 #include <deal.II/lac/la_parallel_vector.h>
+
 #include <functional>
 
 namespace adamantine

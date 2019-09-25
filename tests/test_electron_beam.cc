@@ -7,9 +7,9 @@
 
 #define BOOST_TEST_MODULE ElectronBeam
 
-#include "main.cc"
-
 #include "ElectronBeam.hh"
+
+#include "main.cc"
 
 BOOST_AUTO_TEST_CASE(beam_2d)
 {

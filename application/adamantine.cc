@@ -10,16 +10,19 @@
 #include "ThermalPhysics.hh"
 #include "Timer.hh"
 #include "utils.hh"
-#include <boost/filesystem.hpp>
-#include <boost/program_options.hpp>
-#include <boost/property_tree/info_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <cmath>
+
 #include <deal.II/base/mpi.h>
 #include <deal.II/distributed/solution_transfer.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/grid_refinement.h>
 #include <deal.II/numerics/error_estimator.h>
+
+#include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
+#include <boost/property_tree/info_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
+
+#include <cmath>
 #include <iostream>
 
 void initialize_timers(MPI_Comm const &communicator,

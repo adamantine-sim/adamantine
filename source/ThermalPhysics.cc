@@ -6,13 +6,16 @@
  */
 
 #include "ThermalPhysics.hh"
+
 #include "instantiation.hh"
-#include <algorithm>
+
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_gmres.h>
+
+#include <algorithm>
 
 namespace adamantine
 {

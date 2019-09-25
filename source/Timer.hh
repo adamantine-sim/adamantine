@@ -8,9 +8,11 @@
 #ifndef TIMER_H
 #define TIMER_H
 
-#include "mpi.h"
 #include <boost/chrono/include.hpp>
+
 #include <string>
+
+#include "mpi.h"
 
 namespace adamantine
 {
