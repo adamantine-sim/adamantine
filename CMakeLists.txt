@@ -12,10 +12,12 @@ include(SetupTPLs)
 add_subdirectory(application)
 add_subdirectory(source)
 
+option(ADAMANTINE_ENABLE_COVERAGE "Measure coverage" OFF)
 if(ADAMANTINE_ENABLE_COVERAGE)
   include(CodeCoverage)
 endif()
 
+option(ADAMANTINE_ENABLE_TESTS "Build tests" OFF)
 if (ADAMANTINE_ENABLE_TESTS)
   include(Testing)
   enable_testing()
