@@ -8,6 +8,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(Setupadamantine)
 include(SetupTPLs)
 
+DEAL_II_INITIALIZE_CACHED_VARIABLES()
 
 add_subdirectory(application)
 add_subdirectory(source)

@@ -30,16 +30,16 @@ set(Adamantine_SOURCES
 # other libraries can still be shared.
 add_library(Adamantine STATIC ${Adamantine_SOURCES})
 
+DEAL_II_SETUP_TARGET(Adamantine)
+
 set_target_properties(Adamantine PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON
 )
 
-target_link_libraries(Adamantine PUBLIC Boost::boost)
-target_link_libraries(Adamantine PUBLIC Boost::chrono)
-target_link_libraries(Adamantine PUBLIC Boost::filesystem)
-target_link_libraries(Adamantine PUBLIC Boost::program_options)
-target_include_directories(Adamantine SYSTEM PUBLIC ${DEAL_II_INCLUDE_DIRS})
-target_link_libraries(Adamantine PUBLIC ${DEAL_II_LIBRARIES})
-target_link_libraries(Adamantine PUBLIC MPI::MPI_CXX)
+target_link_libraries(Adamantine Boost::boost)
+target_link_libraries(Adamantine Boost::chrono)
+target_link_libraries(Adamantine Boost::filesystem)
+target_link_libraries(Adamantine Boost::program_options)
+target_link_libraries(Adamantine MPI::MPI_CXX)
 target_include_directories(Adamantine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
