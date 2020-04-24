@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM nvidia/cuda:10.2-devel
 
 ARG N_PROCS=12
 
@@ -9,6 +9,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
       build-essential \
       cmake \
       wget \
+      curl \
       bison \
       python2.7-dev \
       git \
@@ -31,12 +32,14 @@ RUN mkdir -p ${PREFIX} && \
     mkdir build
 
 # Install CMake
-RUN export CMAKE_VERSION=3.15.2 && \
-    export CMAKE_VERSION_SHORT=3.15 && \
+RUN export CMAKE_VERSION=3.17.1 && \
+    export CMAKE_VERSION_SHORT=3.17 && \
+    export CMAKE_SHA256=23dd30da0bacf0e644d82298907b8e03edbc59c4ed40839afdeeb3b86e66bc93 && \
     export CMAKE_URL=https://cmake.org/files/v${CMAKE_VERSION_SHORT}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz && \
     export CMAKE_ARCHIVE=${ARCHIVE_DIR}/cmake.tar.gz && \
     export CMAKE_BUILD_DIR=${BUILD_DIR}/cmake && \
     wget --quiet ${CMAKE_URL} --output-document=${CMAKE_ARCHIVE} && \
+    echo "${CMAKE_SHA256} ${CMAKE_ARCHIVE}" | sha256sum -c && \
     mkdir -p ${CMAKE_BUILD_DIR} && \
     tar xf ${CMAKE_ARCHIVE} -C ${CMAKE_BUILD_DIR} --strip-components=1 && \
     mv ${CMAKE_BUILD_DIR} ${INSTALL_DIR} && \
@@ -45,9 +48,9 @@ RUN export CMAKE_VERSION=3.15.2 && \
 ENV PATH=${INSTALL_DIR}/cmake/bin:$PATH
 
 # Install OpenMPI
-RUN export OPENMPI_VERSION=4.0.0 && \
+RUN export OPENMPI_VERSION=4.0.3 && \
     export OPENMPI_VERSION_SHORT=4.0 && \
-    export OPENMPI_SHA1=fee1d0287abfb150bae16957de342752c9bdd4e8 && \
+    export OPENMPI_SHA1=d958454e32da2c86dd32b7d557cf9a401f0a08d3 && \
     export OPENMPI_URL=https://www.open-mpi.org/software/ompi/v${OPENMPI_VERSION_SHORT}/downloads/openmpi-${OPENMPI_VERSION}.tar.bz2 && \
     export OPENMPI_ARCHIVE=${ARCHIVE_DIR}/openmpi-${OPENMPI_VERSION}.tar.bz2 && \
     export OPENMPI_SOURCE_DIR=${SOURCE_DIR}/openmpi && \
@@ -59,20 +62,22 @@ RUN export OPENMPI_VERSION=4.0.0 && \
     tar -xf ${OPENMPI_ARCHIVE} -C ${OPENMPI_SOURCE_DIR} --strip-components=1 && \
     mkdir -p ${OPENMPI_BUILD_DIR} && \
     cd ${OPENMPI_BUILD_DIR} && \
-    ${OPENMPI_SOURCE_DIR}/configure --prefix=${OPENMPI_INSTALL_DIR} && \
+    ${OPENMPI_SOURCE_DIR}/configure --with-cuda=/usr/local/cuda --prefix=${OPENMPI_INSTALL_DIR} && \
     make -j${N_PROCS} install && \
     rm -rf ${OPENMPI_ARCHIVE} && \
     rm -rf ${OPENMPI_BUILD_DIR} && \
     rm -rf ${OPENMPI_SOURCE_DIR}
-# Put OPENMPI_DIR at the end of the path so that /usr/local/bin/mpiexec will
-# overwrite it
+ENV OMPI_ALLOW_RUN_AS_ROOT=1
+ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+ENV OMPI_MCA_btl_vader_single_copy_mechanism=none
+ENV OMPI_MCA_btl_base_warn_component_unused='0'
 ENV PATH=${INSTALL_DIR}/openmpi/bin:$PATH
 
 # Install Boost
-RUN export BOOST_VERSION=1.67.0 && \
-    export BOOST_VERSION_U=1_67_0 && \
+RUN export BOOST_VERSION=1.72.0 && \
+    export BOOST_VERSION_U=1_72_0 && \
     export BOOST_URL=https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_U}.tar.bz2 && \
-    export BOOST_SHA256=2684c972994ee57fc5632e03bf044746f6eb45d4920c343937a465fd67a5adba && \
+    export BOOST_SHA256=59c9b274bc451cf91a9ba1dd2c7fdcaf5d60b1b3aa83f2c9fa143417cc660722 && \
     export BOOST_ARCHIVE=${ARCHIVE_DIR}/boost_${BOOST_VERSION_U}.tar.bz2 && \
     export BOOST_SOURCE_DIR=${SOURCE_DIR}/boost && \
     export BOOST_BUILD_DIR=${BUILD_DIR}/boost && \
@@ -99,7 +104,7 @@ RUN export BOOST_VERSION=1.67.0 && \
 ENV BOOST_ROOT=${INSTALL_DIR}/boost
 
 # Install p4est
-RUN export P4EST_VERSION=2.0 && \
+RUN export P4EST_VERSION=2.2 && \
     export P4EST_URL=http://p4est.github.io/release/p4est-${P4EST_VERSION}.tar.gz && \
     export P4EST_ARCHIVE=${ARCHIVE_DIR}/p4est-${P4EST_VERSION}.tar.gz && \
     export P4EST_SOURCE_DIR=${SOURCE_DIR}/p4est && \
@@ -115,8 +120,8 @@ RUN export P4EST_VERSION=2.0 && \
     rm -rf ${P4EST_SOURCE_DIR}
 ENV P4EST_DIR=${INSTALL_DIR}/p4est
 
-# Install deal.II 9.1
-RUN export DEAL_II_HASH=777cf92a41deba5c03ec8b561e7fb76d8c5f7249 && \
+# Install deal.II 
+RUN export DEAL_II_HASH=31ab106f152ff9a14708f08291f9937bc477bbae && \
     export DEAL_II_URL=https://github.com/dealii/dealii/archive/${DEAL_II_HASH}.tar.gz && \
     export DEAL_II_ARCHIVE=${ARCHIVE_DIR}/dealii.tar.gz && \
     export DEAL_II_SOURCE_DIR=${SOURCE_DIR}/dealii && \
@@ -131,7 +136,9 @@ RUN export DEAL_II_HASH=777cf92a41deba5c03ec8b561e7fb76d8c5f7249 && \
         -DDEAL_II_WITH_MPI=ON \
         -DDEAL_II_WITH_P4EST=ON \
         -DP4EST_DIR=${P4EST_DIR} \
-        -DDEAL_II_WITH_CXX17=ON \
+        -DDEAL_II_WITH_CXX14=ON \
+        -DDEAL_II_WITH_CXX17=OFF \
+        -DDEAL_II_WITH_CUDA=ON \
         -DCMAKE_INSTALL_PREFIX=${DEAL_II_INSTALL_DIR} \
         ${DEAL_II_SOURCE_DIR} && \
     make -j${N_PROCS} install && \
@@ -139,8 +146,3 @@ RUN export DEAL_II_HASH=777cf92a41deba5c03ec8b561e7fb76d8c5f7249 && \
     rm -rf ${DEAL_II_BUILD_DIR} && \
     rm -rf ${DEAL_II_SOURCE_DIR}
 ENV DEAL_II_DIR=${INSTALL_DIR}/dealii
-
-# Append the option flag --allow-run-as-root to mpiexec
-RUN echo '#!/usr/bin/env bash' > /usr/local/bin/mpiexec && \
-    echo '${INSTALL_DIR}/openmpi/bin/mpiexec --allow-run-as-root "$@"' >> /usr/local/bin/mpiexec && \
-    chmod +x /usr/local/bin/mpiexec
