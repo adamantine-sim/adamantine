@@ -10,6 +10,10 @@ include(SetupTPLs)
 
 DEAL_II_INITIALIZE_CACHED_VARIABLES()
 
+if (ADAMANTINE_ENABLE_CUDA)
+  enable_language(CUDA)
+endif()
+
 add_subdirectory(application)
 add_subdirectory(source)
 
@@ -36,6 +40,6 @@ add_custom_target(indent
   COMMAND ./indent
   )
 
-if(ADAMANTINE_ENABLE_DOCUMENTATION)
+if (ADAMANTINE_ENABLE_DOCUMENTATION)
     add_subdirectory(doc)
 endif()

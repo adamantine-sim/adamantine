@@ -19,9 +19,20 @@ list(APPEND
      test_utils
      )
 
+set(CUDA_UNIT_TESTS "")
+list(APPEND
+     CUDA_UNIT_TESTS
+     )
+
 foreach(TEST_NAME ${UNIT_TESTS})
   adamantine_ADD_BOOST_TEST(${TEST_NAME})
 endforeach()
+
+if (ADAMANTINE_ENABLE_CUDA)
+  foreach(TEST_NAME ${CUDA_UNIT_TESTS})
+    adamantine_ADD_BOOST_CUDA_TEST(${TEST_NAME})
+  endforeach()
+endif()
 
 # For now integration tests only run adamantine but they don't check the 
 # results

@@ -33,9 +33,19 @@ add_library(Adamantine STATIC ${Adamantine_SOURCES})
 DEAL_II_SETUP_TARGET(Adamantine)
 
 set_target_properties(Adamantine PROPERTIES
-    CXX_STANDARD 17
+    CXX_STANDARD 14
     CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
 )
+
+if (ADAMANTINE_ENABLE_CUDA)
+set_target_properties(Adamantine PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+    CUDA_STANDARD 14
+    CUDA_STANDARD_REQUIRED ON
+)
+target_compile_definitions(Adamantine PRIVATE ADAMANTINE_HAVE_CUDA)
+endif()
 
 target_link_libraries(Adamantine Boost::boost)
 target_link_libraries(Adamantine Boost::chrono)
