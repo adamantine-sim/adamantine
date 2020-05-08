@@ -39,112 +39,114 @@ void initialize_timers(MPI_Comm const &communicator,
       communicator, "Evolve One Time Step: evaluate_material_properties"));
 }
 
-template <int dim, int fe_degree, typename QuadratureType>
-std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &
-initialize(MPI_Comm const &communicator,
-           boost::property_tree::ptree const &database,
-           adamantine::Geometry<dim> &geometry,
-           std::unique_ptr<adamantine::Physics<dim>> &thermal_physics)
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &initialize(
+    MPI_Comm const &communicator, boost::property_tree::ptree const &database,
+    adamantine::Geometry<dim> &geometry,
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
 {
   thermal_physics.reset(
-      new adamantine::ThermalPhysics<dim, fe_degree, QuadratureType>(
-          communicator, database, geometry));
-  return static_cast<
-             adamantine::ThermalPhysics<dim, fe_degree, QuadratureType> *>(
+      new adamantine::ThermalPhysics<dim, fe_degree, MemorySpaceType,
+                                     QuadratureType>(communicator, database,
+                                                     geometry));
+  return static_cast<adamantine::ThermalPhysics<dim, fe_degree, MemorySpaceType,
+                                                QuadratureType> *>(
              thermal_physics.get())
       ->get_electron_beams();
 }
 
-template <int dim, int fe_degree>
+template <int dim, int fe_degree, typename MemorySpaceType>
 std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &
 initialize_quadrature(
     std::string const &quadrature_type, MPI_Comm const &communicator,
     boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
-    std::unique_ptr<adamantine::Physics<dim>> &thermal_physics)
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
 {
   if (quadrature_type.compare("gauss") == 0)
-    return initialize<dim, fe_degree, dealii::QGauss<1>>(
+    return initialize<dim, fe_degree, MemorySpaceType, dealii::QGauss<1>>(
         communicator, database, geometry, thermal_physics);
   else
   {
     adamantine::ASSERT_THROW(quadrature_type.compare("lobatto") == 0,
                              "quadrature should be Gauss or Lobatto.");
-    return initialize<dim, fe_degree, dealii::QGaussLobatto<1>>(
-        communicator, database, geometry, thermal_physics);
+    return initialize<dim, fe_degree, MemorySpaceType,
+                      dealii::QGaussLobatto<1>>(communicator, database,
+                                                geometry, thermal_physics);
   }
 }
 
-template <int dim>
+template <int dim, typename MemorySpaceType>
 std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &
 initialize_thermal_physics(
     unsigned int fe_degree, std::string const &quadrature_type,
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
-    std::unique_ptr<adamantine::Physics<dim>> &thermal_physics)
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
 {
   switch (fe_degree)
   {
   case 1:
   {
-    return initialize_quadrature<dim, 1>(quadrature_type, communicator,
-                                         database, geometry, thermal_physics);
+    return initialize_quadrature<dim, 1, MemorySpaceType>(
+        quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 2:
   {
-    return initialize_quadrature<dim, 2>(quadrature_type, communicator,
-                                         database, geometry, thermal_physics);
+    return initialize_quadrature<dim, 2, MemorySpaceType>(
+        quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 3:
   {
-    return initialize_quadrature<dim, 3>(quadrature_type, communicator,
-                                         database, geometry, thermal_physics);
+    return initialize_quadrature<dim, 3, MemorySpaceType>(
+        quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 4:
   {
-    return initialize_quadrature<dim, 4>(quadrature_type, communicator,
-                                         database, geometry, thermal_physics);
+    return initialize_quadrature<dim, 4, MemorySpaceType>(
+        quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 5:
   {
-    return initialize_quadrature<dim, 5>(quadrature_type, communicator,
-                                         database, geometry, thermal_physics);
+    return initialize_quadrature<dim, 5, MemorySpaceType>(
+        quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 6:
   {
-    return initialize_quadrature<dim, 6>(quadrature_type, communicator,
-                                         database, geometry, thermal_physics);
+    return initialize_quadrature<dim, 6, MemorySpaceType>(
+        quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 7:
   {
-    return initialize_quadrature<dim, 7>(quadrature_type, communicator,
-                                         database, geometry, thermal_physics);
+    return initialize_quadrature<dim, 7, MemorySpaceType>(
+        quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 8:
   {
-    return initialize_quadrature<dim, 8>(quadrature_type, communicator,
-                                         database, geometry, thermal_physics);
+    return initialize_quadrature<dim, 8, MemorySpaceType>(
+        quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 9:
   {
-    return initialize_quadrature<dim, 9>(quadrature_type, communicator,
-                                         database, geometry, thermal_physics);
+    return initialize_quadrature<dim, 9, MemorySpaceType>(
+        quadrature_type, communicator, database, geometry, thermal_physics);
   }
   default:
   {
     adamantine::ASSERT_THROW(fe_degree == 10,
                              "fe_degree should be between 1 and 10.");
-    return initialize_quadrature<dim, 10>(quadrature_type, communicator,
-                                          database, geometry, thermal_physics);
+    return initialize_quadrature<dim, 10, MemorySpaceType>(
+        quadrature_type, communicator, database, geometry, thermal_physics);
   }
   }
 }
 
-template <int dim>
+template <int dim, typename MemorySpaceType>
 void refine_and_transfer(
-    std::unique_ptr<adamantine::Physics<dim>> &thermal_physics,
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
     dealii::DoFHandler<dim> &dof_handler,
-    dealii::LA::distributed::Vector<double> &solution)
+    dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
   dealii::parallel::distributed::Triangulation<dim> &triangulation =
       dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
@@ -155,14 +157,15 @@ void refine_and_transfer(
       thermal_physics->get_material_property();
 
   dealii::parallel::distributed::SolutionTransfer<
-      dim, dealii::LA::distributed::Vector<double>>
+      dim, dealii::LA::distributed::Vector<double, MemorySpaceType>>
       solution_transfer(dof_handler);
   std::vector<dealii::parallel::distributed::SolutionTransfer<
-      dim, dealii::LA::distributed::Vector<double>>>
-  material_state(static_cast<unsigned int>(adamantine::MaterialState::SIZE),
-                 dealii::parallel::distributed::SolutionTransfer<
-                     dim, dealii::LA::distributed::Vector<double>>(
-                     material_property->get_dof_handler()));
+      dim, dealii::LA::distributed::Vector<double, MemorySpaceType>>>
+  material_state(
+      static_cast<unsigned int>(adamantine::MaterialState::SIZE),
+      dealii::parallel::distributed::SolutionTransfer<
+          dim, dealii::LA::distributed::Vector<double, MemorySpaceType>>(
+          material_property->get_dof_handler()));
 
   // We need to update the ghost values before we can do the interpolation on
   // the new mesh.
@@ -194,7 +197,7 @@ void refine_and_transfer(
 
 #if ADAMANTINE_DEBUG
   // Check that we are not losing material
-  std::array<dealii::LA::distributed::Vector<double>,
+  std::array<dealii::LA::distributed::Vector<double, MemorySpaceType>,
              static_cast<unsigned int>(adamantine::MaterialState::SIZE)>
       state = material_property->get_state();
   unsigned int const local_size = state[0].local_size();
@@ -256,10 +259,10 @@ compute_cells_to_refine(
   return cells_to_refine;
 }
 
-template <int dim, int fe_degree>
+template <int dim, int fe_degree, typename MemorySpaceType>
 void refine_mesh(
-    std::unique_ptr<adamantine::Physics<dim>> &thermal_physics,
-    dealii::LA::distributed::Vector<double> &solution,
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
+    dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
     std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
@@ -337,10 +340,10 @@ void refine_mesh(
   thermal_physics->reinit();
 }
 
-template <int dim>
+template <int dim, typename MemorySpaceType>
 void refine_mesh(
-    std::unique_ptr<adamantine::Physics<dim>> &thermal_physics,
-    dealii::LA::distributed::Vector<double> &solution,
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
+    dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
     std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
@@ -426,10 +429,10 @@ void refine_mesh(
   }
 }
 
-template <int dim>
+template <int dim, typename MemorySpaceType>
 void run(
     MPI_Comm const &communicator,
-    std::unique_ptr<adamantine::Physics<dim>> &thermal_physics,
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
     adamantine::PostProcessor<dim> &post_processor,
     std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams,
     boost::property_tree::ptree const &time_stepping_database,
@@ -439,7 +442,7 @@ void run(
 {
   thermal_physics->setup_dofs();
   thermal_physics->reinit();
-  dealii::LA::distributed::Vector<double> solution;
+  dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   thermal_physics->initialize_dof_vector(initial_temperature, solution);
   unsigned int progress = 0;
   unsigned int cycle = 0;
@@ -583,7 +586,8 @@ int main(int argc, char *argv[])
       boost::property_tree::ptree refinement_database =
           database.get_child("refinement");
       adamantine::Geometry<2> geometry(communicator, geometry_database);
-      std::unique_ptr<adamantine::Physics<2>> thermal_physics;
+      std::unique_ptr<adamantine::Physics<2, dealii::MemorySpace::Host>>
+          thermal_physics;
       std::vector<std::unique_ptr<adamantine::ElectronBeam<2>>>
           &electron_beams =
               initialize_thermal_physics<2>(fe_degree, quadrature_type,
@@ -608,7 +612,8 @@ int main(int argc, char *argv[])
       boost::property_tree::ptree refinement_database =
           database.get_child("refinement");
       adamantine::Geometry<3> geometry(communicator, geometry_database);
-      std::unique_ptr<adamantine::Physics<3>> thermal_physics;
+      std::unique_ptr<adamantine::Physics<3, dealii::MemorySpace::Host>>
+          thermal_physics;
       std::vector<std::unique_ptr<adamantine::ElectronBeam<3>>>
           &electron_beams =
               initialize_thermal_physics<3>(fe_degree, quadrature_type,

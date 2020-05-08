@@ -15,18 +15,29 @@
 #define INST_DIM(z, dim, class_name) template class adamantine::class_name<dim>;
 #define INSTANTIATE_DIM(class_name) BOOST_PP_REPEAT_FROM_TO(2, 4, INST_DIM, class_name)
 
-// Instantiation of the class for:
-//   - dim = 2 and 3
-//   - fe_degree = 1 to 10
 #define TUPLE_N (0, 0, 0)
 #define TUPLE(class_name) BOOST_PP_TUPLE_REPLACE(TUPLE_N, 0, class_name)
 
+// Instantiation of the class for:
+//   - dim = 2 and 3
+//   - fe_degree = 1 to 10
 #define M_FE_DEGREE(z, fe_degree, TUPLE_1) \
-  template class adamantine::BOOST_PP_TUPLE_ELEM(0, TUPLE_1)<BOOST_PP_TUPLE_ELEM(1, TUPLE_1), fe_degree>;
+  template class adamantine::BOOST_PP_TUPLE_ELEM(0, TUPLE_1)<BOOST_PP_TUPLE_ELEM(1, TUPLE_1),\
+  fe_degree, dealii::MemorySpace::Host>;
 #define M_DIM(z, dim, TUPLE_0) \
   BOOST_PP_REPEAT_FROM_TO(1, 11, M_FE_DEGREE, BOOST_PP_TUPLE_REPLACE(TUPLE_0, 1, dim))
-#define INSTANTIATE_DIM_FEDEGREE(TUPLE_0) BOOST_PP_REPEAT_FROM_TO(2, 4, M_DIM, TUPLE_0)
+#define INSTANTIATE_DIM_FEDEGREE_HOST(TUPLE_0) BOOST_PP_REPEAT_FROM_TO(2, 4, M_DIM, TUPLE_0)
 
+#ifdef ADAMANTINE_HAVE_CUDA
+#define MD_FE_DEGREE(z, fe_degree, TUPLE_1) \
+  template class adamantine::BOOST_PP_TUPLE_ELEM(0, TUPLE_1)<BOOST_PP_TUPLE_ELEM(1, TUPLE_1),\
+  fe_degree, dealii::MemorySpace::CUDA>;
+#define MD_DIM(z, dim, TUPLE_0) \
+  BOOST_PP_REPEAT_FROM_TO(1, 11, MD_FE_DEGREE, BOOST_PP_TUPLE_REPLACE(TUPLE_0, 1, dim))
+#define INSTANTIATE_DIM_FEDEGREE_DEVICE(TUPLE_0) BOOST_PP_REPEAT_FROM_TO(2, 4, MD_DIM, TUPLE_0)
+#else
+#define INSTANTIATE_DIM_FEDEGREE_DEVICE(TUPLE_0)
+#endif
 
 // Instantiation of the class for:
 //   - dim = 2 and 3
@@ -36,11 +47,11 @@
 
 #define MA_QUADRATURE_TYPE(z, TUPLE_2, quadrature)\
   template class adamantine::BOOST_PP_TUPLE_ELEM(0, TUPLE_2)<BOOST_PP_TUPLE_ELEM(1, TUPLE_2),\
-BOOST_PP_TUPLE_ELEM(2, TUPLE_2), quadrature>;
+BOOST_PP_TUPLE_ELEM(2, TUPLE_2), dealii::MemorySpace::Host, quadrature>;
 #define MA_FE_DEGREE(z, fe_degree, TUPLE_1) \
   BOOST_PP_SEQ_FOR_EACH(MA_QUADRATURE_TYPE, \
       BOOST_PP_TUPLE_REPLACE(TUPLE_1, 2, fe_degree), QUADRATURE_TYPE)
 #define MA_DIM(z, dim, TUPLE_0) \
   BOOST_PP_REPEAT_FROM_TO(1, 11, MA_FE_DEGREE, BOOST_PP_TUPLE_REPLACE(TUPLE_0, 1, dim))
-#define INSTANTIATE_DIM_FEDEGREE_QUAD(TUPLE_0) BOOST_PP_REPEAT_FROM_TO(2, 4, MA_DIM, TUPLE_0)
+#define INSTANTIATE_DIM_FEDEGREE_QUAD_HOST(TUPLE_0) BOOST_PP_REPEAT_FROM_TO(2, 4, MA_DIM, TUPLE_0)
 // clang-format on

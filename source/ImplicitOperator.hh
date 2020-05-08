@@ -17,29 +17,32 @@ namespace adamantine
  * \f$I-\tau M^{-1} \frac{F}{dy}\f$. This operator is then inverted when using
  * an implicit time stepping scheme.
  */
-class ImplicitOperator : public Operator
+template <typename MemorySpaceType>
+class ImplicitOperator : public Operator<MemorySpaceType>
 {
 public:
-  ImplicitOperator(std::shared_ptr<Operator> explicit_operator, bool jfnk);
+  ImplicitOperator(std::shared_ptr<Operator<MemorySpaceType>> explicit_operator,
+                   bool jfnk);
 
   dealii::types::global_dof_index m() const override;
 
   dealii::types::global_dof_index n() const override;
 
-  void vmult(dealii::LA::distributed::Vector<double> &dst,
-             dealii::LA::distributed::Vector<double> const &src) const override;
+  void vmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+             dealii::LA::distributed::Vector<double, MemorySpaceType> const
+                 &src) const override;
 
-  void
-  Tvmult(dealii::LA::distributed::Vector<double> &dst,
-         dealii::LA::distributed::Vector<double> const &src) const override;
+  void Tvmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+              dealii::LA::distributed::Vector<double, MemorySpaceType> const
+                  &src) const override;
 
-  void
-  vmult_add(dealii::LA::distributed::Vector<double> &dst,
-            dealii::LA::distributed::Vector<double> const &src) const override;
+  void vmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+                 dealii::LA::distributed::Vector<double, MemorySpaceType> const
+                     &src) const override;
 
-  void
-  Tvmult_add(dealii::LA::distributed::Vector<double> &dst,
-             dealii::LA::distributed::Vector<double> const &src) const override;
+  void Tvmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+                  dealii::LA::distributed::Vector<double, MemorySpaceType> const
+                      &src) const override;
 
   /**
    * Set the parameter \f$\tau\f$ defined by the Runge-Kutta method.
@@ -50,7 +53,7 @@ public:
    * Set the shared pointer of the inverse of the mass matrix.
    */
   void set_inverse_mass_matrix(
-      std::shared_ptr<dealii::LA::distributed::Vector<double>>
+      std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
           inverse_mass_matrix);
 
 private:
@@ -66,27 +69,37 @@ private:
   /**
    * Shared pointer of the inverse of the mass matrix.
    */
-  std::shared_ptr<dealii::LA::distributed::Vector<double>> _inverse_mass_matrix;
+  std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
+      _inverse_mass_matrix;
   /**
    * Shared pointer of the operator \f$F\f$.
    */
-  std::shared_ptr<Operator> _explicit_operator;
+  std::shared_ptr<Operator<MemorySpaceType>> _explicit_operator;
 };
 
-inline dealii::types::global_dof_index ImplicitOperator::m() const
+template <typename MemorySpaceType>
+inline dealii::types::global_dof_index
+ImplicitOperator<MemorySpaceType>::m() const
 {
   return _explicit_operator->m();
 }
 
-inline dealii::types::global_dof_index ImplicitOperator::n() const
+template <typename MemorySpaceType>
+inline dealii::types::global_dof_index
+ImplicitOperator<MemorySpaceType>::n() const
 {
   return _explicit_operator->n();
 }
 
-inline void ImplicitOperator::set_tau(double tau) { _tau = tau; }
+template <typename MemorySpaceType>
+inline void ImplicitOperator<MemorySpaceType>::set_tau(double tau)
+{
+  _tau = tau;
+}
 
-inline void ImplicitOperator::set_inverse_mass_matrix(
-    std::shared_ptr<dealii::LA::distributed::Vector<double>>
+template <typename MemorySpaceType>
+inline void ImplicitOperator<MemorySpaceType>::set_inverse_mass_matrix(
+    std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
         inverse_mass_matrix)
 {
   _inverse_mass_matrix = inverse_mass_matrix;

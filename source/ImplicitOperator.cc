@@ -11,20 +11,23 @@
 
 namespace adamantine
 {
-ImplicitOperator::ImplicitOperator(std::shared_ptr<Operator> explicit_operator,
-                                   bool jfnk)
+template <typename MemorySpaceType>
+ImplicitOperator<MemorySpaceType>::ImplicitOperator(
+    std::shared_ptr<Operator<MemorySpaceType>> explicit_operator, bool jfnk)
     : _jfnk(jfnk), _explicit_operator(explicit_operator)
 {
 }
 
-void ImplicitOperator::vmult(
-    dealii::LA::distributed::Vector<double> &dst,
-    dealii::LA::distributed::Vector<double> const &src) const
+template <typename MemorySpaceType>
+void ImplicitOperator<MemorySpaceType>::vmult(
+    dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+    dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
   if (_jfnk == true)
   {
-    dealii::LA::distributed::Vector<double> tmp_dst(dst.get_partitioner());
-    dealii::LA::distributed::Vector<double> tmp_src(src);
+    dealii::LA::distributed::Vector<double, MemorySpaceType> tmp_dst(
+        dst.get_partitioner());
+    dealii::LA::distributed::Vector<double, MemorySpaceType> tmp_src(src);
     tmp_src *= (1. + 1e-10);
     _explicit_operator->vmult(dst, tmp_src);
     _explicit_operator->vmult(tmp_dst, src);
@@ -39,24 +42,34 @@ void ImplicitOperator::vmult(
   dst += src;
 }
 
-void ImplicitOperator::Tvmult(
-    dealii::LA::distributed::Vector<double> & /*dst*/,
-    dealii::LA::distributed::Vector<double> const & /*src*/) const
+template <typename MemorySpaceType>
+void ImplicitOperator<MemorySpaceType>::Tvmult(
+    dealii::LA::distributed::Vector<double, MemorySpaceType> & /*dst*/,
+    dealii::LA::distributed::Vector<double, MemorySpaceType> const & /*src*/)
+    const
 {
   ASSERT_THROW_NOT_IMPLEMENTED();
 }
 
-void ImplicitOperator::vmult_add(
-    dealii::LA::distributed::Vector<double> & /*dst*/,
-    dealii::LA::distributed::Vector<double> const & /*src*/) const
+template <typename MemorySpaceType>
+void ImplicitOperator<MemorySpaceType>::vmult_add(
+    dealii::LA::distributed::Vector<double, MemorySpaceType> & /*dst*/,
+    dealii::LA::distributed::Vector<double, MemorySpaceType> const & /*src*/)
+    const
 {
   ASSERT_THROW_NOT_IMPLEMENTED();
 }
 
-void ImplicitOperator::Tvmult_add(
-    dealii::LA::distributed::Vector<double> & /*dst*/,
-    dealii::LA::distributed::Vector<double> const & /*src*/) const
+template <typename MemorySpaceType>
+void ImplicitOperator<MemorySpaceType>::Tvmult_add(
+    dealii::LA::distributed::Vector<double, MemorySpaceType> & /*dst*/,
+    dealii::LA::distributed::Vector<double, MemorySpaceType> const & /*src*/)
+    const
 {
   ASSERT_THROW_NOT_IMPLEMENTED();
 }
+
+// Instantiation
+template class ImplicitOperator<dealii::MemorySpace::Host>;
+
 } // namespace adamantine

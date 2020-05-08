@@ -21,8 +21,8 @@ namespace adamantine
  * This class is the operator associated with the heat equation, i.e., vmult
  * performs \f$ dst = -\nabla k \nabla src \f$.
  */
-template <int dim, int fe_degree>
-class ThermalOperator : public Operator
+template <int dim, int fe_degree, typename MemorySpaceType>
+class ThermalOperator : public Operator<MemorySpaceType>
 {
 public:
   ThermalOperator(MPI_Comm const &communicator,
@@ -56,7 +56,7 @@ public:
   /**
    * Return a shared pointer to the inverse of the mass matrix.
    */
-  std::shared_ptr<dealii::LA::distributed::Vector<double>>
+  std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
   get_inverse_mass_matrix() const;
 
   /**
@@ -64,40 +64,42 @@ public:
    */
   dealii::MatrixFree<dim, double> const &get_matrix_free() const;
 
-  void vmult(dealii::LA::distributed::Vector<double> &dst,
-             dealii::LA::distributed::Vector<double> const &src) const override;
+  void vmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+             dealii::LA::distributed::Vector<double, MemorySpaceType> const
+                 &src) const override;
+
+  void Tvmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+              dealii::LA::distributed::Vector<double, MemorySpaceType> const
+                  &src) const override;
+
+  void vmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+                 dealii::LA::distributed::Vector<double, MemorySpaceType> const
+                     &src) const override;
+
+  void Tvmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+                  dealii::LA::distributed::Vector<double, MemorySpaceType> const
+                      &src) const override;
 
   void
-  Tvmult(dealii::LA::distributed::Vector<double> &dst,
-         dealii::LA::distributed::Vector<double> const &src) const override;
-
-  void
-  vmult_add(dealii::LA::distributed::Vector<double> &dst,
-            dealii::LA::distributed::Vector<double> const &src) const override;
-
-  void
-  Tvmult_add(dealii::LA::distributed::Vector<double> &dst,
-             dealii::LA::distributed::Vector<double> const &src) const override;
-
-  void jacobian_vmult(
-      dealii::LA::distributed::Vector<double> &dst,
-      dealii::LA::distributed::Vector<double> const &src) const override;
+  jacobian_vmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+                 dealii::LA::distributed::Vector<double, MemorySpaceType> const
+                     &src) const override;
 
   /**
    * Evaluate the material properties for a given state field.
    */
   void evaluate_material_properties(
-      dealii::LA::distributed::Vector<double> const &state);
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const &state);
 
 private:
   /**
    * Apply the operator on a given set of quadrature points.
    */
-  void
-  local_apply(dealii::MatrixFree<dim, double> const &data,
-              dealii::LA::distributed::Vector<double> &dst,
-              dealii::LA::distributed::Vector<double> const &src,
-              std::pair<unsigned int, unsigned int> const &cell_range) const;
+  void local_apply(
+      dealii::MatrixFree<dim, double> const &data,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
+      std::pair<unsigned int, unsigned int> const &cell_range) const;
 
   /**
    * MPI communicator.
@@ -134,41 +136,43 @@ private:
    * quadrature. This inexact quadrature makes the mass matrix and therefore
    * also its inverse, a diagonal matrix.
    */
-  std::shared_ptr<dealii::LA::distributed::Vector<double>> _inverse_mass_matrix;
+  std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
+      _inverse_mass_matrix;
 };
 
-template <int dim, int fe_degree>
+template <int dim, int fe_degree, typename MemorySpaceType>
 inline dealii::types::global_dof_index
-ThermalOperator<dim, fe_degree>::m() const
+ThermalOperator<dim, fe_degree, MemorySpaceType>::m() const
 {
   return _matrix_free.get_vector_partitioner()->size();
 }
 
-template <int dim, int fe_degree>
+template <int dim, int fe_degree, typename MemorySpaceType>
 inline dealii::types::global_dof_index
-ThermalOperator<dim, fe_degree>::n() const
+ThermalOperator<dim, fe_degree, MemorySpaceType>::n() const
 {
   return _matrix_free.get_vector_partitioner()->size();
 }
 
-template <int dim, int fe_degree>
-inline std::shared_ptr<dealii::LA::distributed::Vector<double>>
-ThermalOperator<dim, fe_degree>::get_inverse_mass_matrix() const
+template <int dim, int fe_degree, typename MemorySpaceType>
+inline std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
+ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inverse_mass_matrix()
+    const
 {
   return _inverse_mass_matrix;
 }
 
-template <int dim, int fe_degree>
+template <int dim, int fe_degree, typename MemorySpaceType>
 inline dealii::MatrixFree<dim, double> const &
-ThermalOperator<dim, fe_degree>::get_matrix_free() const
+ThermalOperator<dim, fe_degree, MemorySpaceType>::get_matrix_free() const
 {
   return _matrix_free;
 }
 
-template <int dim, int fe_degree>
-inline void ThermalOperator<dim, fe_degree>::jacobian_vmult(
-    dealii::LA::distributed::Vector<double> &dst,
-    dealii::LA::distributed::Vector<double> const &src) const
+template <int dim, int fe_degree, typename MemorySpaceType>
+inline void ThermalOperator<dim, fe_degree, MemorySpaceType>::jacobian_vmult(
+    dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+    dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
   vmult(dst, src);
 }

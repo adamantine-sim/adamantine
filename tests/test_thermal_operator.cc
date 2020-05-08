@@ -55,20 +55,21 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
           communicator, geometry.get_triangulation(), mat_prop_database));
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2> thermal_operator(communicator,
-                                                     mat_properties);
+  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
+      communicator, mat_properties);
   thermal_operator.setup_dofs(dof_handler, affine_constraints, quad);
   thermal_operator.reinit(dof_handler, affine_constraints);
-  dealii::LA::distributed::Vector<double> dummy(thermal_operator.m());
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
+      thermal_operator.m());
   thermal_operator.evaluate_material_properties(dummy);
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
 
   // Check matrix-vector multiplications
   double const tolerance = 1e-15;
-  dealii::LA::distributed::Vector<double> src;
-  dealii::LA::distributed::Vector<double> dst_1;
-  dealii::LA::distributed::Vector<double> dst_2;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_1;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_2;
 
   dealii::MatrixFree<2, double> const &matrix_free =
       thermal_operator.get_matrix_free();
@@ -130,11 +131,12 @@ BOOST_AUTO_TEST_CASE(spmv)
           communicator, geometry.get_triangulation(), mat_prop_database));
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2> thermal_operator(communicator,
-                                                     mat_properties);
+  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
+      communicator, mat_properties);
   thermal_operator.setup_dofs(dof_handler, affine_constraints, quad);
   thermal_operator.reinit(dof_handler, affine_constraints);
-  dealii::LA::distributed::Vector<double> dummy(thermal_operator.m());
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
+      thermal_operator.m());
   thermal_operator.evaluate_material_properties(dummy);
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
@@ -150,9 +152,9 @@ BOOST_AUTO_TEST_CASE(spmv)
 
   // Compare vmult using matrix free and building the matrix
   double const tolerance = 1e-12;
-  dealii::LA::distributed::Vector<double> src;
-  dealii::LA::distributed::Vector<double> dst_1;
-  dealii::LA::distributed::Vector<double> dst_2;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_1;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_2;
 
   dealii::MatrixFree<2, double> const &matrix_free =
       thermal_operator.get_matrix_free();

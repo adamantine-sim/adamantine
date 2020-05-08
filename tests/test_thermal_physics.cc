@@ -44,12 +44,12 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   database.put("sources.beam_0.max_power", 1e300);
   database.put("sources.beam_0.abscissa", "t");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 2, dealii::QGauss<1>> physics(
-      communicator, database, geometry);
+  adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
+      physics(communicator, database, geometry);
   physics.setup_dofs();
   physics.reinit();
 
-  dealii::LA::distributed::Vector<double> solution;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
   physics.initialize_dof_vector(solution);
   std::vector<adamantine::Timer> timers(6);
   double time = 0;
@@ -121,12 +121,12 @@ BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution)
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 2, dealii::QGauss<1>> physics(
-      communicator, database, geometry);
+  adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
+      physics(communicator, database, geometry);
   physics.setup_dofs();
   physics.reinit();
 
-  dealii::LA::distributed::Vector<double> solution;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
   std::vector<adamantine::Timer> timers(6);
   physics.initialize_dof_vector(solution);
   double time = physics.evolve_one_time_step(0., 0.1, solution, timers);
@@ -172,12 +172,12 @@ BOOST_AUTO_TEST_CASE(initial_temperature)
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 2, dealii::QGauss<1>> physics(
-      communicator, database, geometry);
+  adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
+      physics(communicator, database, geometry);
   physics.setup_dofs();
   physics.reinit();
 
-  dealii::LA::distributed::Vector<double> solution;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
   physics.initialize_dof_vector(1000., solution);
   BOOST_CHECK(solution.l1_norm() == 20000. * solution.size());
 }
