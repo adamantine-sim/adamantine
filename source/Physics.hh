@@ -21,7 +21,7 @@ namespace adamantine
 /**
  * This class defines the inteface that every physics needs to implement.
  */
-template <int dim, typename NumberType>
+template <int dim>
 class Physics
 {
 public:
@@ -47,7 +47,7 @@ public:
    */
   virtual double
   evolve_one_time_step(double t, double delta_t,
-                       dealii::LA::distributed::Vector<NumberType> &solution,
+                       dealii::LA::distributed::Vector<double> &solution,
                        std::vector<Timer> &timers) = 0;
 
   /**
@@ -59,14 +59,14 @@ public:
    * Initialize the given vector.
    */
   virtual void initialize_dof_vector(
-      dealii::LA::distributed::Vector<NumberType> &vector) const = 0;
+      dealii::LA::distributed::Vector<double> &vector) const = 0;
 
   /**
    * Initialize the given vector with the given value.
    */
   virtual void initialize_dof_vector(
-      NumberType const value,
-      dealii::LA::distributed::Vector<NumberType> &vector) const = 0;
+      double const value,
+      dealii::LA::distributed::Vector<double> &vector) const = 0;
 
   /**
    * Return the DoFHandler.

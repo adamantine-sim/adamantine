@@ -41,10 +41,9 @@ MaterialProperty<dim>::MaterialProperty(
 }
 
 template <int dim>
-template <typename NumberType>
 double MaterialProperty<dim>::get(
     typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
-    Property prop, dealii::LA::distributed::Vector<NumberType> const &) const
+    Property prop, dealii::LA::distributed::Vector<double> const &) const
 {
   // TODO: For now, ignore field_state since we have a linear problem.
   double value = 0.;
@@ -67,15 +66,14 @@ double MaterialProperty<dim>::get(
 }
 
 template <int dim>
-template <typename NumberType>
-dealii::LA::distributed::Vector<NumberType>
+dealii::LA::distributed::Vector<double>
 MaterialProperty<dim>::enthalpy_to_temperature(
     dealii::DoFHandler<dim> const &enthalpy_dof_handler,
-    dealii::LA::distributed::Vector<NumberType> const &enthalpy)
+    dealii::LA::distributed::Vector<double> const &enthalpy)
 {
-  dealii::LA::distributed::Vector<NumberType> temperature(
+  dealii::LA::distributed::Vector<double> temperature(
       enthalpy.get_partitioner());
-  dealii::LA::distributed::Vector<NumberType> dummy;
+  dealii::LA::distributed::Vector<double> dummy;
 
   update_state(enthalpy_dof_handler, enthalpy);
 
@@ -97,26 +95,23 @@ MaterialProperty<dim>::enthalpy_to_temperature(
     double const latent_heat = get(cell, Property::latent_heat, dummy);
     double const liquidus_enthalpy = solidus_enthalpy + latent_heat;
 
-    NumberType enth_to_temp = [liquid_ratio, liquidus, solidus,
-                               liquidus_enthalpy, solidus_enthalpy, density,
-                               specific_heat](double const enthalpy) {
+    auto enth_to_temp = [=](double const enth) {
       if (liquid_ratio > 0.)
       {
         if (liquid_ratio == 1.)
         {
           return liquidus +
-                 (enthalpy - liquidus_enthalpy) / (density * specific_heat);
+                 (enth - liquidus_enthalpy) / (density * specific_heat);
         }
         else
         {
-          return solidus + (liquidus - solidus) *
-                               (enthalpy - solidus_enthalpy) /
+          return solidus + (liquidus - solidus) * (enth - solidus_enthalpy) /
                                (liquidus_enthalpy - solidus_enthalpy);
         }
       }
       else
       {
-        return enthalpy / (density * specific_heat);
+        return enth / (density * specific_heat);
       }
     };
 
@@ -138,12 +133,11 @@ void MaterialProperty<dim>::reinit_dofs()
 }
 
 template <int dim>
-template <typename NumberType>
 void MaterialProperty<dim>::update_state(
     dealii::DoFHandler<dim> const &enthalpy_dof_handler,
-    dealii::LA::distributed::Vector<NumberType> const &enthalpy)
+    dealii::LA::distributed::Vector<double> const &enthalpy)
 {
-  dealii::LA::distributed::Vector<NumberType> enthalpy_average =
+  dealii::LA::distributed::Vector<double> enthalpy_average =
       compute_average_enthalpy(enthalpy_dof_handler, enthalpy);
 
   std::vector<dealii::types::global_dof_index> mp_dof(1);
@@ -380,15 +374,14 @@ void MaterialProperty<dim>::compute_constants()
 }
 
 template <int dim>
-template <typename NumberType>
-dealii::LA::distributed::Vector<NumberType>
+dealii::LA::distributed::Vector<double>
 MaterialProperty<dim>::compute_average_enthalpy(
     dealii::DoFHandler<dim> const &enthalpy_dof_handler,
-    dealii::LA::distributed::Vector<NumberType> const &enthalpy) const
+    dealii::LA::distributed::Vector<double> const &enthalpy) const
 {
   // TODO: this should probably done in a matrix-free fashion.
   // The triangulation is the same for both DoFHandler
-  dealii::LA::distributed::Vector<NumberType> enthalpy_average(
+  dealii::LA::distributed::Vector<double> enthalpy_average(
       _mp_dof_handler.locally_owned_dofs(), enthalpy.get_mpi_communicator());
   enthalpy_average = 0.;
   auto mp_cell = _mp_dof_handler.begin_active();
@@ -431,34 +424,3 @@ MaterialProperty<dim>::compute_average_enthalpy(
 } // namespace adamantine
 
 INSTANTIATE_DIM(MaterialProperty)
-
-namespace adamantine
-{
-// Instantiate templated function: get
-template double MaterialProperty<2>::get(
-    dealii::Triangulation<2>::active_cell_iterator const &, Property prop,
-    dealii::LA::distributed::Vector<float> const &) const;
-template double MaterialProperty<2>::get(
-    dealii::Triangulation<2>::active_cell_iterator const &, Property prop,
-    dealii::LA::distributed::Vector<double> const &) const;
-template double MaterialProperty<3>::get(
-    dealii::Triangulation<3>::active_cell_iterator const &, Property prop,
-    dealii::LA::distributed::Vector<float> const &) const;
-template double MaterialProperty<3>::get(
-    dealii::Triangulation<3>::active_cell_iterator const &, Property prop,
-    dealii::LA::distributed::Vector<double> const &) const;
-
-// Instantiate templated function: update_state
-template void MaterialProperty<2>::update_state(
-    dealii::DoFHandler<2> const &,
-    dealii::LA::distributed::Vector<float> const &);
-template void MaterialProperty<2>::update_state(
-    dealii::DoFHandler<2> const &,
-    dealii::LA::distributed::Vector<double> const &);
-template void MaterialProperty<3>::update_state(
-    dealii::DoFHandler<3> const &,
-    dealii::LA::distributed::Vector<float> const &);
-template void MaterialProperty<3>::update_state(
-    dealii::DoFHandler<3> const &,
-    dealii::LA::distributed::Vector<double> const &);
-} // namespace adamantine

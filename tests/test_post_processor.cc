@@ -52,8 +52,8 @@ BOOST_AUTO_TEST_CASE(post_processor)
           communicator, geometry.get_triangulation(), mat_prop_database));
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2, double> thermal_operator(communicator,
-                                                             mat_properties);
+  adamantine::ThermalOperator<2, 2> thermal_operator(communicator,
+                                                     mat_properties);
   thermal_operator.setup_dofs(dof_handler, affine_constraints, quad);
   thermal_operator.reinit(dof_handler, affine_constraints);
 

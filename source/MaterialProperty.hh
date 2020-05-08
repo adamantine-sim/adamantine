@@ -58,19 +58,17 @@ public:
    * Return the value of the given property, for a given cell and a given field
    * state.
    */
-  template <typename NumberType>
   double
   get(typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
       Property prop,
-      dealii::LA::distributed::Vector<NumberType> const &field_state) const;
+      dealii::LA::distributed::Vector<double> const &field_state) const;
 
   /**
    * Return the average temperature on every cell given the enthalpy.
    */
-  template <typename NumberType>
-  dealii::LA::distributed::Vector<NumberType> enthalpy_to_temperature(
+  dealii::LA::distributed::Vector<double> enthalpy_to_temperature(
       dealii::DoFHandler<dim> const &enthalpy_dof_handler,
-      dealii::LA::distributed::Vector<NumberType> const &enthalpy);
+      dealii::LA::distributed::Vector<double> const &enthalpy);
 
   /**
    * Reinitialize the DoFHandler associated with MaterialProperty and resize the
@@ -81,10 +79,8 @@ public:
   /**
    * Update the material state, i.e, the ratio of liquid, powder, and solid.
    */
-  template <typename NumberType>
-  void
-  update_state(dealii::DoFHandler<dim> const &enthalpy_dof_handler,
-               dealii::LA::distributed::Vector<NumberType> const &enthalpy);
+  void update_state(dealii::DoFHandler<dim> const &enthalpy_dof_handler,
+                    dealii::LA::distributed::Vector<double> const &enthalpy);
 
   /**
    * Get the array of material state vectors. The order of the different state
@@ -169,10 +165,9 @@ private:
   /**
    * Compute the average of the enthalpy on every cell.
    */
-  template <typename NumberType>
-  dealii::LA::distributed::Vector<NumberType> compute_average_enthalpy(
+  dealii::LA::distributed::Vector<double> compute_average_enthalpy(
       dealii::DoFHandler<dim> const &enthalpy_dof_handler,
-      dealii::LA::distributed::Vector<NumberType> const &enthalpy) const;
+      dealii::LA::distributed::Vector<double> const &enthalpy) const;
 
   /**
    * MPI communicator.

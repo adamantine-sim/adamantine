@@ -21,8 +21,8 @@ namespace adamantine
  * This class is the operator associated with the heat equation, i.e., vmult
  * performs \f$ dst = -\nabla k \nabla src \f$.
  */
-template <int dim, int fe_degree, typename NumberType>
-class ThermalOperator : public Operator<NumberType>
+template <int dim, int fe_degree>
+class ThermalOperator : public Operator
 {
 public:
   ThermalOperator(MPI_Comm const &communicator,
@@ -56,48 +56,47 @@ public:
   /**
    * Return a shared pointer to the inverse of the mass matrix.
    */
-  std::shared_ptr<dealii::LA::distributed::Vector<NumberType>>
+  std::shared_ptr<dealii::LA::distributed::Vector<double>>
   get_inverse_mass_matrix() const;
 
   /**
    * Return a shared pointer to the underlying MatrixFree object.
    */
-  dealii::MatrixFree<dim, NumberType> const &get_matrix_free() const;
+  dealii::MatrixFree<dim, double> const &get_matrix_free() const;
+
+  void vmult(dealii::LA::distributed::Vector<double> &dst,
+             dealii::LA::distributed::Vector<double> const &src) const override;
 
   void
-  vmult(dealii::LA::distributed::Vector<NumberType> &dst,
-        dealii::LA::distributed::Vector<NumberType> const &src) const override;
+  Tvmult(dealii::LA::distributed::Vector<double> &dst,
+         dealii::LA::distributed::Vector<double> const &src) const override;
 
   void
-  Tvmult(dealii::LA::distributed::Vector<NumberType> &dst,
-         dealii::LA::distributed::Vector<NumberType> const &src) const override;
+  vmult_add(dealii::LA::distributed::Vector<double> &dst,
+            dealii::LA::distributed::Vector<double> const &src) const override;
 
-  void vmult_add(
-      dealii::LA::distributed::Vector<NumberType> &dst,
-      dealii::LA::distributed::Vector<NumberType> const &src) const override;
-
-  void Tvmult_add(
-      dealii::LA::distributed::Vector<NumberType> &dst,
-      dealii::LA::distributed::Vector<NumberType> const &src) const override;
+  void
+  Tvmult_add(dealii::LA::distributed::Vector<double> &dst,
+             dealii::LA::distributed::Vector<double> const &src) const override;
 
   void jacobian_vmult(
-      dealii::LA::distributed::Vector<NumberType> &dst,
-      dealii::LA::distributed::Vector<NumberType> const &src) const override;
+      dealii::LA::distributed::Vector<double> &dst,
+      dealii::LA::distributed::Vector<double> const &src) const override;
 
   /**
    * Evaluate the material properties for a given state field.
    */
   void evaluate_material_properties(
-      dealii::LA::distributed::Vector<NumberType> const &state);
+      dealii::LA::distributed::Vector<double> const &state);
 
 private:
   /**
    * Apply the operator on a given set of quadrature points.
    */
   void
-  local_apply(dealii::MatrixFree<dim, NumberType> const &data,
-              dealii::LA::distributed::Vector<NumberType> &dst,
-              dealii::LA::distributed::Vector<NumberType> const &src,
+  local_apply(dealii::MatrixFree<dim, double> const &data,
+              dealii::LA::distributed::Vector<double> &dst,
+              dealii::LA::distributed::Vector<double> const &src,
               std::pair<unsigned int, unsigned int> const &cell_range) const;
 
   /**
@@ -107,22 +106,21 @@ private:
   /**
    * Data to configure the MatrixFree object.
    */
-  typename dealii::MatrixFree<dim, NumberType>::AdditionalData
-      _matrix_free_data;
+  typename dealii::MatrixFree<dim, double>::AdditionalData _matrix_free_data;
   /**
    * Store the \f$ \alpha \f$ coefficient described in
    * MaterialProperty::compute_constants()
    */
-  dealii::Table<2, dealii::VectorizedArray<NumberType>> _alpha;
+  dealii::Table<2, dealii::VectorizedArray<double>> _alpha;
   /**
    * Store the \f$ \beta \f$ coefficient described in
    * MaterialProperty::compute_constants()
    */
-  dealii::Table<2, dealii::VectorizedArray<NumberType>> _beta;
+  dealii::Table<2, dealii::VectorizedArray<double>> _beta;
   /**
    * Table of thermal conductivity coefficient.
    */
-  dealii::Table<2, dealii::VectorizedArray<NumberType>> _thermal_conductivity;
+  dealii::Table<2, dealii::VectorizedArray<double>> _thermal_conductivity;
   /**
    * Material properties associated with the domain.
    */
@@ -130,48 +128,47 @@ private:
   /**
    * Underlying MatrixFree object.
    */
-  dealii::MatrixFree<dim, NumberType> _matrix_free;
+  dealii::MatrixFree<dim, double> _matrix_free;
   /**
    * The inverse of the mass matrix is computed using an inexact Gauss-Lobatto
    * quadrature. This inexact quadrature makes the mass matrix and therefore
    * also its inverse, a diagonal matrix.
    */
-  std::shared_ptr<dealii::LA::distributed::Vector<NumberType>>
-      _inverse_mass_matrix;
+  std::shared_ptr<dealii::LA::distributed::Vector<double>> _inverse_mass_matrix;
 };
 
-template <int dim, int fe_degree, typename NumberType>
+template <int dim, int fe_degree>
 inline dealii::types::global_dof_index
-ThermalOperator<dim, fe_degree, NumberType>::m() const
+ThermalOperator<dim, fe_degree>::m() const
 {
   return _matrix_free.get_vector_partitioner()->size();
 }
 
-template <int dim, int fe_degree, typename NumberType>
+template <int dim, int fe_degree>
 inline dealii::types::global_dof_index
-ThermalOperator<dim, fe_degree, NumberType>::n() const
+ThermalOperator<dim, fe_degree>::n() const
 {
   return _matrix_free.get_vector_partitioner()->size();
 }
 
-template <int dim, int fe_degree, typename NumberType>
-inline std::shared_ptr<dealii::LA::distributed::Vector<NumberType>>
-ThermalOperator<dim, fe_degree, NumberType>::get_inverse_mass_matrix() const
+template <int dim, int fe_degree>
+inline std::shared_ptr<dealii::LA::distributed::Vector<double>>
+ThermalOperator<dim, fe_degree>::get_inverse_mass_matrix() const
 {
   return _inverse_mass_matrix;
 }
 
-template <int dim, int fe_degree, typename NumberType>
-inline dealii::MatrixFree<dim, NumberType> const &
-ThermalOperator<dim, fe_degree, NumberType>::get_matrix_free() const
+template <int dim, int fe_degree>
+inline dealii::MatrixFree<dim, double> const &
+ThermalOperator<dim, fe_degree>::get_matrix_free() const
 {
   return _matrix_free;
 }
 
-template <int dim, int fe_degree, typename NumberType>
-inline void ThermalOperator<dim, fe_degree, NumberType>::jacobian_vmult(
-    dealii::LA::distributed::Vector<NumberType> &dst,
-    dealii::LA::distributed::Vector<NumberType> const &src) const
+template <int dim, int fe_degree>
+inline void ThermalOperator<dim, fe_degree>::jacobian_vmult(
+    dealii::LA::distributed::Vector<double> &dst,
+    dealii::LA::distributed::Vector<double> const &src) const
 {
   vmult(dst, src);
 }

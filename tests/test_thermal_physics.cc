@@ -44,7 +44,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   database.put("sources.beam_0.max_power", 1e300);
   database.put("sources.beam_0.abscissa", "t");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 2, double, dealii::QGauss<1>> physics(
+  adamantine::ThermalPhysics<2, 2, dealii::QGauss<1>> physics(
       communicator, database, geometry);
   physics.setup_dofs();
   physics.reinit();
@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution)
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 2, double, dealii::QGauss<1>> physics(
+  adamantine::ThermalPhysics<2, 2, dealii::QGauss<1>> physics(
       communicator, database, geometry);
   physics.setup_dofs();
   physics.reinit();
@@ -172,7 +172,7 @@ BOOST_AUTO_TEST_CASE(initial_temperature)
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 2, double, dealii::QGauss<1>> physics(
+  adamantine::ThermalPhysics<2, 2, dealii::QGauss<1>> physics(
       communicator, database, geometry);
   physics.setup_dofs();
   physics.reinit();

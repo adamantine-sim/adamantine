@@ -18,8 +18,8 @@
 
 namespace adamantine
 {
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
+template <int dim, int fe_degree, typename QuadratureType>
+ThermalPhysics<dim, fe_degree, QuadratureType>::ThermalPhysics(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     Geometry<dim> &geometry)
     : _embedded_method(false), _implicit_method(false), _geometry(geometry),
@@ -46,9 +46,8 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
   }
 
   // Create the thermal operator
-  _thermal_operator =
-      std::make_shared<ThermalOperator<dim, fe_degree, NumberType>>(
-          communicator, _material_properties);
+  _thermal_operator = std::make_shared<ThermalOperator<dim, fe_degree>>(
+      communicator, _material_properties);
 
   // Create the time stepping scheme
   boost::property_tree::ptree const &time_stepping_database =
@@ -171,12 +170,12 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::ThermalPhysics(
                                               newton_tolerance);
     bool jfnk = time_stepping_database.get("jfnk", false);
     _implicit_operator =
-        std::make_unique<ImplicitOperator<NumberType>>(_thermal_operator, jfnk);
+        std::make_unique<ImplicitOperator>(_thermal_operator, jfnk);
   }
 }
 
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::setup_dofs()
+template <int dim, int fe_degree, typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, QuadratureType>::setup_dofs()
 {
   _dof_handler.distribute_dofs(_fe);
   dealii::IndexSet locally_relevant_dofs;
@@ -191,8 +190,8 @@ void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::setup_dofs()
   _thermal_operator->setup_dofs(_dof_handler, _affine_constraints, _quadrature);
 }
 
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::reinit()
+template <int dim, int fe_degree, typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, QuadratureType>::reinit()
 {
   _thermal_operator->reinit(_dof_handler, _affine_constraints);
   if (_implicit_method == true)
@@ -200,11 +199,10 @@ void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::reinit()
         _thermal_operator->get_inverse_mass_matrix());
 }
 
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-double ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
-    evolve_one_time_step(double t, double delta_t,
-                         dealii::LA::distributed::Vector<NumberType> &solution,
-                         std::vector<Timer> &timers)
+template <int dim, int fe_degree, typename QuadratureType>
+double ThermalPhysics<dim, fe_degree, QuadratureType>::evolve_one_time_step(
+    double t, double delta_t, dealii::LA::distributed::Vector<double> &solution,
+    std::vector<Timer> &timers)
 {
   // TODO: this assume that the material properties do no change during the time
   // steps. This is wrong and needs to be changed.
@@ -213,11 +211,11 @@ double ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   timers[evol_time_eval_mat_prop].stop();
 
   double time = _time_stepping->evolve_one_time_step(
-      std::bind(&ThermalPhysics<dim, fe_degree, NumberType,
+      std::bind(&ThermalPhysics<dim, fe_degree,
                                 QuadratureType>::evaluate_thermal_physics,
                 this, std::placeholders::_1, std::placeholders::_2,
                 std::ref(timers)),
-      std::bind(&ThermalPhysics<dim, fe_degree, NumberType,
+      std::bind(&ThermalPhysics<dim, fe_degree,
                                 QuadratureType>::id_minus_tau_J_inverse,
                 this, std::placeholders::_1, std::placeholders::_2,
                 std::placeholders::_3, std::ref(timers)),
@@ -241,11 +239,9 @@ double ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   return time;
 }
 
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
-    initialize_dof_vector(
-        NumberType const value,
-        dealii::LA::distributed::Vector<NumberType> &vector) const
+template <int dim, int fe_degree, typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, QuadratureType>::initialize_dof_vector(
+    double const value, dealii::LA::distributed::Vector<double> &vector) const
 {
   // Resize the vector
   initialize_dof_vector(vector);
@@ -265,14 +261,14 @@ void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
     cell->get_dof_indices(local_dof_indices);
 
     // Compute the enthalpy
-    dealii::LA::distributed::Vector<NumberType> dummy;
+    dealii::LA::distributed::Vector<double> dummy;
     // Cast to Triangulation<dim>::cell_iterator to access the material_id
     typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
     double const density =
         _material_properties->get(cell_tria, Property::density, dummy);
     double const specific_heat =
         _material_properties->get(cell_tria, Property::specific_heat, dummy);
-    NumberType const enthalpy_value = value * density * specific_heat;
+    double const enthalpy_value = value * density * specific_heat;
     for (unsigned int i = 0; i < dofs_per_cell; ++i)
     {
       dealii::types::global_dof_index const dof_index = local_dof_indices[i];
@@ -282,12 +278,11 @@ void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   }
 }
 
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-dealii::LA::distributed::Vector<NumberType>
-ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
-    evaluate_thermal_physics(
-        double const t, dealii::LA::distributed::Vector<NumberType> const &y,
-        std::vector<Timer> &timers) const
+template <int dim, int fe_degree, typename QuadratureType>
+dealii::LA::distributed::Vector<double>
+ThermalPhysics<dim, fe_degree, QuadratureType>::evaluate_thermal_physics(
+    double const t, dealii::LA::distributed::Vector<double> const &y,
+    std::vector<Timer> &timers) const
 {
   timers[evol_time_eval_th_ph].start();
   LA_Vector value(y.get_partitioner());
@@ -304,7 +299,7 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   unsigned int const dofs_per_cell = _fe.dofs_per_cell;
   unsigned int const n_q_points = source_quadrature.size();
   std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
-  dealii::Vector<NumberType> cell_source(dofs_per_cell);
+  dealii::Vector<double> cell_source(dofs_per_cell);
 
   for (auto cell :
        dealii::filter_iterators(_dof_handler.active_cell_iterators(),
@@ -342,16 +337,16 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   return value;
 }
 
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-dealii::LA::distributed::Vector<NumberType>
-ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
-    id_minus_tau_J_inverse(double const /*t*/, double const tau,
-                           dealii::LA::distributed::Vector<NumberType> const &y,
-                           std::vector<Timer> &timers) const
+template <int dim, int fe_degree, typename QuadratureType>
+dealii::LA::distributed::Vector<double>
+ThermalPhysics<dim, fe_degree, QuadratureType>::id_minus_tau_J_inverse(
+    double const /*t*/, double const tau,
+    dealii::LA::distributed::Vector<double> const &y,
+    std::vector<Timer> &timers) const
 {
   timers[evol_time_J_inv].start();
   _implicit_operator->set_tau(tau);
-  dealii::LA::distributed::Vector<NumberType> solution(y.get_partitioner());
+  dealii::LA::distributed::Vector<double> solution(y.get_partitioner());
 
   // TODO Add a geometric multigrid preconditioner.
   dealii::PreconditionIdentity preconditioner;
@@ -359,10 +354,10 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
   dealii::SolverControl solver_control(_max_iter, _tolerance * y.l2_norm());
   // We need to inverse (I - tau M^{-1} J). While M^{-1} and J are SPD,
   // (I - tau M^{-1} J) is symmetric indefinite in the general case.
-  typename dealii::SolverGMRES<dealii::LA::distributed::Vector<NumberType>>::
+  typename dealii::SolverGMRES<dealii::LA::distributed::Vector<double>>::
       AdditionalData additional_data(_max_n_tmp_vectors,
                                      _right_preconditioning);
-  dealii::SolverGMRES<dealii::LA::distributed::Vector<NumberType>> solver(
+  dealii::SolverGMRES<dealii::LA::distributed::Vector<double>> solver(
       solver_control, additional_data);
   solver.solve(*_implicit_operator, solution, y, preconditioner);
 
@@ -372,5 +367,4 @@ ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
 }
 } // namespace adamantine
 
-INSTANTIATE_DIM_FEDEGREE_QUAD(TUPLE_FLOAT(ThermalPhysics))
-INSTANTIATE_DIM_FEDEGREE_QUAD(TUPLE_DOUBLE(ThermalPhysics))
+INSTANTIATE_DIM_FEDEGREE_QUAD(TUPLE(ThermalPhysics))

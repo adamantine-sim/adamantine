@@ -44,13 +44,13 @@ std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &
 initialize(MPI_Comm const &communicator,
            boost::property_tree::ptree const &database,
            adamantine::Geometry<dim> &geometry,
-           std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics)
+           std::unique_ptr<adamantine::Physics<dim>> &thermal_physics)
 {
   thermal_physics.reset(
-      new adamantine::ThermalPhysics<dim, fe_degree, double, QuadratureType>(
+      new adamantine::ThermalPhysics<dim, fe_degree, QuadratureType>(
           communicator, database, geometry));
-  return static_cast<adamantine::ThermalPhysics<dim, fe_degree, double,
-                                                QuadratureType> *>(
+  return static_cast<
+             adamantine::ThermalPhysics<dim, fe_degree, QuadratureType> *>(
              thermal_physics.get())
       ->get_electron_beams();
 }
@@ -61,7 +61,7 @@ initialize_quadrature(
     std::string const &quadrature_type, MPI_Comm const &communicator,
     boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
-    std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics)
+    std::unique_ptr<adamantine::Physics<dim>> &thermal_physics)
 {
   if (quadrature_type.compare("gauss") == 0)
     return initialize<dim, fe_degree, dealii::QGauss<1>>(
@@ -81,7 +81,7 @@ initialize_thermal_physics(
     unsigned int fe_degree, std::string const &quadrature_type,
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
-    std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics)
+    std::unique_ptr<adamantine::Physics<dim>> &thermal_physics)
 {
   switch (fe_degree)
   {
@@ -142,7 +142,7 @@ initialize_thermal_physics(
 
 template <int dim>
 void refine_and_transfer(
-    std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics,
+    std::unique_ptr<adamantine::Physics<dim>> &thermal_physics,
     dealii::DoFHandler<dim> &dof_handler,
     dealii::LA::distributed::Vector<double> &solution)
 {
@@ -258,7 +258,7 @@ compute_cells_to_refine(
 
 template <int dim, int fe_degree>
 void refine_mesh(
-    std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics,
+    std::unique_ptr<adamantine::Physics<dim>> &thermal_physics,
     dealii::LA::distributed::Vector<double> &solution,
     std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams,
     double const time, double const next_refinement_time,
@@ -339,7 +339,7 @@ void refine_mesh(
 
 template <int dim>
 void refine_mesh(
-    std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics,
+    std::unique_ptr<adamantine::Physics<dim>> &thermal_physics,
     dealii::LA::distributed::Vector<double> &solution,
     std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams,
     double const time, double const next_refinement_time,
@@ -429,7 +429,7 @@ void refine_mesh(
 template <int dim>
 void run(
     MPI_Comm const &communicator,
-    std::unique_ptr<adamantine::Physics<dim, double>> &thermal_physics,
+    std::unique_ptr<adamantine::Physics<dim>> &thermal_physics,
     adamantine::PostProcessor<dim> &post_processor,
     std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams,
     boost::property_tree::ptree const &time_stepping_database,
@@ -583,7 +583,7 @@ int main(int argc, char *argv[])
       boost::property_tree::ptree refinement_database =
           database.get_child("refinement");
       adamantine::Geometry<2> geometry(communicator, geometry_database);
-      std::unique_ptr<adamantine::Physics<2, double>> thermal_physics;
+      std::unique_ptr<adamantine::Physics<2>> thermal_physics;
       std::vector<std::unique_ptr<adamantine::ElectronBeam<2>>>
           &electron_beams =
               initialize_thermal_physics<2>(fe_degree, quadrature_type,
@@ -608,7 +608,7 @@ int main(int argc, char *argv[])
       boost::property_tree::ptree refinement_database =
           database.get_child("refinement");
       adamantine::Geometry<3> geometry(communicator, geometry_database);
-      std::unique_ptr<adamantine::Physics<3, double>> thermal_physics;
+      std::unique_ptr<adamantine::Physics<3>> thermal_physics;
       std::vector<std::unique_ptr<adamantine::ElectronBeam<3>>>
           &electron_beams =
               initialize_thermal_physics<3>(fe_degree, quadrature_type,
