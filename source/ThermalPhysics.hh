@@ -15,6 +15,7 @@
 #include "ThermalOperator.hh"
 
 #include <deal.II/base/time_stepping.h>
+#include <deal.II/fe/fe_q.h>
 
 #include <boost/property_tree/ptree.hpp>
 

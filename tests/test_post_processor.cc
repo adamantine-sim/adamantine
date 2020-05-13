@@ -12,6 +12,8 @@
 #include <PostProcessor.hh>
 #include <ThermalOperator.hh>
 
+#include <deal.II/fe/fe_q.h>
+
 #include <boost/filesystem.hpp>
 
 #include "main.cc"

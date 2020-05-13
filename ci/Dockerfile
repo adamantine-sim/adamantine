@@ -121,8 +121,8 @@ RUN export P4EST_VERSION=2.2 && \
 ENV P4EST_DIR=${INSTALL_DIR}/p4est
 
 # Install deal.II 
-RUN export DEAL_II_HASH=31ab106f152ff9a14708f08291f9937bc477bbae && \
-    export DEAL_II_URL=https://github.com/dealii/dealii/archive/${DEAL_II_HASH}.tar.gz && \
+RUN export DEAL_II_HASH=9f76569658ad077f11d04ca99b7b45958064853b && \
+    export DEAL_II_URL=https://github.com/Rombur/dealii/archive/${DEAL_II_HASH}.tar.gz && \
     export DEAL_II_ARCHIVE=${ARCHIVE_DIR}/dealii.tar.gz && \
     export DEAL_II_SOURCE_DIR=${SOURCE_DIR}/dealii && \
     export DEAL_II_BUILD_DIR=${BUILD_DIR}/dealii && \

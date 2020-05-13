@@ -12,6 +12,7 @@
 #include <ThermalOperator.hh>
 
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/fe/fe_q.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/numerics/matrix_tools.h>
