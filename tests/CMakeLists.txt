@@ -22,6 +22,7 @@ list(APPEND
 set(CUDA_UNIT_TESTS "")
 list(APPEND
      CUDA_UNIT_TESTS
+     test_thermal_operator_device
      )
 
 foreach(TEST_NAME ${UNIT_TESTS})
