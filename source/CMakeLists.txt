@@ -25,6 +25,17 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.cc
   )
 
+if (ADAMANTINE_ENABLE_CUDA)
+  set(Adamantine_HEADERS
+      ${Adamantine_HEADERS}
+      ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDevice.hh
+      )
+  set(Adamantine_SOURCES
+      ${Adamantine_SOURCES}
+      ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDevice.cu
+      )
+endif()
+
 # Because the Adamantine library is just used to simplify testing, we make it
 # static. Thus, once the application is created it can be moved around. The
 # other libraries can still be shared.
