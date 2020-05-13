@@ -24,6 +24,9 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
 {
   _matrix_free_data.tasks_parallel_scheme =
       dealii::MatrixFree<dim, double>::AdditionalData::partition_color;
+  _matrix_free_data.mapping_update_flags = dealii::update_gradients |
+                                           dealii::update_JxW_values |
+                                           dealii::update_quadrature_points;
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
