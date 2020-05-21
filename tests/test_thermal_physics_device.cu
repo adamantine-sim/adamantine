@@ -5,7 +5,7 @@
  * for the text and further information on this license.
  */
 
-#define BOOST_TEST_MODULE ThermalPhysics
+#define BOOST_TEST_MODULE ThermalPhysicsDevice
 
 // clang-format off
 #include "main.cc"
@@ -13,15 +13,15 @@
 #include "test_thermal_physics.hh"
 // clang-format on
 
-BOOST_AUTO_TEST_CASE(thermal_2d_explicit_host)
+BOOST_AUTO_TEST_CASE(thermal_2d_explicit_device)
 {
   boost::property_tree::ptree database;
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
-  thermal_2d<dealii::MemorySpace::Host>(database, 0.05);
+  thermal_2d<dealii::MemorySpace::CUDA>(database, 0.05);
 }
 
-BOOST_AUTO_TEST_CASE(thermal_2d_implicit_host)
+BOOST_AUTO_TEST_CASE(thermal_2d_implicit_device)
 {
   boost::property_tree::ptree database;
   // Time-stepping database
@@ -30,15 +30,15 @@ BOOST_AUTO_TEST_CASE(thermal_2d_implicit_host)
   database.put("time_stepping.tolerance", 1e-6);
   database.put("time_stepping.n_tmp_vectors", 100);
 
-  thermal_2d<dealii::MemorySpace::Host>(database, 0.025);
+  thermal_2d<dealii::MemorySpace::CUDA>(database, 0.025);
 }
 
-BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution_host)
+BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution_device)
 {
-  thermal_2d_manufactured_solution<dealii::MemorySpace::Host>();
+  thermal_2d_manufactured_solution<dealii::MemorySpace::CUDA>();
 }
 
-BOOST_AUTO_TEST_CASE(initial_temperature_host)
+BOOST_AUTO_TEST_CASE(initial_temperature_device)
 {
-  initial_temperature<dealii::MemorySpace::Host>();
+  initial_temperature<dealii::MemorySpace::CUDA>();
 }
