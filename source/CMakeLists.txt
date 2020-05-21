@@ -9,6 +9,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.templates.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/utils.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/types.hh
@@ -33,6 +34,7 @@ if (ADAMANTINE_ENABLE_CUDA)
   set(Adamantine_SOURCES
       ${Adamantine_SOURCES}
       ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDevice.cu
+      ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.cu
       )
 endif()
 

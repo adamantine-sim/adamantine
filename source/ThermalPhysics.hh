@@ -12,9 +12,10 @@
 #include "Geometry.hh"
 #include "ImplicitOperator.hh"
 #include "Physics.hh"
-#include "ThermalOperator.hh"
+#include "ThermalOperatorBase.hh"
 
 #include <deal.II/base/time_stepping.h>
+#include <deal.II/base/time_stepping.templates.h>
 #include <deal.II/fe/fe_q.h>
 
 #include <boost/property_tree/ptree.hpp>
@@ -182,8 +183,7 @@ private:
   /**
    * Shared pointer to the underlying ThermalOperator.
    */
-  std::shared_ptr<ThermalOperator<dim, fe_degree, MemorySpaceType>>
-      _thermal_operator;
+  std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> _thermal_operator;
   /**
    * Unique pointer to the underlying ImplicitOperator.
    */
@@ -200,15 +200,6 @@ inline double ThermalPhysics<dim, fe_degree, MemorySpaceType,
                              QuadratureType>::get_delta_t_guess() const
 {
   return _delta_t_guess;
-}
-
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
-inline void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
-    initialize_dof_vector(
-        dealii::LA::distributed::Vector<double, MemorySpaceType> &vector) const
-{
-  _thermal_operator->get_matrix_free().initialize_dof_vector(vector);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
