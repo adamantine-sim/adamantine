@@ -9,10 +9,8 @@
 #define THERMAL_OPERATOR_HH
 
 #include <MaterialProperty.hh>
-#include <Operator.hh>
+#include <ThermalOperatorBase.hh>
 
-#include <deal.II/dofs/dof_handler.h>
-#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/matrix_free/matrix_free.h>
 
 namespace adamantine
@@ -22,7 +20,7 @@ namespace adamantine
  * performs \f$ dst = -\nabla k \nabla src \f$.
  */
 template <int dim, int fe_degree, typename MemorySpaceType>
-class ThermalOperator : public Operator<MemorySpaceType>
+class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
   ThermalOperator(MPI_Comm const &communicator,
@@ -32,16 +30,20 @@ public:
    * Associate the AffineConstraints<double> and the MatrixFree objects to the
    * underlying Triangulation.
    */
-  template <typename QuadratureType>
   void setup_dofs(dealii::DoFHandler<dim> const &dof_handler,
                   dealii::AffineConstraints<double> const &affine_constraints,
-                  QuadratureType const &quad);
+                  dealii::QGaussLobatto<1> const &quad) override;
+
+  void setup_dofs(dealii::DoFHandler<dim> const &dof_handler,
+                  dealii::AffineConstraints<double> const &affine_constraints,
+                  dealii::QGauss<1> const &quad) override;
 
   /**
    * Compute the inverse of the mass matrix and update the material properties.
    */
-  void reinit(dealii::DoFHandler<dim> const &dof_handler,
-              dealii::AffineConstraints<double> const &affine_constraints);
+  void
+  reinit(dealii::DoFHandler<dim> const &dof_handler,
+         dealii::AffineConstraints<double> const &affine_constraints) override;
 
   /**
    * Clear the MatrixFree object and resize the inverse of the mass matrix to
@@ -57,7 +59,7 @@ public:
    * Return a shared pointer to the inverse of the mass matrix.
    */
   std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
-  get_inverse_mass_matrix() const;
+  get_inverse_mass_matrix() const override;
 
   /**
    * Return a shared pointer to the underlying MatrixFree object.
@@ -85,11 +87,16 @@ public:
                  dealii::LA::distributed::Vector<double, MemorySpaceType> const
                      &src) const override;
 
+  void initialize_dof_vector(
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
+      const override;
+
   /**
    * Evaluate the material properties for a given state field.
    */
   void evaluate_material_properties(
-      dealii::LA::distributed::Vector<double, MemorySpaceType> const &state);
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+          &state) override;
 
 private:
   /**
@@ -175,6 +182,14 @@ inline void ThermalOperator<dim, fe_degree, MemorySpaceType>::jacobian_vmult(
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
   vmult(dst, src);
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+inline void
+ThermalOperator<dim, fe_degree, MemorySpaceType>::initialize_dof_vector(
+    dealii::LA::distributed::Vector<double, MemorySpaceType> &vector) const
+{
+  _matrix_free.initialize_dof_vector(vector);
 }
 } // namespace adamantine
 

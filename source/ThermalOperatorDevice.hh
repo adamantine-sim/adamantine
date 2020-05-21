@@ -9,30 +9,33 @@
 #define THERMAL_OPERATOR_DEVIcE_HH
 
 #include <MaterialProperty.hh>
-#include <Operator.hh>
+#include <ThermalOperatorBase.hh>
 
-#include <deal.II/dofs/dof_handler.h>
-#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/cuda_vector.h>
 #include <deal.II/matrix_free/cuda_matrix_free.h>
 
 namespace adamantine
 {
 template <int dim, int fe_degree, typename MemorySpaceType>
-class ThermalOperatorDevice : public Operator<MemorySpaceType>
+class ThermalOperatorDevice final
+    : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
   ThermalOperatorDevice(
       MPI_Comm const &communicator,
       std::shared_ptr<MaterialProperty<dim>> material_properties);
 
-  template <typename QuadratureType>
   void setup_dofs(dealii::DoFHandler<dim> const &dof_handler,
                   dealii::AffineConstraints<double> const &affine_constraints,
-                  QuadratureType const &quad);
+                  dealii::QGaussLobatto<1> const &quad) override;
 
-  void reinit(dealii::DoFHandler<dim> const &dof_handler,
-              dealii::AffineConstraints<double> const &affine_constraints);
+  void setup_dofs(dealii::DoFHandler<dim> const &dof_handler,
+                  dealii::AffineConstraints<double> const &affine_constraints,
+                  dealii::QGauss<1> const &quad) override;
+
+  void
+  reinit(dealii::DoFHandler<dim> const &dof_handler,
+         dealii::AffineConstraints<double> const &affine_constraints) override;
 
   void clear();
 
@@ -63,9 +66,16 @@ public:
                  dealii::LA::distributed::Vector<double, MemorySpaceType> const
                      &src) const override;
 
+  std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
+  get_inverse_mass_matrix() const override;
+
+  void initialize_dof_vector(
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
+      const override;
+
   void evaluate_material_properties(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &state);
+          &state) override;
 
 private:
   MPI_Comm const &_communicator;
@@ -80,6 +90,8 @@ private:
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _alpha;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity;
+  std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
+      _inverse_mass_matrix;
 };
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -95,6 +107,14 @@ ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::n() const
 {
   // Operator must be square
   return _m;
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+inline std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
+ThermalOperatorDevice<dim, fe_degree,
+                      MemorySpaceType>::get_inverse_mass_matrix() const
+{
+  return _inverse_mass_matrix;
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>

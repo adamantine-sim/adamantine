@@ -20,7 +20,8 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
     MPI_Comm const &communicator,
     std::shared_ptr<MaterialProperty<dim>> material_properties)
     : _communicator(communicator), _material_properties(material_properties),
-      _inverse_mass_matrix(new dealii::LA::distributed::Vector<double>())
+      _inverse_mass_matrix(
+          new dealii::LA::distributed::Vector<double, MemorySpaceType>())
 {
   _matrix_free_data.tasks_parallel_scheme =
       dealii::MatrixFree<dim, double>::AdditionalData::partition_color;
@@ -30,11 +31,19 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-template <typename QuadratureType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::setup_dofs(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
-    QuadratureType const &quad)
+    dealii::QGaussLobatto<1> const &quad)
+{
+  _matrix_free.reinit(dof_handler, affine_constraints, quad, _matrix_free_data);
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, fe_degree, MemorySpaceType>::setup_dofs(
+    dealii::DoFHandler<dim> const &dof_handler,
+    dealii::AffineConstraints<double> const &affine_constraints,
+    dealii::QGauss<1> const &quad)
 {
   _matrix_free.reinit(dof_handler, affine_constraints, quad, _matrix_free_data);
 }
@@ -47,8 +56,15 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::reinit(
   // Compute the inverse of the mass matrix
   dealii::QGaussLobatto<1> mass_matrix_quad(fe_degree + 1);
   dealii::MatrixFree<dim, double> mass_matrix_free;
+  typename dealii::MatrixFree<dim, double>::AdditionalData mf_data;
+  mf_data.tasks_parallel_scheme =
+      dealii::MatrixFree<dim, double>::AdditionalData::partition_color;
+  mf_data.mapping_update_flags = dealii::update_values |
+                                 dealii::update_JxW_values |
+                                 dealii::update_quadrature_points;
+
   mass_matrix_free.reinit(dof_handler, affine_constraints, mass_matrix_quad,
-                          _matrix_free_data);
+                          mf_data);
   mass_matrix_free.initialize_dof_vector(*_inverse_mass_matrix);
   dealii::VectorizedArray<double> one =
       dealii::make_vectorized_array(static_cast<double>(1.));
@@ -149,7 +165,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
     fe_eval.reinit(cell);
     // Store in a local vector the local values of src
     fe_eval.read_dof_values(src);
-    // Evaluate the only the function gradients on the reference cell
+    // Evaluate only the function gradients on the reference cell
     fe_eval.evaluate(false, true);
     // Apply the Jacobian of the transformation, multiply by the variable
     // coefficients and the quadrature points
@@ -167,7 +183,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::
     evaluate_material_properties(
-        dealii::LA::distributed::Vector<double, MemorySpaceType> const &state)
+        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+            &state)
 {
   // Update the state of the materials
   _material_properties->update_state(_matrix_free.get_dof_handler(), state);
@@ -230,171 +247,3 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
 } // namespace adamantine
 
 INSTANTIATE_DIM_FEDEGREE_HOST(TUPLE(ThermalOperator))
-
-// Instantiate the function template.
-namespace adamantine
-{
-template void ThermalOperator<2, 1, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<2> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<2, 2, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<2> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<2, 3, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<2> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<2, 4, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<2> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<2, 5, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<2> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<2, 6, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<2> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<2, 7, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<2> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<2, 8, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<2> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<2, 9, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<2> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<2, 10, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<2> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-
-template void ThermalOperator<2, 1, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<2> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<2, 2, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<2> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<2, 3, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<2> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<2, 4, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<2> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<2, 5, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<2> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<2, 6, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<2> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<2, 7, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<2> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<2, 8, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<2> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<2, 9, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<2> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<2, 10, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<2> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-
-template void ThermalOperator<3, 1, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<3> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<3, 2, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<3> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<3, 3, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<3> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<3, 4, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<3> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<3, 5, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<3> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<3, 6, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<3> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<3, 7, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<3> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<3, 8, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<3> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<3, 9, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<3> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-template void ThermalOperator<3, 10, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGauss<1>>(dealii::DoFHandler<3> const &,
-                       dealii::AffineConstraints<double> const &,
-                       dealii::QGauss<1> const &);
-
-template void ThermalOperator<3, 1, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<3> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<3, 2, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<3> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<3, 3, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<3> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<3, 4, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<3> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<3, 5, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<3> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<3, 6, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<3> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<3, 7, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<3> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<3, 8, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<3> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<3, 9, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<3> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-template void ThermalOperator<3, 10, dealii::MemorySpace::Host>::setup_dofs<
-    dealii::QGaussLobatto<1>>(dealii::DoFHandler<3> const &,
-                              dealii::AffineConstraints<double> const &,
-                              dealii::QGaussLobatto<1> const &);
-} // namespace adamantine
