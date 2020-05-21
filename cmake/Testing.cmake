@@ -9,6 +9,9 @@ function(adamantine_ADD_BOOST_TEST TEST_NAME)
     target_link_libraries(${TEST_NAME} Boost::unit_test_framework)
     target_link_libraries(${TEST_NAME} MPI::MPI_CXX)
     target_link_libraries(${TEST_NAME} Adamantine)
+    if (ADAMANTINE_ENABLE_CUDA)
+        target_compile_definitions(${TEST_NAME} PRIVATE ADAMANTINE_HAVE_CUDA)
+    endif()
     set_target_properties(${TEST_NAME} PROPERTIES
         CXX_STANDARD 14
         CXX_STANDARD_REQUIRED ON
@@ -41,6 +44,7 @@ function(adamantine_ADD_BOOST_CUDA_TEST TEST_NAME)
     target_link_libraries(${TEST_NAME} Boost::unit_test_framework)
     target_link_libraries(${TEST_NAME} MPI::MPI_CXX)
     target_link_libraries(${TEST_NAME} Adamantine)
+    target_compile_definitions(${TEST_NAME} PRIVATE ADAMANTINE_HAVE_CUDA)
     set_target_properties(${TEST_NAME} PROPERTIES
         CXX_STANDARD 14
         CXX_STANDARD_REQUIRED ON
