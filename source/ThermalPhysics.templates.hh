@@ -379,16 +379,15 @@ double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   }
   timers[evol_time_eval_mat_prop].stop();
 
-  double time = _time_stepping->evolve_one_time_step(
-      std::bind(&ThermalPhysics<dim, fe_degree, MemorySpaceType,
-                                QuadratureType>::evaluate_thermal_physics,
-                this, std::placeholders::_1, std::placeholders::_2,
-                std::ref(timers)),
-      std::bind(&ThermalPhysics<dim, fe_degree, MemorySpaceType,
-                                QuadratureType>::id_minus_tau_J_inverse,
-                this, std::placeholders::_1, std::placeholders::_2,
-                std::placeholders::_3, std::ref(timers)),
-      t, delta_t, solution);
+  auto eval = [&](double const t, LA_Vector const &y) {
+    return evaluate_thermal_physics(t, y, timers);
+  };
+  auto id_m_Jinv = [&](double const t, double const tau, LA_Vector const &y) {
+    return id_minus_tau_J_inverse(t, tau, y, timers);
+  };
+
+  double time = _time_stepping->evolve_one_time_step(eval, id_m_Jinv, t,
+                                                     delta_t, solution);
 
   // If the method is embedded, get the next time step. Otherwise, just use the
   // current time step.
