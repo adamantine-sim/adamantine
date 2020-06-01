@@ -495,9 +495,8 @@ void refine_mesh(
     refine_and_transfer(thermal_physics, dof_handler, solution);
   }
 
-  // Recompute the inverse of the mass matrix and update the material
-  // properties.
-  thermal_physics->reinit();
+  // Recompute the inverse of the mass matrix
+  thermal_physics->compute_inverse_mass_matrix();
 }
 
 template <int dim, typename MemorySpaceType>
@@ -601,7 +600,7 @@ void run(
     std::vector<adamantine::Timer> &timers)
 {
   thermal_physics->setup_dofs();
-  thermal_physics->reinit();
+  thermal_physics->compute_inverse_mass_matrix();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   thermal_physics->initialize_dof_vector(initial_temperature, solution);
   unsigned int progress = 0;

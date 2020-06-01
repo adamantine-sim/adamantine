@@ -59,8 +59,9 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev)
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
       thermal_operator_dev(communicator, mat_properties);
-  thermal_operator_dev.setup_dofs(dof_handler, affine_constraints, quad);
-  thermal_operator_dev.reinit(dof_handler, affine_constraints);
+  thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
+                                                   affine_constraints);
+  thermal_operator_dev.reinit(dof_handler, affine_constraints, quad);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator_dev.m());
   thermal_operator_dev.evaluate_material_properties(dummy);
@@ -134,8 +135,9 @@ BOOST_AUTO_TEST_CASE(spmv)
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
       thermal_operator_dev(communicator, mat_properties);
-  thermal_operator_dev.reinit(dof_handler, affine_constraints);
-  thermal_operator_dev.setup_dofs(dof_handler, affine_constraints, quad);
+  thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
+                                                   affine_constraints);
+  thermal_operator_dev.reinit(dof_handler, affine_constraints, quad);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator_dev.m());
   thermal_operator_dev.evaluate_material_properties(dummy);

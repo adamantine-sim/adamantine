@@ -198,7 +198,7 @@ ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::ThermalOperatorDevice(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::setup_dofs(
+void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::QGaussLobatto<1> const &quad)
@@ -215,7 +215,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::setup_dofs(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::setup_dofs(
+void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::QGauss<1> const &quad)
@@ -232,9 +232,10 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::setup_dofs(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
-    dealii::DoFHandler<dim> const &dof_handler,
-    dealii::AffineConstraints<double> const &affine_constraints)
+void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
+    compute_inverse_mass_matrix(
+        dealii::DoFHandler<dim> const &dof_handler,
+        dealii::AffineConstraints<double> const &affine_constraints)
 {
   // Compute the inverse of the mass matrix
   dealii::QGaussLobatto<1> mass_matrix_quad(fe_degree + 1);

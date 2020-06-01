@@ -338,22 +338,23 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
                                                   _affine_constraints);
   _affine_constraints.close();
 
-  _thermal_operator->setup_dofs(_dof_handler, _affine_constraints, _quadrature);
+  _thermal_operator->reinit(_dof_handler, _affine_constraints, _quadrature);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::reinit()
+void ThermalPhysics<dim, fe_degree, MemorySpaceType,
+                    QuadratureType>::compute_inverse_mass_matrix()
 {
-  _thermal_operator->reinit(_dof_handler, _affine_constraints);
+  _thermal_operator->compute_inverse_mass_matrix(_dof_handler,
+                                                 _affine_constraints);
   if (_implicit_method == true)
     _implicit_operator->set_inverse_mass_matrix(
         _thermal_operator->get_inverse_mass_matrix());
   // FIXME in the GPU case we need to reset the matrix free object because of
   // the use of constant memory
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value)
-    _thermal_operator->setup_dofs(_dof_handler, _affine_constraints,
-                                  _quadrature);
+    _thermal_operator->reinit(_dof_handler, _affine_constraints, _quadrature);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,

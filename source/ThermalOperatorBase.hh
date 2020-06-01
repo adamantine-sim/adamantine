@@ -26,18 +26,18 @@ public:
 
   // The function cannot be virtual and templated
   virtual void
-  setup_dofs(dealii::DoFHandler<dim> const &dof_handler,
-             dealii::AffineConstraints<double> const &affine_constraints,
-             dealii::QGaussLobatto<1> const &quad) = 0;
-
-  virtual void
-  setup_dofs(dealii::DoFHandler<dim> const &dof_handler,
-             dealii::AffineConstraints<double> const &affine_constraints,
-             dealii::QGauss<1> const &quad) = 0;
+  reinit(dealii::DoFHandler<dim> const &dof_handler,
+         dealii::AffineConstraints<double> const &affine_constraints,
+         dealii::QGaussLobatto<1> const &quad) = 0;
 
   virtual void
   reinit(dealii::DoFHandler<dim> const &dof_handler,
-         dealii::AffineConstraints<double> const &affine_constraints) = 0;
+         dealii::AffineConstraints<double> const &affine_constraints,
+         dealii::QGauss<1> const &quad) = 0;
+
+  virtual void compute_inverse_mass_matrix(
+      dealii::DoFHandler<dim> const &dof_handler,
+      dealii::AffineConstraints<double> const &affine_constraints) = 0;
 
   virtual std::shared_ptr<
       dealii::LA::distributed::Vector<double, MemorySpaceType>>

@@ -71,7 +71,7 @@ public:
 
   void setup_dofs() override;
 
-  void reinit() override;
+  void compute_inverse_mass_matrix() override;
 
   double evolve_one_time_step(
       double t, double delta_t,

@@ -61,8 +61,9 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
       thermal_operator = std::make_shared<
           adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>>(
           communicator, mat_properties);
-  thermal_operator->setup_dofs(dof_handler, affine_constraints, quad);
-  thermal_operator->reinit(dof_handler, affine_constraints);
+  thermal_operator->reinit(dof_handler, affine_constraints, quad);
+  thermal_operator->compute_inverse_mass_matrix(dof_handler,
+                                                affine_constraints);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator->m());
   thermal_operator->evaluate_material_properties(dummy);
