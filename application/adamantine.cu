@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
       boost::property_tree::ptree refinement_database =
           database.get_child("refinement");
       adamantine::Geometry<2> geometry(communicator, geometry_database);
-      std::unique_ptr<adamantine::Physics<2, dealii::MemorySpace::Host>>
+      std::unique_ptr<adamantine::Physics<2, dealii::MemorySpace::CUDA>>
           thermal_physics;
       std::vector<std::unique_ptr<adamantine::ElectronBeam<2>>>
           &electron_beams =
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
       boost::property_tree::ptree refinement_database =
           database.get_child("refinement");
       adamantine::Geometry<3> geometry(communicator, geometry_database);
-      std::unique_ptr<adamantine::Physics<3, dealii::MemorySpace::Host>>
+      std::unique_ptr<adamantine::Physics<3, dealii::MemorySpace::CUDA>>
           thermal_physics;
       std::vector<std::unique_ptr<adamantine::ElectronBeam<3>>>
           &electron_beams =
