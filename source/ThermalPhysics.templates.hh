@@ -365,20 +365,6 @@ double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
         std::vector<Timer> &timers)
 {
-  // TODO: this assume that the material properties do no change during the time
-  // steps. This is wrong and needs to be changed.
-  timers[evol_time_eval_mat_prop].start();
-  if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
-    _thermal_operator->evaluate_material_properties(solution);
-  else
-  {
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-        solution_host(solution.get_partitioner());
-    solution_host.import(solution, dealii::VectorOperation::insert);
-    _thermal_operator->evaluate_material_properties(solution_host);
-  }
-  timers[evol_time_eval_mat_prop].stop();
-
   auto eval = [&](double const t, LA_Vector const &y) {
     return evaluate_thermal_physics(t, y, timers);
   };
@@ -439,10 +425,23 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
         std::vector<Timer> &timers) const
 {
+  timers[evol_time_eval_mat_prop].start();
+  if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
+    _thermal_operator->evaluate_material_properties(y);
+  else
+  {
+    // TODO do this on the GPU
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> y_host(
+        y.get_partitioner());
+    y_host.import(y, dealii::VectorOperation::insert);
+    _thermal_operator->evaluate_material_properties(y_host);
+  }
+  timers[evol_time_eval_mat_prop].stop();
+
   timers[evol_time_eval_th_ph].start();
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> value(
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> source(
       y.get_partitioner());
-  value = 0.;
+  source = 0.;
 
   // Compute the source term.
   for (auto &beam : _electron_beams)
@@ -468,22 +467,22 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     {
       for (unsigned int q = 0; q < n_q_points; ++q)
       {
-        double source = 0.;
+        double quad_pt_source = 0.;
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
         for (auto &beam : _electron_beams)
-          source += beam->value(q_point);
+          quad_pt_source += beam->value(q_point);
 
         cell_source[i] +=
-            source * fe_values.shape_value(i, q) * fe_values.JxW(q);
+            quad_pt_source * fe_values.shape_value(i, q) * fe_values.JxW(q);
       }
     }
     cell->get_dof_indices(local_dof_indices);
     _affine_constraints.distribute_local_to_global(cell_source,
-                                                   local_dof_indices, value);
+                                                   local_dof_indices, source);
   }
 
   return vmult_and_scale<dim, fe_degree, MemorySpaceType>(_thermal_operator, y,
-                                                          value, timers);
+                                                          source, timers);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
