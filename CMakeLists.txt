@@ -18,7 +18,7 @@ add_subdirectory(application)
 add_subdirectory(source)
 
 option(ADAMANTINE_ENABLE_COVERAGE "Measure coverage" OFF)
-if(ADAMANTINE_ENABLE_COVERAGE)
+if (ADAMANTINE_ENABLE_COVERAGE)
   include(CodeCoverage)
 endif()
 
