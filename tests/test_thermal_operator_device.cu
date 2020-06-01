@@ -8,11 +8,12 @@
 #define BOOST_TEST_MODULE ThermalOperator
 
 #include <Geometry.hh>
-#include <ThermalOperator.hh>
+#include <ThermalOperatorDevice.hh>
 
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
+#include <deal.II/lac/read_write_vector.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/numerics/matrix_tools.h>
 
@@ -20,7 +21,7 @@
 
 #include "main.cc"
 
-BOOST_AUTO_TEST_CASE(thermal_operator)
+BOOST_AUTO_TEST_CASE(thermal_operator_dev)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -56,43 +57,42 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
           communicator, geometry.get_triangulation(), mat_prop_database));
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
-      communicator, mat_properties);
-  thermal_operator.setup_dofs(dof_handler, affine_constraints, quad);
-  thermal_operator.reinit(dof_handler, affine_constraints);
+  adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
+      thermal_operator_dev(communicator, mat_properties);
+  thermal_operator_dev.setup_dofs(dof_handler, affine_constraints, quad);
+  thermal_operator_dev.reinit(dof_handler, affine_constraints);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
-      thermal_operator.m());
-  thermal_operator.evaluate_material_properties(dummy);
-  BOOST_CHECK(thermal_operator.m() == 99);
-  BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
+      thermal_operator_dev.m());
+  thermal_operator_dev.evaluate_material_properties(dummy);
+  BOOST_CHECK(thermal_operator_dev.m() == 99);
+  BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
 
   // Check matrix-vector multiplications
-  double const tolerance = 1e-15;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_1;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_2;
+  double const tolerance = 1e-10;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> src;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_1;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_2;
 
-  dealii::MatrixFree<2, double> const &matrix_free =
-      thermal_operator.get_matrix_free();
+  auto const &matrix_free = thermal_operator_dev.get_matrix_free();
   matrix_free.initialize_dof_vector(src);
   matrix_free.initialize_dof_vector(dst_1);
   matrix_free.initialize_dof_vector(dst_2);
 
   src = 1.;
-  thermal_operator.vmult(dst_1, src);
-  BOOST_CHECK_CLOSE(dst_1.l1_norm(), 0., tolerance);
+  thermal_operator_dev.vmult(dst_1, src);
+  BOOST_CHECK_CLOSE(dst_1.l1_norm() + 1, 1., tolerance);
 
-  thermal_operator.Tvmult(dst_2, src);
+  thermal_operator_dev.Tvmult(dst_2, src);
   BOOST_CHECK_CLOSE(dst_2.l1_norm(), dst_1.l1_norm(), tolerance);
 
   dst_2 = 1.;
-  thermal_operator.vmult_add(dst_2, src);
-  thermal_operator.vmult(dst_1, src);
+  thermal_operator_dev.vmult_add(dst_2, src);
+  thermal_operator_dev.vmult(dst_1, src);
   dst_1 += src;
   BOOST_CHECK_CLOSE(dst_1.l1_norm(), dst_2.l1_norm(), tolerance);
 
   dst_1 = 1.;
-  thermal_operator.Tvmult_add(dst_1, src);
+  thermal_operator_dev.Tvmult_add(dst_1, src);
   BOOST_CHECK_CLOSE(dst_1.l1_norm(), dst_2.l1_norm(), tolerance);
 }
 
@@ -132,15 +132,15 @@ BOOST_AUTO_TEST_CASE(spmv)
           communicator, geometry.get_triangulation(), mat_prop_database));
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
-      communicator, mat_properties);
-  thermal_operator.setup_dofs(dof_handler, affine_constraints, quad);
-  thermal_operator.reinit(dof_handler, affine_constraints);
+  adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
+      thermal_operator_dev(communicator, mat_properties);
+  thermal_operator_dev.reinit(dof_handler, affine_constraints);
+  thermal_operator_dev.setup_dofs(dof_handler, affine_constraints, quad);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
-      thermal_operator.m());
-  thermal_operator.evaluate_material_properties(dummy);
-  BOOST_CHECK(thermal_operator.m() == 99);
-  BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
+      thermal_operator_dev.m());
+  thermal_operator_dev.evaluate_material_properties(dummy);
+  BOOST_CHECK(thermal_operator_dev.m() == 99);
+  BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
 
   // Build the matrix. This only works in serial.
   dealii::DynamicSparsityPattern dsp(dof_handler.n_dofs());
@@ -153,23 +153,34 @@ BOOST_AUTO_TEST_CASE(spmv)
 
   // Compare vmult using matrix free and building the matrix
   double const tolerance = 1e-12;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_1;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_2;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> src_dev;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_dev;
 
-  dealii::MatrixFree<2, double> const &matrix_free =
-      thermal_operator.get_matrix_free();
-  matrix_free.initialize_dof_vector(src);
-  matrix_free.initialize_dof_vector(dst_1);
-  matrix_free.initialize_dof_vector(dst_2);
+  dealii::CUDAWrappers::MatrixFree<2, double> const &matrix_free =
+      thermal_operator_dev.get_matrix_free();
+  matrix_free.initialize_dof_vector(src_dev);
+  matrix_free.initialize_dof_vector(dst_dev);
 
-  for (unsigned int i = 0; i < thermal_operator.m(); ++i)
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src_host(
+      src_dev.get_partitioner());
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_host(
+      dst_dev.get_partitioner());
+
+  for (unsigned int i = 0; i < thermal_operator_dev.m(); ++i)
   {
-    src = 0.;
-    src[i] = 1;
-    thermal_operator.vmult(dst_1, src);
-    sparse_matrix.vmult(dst_2, src);
-    for (unsigned int j = 0; j < thermal_operator.m(); ++j)
-      BOOST_CHECK_CLOSE(dst_1[j], -dst_2[j], tolerance);
+    dealii::LinearAlgebra::ReadWriteVector<double> rw_vector(
+        thermal_operator_dev.m());
+    rw_vector = 0.;
+    rw_vector[i] = 1.;
+    src_dev.import(rw_vector, dealii::VectorOperation::insert);
+
+    thermal_operator_dev.vmult(dst_dev, src_dev);
+    rw_vector.import(dst_dev, dealii::VectorOperation::insert);
+    src_host = 0.;
+    src_host[i] = 1.;
+    sparse_matrix.vmult(dst_host, src_host);
+    for (unsigned int j = 0; j < thermal_operator_dev.m(); ++j)
+      BOOST_CHECK_CLOSE(rw_vector[j], -dst_host[j], tolerance);
   }
 }
+

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2019, the adamantine authors.
+/* Copyright (c) 2016 - 2020, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -11,6 +11,8 @@
 #include <MaterialProperty.hh>
 #include <PostProcessor.hh>
 #include <ThermalOperator.hh>
+
+#include <deal.II/fe/fe_q.h>
 
 #include <boost/filesystem.hpp>
 
@@ -52,8 +54,8 @@ BOOST_AUTO_TEST_CASE(post_processor)
           communicator, geometry.get_triangulation(), mat_prop_database));
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2, double> thermal_operator(communicator,
-                                                             mat_properties);
+  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
+      communicator, mat_properties);
   thermal_operator.setup_dofs(dof_handler, affine_constraints, quad);
   thermal_operator.reinit(dof_handler, affine_constraints);
 
@@ -62,7 +64,7 @@ BOOST_AUTO_TEST_CASE(post_processor)
   post_processor_database.put("file_name", "test");
   adamantine::PostProcessor<2> post_processor(
       communicator, post_processor_database, dof_handler, mat_properties);
-  dealii::LA::distributed::Vector<double> src;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src;
   dealii::MatrixFree<2, double> const &matrix_free =
       thermal_operator.get_matrix_free();
   matrix_free.initialize_dof_vector(src);

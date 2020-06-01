@@ -11,7 +11,7 @@ pipeline {
           stage('CPU') {
             agent {
               docker {
-                image "rombur/adamantine-stack:20.04.0"
+                image "rombur/adamantine-stack:latest"
                   alwaysPull true
                   label 'docker'
               }
@@ -46,7 +46,7 @@ pipeline {
           stage('CUDA') {
             agent {
               docker {
-                image "rombur/adamantine-stack:20.04.0"
+                image "rombur/adamantine-stack:latest"
                   alwaysPull true
                   label 'nvidia-docker && volta'
               }
@@ -58,6 +58,7 @@ pipeline {
                     cmake \
                     -D CMAKE_BUILD_TYPE=Debug \
                     -D ADAMANTINE_ENABLE_TESTS=ON \
+                    -D ADAMANTINE_ENABLE_CUDA=ON \
                     -D ADAMANTINE_ENABLE_COVERAGE=OFF \
                     -D CMAKE_CXX_FLAGS="-Wall -Wextra -pedantic" \
                     -D DEAL_II_DIR=${DEAL_II_DIR} \

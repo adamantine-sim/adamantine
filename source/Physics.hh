@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2019, the adamantine authors.
+/* Copyright (c) 2016 - 2020, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -21,7 +21,7 @@ namespace adamantine
 /**
  * This class defines the inteface that every physics needs to implement.
  */
-template <int dim, typename NumberType>
+template <int dim, typename MemorySpaceType>
 class Physics
 {
 public:
@@ -45,10 +45,10 @@ public:
    * the field at time t and after execution of the function, the field at time
    * t+delta_t.
    */
-  virtual double
-  evolve_one_time_step(double t, double delta_t,
-                       dealii::LA::distributed::Vector<NumberType> &solution,
-                       std::vector<Timer> &timers) = 0;
+  virtual double evolve_one_time_step(
+      double t, double delta_t,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
+      std::vector<Timer> &timers) = 0;
 
   /**
    * Return a guess of what should be the nex time step.
@@ -59,14 +59,16 @@ public:
    * Initialize the given vector.
    */
   virtual void initialize_dof_vector(
-      dealii::LA::distributed::Vector<NumberType> &vector) const = 0;
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
+      const = 0;
 
   /**
    * Initialize the given vector with the given value.
    */
-  virtual void initialize_dof_vector(
-      NumberType const value,
-      dealii::LA::distributed::Vector<NumberType> &vector) const = 0;
+  virtual void
+  initialize_dof_vector(double const value,
+                        dealii::LA::distributed::Vector<double, MemorySpaceType>
+                            &vector) const = 0;
 
   /**
    * Return the DoFHandler.

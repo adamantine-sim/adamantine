@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2019, the adamantine authors.
+/* Copyright (c) 2016 - 2020, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -19,7 +19,7 @@ namespace adamantine
 /**
  * This class defines the interface that every operator needs to implement.
  */
-template <typename NumberType>
+template <typename MemorySpaceType>
 class Operator : public dealii::Subscriptor
 {
 public:
@@ -46,8 +46,9 @@ public:
    * \param[out] dst
    */
   virtual void
-  vmult(dealii::LA::distributed::Vector<NumberType> &dst,
-        dealii::LA::distributed::Vector<NumberType> const &src) const = 0;
+  vmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+        dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
+      const = 0;
 
   /**
    * Matrix-vector multiplication with the transposed matrix. This function
@@ -56,8 +57,9 @@ public:
    * \param[out] dst
    */
   virtual void
-  Tvmult(dealii::LA::distributed::Vector<NumberType> &dst,
-         dealii::LA::distributed::Vector<NumberType> const &src) const = 0;
+  Tvmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+         dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
+      const = 0;
 
   /**
    * Matrix-vector multiplication and addition of the result to dst. This
@@ -67,8 +69,9 @@ public:
    * \param[inout] dst
    */
   virtual void
-  vmult_add(dealii::LA::distributed::Vector<NumberType> &dst,
-            dealii::LA::distributed::Vector<NumberType> const &src) const = 0;
+  vmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+            dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
+      const = 0;
 
   /**
    * Matrix-vector multiplication with the transposed matrix and addition of
@@ -78,8 +81,9 @@ public:
    * \param[inout] dst
    */
   virtual void
-  Tvmult_add(dealii::LA::distributed::Vector<NumberType> &dst,
-             dealii::LA::distributed::Vector<NumberType> const &src) const = 0;
+  Tvmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+             dealii::LA::distributed::Vector<double, MemorySpaceType> const
+                 &src) const = 0;
 
   /**
    * Matrix-vector multiplication with the Jacobian. This function applies the
@@ -87,12 +91,11 @@ public:
    * \param[in] src
    * \param[inout] dst
    */
-  virtual void
-  jacobian_vmult(dealii::LA::distributed::Vector<NumberType> &dst,
-                 dealii::LA::distributed::Vector<NumberType> const &src) const
+  virtual void jacobian_vmult(
+      dealii::LA::distributed::Vector<double, MemorySpaceType> & /*dst*/,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const & /*src*/)
+      const
   {
-    (void)dst;
-    (void)src;
     ASSERT_THROW_NOT_IMPLEMENTED();
   }
 };

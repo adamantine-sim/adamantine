@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2019, the adamantine authors.
+/* Copyright (c) 2016 - 2020, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -12,9 +12,11 @@
 #include "Geometry.hh"
 #include "ImplicitOperator.hh"
 #include "Physics.hh"
-#include "ThermalOperator.hh"
+#include "ThermalOperatorBase.hh"
 
 #include <deal.II/base/time_stepping.h>
+#include <deal.II/base/time_stepping.templates.h>
+#include <deal.II/fe/fe_q.h>
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -24,8 +26,9 @@ namespace adamantine
  * This class takes care of building the linear operator and the
  * right-hand-side. Also used to evolve the system in time.
  */
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-class ThermalPhysics : public Physics<dim, NumberType>
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+class ThermalPhysics : public Physics<dim, MemorySpaceType>
 {
 public:
   /**
@@ -70,23 +73,25 @@ public:
 
   void reinit() override;
 
-  double
-  evolve_one_time_step(double t, double delta_t,
-                       dealii::LA::distributed::Vector<NumberType> &solution,
-                       std::vector<Timer> &timers) override;
+  double evolve_one_time_step(
+      double t, double delta_t,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
+      std::vector<Timer> &timers) override;
 
   double get_delta_t_guess() const override;
 
   void initialize_dof_vector(
-      dealii::LA::distributed::Vector<NumberType> &vector) const override;
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
+      const override;
 
   /**
    * Initialize the given vector. The value is assumed to be a temperature and
    * is converted to an enthalpy.
    */
-  void initialize_dof_vector(
-      NumberType const value,
-      dealii::LA::distributed::Vector<NumberType> &vector) const override;
+  void
+  initialize_dof_vector(double const value,
+                        dealii::LA::distributed::Vector<double, MemorySpaceType>
+                            &vector) const override;
 
   dealii::DoFHandler<dim> &get_dof_handler() override;
 
@@ -100,7 +105,8 @@ public:
   std::vector<std::unique_ptr<ElectronBeam<dim>>> &get_electron_beams();
 
 private:
-  typedef typename dealii::LA::distributed::Vector<NumberType> LA_Vector;
+  using LA_Vector =
+      typename dealii::LA::distributed::Vector<double, MemorySpaceType>;
 
   /**
    * Compute the right-hand side and apply the TermalOperator.
@@ -177,60 +183,57 @@ private:
   /**
    * Shared pointer to the underlying ThermalOperator.
    */
-  std::shared_ptr<ThermalOperator<dim, fe_degree, NumberType>>
-      _thermal_operator;
+  std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> _thermal_operator;
   /**
    * Unique pointer to the underlying ImplicitOperator.
    */
-  std::unique_ptr<ImplicitOperator<NumberType>> _implicit_operator;
+  std::unique_ptr<ImplicitOperator<MemorySpaceType>> _implicit_operator;
   /**
    * Shared pointer to the underlying time stepping scheme.
    */
   std::unique_ptr<dealii::TimeStepping::RungeKutta<LA_Vector>> _time_stepping;
 };
 
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-inline double
-ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::get_delta_t_guess()
-    const
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline double ThermalPhysics<dim, fe_degree, MemorySpaceType,
+                             QuadratureType>::get_delta_t_guess() const
 {
   return _delta_t_guess;
 }
 
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
-inline void ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::
-    initialize_dof_vector(
-        dealii::LA::distributed::Vector<NumberType> &vector) const
-{
-  _thermal_operator->get_matrix_free().initialize_dof_vector(vector);
-}
-
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
 inline dealii::DoFHandler<dim> &
-ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::get_dof_handler()
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
+               QuadratureType>::get_dof_handler()
 {
   return _dof_handler;
 }
 
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
 inline dealii::AffineConstraints<double> &
-ThermalPhysics<dim, fe_degree, NumberType,
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_affine_constraints()
 {
   return _affine_constraints;
 }
 
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
 inline std::shared_ptr<MaterialProperty<dim>>
-ThermalPhysics<dim, fe_degree, NumberType,
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_material_property()
 {
   return _material_properties;
 }
 
-template <int dim, int fe_degree, typename NumberType, typename QuadratureType>
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
 inline std::vector<std::unique_ptr<ElectronBeam<dim>>> &
-ThermalPhysics<dim, fe_degree, NumberType, QuadratureType>::get_electron_beams()
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
+               QuadratureType>::get_electron_beams()
 {
   return _electron_beams;
 }

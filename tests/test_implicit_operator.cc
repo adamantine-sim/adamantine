@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 - 2019, the adamantine authors.
+/* Copyright (c) 2017 - 2020, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -12,6 +12,7 @@
 #include <ThermalOperator.hh>
 
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/fe/fe_q.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/numerics/matrix_tools.h>
@@ -56,17 +57,19 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
           communicator, geometry.get_triangulation(), mat_prop_database));
 
   // Initialize the ThermalOperator
-  std::shared_ptr<adamantine::ThermalOperator<2, 2, double>> thermal_operator =
-      std::make_shared<adamantine::ThermalOperator<2, 2, double>>(
+  std::shared_ptr<adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>>
+      thermal_operator = std::make_shared<
+          adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>>(
           communicator, mat_properties);
   thermal_operator->setup_dofs(dof_handler, affine_constraints, quad);
   thermal_operator->reinit(dof_handler, affine_constraints);
-  dealii::LA::distributed::Vector<double> dummy(thermal_operator->m());
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
+      thermal_operator->m());
   thermal_operator->evaluate_material_properties(dummy);
 
   // Initialize the ImplicitOperator
-  adamantine::ImplicitOperator<double> implicit_operator(thermal_operator,
-                                                         false);
+  adamantine::ImplicitOperator<dealii::MemorySpace::Host> implicit_operator(
+      thermal_operator, false);
   BOOST_CHECK(implicit_operator.m() == 99);
   BOOST_CHECK(implicit_operator.n() == 99);
   BOOST_CHECK_THROW(implicit_operator.Tvmult(dummy, dummy),
@@ -77,16 +80,21 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
                     adamantine::NotImplementedExc);
 
   // Initialize the ImplicitOperator with JFNK
-  adamantine::ImplicitOperator<double> implicit_operator_jfnk(thermal_operator,
-                                                              true);
+  adamantine::ImplicitOperator<dealii::MemorySpace::Host>
+      implicit_operator_jfnk(thermal_operator, true);
 
   // Check that ImplicitOperator with and without JFNK give the same results.
   unsigned int const size = thermal_operator->m();
-  dealii::LA::distributed::Vector<double> source(size);
-  std::shared_ptr<dealii::LA::distributed::Vector<double>> inverse_mass_matrix(
-      new dealii::LA::distributed::Vector<double>(size));
-  dealii::LA::distributed::Vector<double> dst(size);
-  dealii::LA::distributed::Vector<double> dst_jfnk(size);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> source(
+      size);
+  std::shared_ptr<
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
+  inverse_mass_matrix(
+      new dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>(
+          size));
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst(size);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_jfnk(
+      size);
   for (unsigned int i = 0; i < size; ++i)
   {
     source[i] = 1.;
