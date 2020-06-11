@@ -589,9 +589,9 @@ void refine_mesh(
 }
 
 template <int dim, typename MemorySpaceType>
-void run(MPI_Comm const &communicator,
-         boost::property_tree::ptree const &database,
-         std::vector<adamantine::Timer> &timers)
+dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
+run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
+    std::vector<adamantine::Timer> &timers)
 {
   // Extract property tree children
   boost::property_tree::ptree geometry_database =
@@ -697,5 +697,8 @@ void run(MPI_Comm const &communicator,
     ++n_time_step;
   }
   post_processor.output_pvd();
+
+  // This is only used for integration test
+  return solution;
 }
 #endif

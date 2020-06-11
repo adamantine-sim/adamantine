@@ -10,6 +10,7 @@ list(APPEND
      test_electron_beam
      test_geometry
      test_implicit_operator
+     test_integration_2d
      test_material_property
      test_newton_solver
      test_post_processor
@@ -22,6 +23,7 @@ list(APPEND
 set(CUDA_UNIT_TESTS "")
 list(APPEND
      CUDA_UNIT_TESTS
+     test_integration_2d_device
      test_thermal_operator_device
      test_thermal_physics_device
      )
@@ -36,8 +38,5 @@ if (ADAMANTINE_ENABLE_CUDA)
   endforeach()
 endif()
 
-# For now integration tests only run adamantine but they don't check the 
-# results
-adamantine_ADD_INTEGRATION_TEST(test_integration_2d 1)
-
 adamantine_COPY_INPUT_FILE(beam_position.csv tests/data)
+adamantine_COPY_INPUT_FILE(integration_2d.info tests/data)

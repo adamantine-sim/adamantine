@@ -89,3 +89,5 @@ discretization
   fe_degree 3
   quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
 }
+
+memory_space device ; If compiled with CUDA support, run on the device
