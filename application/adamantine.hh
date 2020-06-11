@@ -589,16 +589,41 @@ void refine_mesh(
 }
 
 template <int dim, typename MemorySpaceType>
-void run(
-    MPI_Comm const &communicator,
-    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
-    adamantine::PostProcessor<dim> &post_processor,
-    std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams,
-    boost::property_tree::ptree const &time_stepping_database,
-    boost::property_tree::ptree const &refinement_database,
-    unsigned int const fe_degree, double const initial_temperature,
-    std::vector<adamantine::Timer> &timers)
+void run(MPI_Comm const &communicator,
+         boost::property_tree::ptree const &database,
+         std::vector<adamantine::Timer> &timers)
 {
+  // Extract property tree children
+  boost::property_tree::ptree geometry_database =
+      database.get_child("geometry");
+  boost::property_tree::ptree discretization_database =
+      database.get_child("discretization");
+  boost::property_tree::ptree time_stepping_database =
+      database.get_child("time_stepping");
+  boost::property_tree::ptree post_processor_database =
+      database.get_child("post_processor");
+  boost::property_tree::ptree refinement_database =
+      database.get_child("refinement");
+
+  unsigned int const fe_degree =
+      discretization_database.get<unsigned int>("fe_degree");
+  std::string quadrature_type =
+      discretization_database.get("quadrature", "gauss");
+  std::transform(quadrature_type.begin(), quadrature_type.end(),
+                 quadrature_type.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  double const initial_temperature =
+      database.get("materials.initial_temperature", 300.);
+
+  adamantine::Geometry<dim> geometry(communicator, geometry_database);
+  std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> thermal_physics;
+  std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams =
+      initialize_thermal_physics<dim>(fe_degree, quadrature_type, communicator,
+                                      database, geometry, thermal_physics);
+  adamantine::PostProcessor<dim> post_processor(
+      communicator, post_processor_database, thermal_physics->get_dof_handler(),
+      thermal_physics->get_material_property());
+
   thermal_physics->setup_dofs();
   thermal_physics->compute_inverse_mass_matrix();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;

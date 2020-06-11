@@ -31,7 +31,7 @@ public:
    * \param database requires the following entries:
    *   - <B>file_name</B>: string
    */
-  PostProcessor(MPI_Comm &communicator,
+  PostProcessor(MPI_Comm const &communicator,
                 boost::property_tree::ptree const &database,
                 dealii::DoFHandler<dim> &dof_handler,
                 std::shared_ptr<MaterialProperty<dim>> material_properties);

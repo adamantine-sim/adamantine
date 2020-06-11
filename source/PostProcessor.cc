@@ -16,7 +16,7 @@ namespace adamantine
 {
 template <int dim>
 PostProcessor<dim>::PostProcessor(
-    MPI_Comm &communicator, boost::property_tree::ptree const &database,
+    MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     dealii::DoFHandler<dim> &dof_handler,
     std::shared_ptr<MaterialProperty<dim>> material_properties)
     : _communicator(communicator), _dof_handler(dof_handler),
