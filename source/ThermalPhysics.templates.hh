@@ -351,10 +351,6 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
   if (_implicit_method == true)
     _implicit_operator->set_inverse_mass_matrix(
         _thermal_operator->get_inverse_mass_matrix());
-  // FIXME in the GPU case we need to reset the matrix free object because of
-  // the use of constant memory
-  if (std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value)
-    _thermal_operator->reinit(_dof_handler, _affine_constraints, _quadrature);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
