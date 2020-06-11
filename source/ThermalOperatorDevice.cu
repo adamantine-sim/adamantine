@@ -46,7 +46,7 @@ std::array<std::array<unsigned int, dim>, n_q_points> get_ijk()
 
 __global__ void invert_mass_matrix(double *values, unsigned int size)
 {
-  unsigned int i = threadIdx.x + blockIdx.x * gridDim.x;
+  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   if (i < size)
   {
     if (values[i] > 1e-15)
