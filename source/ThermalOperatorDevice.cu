@@ -257,7 +257,10 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
   mass_matrix_free.reinit(dof_handler, affine_constraints, mass_matrix_quad,
                           mf_data);
   mass_matrix_free.initialize_dof_vector(*_inverse_mass_matrix);
-  dealii::LA::distributed::Vector<double, MemorySpaceType> dummy;
+  // We don't save memory by not allocating the vector. Instead this is done in
+  // cell_loop by using a slower path
+  dealii::LA::distributed::Vector<double, MemorySpaceType> dummy(
+      _inverse_mass_matrix->get_partitioner());
   LocalMassMarixOperator<dim, fe_degree> local_operator;
   mass_matrix_free.cell_loop(local_operator, dummy, *_inverse_mass_matrix);
   _inverse_mass_matrix->compress(dealii::VectorOperation::add);
