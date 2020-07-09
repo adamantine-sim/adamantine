@@ -22,6 +22,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   // Build Geometry
   adamantine::Geometry<2> geometry(communicator, geometry_database);
   // Material property
+  database.put("materials.property_format", "polynomial");
   database.put("materials.n_materials", 1);
   database.put("materials.material_0.solid.density", 1.);
   database.put("materials.material_0.powder.density", 1.);
@@ -77,6 +78,7 @@ void thermal_2d_manufactured_solution()
 
   boost::property_tree::ptree database;
   // Material property
+  database.put("materials.property_format", "polynomial");
   database.put("materials.n_materials", 1);
   database.put("materials.material_0.solid.density", 1.);
   database.put("materials.material_0.powder.density", 1.);
@@ -141,6 +143,7 @@ void initial_temperature()
   adamantine::Geometry<2> geometry(communicator, geometry_database);
   boost::property_tree::ptree database;
   // Material property
+  database.put("materials.property_format", "polynomial");
   database.put("materials.n_materials", 1);
   database.put("materials.material_0.solid.density", 1.);
   database.put("materials.material_0.powder.density", 10.);
@@ -169,5 +172,5 @@ void initial_temperature()
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(1000., solution);
-  BOOST_CHECK(solution.l1_norm() == 20000. * solution.size());
+  BOOST_CHECK(solution.l1_norm() == 1000. * solution.size());
 }

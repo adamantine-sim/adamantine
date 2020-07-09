@@ -18,6 +18,8 @@ refinement
 
 materials
 {
+  property_format polynomial
+
   n_materials 1
   
   material_0
@@ -48,7 +50,6 @@ materials
 
     solidus 1528 ; [K]
     liquidus 1610 ; [K]
-    latent_heat 227000 ; [J/kg]
   }
 }
 

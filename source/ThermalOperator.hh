@@ -117,15 +117,9 @@ private:
    */
   typename dealii::MatrixFree<dim, double>::AdditionalData _matrix_free_data;
   /**
-   * Store the \f$ \alpha \f$ coefficient described in
-   * MaterialProperty::compute_constants()
+   * Store the \f$ \frac{1}{\rho C_p}\f$ coefficient.
    */
-  dealii::Table<2, dealii::VectorizedArray<double>> _alpha;
-  /**
-   * Store the \f$ \beta \f$ coefficient described in
-   * MaterialProperty::compute_constants()
-   */
-  dealii::Table<2, dealii::VectorizedArray<double>> _beta;
+  dealii::Table<2, dealii::VectorizedArray<double>> _inv_rho_cp;
   /**
    * Table of thermal conductivity coefficient.
    */

@@ -19,16 +19,18 @@ refinement
 materials
 {
   n_materials 1
+
+    property_format polynomial
   
   material_0
   {
     solid 
     {
       density 7541 ; [kg/m^3] For now all the states needs to have the same
-                    ; density. The value can be constant or an equation
-      specific_heat 600 ; [J/kg K]  The value can be constant or an equation
-      thermal_conductivity 26.6 ; [W/m K] The value can be constant or an 
-                                ; equation like 10*exp(T)*sin(2.*T)
+                    ; density. 
+      specific_heat 600 ; [J/kg K] 
+      thermal_conductivity 26.6 ; [W/m K]
+                                
     }
     
     powder
@@ -48,7 +50,6 @@ materials
 
     solidus 1528 ; [K]
     liquidus 1610 ; [K]
-    latent_heat 227000 ; [J/kg]
   }
 }
 

@@ -110,9 +110,8 @@ template <int dim, int fe_degree>
 class ThermalOperatorQuad
 {
 public:
-  __device__ ThermalOperatorQuad(double thermal_conductivity, double alpha,
-                                 double beta)
-      : _thermal_conductivity(thermal_conductivity), _alpha(alpha), _beta(beta)
+  __device__ ThermalOperatorQuad(double inv_rho_cp, double thermal_conductivity)
+      : _inv_rho_cp(inv_rho_cp), _thermal_conductivity(thermal_conductivity)
   {
   }
 
@@ -120,31 +119,25 @@ public:
   operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const;
 
 private:
+  double _inv_rho_cp;
   double _thermal_conductivity;
-  double _alpha;
-  double _beta;
 };
 
 template <int dim, int fe_degree>
 __device__ void ThermalOperatorQuad<dim, fe_degree>::
 operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const
 {
-  dealii::Tensor<1, dim> unit_tensor;
-  for (unsigned int i = 0; i < dim; ++i)
-    unit_tensor[i] = 1.;
 
-  fe_eval->submit_gradient(
-      -_thermal_conductivity *
-      (fe_eval->get_gradient() * _alpha + unit_tensor * _beta));
+  fe_eval->submit_gradient(-_inv_rho_cp * _thermal_conductivity *
+                           fe_eval->get_gradient());
 }
 
 template <int dim, int fe_degree>
 class LocalThermalOperatorDevice
 {
 public:
-  LocalThermalOperatorDevice(double *thermal_conductivity, double *alpha,
-                             double *beta)
-      : _thermal_conductivity(thermal_conductivity), _alpha(alpha), _beta(beta)
+  LocalThermalOperatorDevice(double *inv_rho_cp, double *thermal_conductivity)
+      : _inv_rho_cp(inv_rho_cp), _thermal_conductivity(thermal_conductivity)
   {
   }
 
@@ -162,9 +155,8 @@ public:
       dealii::Utilities::pow(fe_degree + 1, dim);
 
 private:
+  double *_inv_rho_cp;
   double *_thermal_conductivity;
-  double *_alpha;
-  double *_beta;
 };
 
 template <int dim, int fe_degree>
@@ -182,7 +174,7 @@ operator()(unsigned int const cell,
   fe_eval.read_dof_values(src);
   fe_eval.evaluate(false, true);
   fe_eval.apply_for_each_quad_point(ThermalOperatorQuad<dim, fe_degree>(
-      _thermal_conductivity[pos], _alpha[pos], _beta[pos]));
+      _inv_rho_cp[pos], _thermal_conductivity[pos]));
   fe_eval.integrate(false, true);
   fe_eval.distribute_local_to_global(dst);
 }
@@ -301,8 +293,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::vmult_add(
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
   LocalThermalOperatorDevice<dim, fe_degree> local_operator(
-      _thermal_conductivity.get_values(), _alpha.get_values(),
-      _beta.get_values());
+      _inv_rho_cp.get_values(), _thermal_conductivity.get_values());
   _matrix_free.cell_loop(local_operator, src, dst);
   _matrix_free.copy_constrained_values(src, dst);
 }
@@ -320,19 +311,17 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
     evaluate_material_properties(
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &state)
+            &temperature)
 {
-  // Update the state of the materials
-  _material_properties->update_state(*_dof_handler, state);
+  // Update the material properties
+  _material_properties->update(*_dof_handler, temperature);
 
   unsigned int const n_coefs =
       dealii::Utilities::pow(fe_degree + 1, dim) * _n_owned_cells;
+  _inv_rho_cp.reinit(n_coefs);
   _thermal_conductivity.reinit(n_coefs);
-  _alpha.reinit(n_coefs);
-  _beta.reinit(n_coefs);
+  dealii::LA::ReadWriteVector<double> inv_rho_cp_host(n_coefs);
   dealii::LA::ReadWriteVector<double> th_conductivity_host(n_coefs);
-  dealii::LA::ReadWriteVector<double> alpha_host(n_coefs);
-  dealii::LA::ReadWriteVector<double> beta_host(n_coefs);
 
   unsigned int constexpr n_dofs_1d = fe_degree + 1;
   unsigned int constexpr n_q_points = dealii::Utilities::pow(n_dofs_1d, dim);
@@ -347,57 +336,26 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
     for (unsigned int cell_id = 0; cell_id < n_cells; ++cell_id)
     {
       auto cell = graph[color][cell_id];
-      double const cell_th_conductivity = _material_properties->get(
-          cell, Property::thermal_conductivity, state);
-      double cell_alpha = 0.;
-      double cell_beta = 0.;
-      double liquid_ratio =
-          _material_properties->get_state_ratio(cell, MaterialState::liquid);
-      // If there is less than 1e-13% of liquid, assume that there is no
-      // liquid.
-      if (liquid_ratio < 1e-15)
-      {
-        cell_alpha =
-            1. /
-            (_material_properties->get(cell, Property::density, state) *
-             _material_properties->get(cell, Property::specific_heat, state));
-      }
-      else
-      {
-        // If there is less than 1e-13% of solid, assume that there is no
-        // solid. Otherwise, we have a mix of liquid and solid (mushy zone).
-        if (liquid_ratio > (1 - 1e-15))
-        {
-          cell_alpha =
-              1. /
-              (_material_properties->get(cell, Property::density, state) *
-               _material_properties->get(cell, Property::specific_heat, state));
-          cell_beta = _material_properties->get_liquid_beta(cell);
-        }
-        else
-        {
-          cell_alpha = _material_properties->get_mushy_alpha(cell);
-          cell_beta = _material_properties->get_mushy_beta(cell);
-        }
-      }
-
+      double const cell_inv_rho_cp =
+          1. / (_material_properties->get(cell, StateProperty::density) *
+                _material_properties->get(cell, StateProperty::specific_heat));
+      double const cell_th_conductivity =
+          _material_properties->get(cell, StateProperty::thermal_conductivity);
       for (unsigned int i = 0; i < n_q_points; ++i)
       {
         unsigned int const pos =
             dealii::CUDAWrappers::local_q_point_id_host<dim, double>(
                 cell_id, gpu_data, n_dofs_1d, n_q_points, ijk[i]);
+        inv_rho_cp_host[pos] = cell_inv_rho_cp;
         th_conductivity_host[pos] = cell_th_conductivity;
-        alpha_host[pos] = cell_alpha;
-        beta_host[pos] = cell_beta;
       }
     }
   }
 
   // Copy the coefficient to the host
+  _inv_rho_cp.import(inv_rho_cp_host, dealii::VectorOperation::insert);
   _thermal_conductivity.import(th_conductivity_host,
                                dealii::VectorOperation::insert);
-  _alpha.import(alpha_host, dealii::VectorOperation::insert);
-  _beta.import(beta_host, dealii::VectorOperation::insert);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>

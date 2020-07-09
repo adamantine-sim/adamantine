@@ -40,3 +40,4 @@ endif()
 
 adamantine_COPY_INPUT_FILE(beam_position.csv tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d.info tests/data)
+adamantine_COPY_INPUT_FILE(integration_2d_gold.txt tests/data)

@@ -85,8 +85,7 @@ public:
       const override;
 
   /**
-   * Initialize the given vector. The value is assumed to be a temperature and
-   * is converted to an enthalpy.
+   * Initialize the given vector. The value is assumed to be a temperature.
    */
   void
   initialize_dof_vector(double const value,

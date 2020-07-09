@@ -88,8 +88,7 @@ private:
       _matrix_free_data;
   std::shared_ptr<MaterialProperty<dim>> _material_properties;
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
-  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _alpha;
-  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _beta;
+  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _inv_rho_cp;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity;
   std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
       _inverse_mass_matrix;

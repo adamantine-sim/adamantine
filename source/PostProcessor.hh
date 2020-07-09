@@ -49,12 +49,6 @@ public:
 
 private:
   /**
-   * Compute the temperature given the enthalpy.
-   */
-  dealii::LA::distributed::Vector<double>
-  compute_temperature(dealii::LA::distributed::Vector<double> const &enthalpy);
-
-  /**
    * MPI communicator.
    */
   MPI_Comm _communicator;

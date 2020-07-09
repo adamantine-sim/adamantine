@@ -9,6 +9,8 @@
 
 #include "../application/adamantine.hh"
 
+#include <fstream>
+
 #include "main.cc"
 
 BOOST_AUTO_TEST_CASE(intregation_2D_device)
@@ -31,7 +33,12 @@ BOOST_AUTO_TEST_CASE(intregation_2D_device)
   dealii::LinearAlgebra::distributed::Vector<double, dealii::MemorySpace::Host>
       result_host(result.get_partitioner());
   result_host.import(result, dealii::VectorOperation::insert);
+  std::ifstream gold_file("integration_2d_gold.txt");
   double const tolerance = 0.1;
-  for (unsigned int i = 0; i < result.local_size(); ++i)
-    BOOST_CHECK_CLOSE(result_host.local_element(i), 1.357e+09, tolerance);
+  for (unsigned int i = 0; i < result_host.local_size(); ++i)
+  {
+    double gold_value = -1.;
+    gold_file >> gold_value;
+    BOOST_CHECK_CLOSE(result_host.local_element(i), gold_value, tolerance);
+  }
 }

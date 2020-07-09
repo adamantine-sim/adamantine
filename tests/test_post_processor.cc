@@ -39,6 +39,7 @@ BOOST_AUTO_TEST_CASE(post_processor)
 
   // Create the MaterialProperty
   boost::property_tree::ptree mat_prop_database;
+  mat_prop_database.put("property_format", "polynomial");
   mat_prop_database.put("n_materials", 1);
   mat_prop_database.put("material_0.solid.density", 1.);
   mat_prop_database.put("material_0.powder.density", 1.);

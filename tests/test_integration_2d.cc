@@ -9,6 +9,8 @@
 
 #include "../application/adamantine.hh"
 
+#include <fstream>
+
 #include "main.cc"
 
 BOOST_AUTO_TEST_CASE(intregation_2D)
@@ -28,7 +30,12 @@ BOOST_AUTO_TEST_CASE(intregation_2D)
   auto result =
       run<2, dealii::MemorySpace::Host>(communicator, database, timers);
 
+  std::ifstream gold_file("integration_2d_gold.txt");
   double const tolerance = 0.1;
   for (unsigned int i = 0; i < result.local_size(); ++i)
-    BOOST_CHECK_CLOSE(result.local_element(i), 1.357e+09, tolerance);
+  {
+    double gold_value = -1.;
+    gold_file >> gold_value;
+    BOOST_CHECK_CLOSE(result.local_element(i), gold_value, tolerance);
+  }
 }

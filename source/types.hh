@@ -34,16 +34,26 @@ enum class MaterialState
 };
 
 /**
- * Enum on the possible material properties.
+ * Enum on the possible material properties that depend on the state of the
+ * material.
+ */
+// TODO add AnisotropicStateProperty
+enum class StateProperty
+{
+  density,
+  specific_heat,
+  thermal_conductivity,
+  SIZE
+};
+
+/**
+ * Enum on the possible material properties that do not depend on the state of
+ * the material.
  */
 enum class Property
 {
-  density,
-  latent_heat,
   liquidus,
   solidus,
-  specific_heat,
-  thermal_conductivity,
   SIZE
 };
 

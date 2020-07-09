@@ -171,9 +171,9 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
     // Apply the Jacobian of the transformation, multiply by the variable
     // coefficients and the quadrature points
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
-      fe_eval.submit_gradient(-_thermal_conductivity(cell, q) *
-                                  (fe_eval.get_gradient(q) * _alpha(cell, q) +
-                                   unit_tensor * _beta(cell, q)),
+      fe_eval.submit_gradient(-_inv_rho_cp(cell, q) *
+                                  _thermal_conductivity(cell, q) *
+                                  fe_eval.get_gradient(q),
                               q);
     // Sum over the quadrature points.
     fe_eval.integrate(false, true);
@@ -185,16 +185,15 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::
     evaluate_material_properties(
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &state)
+            &temperature)
 {
   // Update the state of the materials
-  _material_properties->update_state(_matrix_free.get_dof_handler(), state);
+  _material_properties->update(_matrix_free.get_dof_handler(), temperature);
 
   unsigned int const n_cells = _matrix_free.n_macro_cells();
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
       _matrix_free);
-  _alpha.reinit(n_cells, fe_eval.n_q_points);
-  _beta.reinit(n_cells, fe_eval.n_q_points);
+  _inv_rho_cp.reinit(n_cells, fe_eval.n_q_points);
   _thermal_conductivity.reinit(n_cells, fe_eval.n_q_points);
   for (unsigned int cell = 0; cell < n_cells; ++cell)
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
@@ -207,42 +206,12 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
             cell_it);
 
         _thermal_conductivity(cell, q)[i] = _material_properties->get(
-            cell_tria, Property::thermal_conductivity, state);
+            cell_tria, StateProperty::thermal_conductivity);
 
-        double liquid_ratio = _material_properties->get_state_ratio(
-            cell_tria, MaterialState::liquid);
-
-        // If there is less than 1e-13% of liquid, assume that there is no
-        // liquid.
-        if (liquid_ratio < 1e-15)
-        {
-          _alpha(cell, q)[i] =
-              1. /
-              (_material_properties->get(cell_tria, Property::density, state) *
-               _material_properties->get(cell_tria, Property::specific_heat,
-                                         state));
-        }
-        else
-        {
-          // If there is less than 1e-13% of solid, assume that there is no
-          // solid. Otherwise, we have a mix of liquid and solid (mushy zone).
-          if (liquid_ratio > (1 - 1e-15))
-          {
-            _alpha(cell, q)[i] =
-                1. / (_material_properties->get(cell_tria, Property::density,
-                                                state) *
-                      _material_properties->get(
-                          cell_tria, Property::specific_heat, state));
-            _beta(cell, q)[i] =
-                _material_properties->get_liquid_beta(cell_tria);
-          }
-          else
-          {
-            _alpha(cell, q)[i] =
-                _material_properties->get_mushy_alpha(cell_tria);
-            _beta(cell, q)[i] = _material_properties->get_mushy_beta(cell_tria);
-          }
-        }
+        _inv_rho_cp(cell, q)[i] =
+            1. / (_material_properties->get(cell_tria, StateProperty::density) *
+                  _material_properties->get(cell_tria,
+                                            StateProperty::specific_heat));
       }
 }
 } // namespace adamantine
