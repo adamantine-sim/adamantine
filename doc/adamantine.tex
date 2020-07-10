@@ -52,11 +52,8 @@ and the phase transition between the powder, the solid, and the liquid.
   \item No change of volume when the material changes phase.
   \item No loss of heat by radiative transfer.
   \item Material properties are constant per cell.
-  \item If the change of phase is isothermal, i.e., no mushy zone, the enthalpy
-    is discontinuous and belongs to $L^2$. Thus we should use discontinuous
-    finite element. However, the temperature is always continuous and belongs to
-    $H^1$. We assume that the there is always a mushy zone, so that we can use
-    continuous finite element.
+  \item We assume that the there is always a mushy zone (no isothermal change
+    of phase).
 \end{itemize}
 \subsection{Heat equation}
 The heat equation without phase change is given by:
@@ -67,11 +64,6 @@ where $\rho$ is the mass density, $C_p$ is the specific heat, $T$, is the
 temperature, $k$ is the thermal conductivity, and $Q$ is the volumetric heat
 source.
 
-If there are phase changes, the heat equation becomes
-\begin{equation}
-  \rho(T) \frac{\partial h(T)}{\partial t} - \bn \cdot \(k\bn T\) = Q,
-\end{equation}
-where $h$ is the enthalpy per unit of mass.
 
 \section{Algorithmic choice}
 \subsection{Matrix-free implementation}

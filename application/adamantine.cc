@@ -24,8 +24,8 @@ int main(int argc, char *argv[])
     // Get the name of the input file from the command line.
     // First declare the possible options.
     boost_po::options_description description("Options:");
-    description.add_options()("help", "Produce help message.")(
-        "input-file", boost_po::value<std::string>(),
+    description.add_options()("help,h", "Produce help message.")(
+        "input-file,i", boost_po::value<std::string>(),
         "Name of the input file.");
     // Declare a map that will contains the values read. Parse the command line
     // and finally populate the map.
@@ -55,15 +55,6 @@ int main(int argc, char *argv[])
         database.get_child("geometry");
     int const dim = geometry_database.get<int>("dim");
     adamantine::ASSERT_THROW((dim == 2) || (dim == 3), "dim should be 2 or 3");
-    boost::property_tree::ptree discretization_database =
-        database.get_child("discretization");
-    unsigned int const fe_degree =
-        discretization_database.get<unsigned int>("fe_degree");
-    std::string quadrature_type =
-        discretization_database.get("quadrature", "gauss");
-    std::transform(quadrature_type.begin(), quadrature_type.end(),
-                   quadrature_type.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
 
     unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
     if (rank == 0)
@@ -71,55 +62,11 @@ int main(int argc, char *argv[])
 
     if (dim == 2)
     {
-      boost::property_tree::ptree time_stepping_database =
-          database.get_child("time_stepping");
-      boost::property_tree::ptree post_processor_database =
-          database.get_child("post_processor");
-      boost::property_tree::ptree refinement_database =
-          database.get_child("refinement");
-      adamantine::Geometry<2> geometry(communicator, geometry_database);
-      std::unique_ptr<adamantine::Physics<2, dealii::MemorySpace::Host>>
-          thermal_physics;
-      std::vector<std::unique_ptr<adamantine::ElectronBeam<2>>>
-          &electron_beams =
-              initialize_thermal_physics<2>(fe_degree, quadrature_type,
-                                            communicator, database, geometry,
-                                            thermal_physics);
-      adamantine::PostProcessor<2> post_processor(
-          communicator, post_processor_database,
-          thermal_physics->get_dof_handler(),
-          thermal_physics->get_material_property());
-      double const initial_temperature =
-          database.get("materials.initial_temperature", 300.);
-      run<2>(communicator, thermal_physics, post_processor, electron_beams,
-             time_stepping_database, refinement_database, fe_degree,
-             initial_temperature, timers);
+      run<2, dealii::MemorySpace::Host>(communicator, database, timers);
     }
     else
     {
-      boost::property_tree::ptree time_stepping_database =
-          database.get_child("time_stepping");
-      boost::property_tree::ptree post_processor_database =
-          database.get_child("post_processor");
-      boost::property_tree::ptree refinement_database =
-          database.get_child("refinement");
-      adamantine::Geometry<3> geometry(communicator, geometry_database);
-      std::unique_ptr<adamantine::Physics<3, dealii::MemorySpace::Host>>
-          thermal_physics;
-      std::vector<std::unique_ptr<adamantine::ElectronBeam<3>>>
-          &electron_beams =
-              initialize_thermal_physics<3>(fe_degree, quadrature_type,
-                                            communicator, database, geometry,
-                                            thermal_physics);
-      adamantine::PostProcessor<3> post_processor(
-          communicator, post_processor_database,
-          thermal_physics->get_dof_handler(),
-          thermal_physics->get_material_property());
-      double const initial_temperature =
-          database.get("materials.initial_temperature", 300.);
-      run<3>(communicator, thermal_physics, post_processor, electron_beams,
-             time_stepping_database, refinement_database, fe_degree,
-             initial_temperature, timers);
+      run<3, dealii::MemorySpace::Host>(communicator, database, timers);
     }
 
     if (rank == 0)

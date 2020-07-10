@@ -30,20 +30,20 @@ public:
    * Associate the AffineConstraints<double> and the MatrixFree objects to the
    * underlying Triangulation.
    */
-  void setup_dofs(dealii::DoFHandler<dim> const &dof_handler,
-                  dealii::AffineConstraints<double> const &affine_constraints,
-                  dealii::QGaussLobatto<1> const &quad) override;
+  void reinit(dealii::DoFHandler<dim> const &dof_handler,
+              dealii::AffineConstraints<double> const &affine_constraints,
+              dealii::QGaussLobatto<1> const &quad) override;
 
-  void setup_dofs(dealii::DoFHandler<dim> const &dof_handler,
-                  dealii::AffineConstraints<double> const &affine_constraints,
-                  dealii::QGauss<1> const &quad) override;
+  void reinit(dealii::DoFHandler<dim> const &dof_handler,
+              dealii::AffineConstraints<double> const &affine_constraints,
+              dealii::QGauss<1> const &quad) override;
 
   /**
    * Compute the inverse of the mass matrix and update the material properties.
    */
-  void
-  reinit(dealii::DoFHandler<dim> const &dof_handler,
-         dealii::AffineConstraints<double> const &affine_constraints) override;
+  void compute_inverse_mass_matrix(
+      dealii::DoFHandler<dim> const &dof_handler,
+      dealii::AffineConstraints<double> const &affine_constraints) override;
 
   /**
    * Clear the MatrixFree object and resize the inverse of the mass matrix to
@@ -117,15 +117,9 @@ private:
    */
   typename dealii::MatrixFree<dim, double>::AdditionalData _matrix_free_data;
   /**
-   * Store the \f$ \alpha \f$ coefficient described in
-   * MaterialProperty::compute_constants()
+   * Store the \f$ \frac{1}{\rho C_p}\f$ coefficient.
    */
-  dealii::Table<2, dealii::VectorizedArray<double>> _alpha;
-  /**
-   * Store the \f$ \beta \f$ coefficient described in
-   * MaterialProperty::compute_constants()
-   */
-  dealii::Table<2, dealii::VectorizedArray<double>> _beta;
+  dealii::Table<2, dealii::VectorizedArray<double>> _inv_rho_cp;
   /**
    * Table of thermal conductivity coefficient.
    */

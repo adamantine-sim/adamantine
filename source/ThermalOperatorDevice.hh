@@ -25,17 +25,17 @@ public:
       MPI_Comm const &communicator,
       std::shared_ptr<MaterialProperty<dim>> material_properties);
 
-  void setup_dofs(dealii::DoFHandler<dim> const &dof_handler,
-                  dealii::AffineConstraints<double> const &affine_constraints,
-                  dealii::QGaussLobatto<1> const &quad) override;
+  void reinit(dealii::DoFHandler<dim> const &dof_handler,
+              dealii::AffineConstraints<double> const &affine_constraints,
+              dealii::QGaussLobatto<1> const &quad) override;
 
-  void setup_dofs(dealii::DoFHandler<dim> const &dof_handler,
-                  dealii::AffineConstraints<double> const &affine_constraints,
-                  dealii::QGauss<1> const &quad) override;
+  void reinit(dealii::DoFHandler<dim> const &dof_handler,
+              dealii::AffineConstraints<double> const &affine_constraints,
+              dealii::QGauss<1> const &quad) override;
 
-  void
-  reinit(dealii::DoFHandler<dim> const &dof_handler,
-         dealii::AffineConstraints<double> const &affine_constraints) override;
+  void compute_inverse_mass_matrix(
+      dealii::DoFHandler<dim> const &dof_handler,
+      dealii::AffineConstraints<double> const &affine_constraints) override;
 
   void clear();
 
@@ -88,7 +88,7 @@ private:
       _matrix_free_data;
   std::shared_ptr<MaterialProperty<dim>> _material_properties;
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
-  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _alpha;
+  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _inv_rho_cp;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity;
   std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
       _inverse_mass_matrix;

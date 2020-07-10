@@ -46,7 +46,7 @@ std::array<std::array<unsigned int, dim>, n_q_points> get_ijk()
 
 __global__ void invert_mass_matrix(double *values, unsigned int size)
 {
-  unsigned int i = threadIdx.x + blockIdx.x * gridDim.x;
+  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   if (i < size)
   {
     if (values[i] > 1e-15)
@@ -110,8 +110,8 @@ template <int dim, int fe_degree>
 class ThermalOperatorQuad
 {
 public:
-  __device__ ThermalOperatorQuad(double thermal_conductivity, double alpha)
-      : _thermal_conductivity(thermal_conductivity), _alpha(alpha)
+  __device__ ThermalOperatorQuad(double inv_rho_cp, double thermal_conductivity)
+      : _inv_rho_cp(inv_rho_cp), _thermal_conductivity(thermal_conductivity)
   {
   }
 
@@ -119,26 +119,25 @@ public:
   operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const;
 
 private:
+  double _inv_rho_cp;
   double _thermal_conductivity;
-  // alpha = density * specifid heat
-  double _alpha;
 };
 
 template <int dim, int fe_degree>
 __device__ void ThermalOperatorQuad<dim, fe_degree>::
 operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const
 {
-  // coef = - thermal conductivity (grad * (density * specific heat))
-  fe_eval->submit_gradient(-_thermal_conductivity *
-                           (fe_eval->get_gradient() * _alpha));
+
+  fe_eval->submit_gradient(-_inv_rho_cp * _thermal_conductivity *
+                           fe_eval->get_gradient());
 }
 
 template <int dim, int fe_degree>
 class LocalThermalOperatorDevice
 {
 public:
-  LocalThermalOperatorDevice(double *thermal_conductivity, double *alpha)
-      : _thermal_conductivity(thermal_conductivity), _alpha(alpha)
+  LocalThermalOperatorDevice(double *inv_rho_cp, double *thermal_conductivity)
+      : _inv_rho_cp(inv_rho_cp), _thermal_conductivity(thermal_conductivity)
   {
   }
 
@@ -156,8 +155,8 @@ public:
       dealii::Utilities::pow(fe_degree + 1, dim);
 
 private:
+  double *_inv_rho_cp;
   double *_thermal_conductivity;
-  double *_alpha;
 };
 
 template <int dim, int fe_degree>
@@ -175,7 +174,7 @@ operator()(unsigned int const cell,
   fe_eval.read_dof_values(src);
   fe_eval.evaluate(false, true);
   fe_eval.apply_for_each_quad_point(ThermalOperatorQuad<dim, fe_degree>(
-      _thermal_conductivity[pos], _alpha[pos]));
+      _inv_rho_cp[pos], _thermal_conductivity[pos]));
   fe_eval.integrate(false, true);
   fe_eval.distribute_local_to_global(dst);
 }
@@ -198,7 +197,7 @@ ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::ThermalOperatorDevice(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::setup_dofs(
+void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::QGaussLobatto<1> const &quad)
@@ -215,7 +214,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::setup_dofs(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::setup_dofs(
+void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::QGauss<1> const &quad)
@@ -232,9 +231,10 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::setup_dofs(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
-    dealii::DoFHandler<dim> const &dof_handler,
-    dealii::AffineConstraints<double> const &affine_constraints)
+void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
+    compute_inverse_mass_matrix(
+        dealii::DoFHandler<dim> const &dof_handler,
+        dealii::AffineConstraints<double> const &affine_constraints)
 {
   // Compute the inverse of the mass matrix
   dealii::QGaussLobatto<1> mass_matrix_quad(fe_degree + 1);
@@ -242,14 +242,17 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
 
   typename dealii::CUDAWrappers::MatrixFree<dim, double>::AdditionalData
       mf_data;
-  // update_gradients is necessary because of a bug in deal.II
+  // FIXME update_gradients is necessary because of a bug in deal.II
   mf_data.mapping_update_flags =
       dealii::update_values | dealii::update_gradients |
       dealii::update_JxW_values | dealii::update_quadrature_points;
   mass_matrix_free.reinit(dof_handler, affine_constraints, mass_matrix_quad,
                           mf_data);
   mass_matrix_free.initialize_dof_vector(*_inverse_mass_matrix);
-  dealii::LA::distributed::Vector<double, MemorySpaceType> dummy;
+  // We don't save memory by not allocating the vector. Instead this is done in
+  // cell_loop by using a slower path
+  dealii::LA::distributed::Vector<double, MemorySpaceType> dummy(
+      _inverse_mass_matrix->get_partitioner());
   LocalMassMarixOperator<dim, fe_degree> local_operator;
   mass_matrix_free.cell_loop(local_operator, dummy, *_inverse_mass_matrix);
   _inverse_mass_matrix->compress(dealii::VectorOperation::add);
@@ -290,7 +293,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::vmult_add(
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
   LocalThermalOperatorDevice<dim, fe_degree> local_operator(
-      _thermal_conductivity.get_values(), _alpha.get_values());
+      _inv_rho_cp.get_values(), _thermal_conductivity.get_values());
   _matrix_free.cell_loop(local_operator, src, dst);
   _matrix_free.copy_constrained_values(src, dst);
 }
@@ -308,17 +311,17 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
     evaluate_material_properties(
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &state)
+            &temperature)
 {
-  // Update the state of the materials
-  _material_properties->update_state(*_dof_handler, state);
+  // Update the material properties
+  _material_properties->update(*_dof_handler, temperature);
 
   unsigned int const n_coefs =
       dealii::Utilities::pow(fe_degree + 1, dim) * _n_owned_cells;
+  _inv_rho_cp.reinit(n_coefs);
   _thermal_conductivity.reinit(n_coefs);
-  _alpha.reinit(n_coefs);
+  dealii::LA::ReadWriteVector<double> inv_rho_cp_host(n_coefs);
   dealii::LA::ReadWriteVector<double> th_conductivity_host(n_coefs);
-  dealii::LA::ReadWriteVector<double> alpha_host(n_coefs);
 
   unsigned int constexpr n_dofs_1d = fe_degree + 1;
   unsigned int constexpr n_q_points = dealii::Utilities::pow(n_dofs_1d, dim);
@@ -333,28 +336,26 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
     for (unsigned int cell_id = 0; cell_id < n_cells; ++cell_id)
     {
       auto cell = graph[color][cell_id];
-      double const cell_th_conductivity = _material_properties->get(
-          cell, Property::thermal_conductivity, state);
-      // Assume the material is solid
-      double const cell_alpha =
-          1. /
-          (_material_properties->get(cell, Property::density, state) *
-           _material_properties->get(cell, Property::specific_heat, state));
+      double const cell_inv_rho_cp =
+          1. / (_material_properties->get(cell, StateProperty::density) *
+                _material_properties->get(cell, StateProperty::specific_heat));
+      double const cell_th_conductivity =
+          _material_properties->get(cell, StateProperty::thermal_conductivity);
       for (unsigned int i = 0; i < n_q_points; ++i)
       {
         unsigned int const pos =
             dealii::CUDAWrappers::local_q_point_id_host<dim, double>(
                 cell_id, gpu_data, n_dofs_1d, n_q_points, ijk[i]);
+        inv_rho_cp_host[pos] = cell_inv_rho_cp;
         th_conductivity_host[pos] = cell_th_conductivity;
-        alpha_host[pos] = cell_alpha;
       }
     }
   }
 
   // Copy the coefficient to the host
+  _inv_rho_cp.import(inv_rho_cp_host, dealii::VectorOperation::insert);
   _thermal_conductivity.import(th_conductivity_host,
                                dealii::VectorOperation::insert);
-  _alpha.import(alpha_host, dealii::VectorOperation::insert);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>

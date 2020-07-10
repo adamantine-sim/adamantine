@@ -76,13 +76,10 @@ template <int dim, int fe_degree, typename MemorySpaceType,
               int> = 0>
 void init_dof_vector(
     dealii::DoFHandler<dim> const &dof_handler, dealii::FE_Q<dim> const &fe,
-    std::shared_ptr<MaterialProperty<dim>> const &material_properties,
     double const value,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType> &vector)
 {
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy;
-  // TODO this should be done in a matrix free fashion.
-  // TODO this assumes that the material properties are constant
   dealii::QGauss<dim> quadrature(1);
   dealii::FEValues<dim> fe_values(fe, quadrature, dealii::update_values);
   unsigned int const dofs_per_cell = fe.dofs_per_cell;
@@ -94,20 +91,10 @@ void init_dof_vector(
   {
     fe_values.reinit(cell);
     cell->get_dof_indices(local_dof_indices);
-
-    // Compute the enthalpy
-    // Cast to Triangulation<dim>::cell_iterator to access the material_id
-    typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
-    double const density =
-        material_properties->get(cell_tria, Property::density, dummy);
-    double const specific_heat =
-        material_properties->get(cell_tria, Property::specific_heat, dummy);
-    double const enthalpy_value = value * density * specific_heat;
-    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+    for (auto const dof_index : local_dof_indices)
     {
-      dealii::types::global_dof_index const dof_index = local_dof_indices[i];
       if (local_elements.is_element(dof_index) == true)
-        vector[dof_index] = enthalpy_value;
+        vector[dof_index] = value;
     }
   }
 }
@@ -118,7 +105,6 @@ template <int dim, int fe_degree, typename MemorySpaceType,
               int> = 0>
 void init_dof_vector(
     dealii::DoFHandler<dim> const &dof_handler, dealii::FE_Q<dim> const &fe,
-    std::shared_ptr<MaterialProperty<dim>> const &material_properties,
     double const value,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType> &vector)
 {
@@ -126,8 +112,6 @@ void init_dof_vector(
       vector_host(vector.get_partitioner());
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy;
 
-  // TODO this should be done in a matrix free fashion.
-  // TODO this assumes that the material properties are constant
   dealii::QGauss<dim> quadrature(1);
   dealii::FEValues<dim> fe_values(fe, quadrature, dealii::update_values);
   unsigned int const dofs_per_cell = fe.dofs_per_cell;
@@ -139,20 +123,10 @@ void init_dof_vector(
   {
     fe_values.reinit(cell);
     cell->get_dof_indices(local_dof_indices);
-
-    // Compute the enthalpy
-    // Cast to Triangulation<dim>::cell_iterator to access the material_id
-    typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
-    double const density =
-        material_properties->get(cell_tria, Property::density, dummy);
-    double const specific_heat =
-        material_properties->get(cell_tria, Property::specific_heat, dummy);
-    double const enthalpy_value = value * density * specific_heat;
-    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+    for (auto const dof_index : local_dof_indices)
     {
-      dealii::types::global_dof_index const dof_index = local_dof_indices[i];
       if (local_elements.is_element(dof_index) == true)
-        vector_host[dof_index] = enthalpy_value;
+        vector_host[dof_index] = value;
     }
   }
   vector.import(vector_host, dealii::VectorOperation::insert);
@@ -338,22 +312,19 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
                                                   _affine_constraints);
   _affine_constraints.close();
 
-  _thermal_operator->setup_dofs(_dof_handler, _affine_constraints, _quadrature);
+  _thermal_operator->reinit(_dof_handler, _affine_constraints, _quadrature);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::reinit()
+void ThermalPhysics<dim, fe_degree, MemorySpaceType,
+                    QuadratureType>::compute_inverse_mass_matrix()
 {
-  _thermal_operator->reinit(_dof_handler, _affine_constraints);
+  _thermal_operator->compute_inverse_mass_matrix(_dof_handler,
+                                                 _affine_constraints);
   if (_implicit_method == true)
     _implicit_operator->set_inverse_mass_matrix(
         _thermal_operator->get_inverse_mass_matrix());
-  // FIXME in the GPU case we need to reset the matrix free object because of
-  // the use of constant memory
-  if (std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value)
-    _thermal_operator->setup_dofs(_dof_handler, _affine_constraints,
-                                  _quadrature);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -364,30 +335,15 @@ double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
         std::vector<Timer> &timers)
 {
-  // TODO: this assume that the material properties do no change during the time
-  // steps. This is wrong and needs to be changed.
-  timers[evol_time_eval_mat_prop].start();
-  if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
-    _thermal_operator->evaluate_material_properties(solution);
-  else
-  {
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-        solution_host(solution.get_partitioner());
-    solution_host.import(solution, dealii::VectorOperation::insert);
-    _thermal_operator->evaluate_material_properties(solution_host);
-  }
-  timers[evol_time_eval_mat_prop].stop();
+  auto eval = [&](double const t, LA_Vector const &y) {
+    return evaluate_thermal_physics(t, y, timers);
+  };
+  auto id_m_Jinv = [&](double const t, double const tau, LA_Vector const &y) {
+    return id_minus_tau_J_inverse(t, tau, y, timers);
+  };
 
-  double time = _time_stepping->evolve_one_time_step(
-      std::bind(&ThermalPhysics<dim, fe_degree, MemorySpaceType,
-                                QuadratureType>::evaluate_thermal_physics,
-                this, std::placeholders::_1, std::placeholders::_2,
-                std::ref(timers)),
-      std::bind(&ThermalPhysics<dim, fe_degree, MemorySpaceType,
-                                QuadratureType>::id_minus_tau_J_inverse,
-                this, std::placeholders::_1, std::placeholders::_2,
-                std::placeholders::_3, std::ref(timers)),
-      t, delta_t, solution);
+  double time = _time_stepping->evolve_one_time_step(eval, id_m_Jinv, t,
+                                                     delta_t, solution);
 
   // If the method is embedded, get the next time step. Otherwise, just use the
   // current time step.
@@ -426,8 +382,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   // Resize the vector
   _thermal_operator->initialize_dof_vector(vector);
 
-  init_dof_vector<dim, fe_degree, MemorySpaceType>(
-      _dof_handler, _fe, _material_properties, value, vector);
+  init_dof_vector<dim, fe_degree, MemorySpaceType>(_dof_handler, _fe, value,
+                                                   vector);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -439,10 +395,23 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
         std::vector<Timer> &timers) const
 {
+  timers[evol_time_eval_mat_prop].start();
+  if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
+    _thermal_operator->evaluate_material_properties(y);
+  else
+  {
+    // TODO do this on the GPU
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> y_host(
+        y.get_partitioner());
+    y_host.import(y, dealii::VectorOperation::insert);
+    _thermal_operator->evaluate_material_properties(y_host);
+  }
+  timers[evol_time_eval_mat_prop].stop();
+
   timers[evol_time_eval_th_ph].start();
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> value(
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> source(
       y.get_partitioner());
-  value = 0.;
+  source = 0.;
 
   // Compute the source term.
   for (auto &beam : _electron_beams)
@@ -468,22 +437,22 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     {
       for (unsigned int q = 0; q < n_q_points; ++q)
       {
-        double source = 0.;
+        double quad_pt_source = 0.;
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
         for (auto &beam : _electron_beams)
-          source += beam->value(q_point);
+          quad_pt_source += beam->value(q_point);
 
         cell_source[i] +=
-            source * fe_values.shape_value(i, q) * fe_values.JxW(q);
+            quad_pt_source * fe_values.shape_value(i, q) * fe_values.JxW(q);
       }
     }
     cell->get_dof_indices(local_dof_indices);
     _affine_constraints.distribute_local_to_global(cell_source,
-                                                   local_dof_indices, value);
+                                                   local_dof_indices, source);
   }
 
   return vmult_and_scale<dim, fe_degree, MemorySpaceType>(_thermal_operator, y,
-                                                          value, timers);
+                                                          source, timers);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,

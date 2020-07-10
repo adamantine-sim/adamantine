@@ -41,6 +41,7 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
 
   // Create the MaterialProperty
   boost::property_tree::ptree mat_prop_database;
+  mat_prop_database.put("property_format", "polynomial");
   mat_prop_database.put("n_materials", 1);
   mat_prop_database.put("material_0.solid.density", 1.);
   mat_prop_database.put("material_0.powder.density", 1.);
@@ -58,8 +59,8 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
       communicator, mat_properties);
-  thermal_operator.setup_dofs(dof_handler, affine_constraints, quad);
-  thermal_operator.reinit(dof_handler, affine_constraints);
+  thermal_operator.reinit(dof_handler, affine_constraints, quad);
+  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator.m());
   thermal_operator.evaluate_material_properties(dummy);
@@ -117,6 +118,7 @@ BOOST_AUTO_TEST_CASE(spmv)
 
   // Create the MaterialProperty
   boost::property_tree::ptree mat_prop_database;
+  mat_prop_database.put("property_format", "polynomial");
   mat_prop_database.put("n_materials", 1);
   mat_prop_database.put("material_0.solid.density", 1.);
   mat_prop_database.put("material_0.powder.density", 1.);
@@ -134,8 +136,8 @@ BOOST_AUTO_TEST_CASE(spmv)
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
       communicator, mat_properties);
-  thermal_operator.setup_dofs(dof_handler, affine_constraints, quad);
-  thermal_operator.reinit(dof_handler, affine_constraints);
+  thermal_operator.reinit(dof_handler, affine_constraints, quad);
+  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator.m());
   thermal_operator.evaluate_material_properties(dummy);

@@ -36,9 +36,9 @@ public:
   virtual void setup_dofs() = 0;
 
   /**
-   * Reinitialize the physics and the associated operator.
+   * Compute the inverse of the mass matrix associated to the Physics.
    */
-  virtual void reinit() = 0;
+  virtual void compute_inverse_mass_matrix() = 0;
 
   /**
    * Evolve the physics from time t to time t+delta_t. solution first contains

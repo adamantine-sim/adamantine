@@ -71,7 +71,7 @@ public:
 
   void setup_dofs() override;
 
-  void reinit() override;
+  void compute_inverse_mass_matrix() override;
 
   double evolve_one_time_step(
       double t, double delta_t,
@@ -85,8 +85,7 @@ public:
       const override;
 
   /**
-   * Initialize the given vector. The value is assumed to be a temperature and
-   * is converted to an enthalpy.
+   * Initialize the given vector. The value is assumed to be a temperature.
    */
   void
   initialize_dof_vector(double const value,

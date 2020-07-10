@@ -22,6 +22,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   // Build Geometry
   adamantine::Geometry<2> geometry(communicator, geometry_database);
   // Material property
+  database.put("materials.property_format", "polynomial");
   database.put("materials.n_materials", 1);
   database.put("materials.material_0.solid.density", 1.);
   database.put("materials.material_0.powder.density", 1.);
@@ -44,7 +45,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
       communicator, database, geometry);
   physics.setup_dofs();
-  physics.reinit();
+  physics.compute_inverse_mass_matrix();
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(solution);
@@ -77,6 +78,7 @@ void thermal_2d_manufactured_solution()
 
   boost::property_tree::ptree database;
   // Material property
+  database.put("materials.property_format", "polynomial");
   database.put("materials.n_materials", 1);
   database.put("materials.material_0.solid.density", 1.);
   database.put("materials.material_0.powder.density", 1.);
@@ -102,7 +104,7 @@ void thermal_2d_manufactured_solution()
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
       communicator, database, geometry);
   physics.setup_dofs();
-  physics.reinit();
+  physics.compute_inverse_mass_matrix();
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   std::vector<adamantine::Timer> timers(6);
@@ -141,6 +143,7 @@ void initial_temperature()
   adamantine::Geometry<2> geometry(communicator, geometry_database);
   boost::property_tree::ptree database;
   // Material property
+  database.put("materials.property_format", "polynomial");
   database.put("materials.n_materials", 1);
   database.put("materials.material_0.solid.density", 1.);
   database.put("materials.material_0.powder.density", 10.);
@@ -165,9 +168,9 @@ void initial_temperature()
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
       communicator, database, geometry);
   physics.setup_dofs();
-  physics.reinit();
+  physics.compute_inverse_mass_matrix();
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(1000., solution);
-  BOOST_CHECK(solution.l1_norm() == 20000. * solution.size());
+  BOOST_CHECK(solution.l1_norm() == 1000. * solution.size());
 }

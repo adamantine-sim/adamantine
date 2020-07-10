@@ -8,6 +8,7 @@
 #define BOOST_TEST_MODULE ThermalOperator
 
 #include <Geometry.hh>
+#include <ThermalOperator.hh>
 #include <ThermalOperatorDevice.hh>
 
 #include <deal.II/dofs/dof_tools.h>
@@ -42,6 +43,7 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev)
 
   // Create the MaterialProperty
   boost::property_tree::ptree mat_prop_database;
+  mat_prop_database.put("property_format", "polynomial");
   mat_prop_database.put("n_materials", 1);
   mat_prop_database.put("material_0.solid.density", 1.);
   mat_prop_database.put("material_0.powder.density", 1.);
@@ -59,8 +61,9 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev)
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
       thermal_operator_dev(communicator, mat_properties);
-  thermal_operator_dev.setup_dofs(dof_handler, affine_constraints, quad);
-  thermal_operator_dev.reinit(dof_handler, affine_constraints);
+  thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
+                                                   affine_constraints);
+  thermal_operator_dev.reinit(dof_handler, affine_constraints, quad);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator_dev.m());
   thermal_operator_dev.evaluate_material_properties(dummy);
@@ -117,6 +120,7 @@ BOOST_AUTO_TEST_CASE(spmv)
 
   // Create the MaterialProperty
   boost::property_tree::ptree mat_prop_database;
+  mat_prop_database.put("property_format", "polynomial");
   mat_prop_database.put("n_materials", 1);
   mat_prop_database.put("material_0.solid.density", 1.);
   mat_prop_database.put("material_0.powder.density", 1.);
@@ -134,8 +138,9 @@ BOOST_AUTO_TEST_CASE(spmv)
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
       thermal_operator_dev(communicator, mat_properties);
-  thermal_operator_dev.reinit(dof_handler, affine_constraints);
-  thermal_operator_dev.setup_dofs(dof_handler, affine_constraints, quad);
+  thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
+                                                   affine_constraints);
+  thermal_operator_dev.reinit(dof_handler, affine_constraints, quad);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator_dev.m());
   thermal_operator_dev.evaluate_material_properties(dummy);
@@ -184,3 +189,96 @@ BOOST_AUTO_TEST_CASE(spmv)
   }
 }
 
+BOOST_AUTO_TEST_CASE(mf_spmv)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  // Create the Geometry
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("length", 2e-2);
+  geometry_database.put("length_divisions", 10);
+  geometry_database.put("height", 1e-2);
+  geometry_database.put("height_divisions", 5);
+  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  // Create the DoFHandler
+  dealii::FE_Q<2> fe(2);
+  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
+  dof_handler.distribute_dofs(fe);
+  dealii::AffineConstraints<double> affine_constraints;
+  affine_constraints.close();
+  dealii::QGauss<1> quad(3);
+
+  // Create the MaterialProperty
+  boost::property_tree::ptree mat_prop_database;
+  mat_prop_database.put("property_format", "polynomial");
+  mat_prop_database.put("n_materials", 1);
+  mat_prop_database.put("material_0.solid.density", 7541.);
+  mat_prop_database.put("material_0.powder.density", 7541.);
+  mat_prop_database.put("material_0.liquid.density", 7541.);
+  mat_prop_database.put("material_0.solid.specific_heat", 600.);
+  mat_prop_database.put("material_0.powder.specific_heat", 600.);
+  mat_prop_database.put("material_0.liquid.specific_heat", 600.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity", 0.266);
+  mat_prop_database.put("material_0.powder.thermal_conductivity", 0.266);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity", 0.266);
+  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
+      new adamantine::MaterialProperty<2>(
+          communicator, geometry.get_triangulation(), mat_prop_database));
+
+  // Initialize the ThermalOperator
+  adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
+      thermal_operator_dev(communicator, mat_properties);
+  thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
+                                                   affine_constraints);
+  thermal_operator_dev.reinit(dof_handler, affine_constraints, quad);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
+      thermal_operator_dev.m());
+  thermal_operator_dev.evaluate_material_properties(dummy);
+  // BOOST_CHECK(thermal_operator_dev.m() == 99);
+  BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
+
+  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>
+      thermal_operator_host(communicator, mat_properties);
+  thermal_operator_host.compute_inverse_mass_matrix(dof_handler,
+                                                    affine_constraints);
+  thermal_operator_host.reinit(dof_handler, affine_constraints, quad);
+  thermal_operator_host.evaluate_material_properties(dummy);
+
+  // Compare vmult using matrix free and building the matrix
+  double const tolerance = 1e-12;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> src_dev;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_dev;
+
+  dealii::CUDAWrappers::MatrixFree<2, double> const &matrix_free =
+      thermal_operator_dev.get_matrix_free();
+  matrix_free.initialize_dof_vector(src_dev);
+  matrix_free.initialize_dof_vector(dst_dev);
+
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src_host(
+      src_dev.get_partitioner());
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_host(
+      dst_dev.get_partitioner());
+
+  for (unsigned int i = 0; i < thermal_operator_dev.m(); ++i)
+  {
+    src_host = 0.;
+    src_host[i] = 1.;
+    dst_host = 0.;
+    dst_host[i] = 1.;
+    src_dev.import(src_host, dealii::VectorOperation::insert);
+    dst_dev.import(dst_host, dealii::VectorOperation::insert);
+
+    thermal_operator_host.vmult_add(dst_host, src_host);
+    thermal_operator_dev.vmult_add(dst_dev, src_dev);
+
+    dealii::LinearAlgebra::ReadWriteVector<double> rw_vector(
+        thermal_operator_dev.m());
+    rw_vector.import(dst_dev, dealii::VectorOperation::insert);
+    for (unsigned int j = 0; j < thermal_operator_dev.m(); ++j)
+    {
+      double rw_value = std::abs(rw_vector[j]) > 1e-15 ? rw_vector[j] : 0.;
+      double dst_host_value = std::abs(dst_host[j]) > 1e-15 ? dst_host[j] : 0.;
+      BOOST_CHECK_CLOSE(rw_value, dst_host_value, tolerance);
+    }
+  }
+}

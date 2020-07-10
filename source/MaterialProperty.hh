@@ -11,7 +11,6 @@
 #include <types.hh>
 #include <utils.hh>
 
-#include <deal.II/base/function_parser.h>
 #include <deal.II/distributed/tria.h>
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_handler.h>
@@ -46,8 +45,7 @@ public:
    *   - <B>material_X.Y.Z</B>: string where Z is either density, specific_heat,
    *   or thermal_conductivity, describe the behavior of the property as a
    *   function of the temperatur (e.g. "2.*T") [optional]
-   *   - <B>material.X.A</B>: A is either solidus, liquidus, or latent_heat
-   *   [optional]
+   *   - <B>material.X.A</B>: A is either solidus or liquidus [optional]
    */
   MaterialProperty(
       MPI_Comm const &communicator,
@@ -55,20 +53,19 @@ public:
       boost::property_tree::ptree const &database);
 
   /**
-   * Return the value of the given property, for a given cell and a given field
-   * state.
+   * Return the value of the given StateProperty for a given cell.
    */
   double
   get(typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
-      Property prop,
-      dealii::LA::distributed::Vector<double> const &field_state) const;
+      StateProperty prop) const;
 
+  // TODO add a function to get tensor material properties
   /**
-   * Return the average temperature on every cell given the enthalpy.
+   * Return the value of the given Property for a given cell.
    */
-  dealii::LA::distributed::Vector<double> enthalpy_to_temperature(
-      dealii::DoFHandler<dim> const &enthalpy_dof_handler,
-      dealii::LA::distributed::Vector<double> const &enthalpy);
+  double
+  get(typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
+      Property prop) const;
 
   /**
    * Reinitialize the DoFHandler associated with MaterialProperty and resize the
@@ -77,14 +74,15 @@ public:
   void reinit_dofs();
 
   /**
-   * Update the material state, i.e, the ratio of liquid, powder, and solid.
+   * Update the material state, i.e, the ratio of liquid, powder, and solid and
+   * the material properties given the field of temperature.
    */
-  void update_state(dealii::DoFHandler<dim> const &enthalpy_dof_handler,
-                    dealii::LA::distributed::Vector<double> const &enthalpy);
+  void update(dealii::DoFHandler<dim> const &temperature_dof_handler,
+              dealii::LA::distributed::Vector<double> const &temperature);
 
   /**
    * Get the array of material state vectors. The order of the different state
-   * vectos is given by the MaterialState enum. Each entry in the vector
+   * vectors is given by the MaterialState enum. Each entry in the vector
    * correspond to a cell in the mesh and has a value between 0 and 1. The sum
    * of the states for a given cell is equal to 1.
    */
@@ -92,31 +90,13 @@ public:
              static_cast<unsigned int>(MaterialState::SIZE)> &
   get_state();
 
+  /**
+   * Get the ratio of a given MaterialState for a given cell. The sum
+   * of the states for a given cell is equal to 1.
+   */
   double get_state_ratio(
       typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
       MaterialState material_state) const;
-
-  /**
-   * Return \f$ -\frac{H_{liquidus}}{\rho C_P} + T_{liquidus} \f$
-   */
-  double get_liquid_beta(
-      typename dealii::Triangulation<dim>::active_cell_iterator const &cell)
-      const;
-
-  /**
-   * Return \f$ \frac{T_{liquidus}-T_{solidus}}{\mathcal{L}} \f$
-   */
-  double get_mushy_alpha(
-      typename dealii::Triangulation<dim>::active_cell_iterator const &cell)
-      const;
-
-  /**
-   * Return \f$ -H_{solidus} \frac{T_{liquidus}-T_{solidus}}{\mathcal{L}} +
-   * T_{solidus} \f$
-   */
-  double get_mushy_beta(
-      typename dealii::Triangulation<dim>::active_cell_iterator const &cell)
-      const;
 
   /**
    * Return the underlying the DoFHandler.
@@ -131,7 +111,13 @@ private:
       static_cast<unsigned int>(MaterialState::SIZE);
 
   /**
-   * Number of properties defined.
+   * Number of Stateproperty defined.
+   */
+  static unsigned int constexpr _n_state_properties =
+      static_cast<unsigned int>(StateProperty::SIZE);
+
+  /**
+   * Number of Stateproperty defined.
    */
   static unsigned int constexpr _n_properties =
       static_cast<unsigned int>(Property::SIZE);
@@ -148,14 +134,6 @@ private:
   void fill_properties(boost::property_tree::ptree const &database);
 
   /**
-   * If the density and the specific heat do not depend on the temperature, the
-   * relationship between the temperature and the enthalpy can be written by
-   * piecewise function \f$ T = \alpha H + \beta \f$. This function computes the
-   * constants \f$ \alpha \f$ and \f$ \beta \f$.
-   */
-  void compute_constants();
-
-  /**
    * Return the index of the dof associated to the cell.
    */
   double get_dof_index(
@@ -163,39 +141,56 @@ private:
       const;
 
   /**
-   * Compute the average of the enthalpy on every cell.
+   * Compute the average of the temperature on every cell.
    */
-  dealii::LA::distributed::Vector<double> compute_average_enthalpy(
-      dealii::DoFHandler<dim> const &enthalpy_dof_handler,
-      dealii::LA::distributed::Vector<double> const &enthalpy) const;
+  dealii::LA::distributed::Vector<double> compute_average_temperature(
+      dealii::DoFHandler<dim> const &temperature_dof_handler,
+      dealii::LA::distributed::Vector<double> const &temperature) const;
+
+  /**
+   * Compute a property from a table given the temperature.
+   */
+  double compute_property_from_table(
+      std::vector<std::pair<double, double>> const &table,
+      double const temperature) const;
+
+  /**
+   * Compute a property using a polynomial representation given the temperature.
+   */
+  double compute_property_from_polynomial(std::vector<double> const &coef,
+                                          double const temperature) const;
 
   /**
    * MPI communicator.
    */
   MPI_Comm _communicator;
   /**
-   * Map of \f$ -\frac{H_{liquidus}}{\rho C_P} + T_{liquidus} \f$ for each
-   * material.
+   * If the flag is true the material properties are saved under a table.
+   * Otherwise the material properties are saved as polynomials.
    */
-  std::unordered_map<dealii::types::material_id, double> _liquid_beta;
+  bool _use_table;
   /**
-   * Map of \f$ \frac{T_{liquidus}-T_{solidus}}{\mathcal{L}} \f$ for each
-   * material.
-   */
-  std::unordered_map<dealii::types::material_id, double> _mushy_alpha;
-  /**
-   * Map of \f$ -H_{solidus} \frac{T_{liquidus}-T_{solidus}}{\mathcal{L}} +
-   * T_{solidus} \f$ for each material.
-   */
-  std::unordered_map<dealii::types::material_id, double> _mushy_beta;
-  /**
-   * Map that stores functions describing the properties of the material.
+   * Map that stores tables describing the properties of the material.
    */
   std::unordered_map<
       dealii::types::material_id,
-      std::array<
-          std::array<std::unique_ptr<dealii::FunctionParser<1>>, _n_properties>,
-          _n_material_states>>
+      std::array<std::array<std::vector<std::pair<double, double>>,
+                            _n_state_properties>,
+                 _n_material_states>>
+      _state_property_tables;
+  /**
+   * Map that stores polynomials describing the properties of the material.
+   */
+  std::unordered_map<
+      dealii::types::material_id,
+      std::array<std::array<std::vector<double>, _n_state_properties>,
+                 _n_material_states>>
+      _state_property_polynomials;
+  /**
+   * Map that stores polynomials describing the properties of the material.
+   */
+  std::unordered_map<dealii::types::material_id,
+                     std::array<double, _n_properties>>
       _properties;
   /**
    * Array of vector describing the ratio of each state in each cell. Each
@@ -203,6 +198,12 @@ private:
    */
   std::array<dealii::LA::distributed::Vector<double>, _n_material_states>
       _state;
+  /**
+   * Array of vector describing the property in each cell. Each vector
+   * corresponds to a property in the StateProperty enum.
+   */
+  std::array<dealii::LA::distributed::Vector<double>, _n_state_properties>
+      _property_values;
   /**
    * Discontinuous piecewise constant finite element.
    */
@@ -230,39 +231,6 @@ inline double MaterialProperty<dim>::get_state_ratio(
   unsigned int const mat_state = static_cast<unsigned int>(material_state);
 
   return _state[mat_state][mp_dof_index];
-}
-
-template <int dim>
-inline double MaterialProperty<dim>::get_liquid_beta(
-    typename dealii::Triangulation<dim>::active_cell_iterator const &cell) const
-{
-  dealii::types::material_id material_id = cell->material_id();
-  auto const liquid_beta = _liquid_beta.find(material_id);
-  ASSERT(liquid_beta != _liquid_beta.end(), "Material not found.");
-
-  return liquid_beta->second;
-}
-
-template <int dim>
-inline double MaterialProperty<dim>::get_mushy_alpha(
-    typename dealii::Triangulation<dim>::active_cell_iterator const &cell) const
-{
-  dealii::types::material_id material_id = cell->material_id();
-  auto const mushy_alpha = _mushy_alpha.find(material_id);
-  ASSERT(mushy_alpha != _mushy_alpha.end(), "Material not found.");
-
-  return mushy_alpha->second;
-}
-
-template <int dim>
-inline double MaterialProperty<dim>::get_mushy_beta(
-    typename dealii::Triangulation<dim>::active_cell_iterator const &cell) const
-{
-  dealii::types::material_id material_id = cell->material_id();
-  auto const mushy_beta = _mushy_beta.find(material_id);
-  ASSERT(mushy_beta != _mushy_beta.end(), "Material not found.");
-
-  return mushy_beta->second;
 }
 
 template <int dim>
