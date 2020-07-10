@@ -432,6 +432,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   {
     cell_source = 0.;
     fe_values.reinit(cell);
+    double const inv_rho_cp = _thermal_operator->get_inv_rho_cp(cell);
 
     for (unsigned int i = 0; i < dofs_per_cell; ++i)
     {
@@ -442,8 +443,8 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         for (auto &beam : _electron_beams)
           quad_pt_source += beam->value(q_point);
 
-        cell_source[i] +=
-            quad_pt_source * fe_values.shape_value(i, q) * fe_values.JxW(q);
+        cell_source[i] += inv_rho_cp * quad_pt_source *
+                          fe_values.shape_value(i, q) * fe_values.JxW(q);
       }
     }
     cell->get_dof_indices(local_dof_indices);

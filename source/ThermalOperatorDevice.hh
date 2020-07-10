@@ -77,6 +77,12 @@ public:
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &state) override;
 
+  /**
+   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given cell.
+   */
+  double get_inv_rho_cp(
+      typename dealii::DoFHandler<dim>::cell_iterator const &) const override;
+
 private:
   MPI_Comm const &_communicator;
   dealii::types::global_dof_index _m;
@@ -92,6 +98,8 @@ private:
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity;
   std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
       _inverse_mass_matrix;
+  std::map<typename dealii::DoFHandler<dim>::cell_iterator, double>
+      _inv_rho_cp_cells;
 };
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -132,6 +140,18 @@ ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::jacobian_vmult(
 {
   vmult(dst, src);
 }
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+inline double
+ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
+    typename dealii::DoFHandler<dim>::cell_iterator const &cell) const
+{
+  auto inv_rho_cp = _inv_rho_cp_cells.find(cell);
+  ASSERT(inv_rho_cp != _inv_rho_cp_cells.end(), "Internal error");
+
+  return inv_rho_cp->second;
+}
+
 } // namespace adamantine
 
 #endif

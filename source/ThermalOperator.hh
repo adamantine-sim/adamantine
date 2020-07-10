@@ -98,6 +98,12 @@ public:
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &state) override;
 
+  /**
+   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given cell.
+   */
+  double get_inv_rho_cp(
+      typename dealii::DoFHandler<dim>::cell_iterator const &) const override;
+
 private:
   /**
    * Apply the operator on a given set of quadrature points.
@@ -139,6 +145,12 @@ private:
    */
   std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
       _inverse_mass_matrix;
+  /**
+   * Map between the cell iterator and the position in _inv_rho_cp table.
+   */
+  std::map<typename dealii::DoFHandler<dim>::cell_iterator,
+           std::pair<unsigned int, unsigned int>>
+      _cell_it_to_mf_cell_map;
 };
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -185,6 +197,18 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::initialize_dof_vector(
 {
   _matrix_free.initialize_dof_vector(vector);
 }
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+inline double ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
+    typename dealii::DoFHandler<dim>::cell_iterator const &cell) const
+{
+  auto cell_comp_pair = _cell_it_to_mf_cell_map.find(cell);
+  ASSERT(cell_comp_pair != _cell_it_to_mf_cell_map.end(), "Internal error");
+
+  return _inv_rho_cp(cell_comp_pair->second.first,
+                     0)[cell_comp_pair->second.second];
+}
+
 } // namespace adamantine
 
 #endif

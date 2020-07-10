@@ -212,6 +212,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
             1. / (_material_properties->get(cell_tria, StateProperty::density) *
                   _material_properties->get(cell_tria,
                                             StateProperty::specific_heat));
+        _cell_it_to_mf_cell_map[cell_it] = std::make_pair(cell, i);
       }
 }
 } // namespace adamantine

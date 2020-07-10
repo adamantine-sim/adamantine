@@ -57,6 +57,9 @@ public:
   {
     ASSERT(false, "Internal error");
   }
+
+  virtual double get_inv_rho_cp(
+      typename dealii::DoFHandler<dim>::cell_iterator const &) const = 0;
 };
 } // namespace adamantine
 #endif
