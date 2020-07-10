@@ -339,6 +339,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
       double const cell_inv_rho_cp =
           1. / (_material_properties->get(cell, StateProperty::density) *
                 _material_properties->get(cell, StateProperty::specific_heat));
+      _inv_rho_cp_cells[cell] = cell_inv_rho_cp;
       double const cell_th_conductivity =
           _material_properties->get(cell, StateProperty::thermal_conductivity);
       for (unsigned int i = 0; i < n_q_points; ++i)
