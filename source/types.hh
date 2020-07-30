@@ -54,6 +54,7 @@ enum class Property
 {
   liquidus,
   solidus,
+  latent_heat,
   SIZE
 };
 

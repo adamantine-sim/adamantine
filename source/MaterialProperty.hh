@@ -45,7 +45,8 @@ public:
    *   - <B>material_X.Y.Z</B>: string where Z is either density, specific_heat,
    *   or thermal_conductivity, describe the behavior of the property as a
    *   function of the temperatur (e.g. "2.*T") [optional]
-   *   - <B>material.X.A</B>: A is either solidus or liquidus [optional]
+   *   - <B>material.X.A</B>: A is either solidus, liquidus, or latent heat
+   * [optional]
    */
   MaterialProperty(
       MPI_Comm const &communicator,

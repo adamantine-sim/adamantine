@@ -50,6 +50,7 @@ materials
 
     solidus 1528 ; [K]
     liquidus 1610 ; [K]
+    latent_heat 227000 ; [J/kg]
   }
 }
 
