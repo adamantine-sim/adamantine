@@ -20,6 +20,8 @@ namespace adamantine
 inline void ASSERT(bool cond, std::string const &message)
 {
   BOOST_ASSERT_MSG(cond, message.c_str());
+  (void)cond;
+  (void)message;
 }
 
 inline void ASSERT_THROW(bool cond, std::string const &message)
