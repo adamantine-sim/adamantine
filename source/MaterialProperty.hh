@@ -187,7 +187,8 @@ private:
                  _n_material_states>>
       _state_property_polynomials;
   /**
-   * Map that stores polynomials describing the properties of the material.
+   * Map that stores the properties of the material that are independent of the
+   * state of the material.
    */
   std::unordered_map<dealii::types::material_id,
                      std::array<double, _n_properties>>
