@@ -160,6 +160,23 @@ void MaterialProperty<dim>::update(
         }
       }
     }
+
+    // If we are in the mushy state, i.e., part liquid part solid, we need to
+    // modify the rho C_p to take into account the latent heat.
+    if ((liquid_ratio > 0.) && (liquid_ratio < 1.))
+    {
+      unsigned int specific_heat_prop =
+          static_cast<unsigned int>(StateProperty::specific_heat);
+      unsigned int latent_heat_prop =
+          static_cast<unsigned int>(Property::latent_heat);
+      for (unsigned int material_state = 0; material_state < _n_material_states;
+           ++material_state)
+      {
+        _property_values[specific_heat_prop][dof] +=
+            _state[material_state][dof] *
+            _properties[material_id][latent_heat_prop] / (liquidus - solidus);
+      }
+    }
   }
 }
 
@@ -183,7 +200,8 @@ void MaterialProperty<dim>::fill_properties(
 {
   std::array<std::string, _n_material_states> material_state = {
       {"powder", "solid", "liquid"}};
-  std::array<std::string, _n_properties> properties = {{"liquidus", "solidus"}};
+  std::array<std::string, _n_properties> properties = {
+      {"liquidus", "solidus", "latent_heat"}};
   std::array<std::string, _n_state_properties> state_properties = {
       {"density", "specific_heat", "thermal_conductivity"}};
 

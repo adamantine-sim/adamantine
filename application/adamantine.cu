@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 
     boost::optional<boost::property_tree::ptree &> profiling_database =
         database.get_child_optional("profiling");
-    if ((profiling_database) && (profiling_database.get().get("timer", 0) != 0))
+    if ((profiling_database) && (profiling_database.get().get("timer", false)))
       profiling = true;
 
     boost::property_tree::ptree geometry_database =

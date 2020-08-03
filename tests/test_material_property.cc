@@ -108,6 +108,7 @@ BOOST_AUTO_TEST_CASE(ratios)
   database.put("material_0.liquid.specific_heat", 20.);
   database.put("material_0.solidus", "50");
   database.put("material_0.liquidus", "100");
+  database.put("material_0.latent_heat", "1000");
   adamantine::MaterialProperty<2> mat_prop(communicator, triangulation,
                                            database);
   dealii::LinearAlgebra::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -137,6 +138,9 @@ BOOST_AUTO_TEST_CASE(ratios)
     BOOST_CHECK(liquidus == 100.);
     double const solidus = mat_prop.get(cell, adamantine::Property::solidus);
     BOOST_CHECK(solidus == 50.);
+    double const latent_heat =
+        mat_prop.get(cell, adamantine::Property::latent_heat);
+    BOOST_CHECK(latent_heat == 1000.);
     double const specific_heat =
         mat_prop.get(cell, adamantine::StateProperty::specific_heat);
     BOOST_CHECK(specific_heat == 1.);
@@ -170,6 +174,9 @@ BOOST_AUTO_TEST_CASE(ratios)
     BOOST_CHECK(liquidus == 100.);
     double const solidus = mat_prop.get(cell, adamantine::Property::solidus);
     BOOST_CHECK(solidus == 50.);
+    double const latent_heat =
+        mat_prop.get(cell, adamantine::Property::latent_heat);
+    BOOST_CHECK(latent_heat == 1000.);
     double const specific_heat =
         mat_prop.get(cell, adamantine::StateProperty::specific_heat);
     BOOST_CHECK(specific_heat == 20.);
@@ -200,6 +207,9 @@ BOOST_AUTO_TEST_CASE(ratios)
     BOOST_CHECK(liquidus == 100.);
     double const solidus = mat_prop.get(cell, adamantine::Property::solidus);
     BOOST_CHECK(solidus == 50.);
+    double const latent_heat =
+        mat_prop.get(cell, adamantine::Property::latent_heat);
+    BOOST_CHECK(latent_heat == 1000.);
     double const specific_heat =
         mat_prop.get(cell, adamantine::StateProperty::specific_heat);
     BOOST_CHECK(specific_heat == 10.);
