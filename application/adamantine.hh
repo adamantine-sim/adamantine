@@ -43,6 +43,7 @@ void output_pvtu(
   post_processor.output_pvtu(cycle, n_time_step, time, solution);
 }
 
+#ifdef ADAMANTINE_HAVE_CUDA
 template <int dim, typename MemorySpaceType,
           std::enable_if_t<
               std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
@@ -60,6 +61,7 @@ void output_pvtu(
   affine_constraints.distribute(solution_host);
   post_processor.output_pvtu(cycle, n_time_step, time, solution_host);
 }
+#endif
 
 template <int dim, typename MemorySpaceType,
           std::enable_if_t<
@@ -82,6 +84,7 @@ dealii::Vector<float> estimate_error(
   return estimated_error_per_cell;
 }
 
+#ifdef ADAMANTINE_HAVE_CUDA
 template <int dim, typename MemorySpaceType,
           std::enable_if_t<
               std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
@@ -105,6 +108,7 @@ dealii::Vector<float> estimate_error(
 
   return estimated_error_per_cell;
 }
+#endif
 
 // inlining this function so we can have in the header
 inline void initialize_timers(MPI_Comm const &communicator,
@@ -299,6 +303,7 @@ void refine_and_transfer(
 #endif
 }
 
+#ifdef ADAMANTINE_HAVE_CUDA
 template <int dim, typename MemorySpaceType,
           std::enable_if_t<
               std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
@@ -379,6 +384,7 @@ void refine_and_transfer(
   }
 #endif
 }
+#endif
 
 template <int dim>
 std::vector<typename dealii::parallel::distributed::Triangulation<
