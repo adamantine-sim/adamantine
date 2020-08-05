@@ -1,6 +1,7 @@
 # Create adamantine executable and link against the static library.
 if (ADAMANTINE_ENABLE_CUDA)
   add_executable(adamantine adamantine.cu)
+  target_compile_definitions(adamantine PRIVATE ADAMANTINE_HAVE_CUDA)
 else()
   add_executable(adamantine adamantine.cc)
 endif()

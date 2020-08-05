@@ -9,7 +9,9 @@
 #define THERMAL_PHYSICS_TEMPLATES_HH
 
 #include <ThermalOperator.hh>
+#ifdef ADAMANTINE_HAVE_CUDA
 #include <ThermalOperatorDevice.hh>
+#endif
 #include <ThermalPhysics.hh>
 
 #include <deal.II/dofs/dof_tools.h>
@@ -47,31 +49,6 @@ dealii::LA::distributed::Vector<double, MemorySpaceType> vmult_and_scale(
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
-              int> = 0>
-dealii::LA::distributed::Vector<double, MemorySpaceType> vmult_and_scale(
-    std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> thermal_operator,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &value,
-    std::vector<Timer> &timers)
-{
-  dealii::LA::distributed::Vector<double, MemorySpaceType> value_dev(
-      value.get_partitioner());
-  value_dev.import(value, dealii::VectorOperation::insert);
-
-  // Apply the Thermal Operator.
-  thermal_operator->vmult_add(value_dev, y);
-
-  // Multiply by the inverse of the mass matrix.
-  value_dev.scale(*thermal_operator->get_inverse_mass_matrix());
-
-  timers[evol_time_eval_th_ph].stop();
-
-  return value_dev;
-}
-
-template <int dim, int fe_degree, typename MemorySpaceType,
-          std::enable_if_t<
               std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value,
               int> = 0>
 void init_dof_vector(
@@ -97,6 +74,32 @@ void init_dof_vector(
         vector[dof_index] = value;
     }
   }
+}
+
+#ifdef ADAMANTINE_HAVE_CUDA
+template <int dim, int fe_degree, typename MemorySpaceType,
+          std::enable_if_t<
+              std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
+              int> = 0>
+dealii::LA::distributed::Vector<double, MemorySpaceType> vmult_and_scale(
+    std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> thermal_operator,
+    dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &value,
+    std::vector<Timer> &timers)
+{
+  dealii::LA::distributed::Vector<double, MemorySpaceType> value_dev(
+      value.get_partitioner());
+  value_dev.import(value, dealii::VectorOperation::insert);
+
+  // Apply the Thermal Operator.
+  thermal_operator->vmult_add(value_dev, y);
+
+  // Multiply by the inverse of the mass matrix.
+  value_dev.scale(*thermal_operator->get_inverse_mass_matrix());
+
+  timers[evol_time_eval_th_ph].stop();
+
+  return value_dev;
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -131,6 +134,7 @@ void init_dof_vector(
   }
   vector.import(vector_host, dealii::VectorOperation::insert);
 }
+#endif
 } // namespace
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -166,10 +170,12 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     _thermal_operator =
         std::make_shared<ThermalOperator<dim, fe_degree, MemorySpaceType>>(
             communicator, _material_properties);
+#ifdef ADAMANTINE_HAVE_CUDA
   else
     _thermal_operator = std::make_shared<
         ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>>(
         communicator, _material_properties);
+#endif
 
   // Create the time stepping scheme
   boost::property_tree::ptree const &time_stepping_database =
