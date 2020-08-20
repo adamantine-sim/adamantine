@@ -56,6 +56,7 @@ and the phase transition between the powder, the solid, and the liquid.
     of phase).
 \end{itemize}
 \subsection{Heat equation}
+\subsubsection{Weak form}
 The heat equation without phase change is given by:
 \begin{equation}
   \rho(T) C_p(T) \frac{\partial T}{\partial t} - \bn \cdot \(k\bn T\) = Q,
@@ -63,6 +64,146 @@ The heat equation without phase change is given by:
 where $\rho$ is the mass density, $C_p$ is the specific heat, $T$, is the
 temperature, $k$ is the thermal conductivity, and $Q$ is the volumetric heat
 source.
+
+When there is a phase change, the heat equation is usually written in term of
+the enthalpy, $h$:
+\begin{equation}
+  \frac{\partial h(T)}{\partial t} -  \bn \cdot \(k\bn T\) = Q.
+  \label{enthalpy}
+\end{equation}
+In the absence of phase change, we have:
+\begin{equation}
+  h(T) = \int_{T_0}^T \rho(T) C_p(T) dT.
+\end{equation}
+Under the assumption of a phase change with a mushy zone, $C_p$ and $\rho$ are independent
+of the temperature, we write:
+\begin{equation}
+  h(T) =      
+  \begin{cases}
+   \rho_s C_{p,s} T & \text{if } T<T_{s}\\
+   \rho_s C_{p,s} T_s + \(\frac{\rho_s C_{p,s}+\rho_l C_{p,l}}{2} +
+    \frac{\rho_s+\rho_l}{2}  \frac{\mathcal{L}}{T_l-T_s}\) (T-T_s) & \text{if } T>T_{s} \text{ and } T<T_l \\
+    \rho_s C_{p,s} T_s + \frac{C_{p,s}+C_{p,l}}{2} (T_l - T_s) +
+    \frac{\rho_s+\rho_l}{2} \mathcal{L} + \rho_s C_{p,l}
+    (T-T_l) & \text{if } T>T_l.
+  \end{cases}
+\end{equation}
+Since we only care about $\frac{\partial h{T}}{\partial t}$, we have:
+\begin{equation}
+  \frac{\partial h(T)}{\partial t} = 
+  \begin{cases}
+    \rho_s C_{p,s} \frac{\partial T}{\partial t} &  \text{if } T \leq T_{s}\\
+     \(\rho_{\text{eff}} C_{p,\text{eff}} + \rho_{\text{eff}} \frac{\mathcal{L}}{T_l-T_s}\)
+     \frac{\partial T}{\partial t}  & \text{if } T>T_{s} \text{ and } T<T_l \\
+    \rho_l C_{p,l} \frac{\partial T}{\partial t} &  \text{if } T \geq T_{l}\\
+  \end{cases}
+\end{equation}
+Note that we have a more complicated setup because we have two solid phase
+(solid and powder). 
+
+So far we haven't discussed $k$. $k$ is simply given by:
+\begin{equation}
+  k = 
+  \begin{cases}
+    k_s & \text{if } T \leq T_s \\
+    k_s + \frac{k_l - k_s}{T_l - T_s} (T- T_s) & \text{if} T>T_s \text{ and }
+    T<T_l \\
+    k_l & \text{if } T \geq T_l
+  \end{cases}
+\end{equation}
+
+Finally we can rewrite \Cref{enthalpy}, as a set of three equations:
+\begin{itemize}
+  \item if $T \leq T_s$, we have:
+    \begin{equation}
+      \frac{\partial T}{\partial t} = \frac{1}{\rho_s C_{p,s}} \(\bn \cdot \(k
+      \bn T\) + Q\)
+    \end{equation}
+  \item if $T_s < T < T_l$, we have:
+    \begin{equation}
+      \frac{\partial T}{\partial t} = \frac{1}{\(\rho_{\text{eff}}
+      C_{p,\text{eff}} + \rho_{\text{eff}} \frac{\mathcal{L}}{T_l-T_s}\)} \(
+      \bn \cdot \(k \bn T\) + Q \)
+    \end{equation}
+  \item if $T \geq T$, we have:
+    \begin{equation}
+      \frac{\partial T}{\partial t} = \frac{1}{\rho_l C_{p,l}} \(\bn \cdot \(k
+      \bn T\) + Q\)
+    \end{equation}
+\end{itemize}
+
+Next, we will focus on the weak form of:
+\begin{equation}
+  \frac{\partial T}{\partial t} = \frac{1}{\rho C_{p}} \(\bn \cdot \(k
+  \bn T\) + Q\).
+\end{equation}
+We have succesively with $\alpha = \frac{1}{\rho C_{p}}$:
+\begin{equation}
+ \int b_i \frac{\partial T_i b_j}{\partial t} = \int b_i \alpha \(\bn \cdot \(k
+  \bn T_j b_j\) + Q\),
+\end{equation}
+\begin{equation}
+  \int b_i b_j \frac{d T_j}{dt} = \int \alpha T_j b_i \bn \cdot \(k \bn b_j\) +
+  \int b_i Q,
+\end{equation}
+\begin{equation}
+  \(\int b_i b_j\) \frac{d T_j}{dt} = - \int \alpha T_j \bn b_i \cdot \(k \bn b_j\) +
+  \int_{\partial} \alpha T_j b_i \boldsymbol{n}\cdot \(k \bn b_j\) + \int b_i Q.
+\end{equation}
+
+\subsubsection{Boundary Condition}
+We are now interested in the boundary term  $\int_{\partial} \alpha T_j b_i
+\boldsymbol{n}\cdot \(k \bn b_j\)$, in the interest of understanding the
+physical meaning of this term, we will write it as:
+\begin{equation}
+ \int_{\partial} \alpha b_i \boldsymbol{n}\cdot \(k \bn T\)
+  \label{boundary}
+\end{equation}
+If \Cref{boundary} is equal to zero, this means that $\bn T=0$. Physically this
+condition correspond to a reflective boundary condition. In practise, we are
+interested in two kind of boundary conditions: radiative loss and convection. In
+practise, we are interested in two kind of boundary conditions: radiative loss
+and convection.
+\paragraph{Radiative Loss}
+The Stefan-Boltzmann law describes the heat flux due to radiation as:
+\begin{equation}
+  -\boldsymbol{n} \cdot  \(k \bn T\) = \varepsilon \sigma \(T^4 -T_{\infty}^4\),
+\end{equation}
+with $\varepsilon$ the emissitivity and $\sigma$ the Stefan-Boltzmann constant.
+The value of $\sigma$ is (from NIST):
+\begin{equation}
+  \sigma = 5.670374419 \times 10^{-8} \frac{W}{m^2 k^4}.
+\end{equation}
+We can write:
+\begin{equation}
+  \begin{split}
+    \int_{\partial} \alpha b_i \boldsymbol{n} \cdot \(k\bn T\) &= 
+    -\int_{\partial} \alpha b_i \varepsilon \sigma \(T^4 - T_{\infty}^4\),\\
+    &= -\int_{\partial} \alpha b_i \varepsilon \sigma T^4 + 
+    \int_{\partial} \alpha b_i \varepsilon T_{\infty}^4
+  \end{split}
+  \label{radiation}
+\end{equation}
+We can now use \Cref{radiation} to impose the radiative loss. However,
+\Cref{radiation} is nonlinear. Thus, we need to use a Newton solver to impose
+the boundary condition. This is less than ideal. Instead, we will linearize the
+Stefan-Boltzmann equation:
+\begin{equation}
+  -\boldsymbol{n} \cdot \(k\bn T\) = h_{\text{rad}}\(T-T_{\infty}\),
+\end{equation}
+with
+\begin{equation}
+  h_{\text{rad}} = \varepsilon \sigma\(T+T_{\infty}\)\(T^2 + T_{\infty}^2\).
+\end{equation}
+Thus, we have:
+\begin{equation}
+  \begin{split}
+    \int_{\partial} \alpha b_i \boldsymbol{n} \cdot \(k \bn T\) &= 
+    -\int_{\partial} \alpha b_i h_{\text{rad}} \(T-T_{\infty}\),\\
+    &=-\int_{\partial} \alpha h_{\text{rad}} \sum_j T_j b_i b_j +
+    \int_{\partial} \alpha h_{\text{rad}} T_{\infty} b_i.
+  \end{split}
+\end{equation}
 
 
 \section{Algorithmic choice}
