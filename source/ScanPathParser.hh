@@ -10,6 +10,10 @@
 
 #include <vector>
 #include <istream>
+#include <boost/filesystem.hpp>
+#include <utils.hh>
+
+namespace adamantine{
 
 enum class ScanPathSegmentType {line, point};
 
@@ -26,10 +30,24 @@ std::vector<ScanPathSegment> ParseScanPath(std::string scan_path_file) {
     std::vector<ScanPathSegment> segments;
 
     // Open the file
-
+    //ASSERT_THROW(boost::filesystem::exists(scan_path_file),
+    //             "The file " + scan_path_file + " does not exist.");
+    std::ifstream file;
+    file.open(scan_path_file);
+    std::string line;
+    int line_index = 0;
+    while ( getline (file,line) ){
+        if (line_index > 2){
+            ScanPathSegment segment;
+            segments.push_back(segment);
+        }
+        line_index++;
+    }
+    file.close();
 
     return segments;
 
 };
+}
 
 #endif
