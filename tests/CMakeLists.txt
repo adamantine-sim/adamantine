@@ -18,6 +18,7 @@ list(APPEND
      test_thermal_physics
      test_timer
      test_utils
+     test_scan_path_parser
      )
 
 set(CUDA_UNIT_TESTS "")
