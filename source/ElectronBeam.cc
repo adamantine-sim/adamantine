@@ -181,8 +181,7 @@ double ElectronBeam<dim>::value(dealii::Point<dim> const &point,
     dealii::Point<1> time;
     time[0] = this->get_time();
 
-    double const beam_center_x = 0.0 + 1.0e6 * time[0]; //_position[0]->value(time);
-
+    double const beam_center_x = _position[0]->value(time);
 
     double xpy_squared = pow(point[0] - beam_center_x, 2);
     if (dim == 3)
@@ -208,7 +207,6 @@ double ElectronBeam<dim>::value(dealii::Point<dim> const &point,
         (dealii::numbers::PI * _beam.diameter_squared * _beam.depth) *
         std::exp((4. * std::log(0.1)) * xpy_squared / _beam.diameter_squared) *
         distribution_z;
-
 
     return heat_source;
   }

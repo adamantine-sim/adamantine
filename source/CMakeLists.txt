@@ -13,7 +13,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/utils.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/types.hh
-    ${CMAKE_CURRENT_SOURCE_DIR}/ScanPathParser.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/ParseScanPath.hh
   )
 set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ElectronBeam.cc

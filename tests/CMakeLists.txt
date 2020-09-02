@@ -18,7 +18,7 @@ list(APPEND
      test_thermal_physics
      test_timer
      test_utils
-     test_scan_path_parser
+     test_parse_scan_path
      )
 
 set(CUDA_UNIT_TESTS "")
@@ -42,3 +42,4 @@ endif()
 adamantine_COPY_INPUT_FILE(beam_position.csv tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d.info tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d_gold.txt tests/data)
+adamantine_COPY_INPUT_FILE(scan_path.txt tests/data)
