@@ -8,16 +8,14 @@
 #ifndef HEAT_SOURCE_HH
 #define HEAT_SOURCE_HH
 
-
 #include <utils.hh>
 
-#include <deal.II/base/point.h>
 #include <deal.II/base/function.h>
-
+#include <deal.II/base/point.h>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/property_tree/ptree.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 #include <iostream>
 #include <istream>
@@ -47,7 +45,7 @@ struct ScanPathSegment
 {
   double end_time;            // Unit: seconds
   double power_modifier;      // Dimensionless
-  dealii::Point<3> end_point; // Unit: m (NOTE: converted from mm in the file)
+  dealii::Point<2> end_point; // Unit: m (NOTE: converted from mm in the file)
 };
 
 /**
@@ -65,20 +63,47 @@ public:
   /**
    * Energy conversion efficiency on the surface.
    */
-  double energy_conversion_eff;
+  double absorption_efficiency;
+
   /**
-   * Efficiency of beam control.
+   * Square of the beam radius.
    */
-  double control_eff;
-  /**
-   * Square of the beam diameter.
-   */
-  double diameter_squared;
+  double radius_squared;
   /**
    * Maximum power of the beam.
    */
   double max_power;
 };
+
+namespace internal
+{
+class BeamCenter
+{
+public:
+  BeamCenter();
+
+  void load_segment_list(std::vector<ScanPathSegment> segment_list);
+
+  double value(dealii::Point<1> const &time,
+               unsigned int const component = 0) const;
+
+  void rewind_time();
+
+  void save_time();
+
+private:
+  mutable unsigned int _current_segment;
+  unsigned int _saved_segment;
+  mutable dealii::Point<1> _current_time;
+  dealii::Point<1> _saved_time;
+  std::vector<ScanPathSegment> _segment_list;
+};
+} // namespace internal
+
+/**
+ * Forward declaration of the tester friend class to HeatSource.
+ */
+class HeatSourceTester;
 
 /**
  * This class describes the evolution of an electron beam source.
@@ -86,6 +111,8 @@ public:
 template <int dim>
 class HeatSource : public dealii::Function<dim>
 {
+  friend class HeatSourceTester;
+
 public:
   /**
    * Constructor.
@@ -123,12 +150,6 @@ public:
   void set_max_height(double height);
 
   /**
-   * This function reads the scan path file and creates a vector of
-   * ScanPathSegments.
-   */
-  std::vector<ScanPathSegment> parseScanPath(std::string scan_path_file);
-
-  /**
    * Compute the heat source at a given point at the current time.
    */
   double value(dealii::Point<dim> const &point,
@@ -151,9 +172,22 @@ private:
    */
   double _max_height;
   /**
-   * Structure of the physical properties of the electron beam.
+   * Structure of the physical properties of the heat source.
    */
   HeatSourceProperties _beam;
+
+  /**
+   * The list of segments in the scan path.
+   */
+  std::vector<ScanPathSegment> _segment_list;
+
+  /**
+   * This function reads the scan path file and populates the vector of
+   * ScanPathSegments.
+   */
+  void parse_scan_path(std::string scan_path_file);
+
+  internal::BeamCenter _beam_center;
 
 };
 
