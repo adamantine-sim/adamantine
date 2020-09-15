@@ -9,6 +9,7 @@
 #define HEAT_SOURCE_HH
 
 #include <utils.hh>
+#include <ScanPath.hh>
 
 #include <deal.II/base/function.h>
 #include <deal.II/base/point.h>
@@ -23,31 +24,6 @@
 
 namespace adamantine
 {
-/**
- * This enum distinguishes between the two types of scan path segments.
- */
-enum class ScanPathSegmentType
-{
-  line,
-  point
-};
-
-/**
- * This structure stores the relevant information for a single segment. The scan
- * path input file distingishes between spots and lines, but when we know the
- * end time and end location, spots become lines with a start point equal to its
- * end point. Everything one needs can be determined from these three quantities
- * (and the segment info from the preceding segment) but in the future it might
- * be worth adding in some redundant information like start time/point and
- * velocity.
- */
-struct ScanPathSegment
-{
-  double end_time;            // Unit: seconds
-  double power_modifier;      // Dimensionless
-  dealii::Point<2> end_point; // Unit: m (NOTE: converted from mm in the file)
-};
-
 /**
  * This structure stores all the physical properties necessary to define an
  * heat source.
@@ -75,57 +51,12 @@ public:
   double max_power;
 };
 
-namespace internal
-{
-/**
- * This class calculates the position of the center of a heat source. It also
- * gives the power modifier for the current segment.
- */
-class BeamCenter
-{
-public:
-  BeamCenter();
-
-  void load_segment_list(std::vector<ScanPathSegment> segment_list);
-
-  double value(dealii::Point<1> const &time,
-               unsigned int const component = 0) const;
-
-  /**
-   * Return the power coefficient for the current segment
-   */
-  double get_power_modifier(dealii::Point<1> const &time) const;
-
-  void rewind_time();
-
-  void save_time();
-
-private:
-  mutable unsigned int _current_segment;
-  unsigned int _saved_segment;
-  mutable dealii::Point<1> _current_time;
-  dealii::Point<1> _saved_time;
-  std::vector<ScanPathSegment> _segment_list;
-
-  void update_current_segment_info(double time,
-                                   dealii::Point<2> &segment_start_point,
-                                   double &segment_start_time) const;
-};
-} // namespace internal
-
-/**
- * Forward declaration of the tester friend class to HeatSource.
- */
-class HeatSourceTester;
-
 /**
  * This class describes the evolution of a Goldak heat source.
  */
 template <int dim>
 class HeatSource : public dealii::Function<dim>
 {
-  friend class HeatSourceTester;
-
 public:
   /**
    * Constructor.
@@ -177,13 +108,7 @@ private:
    */
   std::vector<ScanPathSegment> _segment_list;
 
-  /**
-   * This function reads the scan path file and populates the vector of
-   * ScanPathSegments.
-   */
-  void parse_scan_path(std::string scan_path_file);
-
-  internal::BeamCenter _beam_center;
+  ScanPath _scan_path;
 };
 
 template <int dim>

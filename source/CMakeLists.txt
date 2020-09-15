@@ -14,6 +14,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/utils.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/types.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/HeatSource.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/ScanPath.hh
   )
 set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ElectronBeam.cc
@@ -26,6 +27,7 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/HeatSource.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ScanPath.cc
   )
 
 if (ADAMANTINE_ENABLE_CUDA)

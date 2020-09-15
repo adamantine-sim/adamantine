@@ -19,6 +19,7 @@ list(APPEND
      test_timer
      test_utils
      test_heat_source
+     test_scan_path
      )
 
 set(CUDA_UNIT_TESTS "")
