@@ -26,6 +26,7 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
   geometry_database.put("length", 12);
   geometry_database.put("length_divisions", 4);
   geometry_database.put("height", 6);
@@ -103,6 +104,7 @@ BOOST_AUTO_TEST_CASE(spmv)
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
   geometry_database.put("length", 12);
   geometry_database.put("length_divisions", 4);
   geometry_database.put("height", 6);

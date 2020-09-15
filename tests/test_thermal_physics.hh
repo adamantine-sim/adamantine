@@ -15,6 +15,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
 
   // Geometry database
   boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
   geometry_database.put("length", 12e-3);
   geometry_database.put("length_divisions", 4);
   geometry_database.put("height", 6e-3);
@@ -69,6 +70,7 @@ void thermal_2d_manufactured_solution()
 
   // Geometry database
   boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
   geometry_database.put("length", 1e3);
   geometry_database.put("length_divisions", 4);
   geometry_database.put("height", 6e3);
@@ -135,6 +137,7 @@ void initial_temperature()
 
   // Geometry database
   boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
   geometry_database.put("length", 12e-3);
   geometry_database.put("length_divisions", 1);
   geometry_database.put("height", 6e-3);
