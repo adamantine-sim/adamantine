@@ -1,5 +1,6 @@
 geometry
 {
+  import_mesh false ; Use builtin mesh generator
   dim 2 ; dimension of the domain
   length 2e-2 ; [m]
   height 1e-2 ; [m] In 3D, the third parameters is width

@@ -18,9 +18,9 @@
 
 template <int dim>
 void check_material_id(
-    dealii::parallel::distributed::Triangulation<dim> const &tria)
+    dealii::parallel::distributed::Triangulation<dim> const &tria,
+    dealii::types::boundary_id top_boundary)
 {
-  dealii::types::boundary_id const top_boundary = 3;
   for (auto cell :
        dealii::filter_iterators(tria.active_cell_iterators(),
                                 dealii::IteratorFilters::LocallyOwnedCell()))
@@ -54,6 +54,7 @@ BOOST_AUTO_TEST_CASE(geometry_2D)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
   boost::property_tree::ptree database;
+  database.put("import_mesh", false);
   database.put("length", 12);
   database.put("length_divisions", 4);
   database.put("height", 6);
@@ -64,13 +65,16 @@ BOOST_AUTO_TEST_CASE(geometry_2D)
       geometry.get_triangulation();
 
   BOOST_CHECK(tria.n_active_cells() == 20);
-  check_material_id(tria);
+
+  dealii::types::boundary_id const top_boundary = 3;
+  check_material_id(tria, top_boundary);
 }
 
 BOOST_AUTO_TEST_CASE(geometry_3D)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
   boost::property_tree::ptree database;
+  database.put("import_mesh", false);
   database.put("length", 12);
   database.put("length_divisions", 4);
   database.put("height", 4);
@@ -83,5 +87,26 @@ BOOST_AUTO_TEST_CASE(geometry_3D)
       geometry.get_triangulation();
 
   BOOST_CHECK(tria.n_active_cells() == 40);
-  check_material_id(tria);
+
+  dealii::types::boundary_id const top_boundary = 3;
+  check_material_id(tria, top_boundary);
+}
+
+BOOST_AUTO_TEST_CASE(gmsh)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+  boost::property_tree::ptree database;
+  database.put("import_mesh", true);
+  database.put("mesh_file", "extruded_cube.msh");
+  database.put("mesh_format", "gmsh");
+  database.put("top_boundary_id", 1);
+
+  adamantine::Geometry<3> geometry(communicator, database);
+  dealii::parallel::distributed::Triangulation<3> const &tria =
+      geometry.get_triangulation();
+
+  BOOST_CHECK(tria.n_active_cells() == 320);
+
+  dealii::types::boundary_id const top_boundary = 1;
+  check_material_id(tria, top_boundary);
 }

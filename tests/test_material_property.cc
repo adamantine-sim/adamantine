@@ -25,6 +25,7 @@ BOOST_AUTO_TEST_CASE(material_property)
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
   geometry_database.put("length", 12);
   geometry_database.put("length_divisions", 4);
   geometry_database.put("height", 6);
@@ -77,6 +78,7 @@ BOOST_AUTO_TEST_CASE(ratios)
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
   geometry_database.put("length", 12);
   geometry_database.put("length_divisions", 4);
   geometry_database.put("height", 6);
@@ -222,6 +224,7 @@ BOOST_AUTO_TEST_CASE(material_property_table)
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
   geometry_database.put("length", 12);
   geometry_database.put("length_divisions", 4);
   geometry_database.put("height", 6);
@@ -307,6 +310,7 @@ BOOST_AUTO_TEST_CASE(material_property_polynomials)
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
   geometry_database.put("length", 12);
   geometry_database.put("length_divisions", 4);
   geometry_database.put("height", 6);

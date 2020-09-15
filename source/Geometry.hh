@@ -57,6 +57,12 @@ private:
    * Shared pointer to the underlying Triangulation.
    */
   dealii::parallel::distributed::Triangulation<dim> _triangulation;
+
+  /**
+   * Assign the material state to the mesh. The top cells are set to be powder;
+   * the others are solid.
+   */
+  void assign_material_state(dealii::types::boundary_id top_boundary);
 };
 
 template <int dim>
