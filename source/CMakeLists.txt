@@ -13,7 +13,6 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/utils.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/types.hh
-    ${CMAKE_CURRENT_SOURCE_DIR}/HeatSource.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ScanPath.hh
   )
 set(Adamantine_SOURCES
@@ -26,7 +25,6 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/HeatSource.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ScanPath.cc
   )
 
