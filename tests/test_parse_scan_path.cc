@@ -7,7 +7,8 @@
 
  #define BOOST_TEST_MODULE ParseScanPath
 
- #include <ParseScanPath.hh>
+ //#include <ParseScanPath.hh>
+ #include <HeatSource.hh>
 
  #include "main.cc"
 
@@ -15,9 +16,21 @@ namespace adamantine {
 
  BOOST_AUTO_TEST_CASE(parse_scan_path)
  {
+     boost::property_tree::ptree database;
+
+     database.put("depth", 0.1);
+     database.put("energy_conversion_efficiency", 0.1);
+     database.put("control_efficiency", 1.0);
+     database.put("diameter", 1.0);
+     database.put("max_power", 10.);
+     database.put("abscissa", "t");
+     HeatSource<2> heat_source(database);
+
      double const tolerance = 1e-12;
      std::string scan_path_file = "scan_path.txt";
-     std::vector<ScanPathSegment> segment_list = ParseScanPath(scan_path_file);
+     heat_source.save_time();
+
+     std::vector<ScanPathSegment> segment_list = heat_source.parseScanPath(scan_path_file);
 
      BOOST_CHECK(segment_list.size() == 2);
 

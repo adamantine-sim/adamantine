@@ -25,12 +25,13 @@ namespace adamantine
 /**
  * This enum distinguishes between the two types of scan path segments.
  */
+ /*
 enum class ScanPathSegmentType
 {
   line,
   point
 };
-
+*/
 /**
  * This structure stores the relevant information for a single segment. The scan
  * path input file distingishes between spots and lines, but when we know the
@@ -40,17 +41,19 @@ enum class ScanPathSegmentType
  * be worth adding in some redundant information like start time/point and
  * velocity.
  */
+ /*
 struct ScanPathSegment
 {
   double end_time;            // Unit: seconds
   double power_modifier;      // Dimensionless
   dealii::Point<3> end_point; // Unit: m (NOTE: converted from mm in the file)
 };
-
+*/
 /**
  * This function reads the scan path file and creates a vector of
  * ScanPathSegments.
  */
+ /*
 std::vector<ScanPathSegment> ParseScanPath(std::string scan_path_file)
 {
 
@@ -135,6 +138,7 @@ std::vector<ScanPathSegment> ParseScanPath(std::string scan_path_file)
 
   return segments;
 };
+*/
 } // namespace adamantine
 
 #endif
