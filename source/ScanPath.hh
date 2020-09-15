@@ -5,8 +5,8 @@
  * for the text and further information on this license.
  */
 
- #ifndef SCAN_PATH_HH
- #define SCAN_PATH_HH
+#ifndef SCAN_PATH_HH
+#define SCAN_PATH_HH
 
 #include <utils.hh>
 
@@ -60,29 +60,69 @@ class ScanPathTester;
  */
 class ScanPath : public dealii::Function<1>
 {
-friend class ScanPathTester;
+  friend class ScanPathTester;
+
 public:
+  /**
+   * Construtor.
+   * \param[in] scan_path_file is the name of the text file containing the scan
+   * path
+   */
   ScanPath(std::string scan_path_file);
 
+  /**
+   * Calculates the location of the scan path at a given time for a single
+   * coordinate.
+   */
   double value(dealii::Point<1> const &time,
                unsigned int const component = 0) const;
 
   /**
-   * Return the power coefficient for the current segment
+   * Returns the power coefficient for the current segment
    */
   double get_power_modifier(dealii::Point<1> const &time) const;
 
-  void rewind_time();
-
+  /**
+   * Method to save the segment number as a specific time. (This is currently
+   * unused in the code).
+   */
   void save_time();
 
+  /**
+   * Method to revert the segment number and current time to a saved value.
+   * (This is currently unused in the code).
+   */
+  void rewind_time();
+
 private:
-  mutable unsigned int _current_segment;
-  unsigned int _saved_segment;
-  mutable dealii::Point<1> _current_time;
-  dealii::Point<1> _saved_time;
+  /**
+   * The list of information about each segment in the scan path.
+   */
   std::vector<ScanPathSegment> _segment_list;
 
+  /**
+   * The index of the current segment in the scan path.
+   */
+  mutable unsigned int _current_segment;
+
+  /**
+   * The index of the saved segment in the scan path from save_time().
+   */
+  unsigned int _saved_segment;
+
+  /**
+   * The current time.
+   */
+  mutable dealii::Point<1> _current_time;
+
+  /**
+   * The saved time from save_time().
+   */
+  dealii::Point<1> _saved_time;
+
+  /**
+   * Method to determine the current segment, its start point, and start time.
+   */
   void update_current_segment_info(double time,
                                    dealii::Point<2> &segment_start_point,
                                    double &segment_start_time) const;
