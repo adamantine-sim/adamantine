@@ -133,9 +133,9 @@ HeatSource<dim>::HeatSource(boost::property_tree::ptree const &database)
     _beam.max_power = max_power.get();
   else
   {
-    double const current = database.get<double>("current");
-    double const voltage = database.get<double>("voltage");
-    _beam.max_power = current * voltage;
+    std::string message =
+        "When using HeatSource, the max power is not optional.";
+    throw std::runtime_error(message);
   }
 
   // Parse the scan path

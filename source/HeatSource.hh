@@ -77,6 +77,10 @@ public:
 
 namespace internal
 {
+/**
+ * This class calculates the position of the center of a heat source. It also
+ * gives the power modifier for the current segment.
+ */
 class BeamCenter
 {
 public:
@@ -115,7 +119,7 @@ private:
 class HeatSourceTester;
 
 /**
- * This class describes the evolution of an electron beam source.
+ * This class describes the evolution of a Goldak heat source.
  */
 template <int dim>
 class HeatSource : public dealii::Function<dim>
@@ -126,29 +130,12 @@ public:
   /**
    * Constructor.
    * \param[in] database requires the following entries:
-   *   - <B>energy_conversion_efficiency</B>: double in \f$[0,1]\f$
-   *   - <B>control_efficiency</b>: double in \f$[0,1]\f$
+   *   - <B>absorption_efficiency</B>: double in \f$[0,1]\f$
    *   - <B>depth</B>: double in \f$[0,\infty)\f$
    *   - <B>diameter</B>: double in \f$[0,\infty)\f$
-   *   - <B>max_power</B>: double in \f$[0, \infty)\f$ [optional: if not
-   *   defined, <i>current</i> and <i>voltage</i> need to be defined]
-   *   - <B>current</B>: double in \f$[0, \infty)\f$ [optional: if defined
-   *   <i>voltage</i> should be defined too, if not defined <i>max_power</i>
-   *   should be defined]
-   *   - <B>voltage</B>: double in \f$[0,\infty)\f$ [optional: if defined
-   *   <i>current</i> should be defined too, if not defined <i>max_power</i>
-   *   should be defined]
-   *   - <B>input_file</B>: name of the csv file that contains the successive
-   *   position of the electron beam [optional: if not defined then
-   *   <i>abscissa</i> and, in 3D, <i>ordinate</i> need to be defined]
-   *   - <B>delimiter</B>: delimiting character used in <i>input_file</i>
-   *   [required if <i>input_file</i> is defined]
-   *   - <B>abscissa</B>: string, abscissa of the beam as a function of time
-   *   (e.g. "(t-1) * (t-2)") [optional: need to be defined if <i>input_file</i>
-   *   is not defined]
-   *   - <B>ordinate</B>: string, ordinate of the beam as a function of time
-   *   [required only for three dimensional calculation and if <i>input_file</i>
-   *   is not defined]
+   *   - <B>max_power</B>: double in \f$[0, \infty)\f$
+   *   - <B>input_file</B>: name of the file that contains the scan path
+   *     segments
    */
   HeatSource(boost::property_tree::ptree const &database);
 
