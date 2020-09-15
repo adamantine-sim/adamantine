@@ -87,6 +87,11 @@ public:
   double value(dealii::Point<1> const &time,
                unsigned int const component = 0) const;
 
+  /**
+   * Return the power coefficient for the current segment
+   */
+  double get_power_modifier(dealii::Point<1> const &time) const;
+
   void rewind_time();
 
   void save_time();
@@ -97,6 +102,10 @@ private:
   mutable dealii::Point<1> _current_time;
   dealii::Point<1> _saved_time;
   std::vector<ScanPathSegment> _segment_list;
+
+  void update_current_segment_info(double time,
+                                   dealii::Point<2> &segment_start_point,
+                                   double &segment_start_time) const;
 };
 } // namespace internal
 
@@ -188,7 +197,6 @@ private:
   void parse_scan_path(std::string scan_path_file);
 
   internal::BeamCenter _beam_center;
-
 };
 
 template <int dim>

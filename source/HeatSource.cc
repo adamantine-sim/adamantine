@@ -24,7 +24,7 @@ namespace adamantine
 
 namespace internal
 {
-BeamCenter::BeamCenter() : _current_segment(-1), _saved_segment(-1)
+BeamCenter::BeamCenter() : _current_segment(0), _saved_segment(-1)
 {
   _current_time[0] = -1.;
 }
@@ -34,45 +34,77 @@ void BeamCenter::load_segment_list(std::vector<ScanPathSegment> segment_list)
   _segment_list = segment_list;
 }
 
-double BeamCenter::value(dealii::Point<1> const &time,
-                         unsigned int const component) const
+void BeamCenter::update_current_segment_info(
+    double time, dealii::Point<2> &segment_start_point,
+    double &segment_start_time) const
 {
-
   // Get to the correct segment (assumes that the current time is never before
   // the current segment starts)
-  dealii::Point<2> segment_start_point;
-  double segment_start_time = 0.0;
-
-  _current_time[0] = time[0];
-  if (time[0] > _segment_list[_current_segment].end_time)
+  // dealii::Point<2> segment_start_point;
+  // double segment_start_time = 0.0;
+  //_current_time[0] = time[0];
+  if (time > _segment_list[_current_segment].end_time)
   {
-    while (time[0] > _segment_list[_current_segment].end_time)
+    while (time > _segment_list[_current_segment].end_time)
     {
       ++_current_segment;
     }
-    // Update the start position and time for the current segment
-    if (_current_segment > 0)
-    {
-      segment_start_time = _segment_list[_current_segment - 1].end_time;
-      segment_start_point = _segment_list[_current_segment - 1].end_point;
-    }
-    else
-    {
-      segment_start_time = 0.0;
-      segment_start_point = _segment_list[_current_segment].end_point;
-    }
   }
+  // Update the start position and time for the current segment
+  if (_current_segment > 0)
+  {
+    segment_start_time = _segment_list[_current_segment - 1].end_time;
+    segment_start_point = _segment_list[_current_segment - 1].end_point;
+  }
+  else
+  {
+    segment_start_time = 0.0;
+    segment_start_point = _segment_list[_current_segment].end_point;
+  }
+}
+
+double BeamCenter::value(dealii::Point<1> const &time,
+                         unsigned int const component) const
+{
+  // The global coordinate system is (x,z,y), while the scan path coordinate
+  // system is (x,y,z). I need to convert the global coordinate number to the
+  // scan path coordinates.
+  int beam_component = 0;
+  if (component == 2)
+  {
+    beam_component = 1;
+  }
+  ASSERT_THROW(component != 1, "Invalid BeamCenter component.");
+
+  // Get to the correct segment (assumes that the current time is never
+  // before the current segment starts)
+  dealii::Point<2> segment_start_point;
+  double segment_start_time = 0.0;
+  _current_time[0] = time[0];
+  update_current_segment_info(time[0], segment_start_point, segment_start_time);
 
   // Calculate the position in the direction given by "component"
-  double position = segment_start_point[component] +
-                    (_segment_list[_current_segment].end_point[component]
-                    - segment_start_point[component]) /
-                    (_segment_list[_current_segment].end_time
-                    - segment_start_time)
-                    * (time[0] - segment_start_time);
+  double position =
+      segment_start_point[beam_component] +
+      (_segment_list[_current_segment].end_point[beam_component] -
+       segment_start_point[beam_component]) /
+          (_segment_list[_current_segment].end_time - segment_start_time) *
+          (time[0] - segment_start_time);
 
-return position;
-} // namespace internal
+  return position;
+}
+
+double BeamCenter::get_power_modifier(dealii::Point<1> const &time) const
+{
+  // Get to the correct segment (assumes that the current time is never
+  // before the current segment starts)
+  dealii::Point<2> segment_start_point;
+  double segment_start_time = 0.0;
+  _current_time[0] = time[0];
+  update_current_segment_info(time[0], segment_start_point, segment_start_time);
+
+  return _segment_list[_current_segment].power_modifier;
+}
 
 void BeamCenter::rewind_time()
 {
@@ -84,8 +116,8 @@ void BeamCenter::save_time()
 {
   _saved_segment = _current_segment;
   _saved_time = _current_time;
-}
-} // namespace adamantine
+} // namespace internal
+} // namespace internal
 
 template <int dim>
 HeatSource<dim>::HeatSource(boost::property_tree::ptree const &database)
@@ -212,22 +244,21 @@ double HeatSource<dim>::value(dealii::Point<dim> const &point,
 
   double const z = point[1] - _max_height;
   if ((z + _beam.depth) < 0.)
+  {
     return 0.;
+  }
   else
   {
     dealii::Point<1> time;
     time[0] = this->get_time();
-
     double const beam_center_x = _beam_center.value(time, 0);
-
     double xpy_squared = pow(point[0] - beam_center_x, 2);
     if (dim == 3)
     {
-      double const beam_center_y = _beam_center.value(time, 1);
+      double const beam_center_y = _beam_center.value(time, 2);
       xpy_squared += pow(point[2] - beam_center_y, 2);
     }
-
-    double segment_power_modifier = 1.0;
+    double segment_power_modifier = _beam_center.get_power_modifier(time);
     double pi_over_3_to_1p5 = pow(dealii::numbers::PI / 3.0, 1.5);
 
     // Goldak heat source
