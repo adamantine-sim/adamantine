@@ -8,8 +8,6 @@
 #ifndef SCAN_PATH_HH
 #define SCAN_PATH_HH
 
-#include <utils.hh>
-
 #include <deal.II/base/function.h>
 #include <deal.II/base/point.h>
 
@@ -45,7 +43,7 @@ struct ScanPathSegment
 {
   double end_time;            // Unit: seconds
   double power_modifier;      // Dimensionless
-  dealii::Point<2> end_point; // Unit: m (NOTE: converted from mm in the file)
+  dealii::Point<3> end_point; // Unit: m (NOTE: converted from mm in the file)
 };
 
 /**
@@ -58,7 +56,7 @@ class ScanPathTester;
  * gives the power modifier for the current segment. It reads in the scan path
  * from a text file.
  */
-class ScanPath : public dealii::Function<1>
+class ScanPath
 {
   friend class ScanPathTester;
 
@@ -74,25 +72,12 @@ public:
    * Calculates the location of the scan path at a given time for a single
    * coordinate.
    */
-  double value(dealii::Point<1> const &time,
-               unsigned int const component = 0) const;
+  dealii::Point<3> value(double const &time) const;
 
   /**
    * Returns the power coefficient for the current segment
    */
-  double get_power_modifier(dealii::Point<1> const &time) const;
-
-  /**
-   * Method to save the segment number as a specific time. (This is currently
-   * unused in the code).
-   */
-  void save_time();
-
-  /**
-   * Method to revert the segment number and current time to a saved value.
-   * (This is currently unused in the code).
-   */
-  void rewind_time();
+  double get_power_modifier(double const &time) const;
 
 private:
   /**
@@ -106,25 +91,15 @@ private:
   mutable unsigned int _current_segment;
 
   /**
-   * The index of the saved segment in the scan path from save_time().
-   */
-  unsigned int _saved_segment;
-
-  /**
    * The current time.
    */
-  mutable dealii::Point<1> _current_time;
-
-  /**
-   * The saved time from save_time().
-   */
-  dealii::Point<1> _saved_time;
+  mutable double _current_time;
 
   /**
    * Method to determine the current segment, its start point, and start time.
    */
   void update_current_segment_info(double time,
-                                   dealii::Point<2> &segment_start_point,
+                                   dealii::Point<3> &segment_start_point,
                                    double &segment_start_time) const;
 };
 } // namespace adamantine

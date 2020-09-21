@@ -14,11 +14,11 @@ list(APPEND
      test_material_property
      test_newton_solver
      test_post_processor
+     test_scan_path
      test_thermal_operator
      test_thermal_physics
      test_timer
      test_utils
-     test_scan_path
      )
 
 set(CUDA_UNIT_TESTS "")
