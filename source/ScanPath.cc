@@ -95,7 +95,7 @@ ScanPath::ScanPath(std::string scan_path_file) : _current_segment(0)
 
 void ScanPath::update_current_segment_info(
     double time, dealii::Point<3> &segment_start_point,
-    double &segment_start_time) const
+    double &segment_start_time)
 {
   // Get to the correct segment (assumes that the current time is never before
   // the current segment starts)
@@ -117,7 +117,7 @@ void ScanPath::update_current_segment_info(
   }
 }
 
-dealii::Point<3> ScanPath::value(double const &time) const
+dealii::Point<3> ScanPath::value(double const &time)
 {
   // Get to the correct segment (assumes that the current time is never
   // before the current segment starts)
@@ -136,7 +136,7 @@ dealii::Point<3> ScanPath::value(double const &time) const
   return position;
 }
 
-double ScanPath::get_power_modifier(double const &time) const
+double ScanPath::get_power_modifier(double const &time)
 {
   // Get to the correct segment (assumes that the current time is never
   // before the current segment starts)

@@ -46,23 +46,23 @@ BOOST_AUTO_TEST_CASE(scan_path)
 
 BOOST_AUTO_TEST_CASE(scan_path_location)
 {
-    double const tolerance = 1e-10;
+  double const tolerance = 1e-10;
 
-    ScanPath scan_path("scan_path.txt");
-    double time = 1.0e-7;
-    dealii::Point<3> p1 = scan_path.value(time);
+  ScanPath scan_path("scan_path.txt");
+  double time = 1.0e-7;
+  dealii::Point<3> p1 = scan_path.value(time);
 
-    BOOST_CHECK_CLOSE(p1[0], 0.0, tolerance);
-    BOOST_CHECK_CLOSE(p1[1], 0.0, tolerance);
-    BOOST_CHECK_CLOSE(p1[2], 0.0, tolerance);
+  BOOST_CHECK_CLOSE(p1[0], 0.0, tolerance);
+  BOOST_CHECK_CLOSE(p1[1], 0.0, tolerance);
+  BOOST_CHECK_CLOSE(p1[2], 0.0, tolerance);
 
-    time = 0.001001;
+  time = 0.001001;
 
-    dealii::Point<3> p2 = scan_path.value(time);
+  dealii::Point<3> p2 = scan_path.value(time);
 
-    BOOST_CHECK_CLOSE(p2[0], 8.0e-4, tolerance);
-    BOOST_CHECK_CLOSE(p2[1], 0.0, tolerance);
-    BOOST_CHECK_CLOSE(p2[2], 0.0, tolerance);
+  BOOST_CHECK_CLOSE(p2[0], 8.0e-4, tolerance);
+  BOOST_CHECK_CLOSE(p2[1], 0.0, tolerance);
+  BOOST_CHECK_CLOSE(p2[2], 0.0, tolerance);
 }
 
 } // namespace adamantine
