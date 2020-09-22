@@ -14,6 +14,7 @@ list(APPEND
      test_material_property
      test_newton_solver
      test_post_processor
+     test_scan_path
      test_thermal_operator
      test_thermal_physics
      test_timer
@@ -41,4 +42,5 @@ endif()
 adamantine_COPY_INPUT_FILE(beam_position.csv tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d.info tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d_gold.txt tests/data)
+adamantine_COPY_INPUT_FILE(scan_path.txt tests/data)
 adamantine_COPY_INPUT_FILE(extruded_cube.msh tests/data)
