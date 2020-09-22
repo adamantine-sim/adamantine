@@ -40,11 +40,10 @@ ScanPath::ScanPath(std::string scan_path_file) : _current_segment(0)
       ScanPathSegmentType segment_type;
       if (split_line[0] == "0")
       {
-        if (_segment_list.size() == 0)
-        {
-          ASSERT_THROW(false,
-                       "Error: Scan paths must begin with a 'point' segment.");
-        }
+        // Check to make sure the segment isn't the first, if it is, throw an
+        // exception (the first segment must be a point in the spec).
+        ASSERT_THROW(_segment_list.size() > 0,
+                     "Error: Scan paths must begin with a 'point' segment.");
         segment_type = ScanPathSegmentType::line;
       }
       else if (split_line[0] == "1")
