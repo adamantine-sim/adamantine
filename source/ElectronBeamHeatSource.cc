@@ -32,17 +32,17 @@ double ElectronBeamHeatSource<dim>::value(dealii::Point<dim> const &point,
   else
   {
     double const distribution_z =
-        -3. * pow(z / HeatSource<dim>::_beam.depth, 2) -
+        -3. * std::pow(z / HeatSource<dim>::_beam.depth, 2) -
         2. * (z / HeatSource<dim>::_beam.depth) + 1.;
 
     dealii::Point<3> const beam_center =
         HeatSource<dim>::_scan_path.value(time);
-    double xpy_squared = pow(point[0] - beam_center(0), 2);
+    double xpy_squared = std::pow(point[0] - beam_center[0], 2);
     if (dim == 3)
     {
       // NOTE: Due to the differing coordinate systems, "y" here is the third
       // component of the input point.
-      xpy_squared += pow(point[2] - beam_center(1), 2);
+      xpy_squared += std::pow(point[2] - beam_center[1], 2);
     }
     double segment_power_modifier =
         HeatSource<dim>::_scan_path.get_power_modifier(time);

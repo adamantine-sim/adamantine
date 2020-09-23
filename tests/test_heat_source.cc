@@ -18,7 +18,7 @@ namespace adamantine
 
 BOOST_AUTO_TEST_CASE(heat_source_value_2d)
 {
-  double const tolerance = 1e-10;
+  double const tolerance = 1e-12;
 
   boost::property_tree::ptree database;
 
