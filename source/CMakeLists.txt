@@ -1,6 +1,8 @@
 set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ElectronBeam.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/ElectronBeamHeatSource.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Geometry.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/GoldakHeatSource.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/HeatSource.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.hh
@@ -18,7 +20,9 @@ set(Adamantine_HEADERS
   )
 set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ElectronBeam.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ElectronBeamHeatSource.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/Geometry.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/GoldakHeatSource.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/HeatSource.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.cc

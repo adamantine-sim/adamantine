@@ -8,18 +8,12 @@
 #ifndef HEAT_SOURCE_HH
 #define HEAT_SOURCE_HH
 
-#include <utils.hh>
 #include <ScanPath.hh>
 
-#include <deal.II/base/function.h>
 #include <deal.II/base/point.h>
 
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-#include <iostream>
-#include <istream>
 #include <vector>
 
 namespace adamantine
@@ -32,8 +26,8 @@ struct HeatSourceProperties
 {
 public:
   /**
-   * Absolute penetration of the electron beam into the material where 99% of
-   * the beam energy is absorbed.
+   * A metric of the depth of the heat source into the material. The specific
+   * definition of the depth may differ across heat source types.
    */
   double depth;
   /**
@@ -52,10 +46,20 @@ public:
 };
 
 /**
- * This class describes the evolution of a Goldak heat source.
+ * This is the base class for describing the functional form of a heat source.
+ * It has a pure virtual "value" method that needs to be implemented in a
+ * derived class.
+ * NOTE: The coordinate system in this class is different than for the finite
+ * element mesh. In this class, the first two components of a dealii::Point<3>
+ * describe the position along the surface of the part. The last component is
+ * the height through the thickness of the part from the base plate. This is in
+ * opposition to the finite element mesh where the first and last components of
+ * a dealii::Point<3> describe the position along the surface of the part, and
+ * the second component is the thickness. That is, the last two components are
+ * swapped between the two coordinate systems.
  */
 template <int dim>
-class HeatSource : public dealii::Function<dim>
+class HeatSource
 {
 public:
   /**
@@ -72,28 +76,16 @@ public:
 
   /**
    * Set the maximum height of the domain. This is the height at which the
-   * electron beam penetrate the material.
+   * heat source penetrates the material.
    */
   void set_max_height(double height);
 
   /**
-   * Compute the heat source at a given point at the current time.
+   * Compute the heat source at a given point at a given time.
    */
-  double value(dealii::Point<dim> const &point,
-               unsigned int const component = 0) const override;
+  virtual double value(dealii::Point<dim> const &point, double const time) = 0;
 
-  /**
-   * Reset the current time and the position to the last saved state.
-   */
-  void rewind_time();
-
-  /**
-   * Save the current time and the position in the list of successive positions
-   * of the beam.
-   */
-  void save_time();
-
-private:
+protected:
   /**
    * Height of the domain.
    */
@@ -104,10 +96,8 @@ private:
   HeatSourceProperties _beam;
 
   /**
-   * The list of segments in the scan path.
+   * The scan path for the heat source.
    */
-  std::vector<ScanPathSegment> _segment_list;
-
   ScanPath _scan_path;
 };
 
@@ -116,6 +106,7 @@ inline void HeatSource<dim>::set_max_height(double height)
 {
   _max_height = height;
 }
+
 } // namespace adamantine
 
 #endif
