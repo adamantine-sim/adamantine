@@ -18,7 +18,7 @@ HeatSource<dim>::HeatSource(boost::property_tree::ptree const &database)
   // Set the properties of the heat source.
   _beam.depth = database.get<double>("depth");
   _beam.absorption_efficiency = database.get<double>("absorption_efficiency");
-  _beam.radius_squared = pow(database.get("diameter", 2e-3) / 2.0, 2);
+  _beam.radius_squared = std::pow(database.get("diameter", 2e-3) / 2.0, 2);
   _beam.max_power = database.get<double>("max_power");
 }
 

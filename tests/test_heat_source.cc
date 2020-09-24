@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE(heat_source_value_2d)
   dealii::Point<2> point3(8.0e-4, 0.2);
   goldak_heat_source.set_max_height(0.2);
   g_value = goldak_heat_source.value(point3, 0.001001);
-  double pi_over_3_to_1p5 = pow(dealii::numbers::PI / 3.0, 1.5);
+  double pi_over_3_to_1p5 = std::pow(dealii::numbers::PI / 3.0, 1.5);
   double expected_value =
       -2.0 * 0.1 * 10.0 / (0.5 * 0.5 * 0.1 * pi_over_3_to_1p5);
   BOOST_CHECK_CLOSE(g_value, expected_value, tolerance);
@@ -131,7 +131,7 @@ BOOST_AUTO_TEST_CASE(heat_source_value_3d)
   dealii::Point<3> point3(8e-4, 0.2, 0.0);
   goldak_heat_source.set_max_height(0.2);
   g_value = goldak_heat_source.value(point3, 0.001001);
-  double pi_over_3_to_1p5 = pow(dealii::numbers::PI / 3.0, 1.5);
+  double pi_over_3_to_1p5 = std::pow(dealii::numbers::PI / 3.0, 1.5);
   double expected_value =
       -2.0 * 0.1 * 10.0 / 0.5 / 0.5 / 0.1 / pi_over_3_to_1p5;
   BOOST_CHECK_CLOSE(g_value, expected_value, tolerance);
