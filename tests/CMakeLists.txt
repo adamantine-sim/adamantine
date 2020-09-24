@@ -9,6 +9,7 @@ list(APPEND
      UNIT_TESTS
      test_electron_beam
      test_geometry
+     test_heat_source
      test_implicit_operator
      test_integration_2d
      test_material_property
