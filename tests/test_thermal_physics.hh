@@ -101,6 +101,9 @@ void thermal_2d_manufactured_solution()
   database.put("sources.beam_0.diameter", 1e100);
   database.put("sources.beam_0.max_power", 1e300);
   database.put("sources.beam_0.abscissa", "1");
+  database.put("sources.beam_0.scan_path_file", "scan_path.txt");
+  database.put("sources.beam_0.absorption_efficiency", 0.3);
+
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
   // Build ThermalPhysics
@@ -167,6 +170,9 @@ void initial_temperature()
   database.put("sources.beam_0.diameter", 1e100);
   database.put("sources.beam_0.max_power", 1e300);
   database.put("sources.beam_0.abscissa", "t");
+  database.put("sources.beam_0.scan_path_file", "scan_path.txt");
+  database.put("sources.beam_0.absorption_efficiency", 0.3);
+
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
   // Build ThermalPhysics

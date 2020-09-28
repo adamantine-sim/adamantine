@@ -69,7 +69,7 @@ public:
    *   - <B>depth</B>: double in \f$[0,\infty)\f$
    *   - <B>diameter</B>: double in \f$[0,\infty)\f$
    *   - <B>max_power</B>: double in \f$[0, \infty)\f$
-   *   - <B>input_file</B>: name of the file that contains the scan path
+   *   - <B>scan_path_file</B>: name of the file that contains the scan path
    *     segments
    */
   HeatSource(boost::property_tree::ptree const &database);

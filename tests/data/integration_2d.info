@@ -22,28 +22,28 @@ materials
   property_format polynomial
 
   n_materials 1
-  
+
   material_0
   {
-    solid 
+    solid
     {
       density 7541 ; [kg/m^3] For now all the states needs to have the same
                     ; density. The value can be constant or an equation
       specific_heat 600 ; [J/kg K]  The value can be constant or an equation
-      thermal_conductivity 26.6 ; [W/m K] The value can be constant or an 
+      thermal_conductivity 26.6 ; [W/m K] The value can be constant or an
                                 ; equation like 10*exp(T)*sin(2.*T)
     }
-    
+
     powder
     {
-      specific_heat 600 ; [J/kg K] 
+      specific_heat 600 ; [J/kg K]
       density 7541 ; [kg/m^3]
       thermal_conductivity 0.266 ; [W/m K]
     }
-    
+
     liquid
     {
-      specific_heat 775 ; [J/kg K] 
+      specific_heat 775 ; [J/kg K]
       density 7541 ; [kg/m^3]
       thermal_conductivity 29.0 ; [W/m k] Not all three states need to define
                                 ; the same properties or to exist
@@ -69,6 +69,9 @@ sources
     voltage 60000 ; [V]
     abscissa "if(t<5e-10, 4e7*t, 0.02-4e7*(t-(5e-10)))" ; if(condition, value_if_true,
                                                         ; value_it_else)
+    scan_path_file scan_path.txt
+    absorption_efficiency 0.3
+    max_power 1200.0
   }
 }
 

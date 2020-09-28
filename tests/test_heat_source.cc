@@ -26,7 +26,7 @@ BOOST_AUTO_TEST_CASE(heat_source_value_2d)
   database.put("absorption_efficiency", 0.1);
   database.put("diameter", 1.0);
   database.put("max_power", 10.);
-  database.put("input_file", "scan_path.txt");
+  database.put("scan_path_file", "scan_path.txt");
   GoldakHeatSource<2> goldak_heat_source(database);
   ElectronBeamHeatSource<2> eb_heat_source(database);
 
@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE(heat_source_value_3d)
   database.put("absorption_efficiency", 0.1);
   database.put("diameter", 1.0);
   database.put("max_power", 10.);
-  database.put("input_file", "scan_path.txt");
+  database.put("scan_path_file", "scan_path.txt");
 
   GoldakHeatSource<3> goldak_heat_source(database);
   ElectronBeamHeatSource<3> eb_heat_source(database);

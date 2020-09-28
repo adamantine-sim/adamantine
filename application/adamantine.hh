@@ -619,11 +619,13 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       database.get("materials.initial_temperature", 300.);
 
   adamantine::Geometry<dim> geometry(communicator, geometry_database);
+
   std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> thermal_physics;
   std::vector<std::unique_ptr<HeatSourceType>> &heat_sources =
       initialize_thermal_physics<dim, HeatSourceType>(
           fe_degree, quadrature_type, communicator, database, geometry,
           thermal_physics);
+
   adamantine::PostProcessor<dim> post_processor(
       communicator, post_processor_database, thermal_physics->get_dof_handler(),
       thermal_physics->get_material_property());
