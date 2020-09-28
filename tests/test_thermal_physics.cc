@@ -18,7 +18,8 @@ BOOST_AUTO_TEST_CASE(thermal_2d_explicit_host)
   boost::property_tree::ptree database;
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
-  thermal_2d<dealii::MemorySpace::Host>(database, 0.05);
+  thermal_2d<adamantine::GoldakHeatSource<2>, dealii::MemorySpace::Host>(
+      database, 0.05);
 }
 
 BOOST_AUTO_TEST_CASE(thermal_2d_implicit_host)
@@ -30,15 +31,18 @@ BOOST_AUTO_TEST_CASE(thermal_2d_implicit_host)
   database.put("time_stepping.tolerance", 1e-6);
   database.put("time_stepping.n_tmp_vectors", 100);
 
-  thermal_2d<dealii::MemorySpace::Host>(database, 0.025);
+  thermal_2d<adamantine::GoldakHeatSource<2>, dealii::MemorySpace::Host>(
+      database, 0.025);
 }
 
 BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution_host)
 {
-  thermal_2d_manufactured_solution<dealii::MemorySpace::Host>();
+  thermal_2d_manufactured_solution<adamantine::GoldakHeatSource<2>,
+                                   dealii::MemorySpace::Host>();
 }
 
 BOOST_AUTO_TEST_CASE(initial_temperature_host)
 {
-  initial_temperature<dealii::MemorySpace::Host>();
+  initial_temperature<adamantine::GoldakHeatSource<2>,
+                      dealii::MemorySpace::Host>();
 }

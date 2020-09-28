@@ -9,87 +9,211 @@
 
 namespace adamantine
 {
-template class ThermalPhysics<2, 1, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<2, 2, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<2, 3, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<2, 4, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<2, 5, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<2, 6, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<2, 7, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<2, 8, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<2, 9, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<2, 10, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
+template class ThermalPhysics<2, 1, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 2, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 3, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 4, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 5, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 6, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 7, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 8, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 9, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 10, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
 
-template class ThermalPhysics<3, 1, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<3, 2, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<3, 3, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<3, 4, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<3, 5, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<3, 6, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<3, 7, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<3, 8, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<3, 9, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
-template class ThermalPhysics<3, 10, dealii::MemorySpace::CUDA,
-                              dealii::QGauss<1>>;
+template class ThermalPhysics<3, 1, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 2, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 3, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 4, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 5, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 6, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 7, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 8, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 9, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 10, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
 
-template class ThermalPhysics<2, 1, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<2, 1, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<2, 2, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<2, 2, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<2, 3, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<2, 3, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<2, 4, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<2, 4, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<2, 5, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<2, 5, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<2, 6, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<2, 6, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<2, 7, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<2, 7, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<2, 8, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<2, 8, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<2, 9, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<2, 9, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<2, 10, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<2, 10, GoldakHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
 
-template class ThermalPhysics<3, 1, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<3, 1, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<3, 2, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<3, 2, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<3, 3, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<3, 3, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<3, 4, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<3, 4, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<3, 5, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<3, 5, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<3, 6, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<3, 6, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<3, 7, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<3, 7, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<3, 8, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<3, 8, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<3, 9, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<3, 9, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
-template class ThermalPhysics<3, 10, dealii::MemorySpace::CUDA,
+template class ThermalPhysics<3, 10, GoldakHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+
+template class ThermalPhysics<2, 1, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 2, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 3, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 4, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 5, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 6, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 7, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 8, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 9, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<2, 10, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+
+template class ThermalPhysics<3, 1, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 2, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 3, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 4, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 5, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 6, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 7, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 8, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 9, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+template class ThermalPhysics<3, 10, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA, dealii::QGauss<1>>;
+
+template class ThermalPhysics<2, 1, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<2, 2, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<2, 3, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<2, 4, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<2, 5, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<2, 6, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<2, 7, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<2, 8, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<2, 9, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<2, 10, ElectronBeamHeatSource<2>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+
+template class ThermalPhysics<3, 1, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<3, 2, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<3, 3, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<3, 4, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<3, 5, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<3, 6, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<3, 7, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<3, 8, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<3, 9, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
+                              dealii::QGaussLobatto<1>>;
+template class ThermalPhysics<3, 10, ElectronBeamHeatSource<3>,
+                              dealii::MemorySpace::CUDA,
                               dealii::QGaussLobatto<1>>;
 } // namespace adamantine

@@ -28,7 +28,8 @@ BOOST_AUTO_TEST_CASE(intregation_2D)
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto result =
-      run<2, dealii::MemorySpace::Host>(communicator, database, timers);
+      run<2, adamantine::GoldakHeatSource<2>, dealii::MemorySpace::Host>(
+          communicator, database, timers);
 
   std::ifstream gold_file("integration_2d_gold.txt");
   double const tolerance = 0.1;

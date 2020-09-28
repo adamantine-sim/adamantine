@@ -137,11 +137,13 @@ void init_dof_vector(
 #endif
 } // namespace
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
-ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
-    MPI_Comm const &communicator, boost::property_tree::ptree const &database,
-    Geometry<dim> &geometry)
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
+ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
+               QuadratureType>::ThermalPhysics(MPI_Comm const &communicator,
+                                               boost::property_tree::ptree const
+                                                   &database,
+                                               Geometry<dim> &geometry)
     : _embedded_method(false), _implicit_method(false), _geometry(geometry),
       _fe(fe_degree), _dof_handler(_geometry.get_triangulation()),
       _quadrature(fe_degree + 1)
@@ -156,13 +158,13 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   boost::property_tree::ptree const &source_database =
       database.get_child("sources");
   unsigned int const n_beams = source_database.get<unsigned int>("n_beams");
-  _electron_beams.resize(n_beams);
+  _heat_sources.resize(n_beams);
   for (unsigned int i = 0; i < n_beams; ++i)
   {
     boost::property_tree::ptree const &beam_database =
         source_database.get_child("beam_" + std::to_string(i));
-    _electron_beams[i] = std::make_unique<ElectronBeam<dim>>(beam_database);
-    _electron_beams[i]->set_max_height(_geometry.get_max_height());
+    _heat_sources[i] = std::make_unique<HeatSourceType>(beam_database);
+    _heat_sources[i]->set_max_height(_geometry.get_max_height());
   }
 
   // Create the thermal operator
@@ -303,9 +305,9 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   }
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType,
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
                     QuadratureType>::setup_dofs()
 {
   _dof_handler.distribute_dofs(_fe);
@@ -321,9 +323,9 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
   _thermal_operator->reinit(_dof_handler, _affine_constraints, _quadrature);
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType,
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
                     QuadratureType>::compute_inverse_mass_matrix()
 {
   _thermal_operator->compute_inverse_mass_matrix(_dof_handler,
@@ -333,9 +335,10 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
         _thermal_operator->get_inverse_mass_matrix());
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
-double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
+double ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
+                      QuadratureType>::
     evolve_one_time_step(
         double t, double delta_t,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
@@ -369,18 +372,20 @@ double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   return time;
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
+                    QuadratureType>::
     initialize_dof_vector(
         dealii::LA::distributed::Vector<double, MemorySpaceType> &vector) const
 {
   _thermal_operator->initialize_dof_vector(vector);
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
+                    QuadratureType>::
     initialize_dof_vector(
         double const value,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &vector) const
@@ -392,10 +397,11 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
                                                    vector);
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
 dealii::LA::distributed::Vector<double, MemorySpaceType>
-ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
+               QuadratureType>::
     evaluate_thermal_physics(
         double const t,
         dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
@@ -420,8 +426,6 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   source = 0.;
 
   // Compute the source term.
-  for (auto &beam : _electron_beams)
-    beam->set_time(t);
   dealii::QGauss<dim> source_quadrature(fe_degree + 1);
   dealii::FEValues<dim> fe_values(_fe, source_quadrature,
                                   dealii::update_quadrature_points |
@@ -446,8 +450,8 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
       {
         double quad_pt_source = 0.;
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
-        for (auto &beam : _electron_beams)
-          quad_pt_source += beam->value(q_point);
+        for (auto &beam : _heat_sources)
+          quad_pt_source += beam->value(q_point, t);
 
         cell_source[i] += inv_rho_cp * quad_pt_source *
                           fe_values.shape_value(i, q) * fe_values.JxW(q);
@@ -462,10 +466,11 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
                                                           source, timers);
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
 dealii::LA::distributed::Vector<double, MemorySpaceType>
-ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
+               QuadratureType>::
     id_minus_tau_J_inverse(
         double const /*t*/, double const tau,
         dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,

@@ -125,47 +125,47 @@ inline void initialize_timers(MPI_Comm const &communicator,
       communicator, "Evolve One Time Step: evaluate_material_properties"));
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
-std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &initialize(
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
+std::vector<std::unique_ptr<HeatSourceType>> &initialize(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
     std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
 {
   thermal_physics.reset(
-      new adamantine::ThermalPhysics<dim, fe_degree, MemorySpaceType,
-                                     QuadratureType>(communicator, database,
-                                                     geometry));
-  return static_cast<adamantine::ThermalPhysics<dim, fe_degree, MemorySpaceType,
-                                                QuadratureType> *>(
+      new adamantine::ThermalPhysics<dim, fe_degree, HeatSourceType,
+                                     MemorySpaceType, QuadratureType>(
+          communicator, database, geometry));
+  return static_cast<adamantine::ThermalPhysics<
+      dim, fe_degree, HeatSourceType, MemorySpaceType, QuadratureType> *>(
              thermal_physics.get())
-      ->get_electron_beams();
+      ->get_heat_sources();
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &
-initialize_quadrature(
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType>
+std::vector<std::unique_ptr<HeatSourceType>> &initialize_quadrature(
     std::string const &quadrature_type, MPI_Comm const &communicator,
     boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
     std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
 {
   if (quadrature_type.compare("gauss") == 0)
-    return initialize<dim, fe_degree, MemorySpaceType, dealii::QGauss<1>>(
-        communicator, database, geometry, thermal_physics);
+    return initialize<dim, fe_degree, HeatSourceType, MemorySpaceType,
+                      dealii::QGauss<1>>(communicator, database, geometry,
+                                         thermal_physics);
   else
   {
     adamantine::ASSERT_THROW(quadrature_type.compare("lobatto") == 0,
                              "quadrature should be Gauss or Lobatto.");
-    return initialize<dim, fe_degree, MemorySpaceType,
+    return initialize<dim, fe_degree, HeatSourceType, MemorySpaceType,
                       dealii::QGaussLobatto<1>>(communicator, database,
                                                 geometry, thermal_physics);
   }
 }
 
-template <int dim, typename MemorySpaceType>
-std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &
-initialize_thermal_physics(
+template <int dim, typename HeatSourceType, typename MemorySpaceType>
+std::vector<std::unique_ptr<HeatSourceType>> &initialize_thermal_physics(
     unsigned int fe_degree, std::string const &quadrature_type,
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
@@ -175,54 +175,54 @@ initialize_thermal_physics(
   {
   case 1:
   {
-    return initialize_quadrature<dim, 1, MemorySpaceType>(
+    return initialize_quadrature<dim, 1, HeatSourceType, MemorySpaceType>(
         quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 2:
   {
-    return initialize_quadrature<dim, 2, MemorySpaceType>(
+    return initialize_quadrature<dim, 2, HeatSourceType, MemorySpaceType>(
         quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 3:
   {
-    return initialize_quadrature<dim, 3, MemorySpaceType>(
+    return initialize_quadrature<dim, 3, HeatSourceType, MemorySpaceType>(
         quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 4:
   {
-    return initialize_quadrature<dim, 4, MemorySpaceType>(
+    return initialize_quadrature<dim, 4, HeatSourceType, MemorySpaceType>(
         quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 5:
   {
-    return initialize_quadrature<dim, 5, MemorySpaceType>(
+    return initialize_quadrature<dim, 5, HeatSourceType, MemorySpaceType>(
         quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 6:
   {
-    return initialize_quadrature<dim, 6, MemorySpaceType>(
+    return initialize_quadrature<dim, 6, HeatSourceType, MemorySpaceType>(
         quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 7:
   {
-    return initialize_quadrature<dim, 7, MemorySpaceType>(
+    return initialize_quadrature<dim, 7, HeatSourceType, MemorySpaceType>(
         quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 8:
   {
-    return initialize_quadrature<dim, 8, MemorySpaceType>(
+    return initialize_quadrature<dim, 8, HeatSourceType, MemorySpaceType>(
         quadrature_type, communicator, database, geometry, thermal_physics);
   }
   case 9:
   {
-    return initialize_quadrature<dim, 9, MemorySpaceType>(
+    return initialize_quadrature<dim, 9, HeatSourceType, MemorySpaceType>(
         quadrature_type, communicator, database, geometry, thermal_physics);
   }
   default:
   {
     adamantine::ASSERT_THROW(fe_degree == 10,
                              "fe_degree should be between 1 and 10.");
-    return initialize_quadrature<dim, 10, MemorySpaceType>(
+    return initialize_quadrature<dim, 10, HeatSourceType, MemorySpaceType>(
         quadrature_type, communicator, database, geometry, thermal_physics);
   }
   }
@@ -250,11 +250,11 @@ void refine_and_transfer(
       solution_transfer(dof_handler);
   std::vector<dealii::parallel::distributed::SolutionTransfer<
       dim, dealii::LA::distributed::Vector<double, MemorySpaceType>>>
-  material_state(
-      static_cast<unsigned int>(adamantine::MaterialState::SIZE),
-      dealii::parallel::distributed::SolutionTransfer<
-          dim, dealii::LA::distributed::Vector<double, MemorySpaceType>>(
-          material_property->get_dof_handler()));
+      material_state(
+          static_cast<unsigned int>(adamantine::MaterialState::SIZE),
+          dealii::parallel::distributed::SolutionTransfer<
+              dim, dealii::LA::distributed::Vector<double, MemorySpaceType>>(
+              material_property->get_dof_handler()));
 
   // We need to update the ghost values before we can do the interpolation on
   // the new mesh.
@@ -326,12 +326,12 @@ void refine_and_transfer(
       solution_transfer(dof_handler);
   std::vector<dealii::parallel::distributed::SolutionTransfer<
       dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>>
-  material_state(
-      static_cast<unsigned int>(adamantine::MaterialState::SIZE),
-      dealii::parallel::distributed::SolutionTransfer<
-          dim,
-          dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>(
-          material_property->get_dof_handler()));
+      material_state(
+          static_cast<unsigned int>(adamantine::MaterialState::SIZE),
+          dealii::parallel::distributed::SolutionTransfer<
+              dim, dealii::LA::distributed::Vector<double,
+                                                   dealii::MemorySpace::Host>>(
+              material_property->get_dof_handler()));
 
   // We need to update the ghost values before we can do the interpolation on
   // the new mesh.
@@ -386,20 +386,15 @@ void refine_and_transfer(
 }
 #endif
 
-template <int dim>
+template <int dim, typename HeatSourceType>
 std::vector<typename dealii::parallel::distributed::Triangulation<
     dim>::active_cell_iterator>
 compute_cells_to_refine(
     dealii::parallel::distributed::Triangulation<dim> &triangulation,
     double const time, double const next_refinement_time,
     unsigned int const n_time_steps,
-    std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams)
+    std::vector<std::unique_ptr<HeatSourceType>> &heat_sources)
 {
-  // The save_time()/rewind_time() functions are used to save the current time
-  // and row in the list of beam positions. It does nothing when the position is
-  // given by an analytic formula.
-  for (auto &beam : electron_beams)
-    beam->save_time();
 
   // Compute the position of the beams between time and next_refinement_time and
   // refine the mesh where the source is greater than 1e-15. This cut-off is due
@@ -414,28 +409,30 @@ compute_cells_to_refine(
     double const current_time = time + static_cast<double>(i) /
                                            static_cast<double>(n_time_steps) *
                                            (next_refinement_time - time);
-    for (auto &beam : electron_beams)
+    for (auto &beam : heat_sources)
     {
-      beam->set_time(current_time);
       for (auto cell : dealii::filter_iterators(
                triangulation.active_cell_iterators(),
                dealii::IteratorFilters::LocallyOwnedCell()))
-        if (beam->value(cell->center()) > 1e-15)
+        if (beam->value(cell->center(), current_time) > 1e-15)
           cells_to_refine.push_back(cell);
     }
   }
 
+  /* Remove?
   for (auto &beam : electron_beams)
     beam->rewind_time();
+  */
 
   return cells_to_refine;
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType>
 void refine_mesh(
     std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams,
+    std::vector<std::unique_ptr<HeatSourceType>> &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
@@ -490,7 +487,7 @@ void refine_mesh(
         dim>::active_cell_iterator>
         cells_to_refine =
             compute_cells_to_refine(triangulation, time, next_refinement_time,
-                                    time_steps_refinement, electron_beams);
+                                    time_steps_refinement, heat_sources);
 
     // Flag the cells for refinement.
     for (auto &cell : cells_to_refine)
@@ -505,11 +502,11 @@ void refine_mesh(
   thermal_physics->compute_inverse_mass_matrix();
 }
 
-template <int dim, typename MemorySpaceType>
+template <int dim, typename HeatSourceType, typename MemorySpaceType>
 void refine_mesh(
     std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams,
+    std::vector<std::unique_ptr<HeatSourceType>> &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database,
@@ -519,70 +516,70 @@ void refine_mesh(
   {
   case 1:
   {
-    refine_mesh<dim, 1>(thermal_physics, solution, electron_beams, time,
+    refine_mesh<dim, 1>(thermal_physics, solution, heat_sources, time,
                         next_refinement_time, time_steps_refinement,
                         refinement_database);
     break;
   }
   case 2:
   {
-    refine_mesh<dim, 2>(thermal_physics, solution, electron_beams, time,
+    refine_mesh<dim, 2>(thermal_physics, solution, heat_sources, time,
                         next_refinement_time, time_steps_refinement,
                         refinement_database);
     break;
   }
   case 3:
   {
-    refine_mesh<dim, 3>(thermal_physics, solution, electron_beams, time,
+    refine_mesh<dim, 3>(thermal_physics, solution, heat_sources, time,
                         next_refinement_time, time_steps_refinement,
                         refinement_database);
     break;
   }
   case 4:
   {
-    refine_mesh<dim, 4>(thermal_physics, solution, electron_beams, time,
+    refine_mesh<dim, 4>(thermal_physics, solution, heat_sources, time,
                         next_refinement_time, time_steps_refinement,
                         refinement_database);
     break;
   }
   case 5:
   {
-    refine_mesh<dim, 5>(thermal_physics, solution, electron_beams, time,
+    refine_mesh<dim, 5>(thermal_physics, solution, heat_sources, time,
                         next_refinement_time, time_steps_refinement,
                         refinement_database);
     break;
   }
   case 6:
   {
-    refine_mesh<dim, 6>(thermal_physics, solution, electron_beams, time,
+    refine_mesh<dim, 6>(thermal_physics, solution, heat_sources, time,
                         next_refinement_time, time_steps_refinement,
                         refinement_database);
     break;
   }
   case 7:
   {
-    refine_mesh<dim, 7>(thermal_physics, solution, electron_beams, time,
+    refine_mesh<dim, 7>(thermal_physics, solution, heat_sources, time,
                         next_refinement_time, time_steps_refinement,
                         refinement_database);
     break;
   }
   case 8:
   {
-    refine_mesh<dim, 8>(thermal_physics, solution, electron_beams, time,
+    refine_mesh<dim, 8>(thermal_physics, solution, heat_sources, time,
                         next_refinement_time, time_steps_refinement,
                         refinement_database);
     break;
   }
   case 9:
   {
-    refine_mesh<dim, 9>(thermal_physics, solution, electron_beams, time,
+    refine_mesh<dim, 9>(thermal_physics, solution, heat_sources, time,
                         next_refinement_time, time_steps_refinement,
                         refinement_database);
     break;
   }
   case 10:
   {
-    refine_mesh<dim, 10>(thermal_physics, solution, electron_beams, time,
+    refine_mesh<dim, 10>(thermal_physics, solution, heat_sources, time,
                          next_refinement_time, time_steps_refinement,
                          refinement_database);
     break;
@@ -594,7 +591,7 @@ void refine_mesh(
   }
 }
 
-template <int dim, typename MemorySpaceType>
+template <int dim, typename HeatSourceType, typename MemorySpaceType>
 dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
 run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     std::vector<adamantine::Timer> &timers)
@@ -623,9 +620,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 
   adamantine::Geometry<dim> geometry(communicator, geometry_database);
   std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> thermal_physics;
-  std::vector<std::unique_ptr<adamantine::ElectronBeam<dim>>> &electron_beams =
-      initialize_thermal_physics<dim>(fe_degree, quadrature_type, communicator,
-                                      database, geometry, thermal_physics);
+  std::vector<std::unique_ptr<HeatSourceType>> &heat_sources =
+      initialize_thermal_physics<dim, HeatSourceType>(
+          fe_degree, quadrature_type, communicator, database, geometry,
+          thermal_physics);
   adamantine::PostProcessor<dim> post_processor(
       communicator, post_processor_database, thermal_physics->get_dof_handler(),
       thermal_physics->get_material_property());
@@ -665,7 +663,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     {
       next_refinement_time = time + time_steps_refinement * time_step;
       timers[adamantine::refine].start();
-      refine_mesh(thermal_physics, solution, electron_beams, time,
+      refine_mesh(thermal_physics, solution, heat_sources, time,
                   next_refinement_time, time_steps_refinement,
                   refinement_database, fe_degree);
       timers[adamantine::refine].stop();

@@ -9,7 +9,9 @@
 #define THERMAL_PHYSICS_HH
 
 #include "ElectronBeam.hh"
+#include "ElectronBeamHeatSource.hh"
 #include "Geometry.hh"
+#include "GoldakHeatSource.hh"
 #include "ImplicitOperator.hh"
 #include "Physics.hh"
 #include "ThermalOperatorBase.hh"
@@ -26,8 +28,8 @@ namespace adamantine
  * This class takes care of building the linear operator and the
  * right-hand-side. Also used to evolve the system in time.
  */
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
 class ThermalPhysics : public Physics<dim, MemorySpaceType>
 {
 public:
@@ -101,7 +103,7 @@ public:
   /**
    * Return the heat sources.
    */
-  std::vector<std::unique_ptr<ElectronBeam<dim>>> &get_electron_beams();
+  std::vector<std::unique_ptr<HeatSourceType>> &get_heat_sources();
 
 private:
   using LA_Vector =
@@ -174,11 +176,11 @@ private:
    */
   std::shared_ptr<MaterialProperty<dim>> _material_properties;
   /**
-   * Vector of electron beam sources.
+   * Vector of heat sources.
    */
   // Use unique_ptr due to a strange bug involving TBB, std::vector, and
   // dealii::FunctionParser.
-  std::vector<std::unique_ptr<ElectronBeam<dim>>> _electron_beams;
+  std::vector<std::unique_ptr<HeatSourceType>> _heat_sources;
   /**
    * Shared pointer to the underlying ThermalOperator.
    */
@@ -193,48 +195,48 @@ private:
   std::unique_ptr<dealii::TimeStepping::RungeKutta<LA_Vector>> _time_stepping;
 };
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
-inline double ThermalPhysics<dim, fe_degree, MemorySpaceType,
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
+inline double ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
                              QuadratureType>::get_delta_t_guess() const
 {
   return _delta_t_guess;
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
 inline dealii::DoFHandler<dim> &
-ThermalPhysics<dim, fe_degree, MemorySpaceType,
+ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
                QuadratureType>::get_dof_handler()
 {
   return _dof_handler;
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
 inline dealii::AffineConstraints<double> &
-ThermalPhysics<dim, fe_degree, MemorySpaceType,
+ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
                QuadratureType>::get_affine_constraints()
 {
   return _affine_constraints;
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
 inline std::shared_ptr<MaterialProperty<dim>>
-ThermalPhysics<dim, fe_degree, MemorySpaceType,
+ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
                QuadratureType>::get_material_property()
 {
   return _material_properties;
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
-inline std::vector<std::unique_ptr<ElectronBeam<dim>>> &
-ThermalPhysics<dim, fe_degree, MemorySpaceType,
-               QuadratureType>::get_electron_beams()
+template <int dim, int fe_degree, typename HeatSourceType,
+          typename MemorySpaceType, typename QuadratureType>
+inline std::vector<std::unique_ptr<HeatSourceType>> &
+ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
+               QuadratureType>::get_heat_sources()
 {
-  return _electron_beams;
+  return _heat_sources;
 }
 } // namespace adamantine
 
