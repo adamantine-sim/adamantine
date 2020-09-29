@@ -28,7 +28,8 @@ BOOST_AUTO_TEST_CASE(intregation_2D_device)
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto result =
-      run<2, dealii::MemorySpace::CUDA>(communicator, database, timers);
+      run<2, adamantine::ElectronBeamHeatSource<2>, dealii::MemorySpace::CUDA>(
+          communicator, database, timers);
 
   dealii::LinearAlgebra::distributed::Vector<double, dealii::MemorySpace::Host>
       result_host(result.get_partitioner());

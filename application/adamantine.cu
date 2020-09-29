@@ -67,22 +67,26 @@ int main(int argc, char *argv[])
     {
       if (memory_space == "device")
       {
-        run<2, dealii::MemorySpace::CUDA>(communicator, database, timers);
+        run<2, adamantine::GoldakHeatSource<2>, dealii::MemorySpace::CUDA>(
+            communicator, database, timers);
       }
       else
       {
-        run<2, dealii::MemorySpace::Host>(communicator, database, timers);
+        run<2, adamantine::GoldakHeatSource<2>, dealii::MemorySpace::Host>(
+            communicator, database, timers);
       }
     }
     else
     {
       if (memory_space == "device")
       {
-        run<3, dealii::MemorySpace::CUDA>(communicator, database, timers);
+        run<3, adamantine::GoldakHeatSource<3>, dealii::MemorySpace::CUDA>(
+            communicator, database, timers);
       }
       else
       {
-        run<3, dealii::MemorySpace::Host>(communicator, database, timers);
+        run<3, adamantine::GoldakHeatSource<3>, dealii::MemorySpace::Host>(
+            communicator, database, timers);
       }
     }
 
