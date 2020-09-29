@@ -8,7 +8,6 @@
 #ifndef THERMAL_PHYSICS_HH
 #define THERMAL_PHYSICS_HH
 
-#include "ElectronBeam.hh"
 #include "ElectronBeamHeatSource.hh"
 #include "Geometry.hh"
 #include "GoldakHeatSource.hh"
