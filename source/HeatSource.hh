@@ -75,6 +75,11 @@ public:
   HeatSource(boost::property_tree::ptree const &database);
 
   /**
+   * Destructor.
+   */
+  virtual ~HeatSource(){};
+
+  /**
    * Set the maximum height of the domain. This is the height at which the
    * heat source penetrates the material.
    */
