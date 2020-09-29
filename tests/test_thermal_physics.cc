@@ -18,11 +18,10 @@ BOOST_AUTO_TEST_CASE(thermal_2d_explicit_host)
   boost::property_tree::ptree database;
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
-  database.put("sources.beam_0.scan_path_file", "scan_path.txt");
-  database.put("sources.beam_0.absorption_efficiency", 0.3);
-  database.put("sources.beam_0.max_power", 1200.0);
+  database.put("sources.beam_0.scan_path_file",
+               "scan_path_test_thermal_physics.txt");
 
-  thermal_2d<adamantine::GoldakHeatSource<2>, dealii::MemorySpace::Host>(
+  thermal_2d<adamantine::ElectronBeamHeatSource<2>, dealii::MemorySpace::Host>(
       database, 0.05);
 }
 
@@ -34,22 +33,21 @@ BOOST_AUTO_TEST_CASE(thermal_2d_implicit_host)
   database.put("time_stepping.max_iteration", 100);
   database.put("time_stepping.tolerance", 1e-6);
   database.put("time_stepping.n_tmp_vectors", 100);
-  database.put("sources.beam_0.scan_path_file", "scan_path.txt");
-  database.put("sources.beam_0.absorption_efficiency", 0.3);
-  database.put("sources.beam_0.max_power", 1200.0);
+  database.put("sources.beam_0.scan_path_file",
+               "scan_path_test_thermal_physics.txt");
 
-  thermal_2d<adamantine::GoldakHeatSource<2>, dealii::MemorySpace::Host>(
+  thermal_2d<adamantine::ElectronBeamHeatSource<2>, dealii::MemorySpace::Host>(
       database, 0.025);
 }
 
 BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution_host)
 {
-  thermal_2d_manufactured_solution<adamantine::GoldakHeatSource<2>,
+  thermal_2d_manufactured_solution<adamantine::ElectronBeamHeatSource<2>,
                                    dealii::MemorySpace::Host>();
 }
 
 BOOST_AUTO_TEST_CASE(initial_temperature_host)
 {
-  initial_temperature<adamantine::GoldakHeatSource<2>,
+  initial_temperature<adamantine::ElectronBeamHeatSource<2>,
                       dealii::MemorySpace::Host>();
 }

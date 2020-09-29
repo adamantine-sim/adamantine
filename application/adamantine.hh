@@ -414,8 +414,12 @@ compute_cells_to_refine(
       for (auto cell : dealii::filter_iterators(
                triangulation.active_cell_iterators(),
                dealii::IteratorFilters::LocallyOwnedCell()))
+      {
         if (beam->value(cell->center(), current_time) > 1e-15)
+        {
           cells_to_refine.push_back(cell);
+        }
+      }
     }
   }
 

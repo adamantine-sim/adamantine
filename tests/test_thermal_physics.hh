@@ -42,6 +42,8 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   database.put("sources.beam_0.diameter", 1e100);
   database.put("sources.beam_0.max_power", 1e300);
   database.put("sources.beam_0.abscissa", "t");
+  database.put("sources.beam_0.absorption_efficiency", 0.1);
+
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, HeatSourceType, MemorySpaceType,
                              dealii::QGauss<1>>
@@ -101,8 +103,10 @@ void thermal_2d_manufactured_solution()
   database.put("sources.beam_0.diameter", 1e100);
   database.put("sources.beam_0.max_power", 1e300);
   database.put("sources.beam_0.abscissa", "1");
-  database.put("sources.beam_0.scan_path_file", "scan_path.txt");
-  database.put("sources.beam_0.absorption_efficiency", 0.3);
+  database.put("sources.beam_0.absorption_efficiency",
+               0.1 / 0.29317423955177113);
+  database.put("sources.beam_0.scan_path_file",
+               "scan_path_test_thermal_physics.txt");
 
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
