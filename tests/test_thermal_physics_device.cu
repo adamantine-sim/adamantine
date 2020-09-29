@@ -18,7 +18,8 @@ BOOST_AUTO_TEST_CASE(thermal_2d_explicit_device)
   boost::property_tree::ptree database;
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
-  thermal_2d<dealii::MemorySpace::CUDA>(database, 0.05);
+  thermal_2d<adamantine::ElectronBeamHeatSource<2>, dealii::MemorySpace::CUDA>(
+      database, 0.05);
 }
 
 BOOST_AUTO_TEST_CASE(thermal_2d_implicit_device)
@@ -30,15 +31,18 @@ BOOST_AUTO_TEST_CASE(thermal_2d_implicit_device)
   database.put("time_stepping.tolerance", 1e-6);
   database.put("time_stepping.n_tmp_vectors", 100);
 
-  thermal_2d<dealii::MemorySpace::CUDA>(database, 0.025);
+  thermal_2d<adamantine::ElectronBeamHeatSource<2>, dealii::MemorySpace::CUDA>(
+      database, 0.025);
 }
 
 BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution_device)
 {
-  thermal_2d_manufactured_solution<dealii::MemorySpace::CUDA>();
+  thermal_2d_manufactured_solution<adamantine::ElectronBeamHeatSource<2>,
+                                   dealii::MemorySpace::CUDA>();
 }
 
 BOOST_AUTO_TEST_CASE(initial_temperature_device)
 {
-  initial_temperature<dealii::MemorySpace::CUDA>();
+  initial_temperature<adamantine::ElectronBeamHeatSource<2>,
+                      dealii::MemorySpace::CUDA>();
 }
