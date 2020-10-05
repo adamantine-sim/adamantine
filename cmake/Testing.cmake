@@ -13,7 +13,7 @@ function(adamantine_ADD_BOOST_TEST TEST_NAME)
         target_compile_definitions(${TEST_NAME} PRIVATE ADAMANTINE_HAVE_CUDA)
     endif()
     set_target_properties(${TEST_NAME} PROPERTIES
-        CXX_STANDARD 14
+        CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
@@ -46,11 +46,11 @@ function(adamantine_ADD_BOOST_CUDA_TEST TEST_NAME)
     target_link_libraries(${TEST_NAME} Adamantine)
     target_compile_definitions(${TEST_NAME} PRIVATE ADAMANTINE_HAVE_CUDA)
     set_target_properties(${TEST_NAME} PROPERTIES
-        CXX_STANDARD 14
+        CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
         CUDA_SEPARABLE_COMPILATION ON
-        CUDA_STANDARD 14
+        CUDA_STANDARD 17
         CUDA_STANDARD_REQUIRED ON
     )
     if(ARGN)
