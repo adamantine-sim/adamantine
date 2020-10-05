@@ -1,7 +1,8 @@
-FROM nvidia/cuda:10.2-devel
+FROM nvidia/cuda:11.0-devel
 
 ARG N_PROCS=12
 
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
       gcc \
       gfortran \
@@ -32,9 +33,9 @@ RUN mkdir -p ${PREFIX} && \
     mkdir build
 
 # Install CMake
-RUN export CMAKE_VERSION=3.17.1 && \
-    export CMAKE_VERSION_SHORT=3.17 && \
-    export CMAKE_SHA256=23dd30da0bacf0e644d82298907b8e03edbc59c4ed40839afdeeb3b86e66bc93 && \
+RUN export CMAKE_VERSION=3.18.3 && \
+    export CMAKE_VERSION_SHORT=3.18 && \
+    export CMAKE_SHA256=eb23bac95873cc0bc3946eed5d1aea6876ac03f7c0dcc6ad3a05462354b08228 && \
     export CMAKE_URL=https://cmake.org/files/v${CMAKE_VERSION_SHORT}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz && \
     export CMAKE_ARCHIVE=${ARCHIVE_DIR}/cmake.tar.gz && \
     export CMAKE_BUILD_DIR=${BUILD_DIR}/cmake && \
@@ -48,16 +49,16 @@ RUN export CMAKE_VERSION=3.17.1 && \
 ENV PATH=${INSTALL_DIR}/cmake/bin:$PATH
 
 # Install OpenMPI
-RUN export OPENMPI_VERSION=4.0.3 && \
+RUN export OPENMPI_VERSION=4.0.5 && \
     export OPENMPI_VERSION_SHORT=4.0 && \
-    export OPENMPI_SHA1=d958454e32da2c86dd32b7d557cf9a401f0a08d3 && \
+    export OPENMPI_SHA256=c58f3863b61d944231077f344fe6b4b8fbb83f3d1bc93ab74640bf3e5acac009 && \
     export OPENMPI_URL=https://www.open-mpi.org/software/ompi/v${OPENMPI_VERSION_SHORT}/downloads/openmpi-${OPENMPI_VERSION}.tar.bz2 && \
     export OPENMPI_ARCHIVE=${ARCHIVE_DIR}/openmpi-${OPENMPI_VERSION}.tar.bz2 && \
     export OPENMPI_SOURCE_DIR=${SOURCE_DIR}/openmpi && \
     export OPENMPI_BUILD_DIR=${BUILD_DIR}/openmpi && \
     export OPENMPI_INSTALL_DIR=${INSTALL_DIR}/openmpi && \
     wget --quiet ${OPENMPI_URL} --output-document=${OPENMPI_ARCHIVE} && \
-    echo "${OPENMPI_SHA1} ${OPENMPI_ARCHIVE}" | sha1sum -c && \
+    echo "${OPENMPI_SHA256} ${OPENMPI_ARCHIVE}" | sha256sum -c && \
     mkdir -p ${OPENMPI_SOURCE_DIR} && \
     tar -xf ${OPENMPI_ARCHIVE} -C ${OPENMPI_SOURCE_DIR} --strip-components=1 && \
     mkdir -p ${OPENMPI_BUILD_DIR} && \
@@ -74,10 +75,10 @@ ENV OMPI_MCA_btl_base_warn_component_unused='0'
 ENV PATH=${INSTALL_DIR}/openmpi/bin:$PATH
 
 # Install Boost
-RUN export BOOST_VERSION=1.72.0 && \
-    export BOOST_VERSION_U=1_72_0 && \
+RUN export BOOST_VERSION=1.73.0 && \
+    export BOOST_VERSION_U=1_73_0 && \
     export BOOST_URL=https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_U}.tar.bz2 && \
-    export BOOST_SHA256=59c9b274bc451cf91a9ba1dd2c7fdcaf5d60b1b3aa83f2c9fa143417cc660722 && \
+    export BOOST_SHA256=4eb3b8d442b426dc35346235c8733b5ae35ba431690e38c6a8263dce9fcbb402 && \
     export BOOST_ARCHIVE=${ARCHIVE_DIR}/boost_${BOOST_VERSION_U}.tar.bz2 && \
     export BOOST_SOURCE_DIR=${SOURCE_DIR}/boost && \
     export BOOST_BUILD_DIR=${BUILD_DIR}/boost && \
@@ -121,7 +122,7 @@ RUN export P4EST_VERSION=2.2 && \
 ENV P4EST_DIR=${INSTALL_DIR}/p4est
 
 # Install deal.II 
-RUN export DEAL_II_HASH=d782327269f81e7d4be3a32c4646f71d19804452 && \
+RUN export DEAL_II_HASH=551e93708c2f0b26f916795bd15f2f0e575e295c && \
     export DEAL_II_URL=https://github.com/Rombur/dealii/archive/${DEAL_II_HASH}.tar.gz && \
     export DEAL_II_ARCHIVE=${ARCHIVE_DIR}/dealii.tar.gz && \
     export DEAL_II_SOURCE_DIR=${SOURCE_DIR}/dealii && \
@@ -132,15 +133,16 @@ RUN export DEAL_II_HASH=d782327269f81e7d4be3a32c4646f71d19804452 && \
     tar -xf ${DEAL_II_ARCHIVE} -C ${DEAL_II_SOURCE_DIR} --strip-components=1 && \
     mkdir -p ${DEAL_II_BUILD_DIR} && cd ${DEAL_II_BUILD_DIR} && \
     cmake -DCMAKE_BUILD_TYPE=DebugRelease \
-        -DDEALII_WITH_64BIT_INDICES=ON \
+        -DCMAKE_CXX_FLAGS="-std=c++17" \
+        -DCMAKE_CUDA_FLAGS="-std=c++17" \
+        -DCMAKE_CXX_STANDARD=17 \
+        -DDEAL_II_WITH_64BIT_INDICES=ON \
         -DDEAL_II_WITH_MPI=ON \
         -DDEAL_II_WITH_P4EST=ON \
         -DP4EST_DIR=${P4EST_DIR} \
-        -DDEAL_II_WITH_CXX14=ON \
-        -DDEAL_II_WITH_CXX17=OFF \
         -DDEAL_II_WITH_CUDA=ON \
         -DCMAKE_INSTALL_PREFIX=${DEAL_II_INSTALL_DIR} \
-        ${DEAL_II_SOURCE_DIR} && \
+        ${DEAL_II_SOURCE_DIR}  && \
     make -j${N_PROCS} install && \
     rm -rf ${DEAL_II_ARCHIVE} && \
     rm -rf ${DEAL_II_BUILD_DIR} && \
