@@ -8,7 +8,7 @@
 #include <Geometry.hh>
 #include <ThermalPhysics.hh>
 
-template <typename HeatSourceType, typename MemorySpaceType>
+template <typename MemorySpaceType>
 void thermal_2d(boost::property_tree::ptree &database, double time_step)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
@@ -45,9 +45,8 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   database.put("sources.beam_0.absorption_efficiency", 0.1);
 
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 2, HeatSourceType, MemorySpaceType,
-                             dealii::QGauss<1>>
-      physics(communicator, database, geometry);
+  adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
+      communicator, database, geometry);
   physics.setup_dofs();
   physics.compute_inverse_mass_matrix();
 
@@ -66,7 +65,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   BOOST_CHECK(solution.l1_norm() == 1000. * solution.size());
 }
 
-template <typename HeatSourceType, typename MemorySpaceType>
+template <typename MemorySpaceType>
 void thermal_2d_manufactured_solution()
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
@@ -111,9 +110,8 @@ void thermal_2d_manufactured_solution()
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 2, HeatSourceType, MemorySpaceType,
-                             dealii::QGauss<1>>
-      physics(communicator, database, geometry);
+  adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
+      communicator, database, geometry);
   physics.setup_dofs();
   physics.compute_inverse_mass_matrix();
 
@@ -139,7 +137,7 @@ void thermal_2d_manufactured_solution()
   }
 }
 
-template <typename HeatSourceType, typename MemorySpaceType>
+template <typename MemorySpaceType>
 void initial_temperature()
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
@@ -180,9 +178,8 @@ void initial_temperature()
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 2, HeatSourceType, MemorySpaceType,
-                             dealii::QGauss<1>>
-      physics(communicator, database, geometry);
+  adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
+      communicator, database, geometry);
   physics.setup_dofs();
   physics.compute_inverse_mass_matrix();
 

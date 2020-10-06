@@ -21,8 +21,7 @@ BOOST_AUTO_TEST_CASE(thermal_2d_explicit_host)
   database.put("sources.beam_0.scan_path_file",
                "scan_path_test_thermal_physics.txt");
 
-  thermal_2d<adamantine::ElectronBeamHeatSource<2>, dealii::MemorySpace::Host>(
-      database, 0.05);
+  thermal_2d<dealii::MemorySpace::Host>(database, 0.05);
 }
 
 BOOST_AUTO_TEST_CASE(thermal_2d_implicit_host)
@@ -36,18 +35,15 @@ BOOST_AUTO_TEST_CASE(thermal_2d_implicit_host)
   database.put("sources.beam_0.scan_path_file",
                "scan_path_test_thermal_physics.txt");
 
-  thermal_2d<adamantine::ElectronBeamHeatSource<2>, dealii::MemorySpace::Host>(
-      database, 0.025);
+  thermal_2d<dealii::MemorySpace::Host>(database, 0.025);
 }
 
 BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution_host)
 {
-  thermal_2d_manufactured_solution<adamantine::ElectronBeamHeatSource<2>,
-                                   dealii::MemorySpace::Host>();
+  thermal_2d_manufactured_solution<dealii::MemorySpace::Host>();
 }
 
 BOOST_AUTO_TEST_CASE(initial_temperature_host)
 {
-  initial_temperature<adamantine::ElectronBeamHeatSource<2>,
-                      dealii::MemorySpace::Host>();
+  initial_temperature<dealii::MemorySpace::Host>();
 }

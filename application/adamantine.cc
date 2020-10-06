@@ -62,13 +62,11 @@ int main(int argc, char *argv[])
 
     if (dim == 2)
     {
-      run<2, adamantine::GoldakHeatSource<2>, dealii::MemorySpace::Host>(
-          communicator, database, timers);
+      run<2, dealii::MemorySpace::Host>(communicator, database, timers);
     }
     else
     {
-      run<3, adamantine::GoldakHeatSource<3>, dealii::MemorySpace::Host>(
-          communicator, database, timers);
+      run<3, dealii::MemorySpace::Host>(communicator, database, timers);
     }
 
     if (rank == 0)

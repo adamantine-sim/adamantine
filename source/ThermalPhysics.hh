@@ -27,8 +27,8 @@ namespace adamantine
  * This class takes care of building the linear operator and the
  * right-hand-side. Also used to evolve the system in time.
  */
-template <int dim, int fe_degree, typename HeatSourceType,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
 class ThermalPhysics : public Physics<dim, MemorySpaceType>
 {
 public:
@@ -102,7 +102,7 @@ public:
   /**
    * Return the heat sources.
    */
-  std::vector<std::unique_ptr<HeatSourceType>> &get_heat_sources();
+  std::vector<std::unique_ptr<HeatSource<dim>>> &get_heat_sources();
 
 private:
   using LA_Vector =
@@ -179,7 +179,7 @@ private:
    */
   // Use unique_ptr due to a strange bug involving TBB, std::vector, and
   // dealii::FunctionParser.
-  std::vector<std::unique_ptr<HeatSourceType>> _heat_sources;
+  std::vector<std::unique_ptr<HeatSource<dim>>> _heat_sources;
   /**
    * Shared pointer to the underlying ThermalOperator.
    */
@@ -194,45 +194,45 @@ private:
   std::unique_ptr<dealii::TimeStepping::RungeKutta<LA_Vector>> _time_stepping;
 };
 
-template <int dim, int fe_degree, typename HeatSourceType,
-          typename MemorySpaceType, typename QuadratureType>
-inline double ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline double ThermalPhysics<dim, fe_degree, MemorySpaceType,
                              QuadratureType>::get_delta_t_guess() const
 {
   return _delta_t_guess;
 }
 
-template <int dim, int fe_degree, typename HeatSourceType,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
 inline dealii::DoFHandler<dim> &
-ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_dof_handler()
 {
   return _dof_handler;
 }
 
-template <int dim, int fe_degree, typename HeatSourceType,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
 inline dealii::AffineConstraints<double> &
-ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_affine_constraints()
 {
   return _affine_constraints;
 }
 
-template <int dim, int fe_degree, typename HeatSourceType,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
 inline std::shared_ptr<MaterialProperty<dim>>
-ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_material_property()
 {
   return _material_properties;
 }
 
-template <int dim, int fe_degree, typename HeatSourceType,
-          typename MemorySpaceType, typename QuadratureType>
-inline std::vector<std::unique_ptr<HeatSourceType>> &
-ThermalPhysics<dim, fe_degree, HeatSourceType, MemorySpaceType,
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline std::vector<std::unique_ptr<HeatSource<dim>>> &
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_heat_sources()
 {
   return _heat_sources;
