@@ -240,7 +240,7 @@ inline double MaterialProperty<dim>::get_dof_index(
     typename dealii::Triangulation<dim>::active_cell_iterator const &cell) const
 {
   // Get a DoFCellAccessor from a Triangulation::active_cell_iterator.
-  dealii::DoFAccessor<dim, dealii::DoFHandler<dim>, false> dof_accessor(
+  dealii::DoFAccessor<dim, dim, dim, false> dof_accessor(
       &_mp_dof_handler.get_triangulation(), cell->level(), cell->index(),
       &_mp_dof_handler);
   std::vector<dealii::types::global_dof_index> mp_dof(1.);
