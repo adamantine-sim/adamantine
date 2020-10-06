@@ -69,35 +69,4 @@ BOOST_PP_TUPLE_ELEM(2, TUPLE_2), dealii::MemorySpace::CUDA, quadrature>;
 #define INSTANTIATE_DIM_FEDEGREE_QUAD_DEVICE(TUPLE_0)
 #endif
 
-// Instantiation of the class for:
-//   - dim = 2 and 3
-//   - fe_degree = 1 to 10
-//   - HeatSourceType = GoldakHeatSource and ElectronBeamHeatSource
-//   - QuadratureType = dealii::QGauss<1> and dealii::QGaussLobatto<1>
-#define HEAT_SOURCE_TYPE (GoldakHeatSource)(ElectronBeamHeatSource)
-#define QUADRATURE_TYPE (dealii::QGauss<1>)(dealii::QGaussLobatto<1>)
-
-#define MA_QUADRATURE_TYPE2(z, TUPLE_2, quadrature)\
-  template class adamantine::BOOST_PP_TUPLE_ELEM(0, TUPLE_2)<BOOST_PP_TUPLE_ELEM(1, TUPLE_2),\
-BOOST_PP_TUPLE_ELEM(2, TUPLE_2), adamantine::GoldakHeatSource<2>, dealii::MemorySpace::Host, quadrature>;
-#define MA_FE_DEGREE2(z, fe_degree, TUPLE_1) \
-  BOOST_PP_SEQ_FOR_EACH(MA_QUADRATURE_TYPE2, \
-      BOOST_PP_TUPLE_REPLACE(TUPLE_1, 2, fe_degree), QUADRATURE_TYPE)
-#define MA_DIM2(z, dim, TUPLE_0) \
-  BOOST_PP_REPEAT_FROM_TO(1, 11, MA_FE_DEGREE2, BOOST_PP_TUPLE_REPLACE(TUPLE_0, 1, dim))
-#define INSTANTIATE_DIM_FEDEGREE_HS_QUAD_HOST(TUPLE_0) BOOST_PP_REPEAT_FROM_TO(2, 4, MA_DIM2, TUPLE_0)
-
-// #ifdef ADAMANTINE_HAVE_CUDA
-// #define MAD_QUADRATURE_TYPE(z, TUPLE_2, quadrature)\
-//   template class adamantine::BOOST_PP_TUPLE_ELEM(0, TUPLE_2)<BOOST_PP_TUPLE_ELEM(1, TUPLE_2),\
-// BOOST_PP_TUPLE_ELEM(2, TUPLE_2), dealii::MemorySpace::CUDA, quadrature>;
-// #define MAD_FE_DEGREE(z, fe_degree, TUPLE_1) \
-//   BOOST_PP_SEQ_FOR_EACH(MAD_QUADRATURE_TYPE, \
-//       BOOST_PP_TUPLE_REPLACE(TUPLE_1, 2, fe_degree), QUADRATURE_TYPE)
-// #define MAD_DIM(z, dim, TUPLE_0) \
-//   BOOST_PP_REPEAT_FROM_TO(1, 11, MAD_FE_DEGREE, BOOST_PP_TUPLE_REPLACE(TUPLE_0, 1, dim))
-// #define INSTANTIATE_DIM_FEDEGREE_HS_QUAD_DEVICE(TUPLE_0) BOOST_PP_REPEAT_FROM_TO(2, 4, MAD_DIM, TUPLE_0)
-// #else
-// #define INSTANTIATE_DIM_FEDEGREE_HS_QUAD_DEVICE(TUPLE_0)
-// #endif
 // clang-format on

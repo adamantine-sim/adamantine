@@ -423,11 +423,6 @@ compute_cells_to_refine(
     }
   }
 
-  /* Remove?
-  for (auto &beam : electron_beams)
-    beam->rewind_time();
-  */
-
   return cells_to_refine;
 }
 

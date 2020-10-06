@@ -77,7 +77,7 @@ public:
   /**
    * Destructor.
    */
-  virtual ~HeatSource(){};
+  virtual ~HeatSource() = default;
 
   /**
    * Set the maximum height of the domain. This is the height at which the
