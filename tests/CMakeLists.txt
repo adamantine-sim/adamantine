@@ -39,7 +39,6 @@ if (ADAMANTINE_ENABLE_CUDA)
   endforeach()
 endif()
 
-adamantine_COPY_INPUT_FILE(beam_position.csv tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d.info tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d_gold.txt tests/data)
 adamantine_COPY_INPUT_FILE(scan_path.txt tests/data)
