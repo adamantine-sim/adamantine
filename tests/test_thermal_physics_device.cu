@@ -20,8 +20,7 @@ BOOST_AUTO_TEST_CASE(thermal_2d_explicit_device)
   database.put("time_stepping.method", "forward_euler");
   database.put("sources.beam_0.scan_path_file",
                "scan_path_test_thermal_physics.txt");
-  thermal_2d<adamantine::ElectronBeamHeatSource<2>, dealii::MemorySpace::CUDA>(
-      database, 0.05);
+  thermal_2d<dealii::MemorySpace::CUDA>(database, 0.05);
 }
 
 BOOST_AUTO_TEST_CASE(thermal_2d_implicit_device)
@@ -35,18 +34,15 @@ BOOST_AUTO_TEST_CASE(thermal_2d_implicit_device)
   database.put("sources.beam_0.scan_path_file",
                "scan_path_test_thermal_physics.txt");
 
-  thermal_2d<adamantine::ElectronBeamHeatSource<2>, dealii::MemorySpace::CUDA>(
-      database, 0.025);
+  thermal_2d<dealii::MemorySpace::CUDA>(database, 0.025);
 }
 
 BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution_device)
 {
-  thermal_2d_manufactured_solution<adamantine::ElectronBeamHeatSource<2>,
-                                   dealii::MemorySpace::CUDA>();
+  thermal_2d_manufactured_solution<dealii::MemorySpace::CUDA>();
 }
 
 BOOST_AUTO_TEST_CASE(initial_temperature_device)
 {
-  initial_temperature<adamantine::ElectronBeamHeatSource<2>,
-                      dealii::MemorySpace::CUDA>();
+  initial_temperature<dealii::MemorySpace::CUDA>();
 }
