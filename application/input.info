@@ -61,6 +61,7 @@ sources
 
   beam_0
   {
+    type goldak ; goldak (laser) or electron_beam
     depth 1e-3 ; [m] maximum depth reached by the laser
     diameter 1e-3 ; [m]
     scan_path_file scan_path.txt

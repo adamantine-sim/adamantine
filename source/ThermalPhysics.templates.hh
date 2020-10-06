@@ -161,7 +161,21 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   {
     boost::property_tree::ptree const &beam_database =
         source_database.get_child("beam_" + std::to_string(i));
-    _heat_sources[i] = std::make_unique<GoldakHeatSource<dim>>(beam_database);
+    if (beam_database.get<std::string>("type") == "goldak")
+    {
+      _heat_sources[i] = std::make_unique<GoldakHeatSource<dim>>(beam_database);
+    }
+    else if (beam_database.get<std::string>("type") == "electron_beam")
+    {
+      _heat_sources[i] =
+          std::make_unique<ElectronBeamHeatSource<dim>>(beam_database);
+    }
+    else
+    {
+      ASSERT_THROW(false, "Error: Beam type '" +
+                              beam_database.get<std::string>("type") +
+                              "' not recognized.");
+    }
     _heat_sources[i]->set_max_height(_geometry.get_max_height());
   }
 
