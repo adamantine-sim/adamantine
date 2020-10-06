@@ -37,11 +37,8 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   // Source database
   database.put("sources.n_beams", 1);
   database.put("sources.beam_0.depth", 1e100);
-  database.put("sources.beam_0.energy_conversion_efficiency", 0.1);
-  database.put("sources.beam_0.control_efficiency", 1.0);
   database.put("sources.beam_0.diameter", 1e100);
   database.put("sources.beam_0.max_power", 1e300);
-  database.put("sources.beam_0.abscissa", "t");
   database.put("sources.beam_0.absorption_efficiency", 0.1);
   database.put("sources.beam_0.type", "electron_beam");
 
@@ -97,12 +94,8 @@ void thermal_2d_manufactured_solution()
   // Source database
   database.put("sources.n_beams", 1);
   database.put("sources.beam_0.depth", 1e100);
-  database.put("sources.beam_0.energy_conversion_efficiency",
-               0.1 / 0.29317423955177113);
-  database.put("sources.beam_0.control_efficiency", 1.0);
   database.put("sources.beam_0.diameter", 1e100);
   database.put("sources.beam_0.max_power", 1e300);
-  database.put("sources.beam_0.abscissa", "1");
   database.put("sources.beam_0.absorption_efficiency",
                0.1 / 0.29317423955177113);
   database.put("sources.beam_0.scan_path_file",
@@ -169,11 +162,8 @@ void initial_temperature()
   // Source database
   database.put("sources.n_beams", 1);
   database.put("sources.beam_0.depth", 1e100);
-  database.put("sources.beam_0.energy_conversion_efficiency", 0.1);
-  database.put("sources.beam_0.control_efficiency", 1.0);
   database.put("sources.beam_0.diameter", 1e100);
   database.put("sources.beam_0.max_power", 1e300);
-  database.put("sources.beam_0.abscissa", "t");
   database.put("sources.beam_0.scan_path_file", "scan_path.txt");
   database.put("sources.beam_0.absorption_efficiency", 0.3);
   database.put("sources.beam_0.type", "electron_beam");

@@ -39,7 +39,7 @@ public:
    *   - <B>sources</B>: property tree
    *   - <B>sources.n_beams</B>: unsigned int in \f$[0,\infty)\f$
    *   - <B>sources.beam_X</B>: property tree with X the number associated to
-   *   the electron beam
+   *   the heat source
    *   - <B>time_stepping</B>: property tree
    *   - <B>time_stepping.method</B>: string
    *   - <B>time_stepping.coarsening_parameter</B>: double in \f$[0,\infty)\f$
