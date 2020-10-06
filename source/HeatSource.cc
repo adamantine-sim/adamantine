@@ -13,7 +13,7 @@ namespace adamantine
 
 template <int dim>
 HeatSource<dim>::HeatSource(boost::property_tree::ptree const &database)
-    : _max_height(0.), _scan_path(database.get<std::string>("input_file"))
+    : _max_height(0.), _scan_path(database.get<std::string>("scan_path_file"))
 {
   // Set the properties of the heat source.
   _beam.depth = database.get<double>("depth");

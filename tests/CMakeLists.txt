@@ -7,7 +7,6 @@ include_directories(${CMAKE_SOURCE_DIR}/source)
 set(UNIT_TESTS "")
 list(APPEND
      UNIT_TESTS
-     test_electron_beam
      test_geometry
      test_heat_source
      test_implicit_operator
@@ -40,8 +39,8 @@ if (ADAMANTINE_ENABLE_CUDA)
   endforeach()
 endif()
 
-adamantine_COPY_INPUT_FILE(beam_position.csv tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d.info tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d_gold.txt tests/data)
 adamantine_COPY_INPUT_FILE(scan_path.txt tests/data)
+adamantine_COPY_INPUT_FILE(scan_path_test_thermal_physics.txt tests/data)
 adamantine_COPY_INPUT_FILE(extruded_cube.msh tests/data)

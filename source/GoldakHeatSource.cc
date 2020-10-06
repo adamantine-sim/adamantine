@@ -46,7 +46,7 @@ double GoldakHeatSource<dim>::value(dealii::Point<dim> const &point,
 
     // Goldak heat source equation
     double heat_source =
-        -2.0 * HeatSource<dim>::_beam.absorption_efficiency *
+        2.0 * HeatSource<dim>::_beam.absorption_efficiency *
         HeatSource<dim>::_beam.max_power * segment_power_modifier /
         (HeatSource<dim>::_beam.radius_squared * HeatSource<dim>::_beam.depth *
          pi_over_3_to_1p5) *

@@ -8,8 +8,9 @@
 #ifndef THERMAL_PHYSICS_HH
 #define THERMAL_PHYSICS_HH
 
-#include "ElectronBeam.hh"
+#include "ElectronBeamHeatSource.hh"
 #include "Geometry.hh"
+#include "GoldakHeatSource.hh"
 #include "ImplicitOperator.hh"
 #include "Physics.hh"
 #include "ThermalOperatorBase.hh"
@@ -38,7 +39,7 @@ public:
    *   - <B>sources</B>: property tree
    *   - <B>sources.n_beams</B>: unsigned int in \f$[0,\infty)\f$
    *   - <B>sources.beam_X</B>: property tree with X the number associated to
-   *   the electron beam
+   *   the heat source
    *   - <B>time_stepping</B>: property tree
    *   - <B>time_stepping.method</B>: string
    *   - <B>time_stepping.coarsening_parameter</B>: double in \f$[0,\infty)\f$
@@ -101,7 +102,7 @@ public:
   /**
    * Return the heat sources.
    */
-  std::vector<std::unique_ptr<ElectronBeam<dim>>> &get_electron_beams();
+  std::vector<std::unique_ptr<HeatSource<dim>>> &get_heat_sources();
 
 private:
   using LA_Vector =
@@ -174,11 +175,11 @@ private:
    */
   std::shared_ptr<MaterialProperty<dim>> _material_properties;
   /**
-   * Vector of electron beam sources.
+   * Vector of heat sources.
    */
   // Use unique_ptr due to a strange bug involving TBB, std::vector, and
   // dealii::FunctionParser.
-  std::vector<std::unique_ptr<ElectronBeam<dim>>> _electron_beams;
+  std::vector<std::unique_ptr<HeatSource<dim>>> _heat_sources;
   /**
    * Shared pointer to the underlying ThermalOperator.
    */
@@ -230,11 +231,11 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType,
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-inline std::vector<std::unique_ptr<ElectronBeam<dim>>> &
+inline std::vector<std::unique_ptr<HeatSource<dim>>> &
 ThermalPhysics<dim, fe_degree, MemorySpaceType,
-               QuadratureType>::get_electron_beams()
+               QuadratureType>::get_heat_sources()
 {
-  return _electron_beams;
+  return _heat_sources;
 }
 } // namespace adamantine
 
