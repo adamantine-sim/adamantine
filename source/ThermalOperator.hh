@@ -32,18 +32,15 @@ public:
    */
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
-              dealii::QGaussLobatto<1> const &quad) override;
-
-  void reinit(dealii::DoFHandler<dim> const &dof_handler,
-              dealii::AffineConstraints<double> const &affine_constraints,
-              dealii::QGauss<1> const &quad) override;
+              dealii::hp::QCollection<1> const &quad) override;
 
   /**
    * Compute the inverse of the mass matrix and update the material properties.
    */
   void compute_inverse_mass_matrix(
       dealii::DoFHandler<dim> const &dof_handler,
-      dealii::AffineConstraints<double> const &affine_constraints) override;
+      dealii::AffineConstraints<double> const &affine_constraints,
+      dealii::hp::FECollection<dim> const &fe_collection) override;
 
   /**
    * Clear the MatrixFree object and resize the inverse of the mass matrix to

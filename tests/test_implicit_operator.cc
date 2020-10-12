@@ -12,7 +12,9 @@
 #include <ThermalOperator.hh>
 
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_q.h>
+#include <deal.II/hp/fe_collection.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/numerics/matrix_tools.h>
@@ -34,12 +36,16 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   geometry_database.put("height_divisions", 5);
   adamantine::Geometry<2> geometry(communicator, geometry_database);
   // Create the DoFHandler
-  dealii::FE_Q<2> fe(2);
-  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
-  dof_handler.distribute_dofs(fe);
+  dealii::hp::FECollection<2> fe_collection;
+  fe_collection.push_back(dealii::FE_Q<2>(2));
+  fe_collection.push_back(dealii::FE_Nothing<2>());
+  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation(), true);
+  dof_handler.distribute_dofs(fe_collection);
   dealii::AffineConstraints<double> affine_constraints;
   affine_constraints.close();
-  dealii::QGauss<1> quad(3);
+  dealii::hp::QCollection<1> q_collection;
+  q_collection.push_back(dealii::QGauss<1>(3));
+  q_collection.push_back(dealii::QGauss<1>(1));
 
   // Create the MaterialProperty
   boost::property_tree::ptree mat_prop_database;
@@ -63,9 +69,9 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
       thermal_operator = std::make_shared<
           adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>>(
           communicator, mat_properties);
-  thermal_operator->reinit(dof_handler, affine_constraints, quad);
-  thermal_operator->compute_inverse_mass_matrix(dof_handler,
-                                                affine_constraints);
+  thermal_operator->reinit(dof_handler, affine_constraints, q_collection);
+  thermal_operator->compute_inverse_mass_matrix(dof_handler, affine_constraints,
+                                                fe_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator->m());
   thermal_operator->evaluate_material_properties(dummy);
@@ -92,9 +98,9 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
       size);
   std::shared_ptr<
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
-  inverse_mass_matrix(
-      new dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>(
-          size));
+      inverse_mass_matrix(
+          new dealii::LA::distributed::Vector<double,
+                                              dealii::MemorySpace::Host>(size));
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst(size);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_jfnk(
       size);

@@ -8,6 +8,8 @@
 #include <Geometry.hh>
 #include <ThermalPhysics.hh>
 
+#include <deal.II/base/quadrature_lib.h>
+
 template <typename MemorySpaceType>
 void thermal_2d(boost::property_tree::ptree &database, double time_step)
 {
