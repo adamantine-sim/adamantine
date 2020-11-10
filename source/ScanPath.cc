@@ -14,7 +14,8 @@
 namespace adamantine
 {
 
-ScanPath::ScanPath(std::string scan_path_file) : _current_segment(0)
+ScanPath::ScanPath(std::string scan_path_file, ScanPathFileFormat file_format)
+    : _current_segment(0)
 {
   // General initializations
   _current_time = -1.;
@@ -22,6 +23,24 @@ ScanPath::ScanPath(std::string scan_path_file) : _current_segment(0)
   // Parse the scan path
   ASSERT_THROW(boost::filesystem::exists(scan_path_file),
                "The file " + scan_path_file + " does not exist.");
+
+  if (file_format == ScanPathFileFormat::segment)
+  {
+    load_segment_scan_path();
+  }
+  else if (file_format == ScanPathFileFormat::event_series)
+  {
+    load_event_series_scan_path();
+  }
+  else
+  {
+    ASSERT_THROW(false, "Error: Format of scan path file " +
+                            std::to_string(file_format) + " not recognized.");
+  }
+}
+
+void ScanPath::load_segment_scan_path()
+{
   std::ifstream file;
   file.open(scan_path_file);
   std::string line;
@@ -53,7 +72,8 @@ ScanPath::ScanPath(std::string scan_path_file) : _current_segment(0)
       else
       {
         ASSERT_THROW(false, "Error: Mode type in scan path file line " +
-                                std::to_string(line_index) + "not recognized.");
+                                std::to_string(line_index) +
+                                " not recognized.");
       }
 
       // Set the segment end position
@@ -92,12 +112,58 @@ ScanPath::ScanPath(std::string scan_path_file) : _current_segment(0)
   file.close();
 }
 
+void ScanPath::load_event_series_scan_path()
+{
+  std::ifstream file;
+  file.open(scan_path_file);
+  std::string line;
+  int line_index = 0;
+  while (getline(file, line))
+  {
+    // For an event series the first segment is a ScanPathSegment point, then
+    // the rest are ScanPathSegment lines
+    ScanPathSegment segment;
+
+    std::vector<std::string> split_line;
+    boost::split(split_line, line, boost::is_any_of(" "),
+                 boost::token_compress_on);
+
+    if (line_index == 0)
+    {
+      // For the initial point we need to add a dummy segment in case the first
+      // event is at a nonzero time
+      segment.end_time = -1.0;
+
+      segment.end_point(0) = std::stod(split_line[1]);
+      segment.end_point(1) = std::stod(split_line[2]);
+      segment.end_point(2) = std::stod(split_line[3]);
+
+      segment.power_modifier = 0.0;
+    }
+    else
+    {
+      // Set the segment end time
+      segment.end_time = std::stod(split_line[0]);
+
+      // Set the segment end position
+      segment.end_point(0) = std::stod(split_line[1]);
+      segment.end_point(1) = std::stod(split_line[2]);
+      segment.end_point(2) = std::stod(split_line[3]);
+
+      // Set the power modifier
+      segment.power_modifier = std::stod(split_line[4]);
+    }
+
+    _segment_list.push_back(segment);
+  }
+}
+
 void ScanPath::update_current_segment_info(
     double time, dealii::Point<3> &segment_start_point,
     double &segment_start_time)
 {
-  // Get to the correct segment (assumes that the current time is never before
-  // the current segment starts)
+  // Get to the correct segment (assumes that the current time is never
+  // before the current segment starts)
 
   while (time > _segment_list[_current_segment].end_time)
   {

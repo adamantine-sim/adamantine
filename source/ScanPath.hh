@@ -22,6 +22,15 @@
 namespace adamantine
 {
 /**
+ * This enum distinguishes between the scan path input file formats
+ */
+enum class ScanPathFileFormat
+{
+  segment,
+  event_series
+};
+
+/**
  * This enum distinguishes between the two types of scan path segments.
  */
 enum class ScanPathSegmentType
@@ -65,8 +74,9 @@ public:
    * Construtor.
    * \param[in] scan_path_file is the name of the text file containing the scan
    * path
+   * \param[in] file_format is the format of the scan path file
    */
-  ScanPath(std::string scan_path_file);
+  ScanPath(std::string scan_path_file, ScanPathFileFormat file_format);
 
   /**
    * Calculates the location of the scan path at a given time for a single
@@ -94,6 +104,16 @@ private:
    * The current time.
    */
   double _current_time;
+
+  /**
+   * Method to load a "segment" scan path file
+   */
+  void load_segment_scan_path();
+
+  /**
+   * Method to load an "event series" scan path file
+   */
+  void load_event_series_scan_path();
 
   /**
    * Method to determine the current segment, its start point, and start time.
