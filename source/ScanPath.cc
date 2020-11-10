@@ -26,20 +26,19 @@ ScanPath::ScanPath(std::string scan_path_file, ScanPathFileFormat file_format)
 
   if (file_format == ScanPathFileFormat::segment)
   {
-    load_segment_scan_path();
+    load_segment_scan_path(scan_path_file);
   }
   else if (file_format == ScanPathFileFormat::event_series)
   {
-    load_event_series_scan_path();
+    load_event_series_scan_path(scan_path_file);
   }
   else
   {
-    ASSERT_THROW(false, "Error: Format of scan path file " +
-                            std::to_string(file_format) + " not recognized.");
+    ASSERT_THROW(false, "Error: Format of scan path file not recognized.");
   }
 }
 
-void ScanPath::load_segment_scan_path()
+void ScanPath::load_segment_scan_path(std::string scan_path_file)
 {
   std::ifstream file;
   file.open(scan_path_file);
@@ -112,12 +111,13 @@ void ScanPath::load_segment_scan_path()
   file.close();
 }
 
-void ScanPath::load_event_series_scan_path()
+void ScanPath::load_event_series_scan_path(std::string scan_path_file)
 {
   std::ifstream file;
   file.open(scan_path_file);
   std::string line;
   int line_index = 0;
+  double last_power = 0.0;
   while (getline(file, line))
   {
     // For an event series the first segment is a ScanPathSegment point, then
@@ -128,31 +128,17 @@ void ScanPath::load_event_series_scan_path()
     boost::split(split_line, line, boost::is_any_of(" "),
                  boost::token_compress_on);
 
-    if (line_index == 0)
-    {
-      // For the initial point we need to add a dummy segment in case the first
-      // event is at a nonzero time
-      segment.end_time = -1.0;
+    // Set the segment end time
+    segment.end_time = std::stod(split_line[0]);
 
-      segment.end_point(0) = std::stod(split_line[1]);
-      segment.end_point(1) = std::stod(split_line[2]);
-      segment.end_point(2) = std::stod(split_line[3]);
+    // Set the segment end position
+    segment.end_point(0) = std::stod(split_line[1]);
+    segment.end_point(1) = std::stod(split_line[2]);
+    segment.end_point(2) = std::stod(split_line[3]);
 
-      segment.power_modifier = 0.0;
-    }
-    else
-    {
-      // Set the segment end time
-      segment.end_time = std::stod(split_line[0]);
-
-      // Set the segment end position
-      segment.end_point(0) = std::stod(split_line[1]);
-      segment.end_point(1) = std::stod(split_line[2]);
-      segment.end_point(2) = std::stod(split_line[3]);
-
-      // Set the power modifier
-      segment.power_modifier = std::stod(split_line[4]);
-    }
+    // Set the power modifier
+    segment.power_modifier = last_power;
+    last_power = std::stod(split_line[4]);
 
     _segment_list.push_back(segment);
   }

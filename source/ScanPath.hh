@@ -108,12 +108,12 @@ private:
   /**
    * Method to load a "segment" scan path file
    */
-  void load_segment_scan_path();
+  void load_segment_scan_path(std::string scan_path_file);
 
   /**
    * Method to load an "event series" scan path file
    */
-  void load_event_series_scan_path();
+  void load_event_series_scan_path(std::string scan_path_file);
 
   /**
    * Method to determine the current segment, its start point, and start time.
