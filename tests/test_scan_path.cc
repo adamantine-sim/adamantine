@@ -19,13 +19,12 @@ class ScanPathTester
 public:
   std::vector<ScanPathSegment> get_segment_format_list()
   {
-    ScanPath scan_path("scan_path.txt", ScanPathFileFormat::segment);
+    ScanPath scan_path("scan_path.txt", "segment");
     return scan_path._segment_list;
   };
   std::vector<ScanPathSegment> get_event_series_format_list()
   {
-    ScanPath scan_path("scan_path_event_series.inp",
-                       ScanPathFileFormat::event_series);
+    ScanPath scan_path("scan_path_event_series.inp", "event_series");
     return scan_path._segment_list;
   };
 };
@@ -82,7 +81,7 @@ BOOST_AUTO_TEST_CASE(scan_path_location)
 {
   double const tolerance = 1e-10;
 
-  ScanPath scan_path("scan_path.txt", ScanPathFileFormat::segment);
+  ScanPath scan_path("scan_path.txt", "segment");
   double time = 1.0e-7;
   dealii::Point<3> p1 = scan_path.value(time);
 

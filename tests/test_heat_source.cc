@@ -10,6 +10,7 @@
 #include <ElectronBeamHeatSource.hh>
 #include <GoldakHeatSource.hh>
 #include <HeatSource.hh>
+#include <ScanPath.hh>
 
 #include "main.cc"
 
@@ -27,6 +28,7 @@ BOOST_AUTO_TEST_CASE(heat_source_value_2d)
   database.put("diameter", 1.0);
   database.put("max_power", 10.);
   database.put("scan_path_file", "scan_path.txt");
+  database.put("scan_path_file_format", "segment");
   GoldakHeatSource<2> goldak_heat_source(database);
   ElectronBeamHeatSource<2> eb_heat_source(database);
 
@@ -99,6 +101,7 @@ BOOST_AUTO_TEST_CASE(heat_source_value_3d)
   database.put("diameter", 1.0);
   database.put("max_power", 10.);
   database.put("scan_path_file", "scan_path.txt");
+  database.put("scan_path_file_format", "segment");
 
   GoldakHeatSource<3> goldak_heat_source(database);
   ElectronBeamHeatSource<3> eb_heat_source(database);

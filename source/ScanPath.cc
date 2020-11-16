@@ -14,7 +14,7 @@
 namespace adamantine
 {
 
-ScanPath::ScanPath(std::string scan_path_file, ScanPathFileFormat file_format)
+ScanPath::ScanPath(std::string scan_path_file, std::string file_format)
     : _current_segment(0)
 {
   // General initializations
@@ -24,11 +24,11 @@ ScanPath::ScanPath(std::string scan_path_file, ScanPathFileFormat file_format)
   ASSERT_THROW(boost::filesystem::exists(scan_path_file),
                "The file " + scan_path_file + " does not exist.");
 
-  if (file_format == ScanPathFileFormat::segment)
+  if (file_format == "segment")
   {
     load_segment_scan_path(scan_path_file);
   }
-  else if (file_format == ScanPathFileFormat::event_series)
+  else if (file_format == "event_series")
   {
     load_event_series_scan_path(scan_path_file);
   }
@@ -116,7 +116,7 @@ void ScanPath::load_event_series_scan_path(std::string scan_path_file)
   std::ifstream file;
   file.open(scan_path_file);
   std::string line;
-  int line_index = 0;
+
   double last_power = 0.0;
   while (getline(file, line))
   {

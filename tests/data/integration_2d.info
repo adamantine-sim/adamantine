@@ -64,6 +64,7 @@ sources
     depth 1e-3 ; [m] maximum depth reached by the laser
     diameter 1e-3 ; [m]
     scan_path_file scan_path.txt
+    scan_path_file_format segment
     absorption_efficiency 0.3
     max_power 1200.0
     type electron_beam

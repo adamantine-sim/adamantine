@@ -21,6 +21,7 @@ BOOST_AUTO_TEST_CASE(thermal_2d_explicit_host)
   database.put("sources.beam_0.scan_path_file",
                "scan_path_test_thermal_physics.txt");
   database.put("sources.beam_0.type", "electron_beam");
+  database.put("sources.beam_0.scan_path_file_format", "segment");
 
   thermal_2d<dealii::MemorySpace::Host>(database, 0.05);
 }
@@ -36,6 +37,7 @@ BOOST_AUTO_TEST_CASE(thermal_2d_implicit_host)
   database.put("sources.beam_0.scan_path_file",
                "scan_path_test_thermal_physics.txt");
   database.put("sources.beam_0.type", "electron_beam");
+  database.put("sources.beam_0.scan_path_file_format", "segment");
 
   thermal_2d<dealii::MemorySpace::Host>(database, 0.025);
 }
