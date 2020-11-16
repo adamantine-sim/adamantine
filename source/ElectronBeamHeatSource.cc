@@ -24,19 +24,17 @@ double ElectronBeamHeatSource<dim>::value(dealii::Point<dim> const &point,
 {
   // NOTE: Due to the differing coordinate systems, "z" here is the second
   // component of the input point.
-  double const z = point[1] - HeatSource<dim>::_max_height;
-  if ((z + HeatSource<dim>::_beam.depth) < 0.)
+  double const z = point[1] - this->_max_height;
+  if ((z + this->_beam.depth) < 0.)
   {
     return 0.;
   }
   else
   {
-    double const distribution_z =
-        -3. * std::pow(z / HeatSource<dim>::_beam.depth, 2) -
-        2. * (z / HeatSource<dim>::_beam.depth) + 1.;
+    double const distribution_z = -3. * std::pow(z / this->_beam.depth, 2) -
+                                  2. * (z / this->_beam.depth) + 1.;
 
-    dealii::Point<3> const beam_center =
-        HeatSource<dim>::_scan_path.value(time);
+    dealii::Point<3> const beam_center = this->_scan_path.value(time);
     double xpy_squared = std::pow(point[0] - beam_center[0], 2);
     if (dim == 3)
     {
@@ -44,18 +42,14 @@ double ElectronBeamHeatSource<dim>::value(dealii::Point<dim> const &point,
       // component of the input point.
       xpy_squared += std::pow(point[2] - beam_center[1], 2);
     }
-    double segment_power_modifier =
-        HeatSource<dim>::_scan_path.get_power_modifier(time);
+    double segment_power_modifier = this->_scan_path.get_power_modifier(time);
 
     // Electron beam heat source equation
     double heat_source =
-        -HeatSource<dim>::_beam.absorption_efficiency *
-        HeatSource<dim>::_beam.max_power * segment_power_modifier *
-        (std::log(0.1)) /
-        (dealii::numbers::PI * HeatSource<dim>::_beam.radius_squared *
-         HeatSource<dim>::_beam.depth) *
-        std::exp((std::log(0.1)) * xpy_squared /
-                 HeatSource<dim>::_beam.radius_squared) *
+        -this->_beam.absorption_efficiency * this->_beam.max_power *
+        segment_power_modifier * (std::log(0.1)) /
+        (dealii::numbers::PI * this->_beam.radius_squared * this->_beam.depth) *
+        std::exp((std::log(0.1)) * xpy_squared / this->_beam.radius_squared) *
         distribution_z;
 
     return heat_source;
