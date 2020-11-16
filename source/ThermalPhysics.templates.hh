@@ -12,6 +12,7 @@
 #ifdef ADAMANTINE_HAVE_CUDA
 #include <ThermalOperatorDevice.hh>
 #endif
+#include <CubeHeatSource.hh>
 #include <ElectronBeamHeatSource.hh>
 #include <GoldakHeatSource.hh>
 #include <ThermalPhysics.hh>
@@ -151,6 +152,10 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     {
       _heat_sources[i] = std::make_unique<ElectronBeamHeatSource<dim>>(
           beam_database, _geometry.get_max_height());
+    }
+    else if (type == "cube")
+    {
+      _heat_sources[i] = std::make_unique<CubeHeatSource<dim>>(beam_database);
     }
     else
     {
