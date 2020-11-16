@@ -12,6 +12,7 @@
 #include <ThermalOperatorDevice.hh>
 
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/read_write_vector.h>
@@ -35,12 +36,16 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev)
   geometry_database.put("height_divisions", 5);
   adamantine::Geometry<2> geometry(communicator, geometry_database);
   // Create the DoFHandler
-  dealii::FE_Q<2> fe(2);
-  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
-  dof_handler.distribute_dofs(fe);
+  dealii::hp::FECollection<2> fe_collection;
+  fe_collection.push_back(dealii::FE_Q<2>(2));
+  fe_collection.push_back(dealii::FE_Nothing<2>());
+  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation(), true);
+  dof_handler.distribute_dofs(fe_collection);
   dealii::AffineConstraints<double> affine_constraints;
   affine_constraints.close();
-  dealii::QGauss<1> quad(3);
+  dealii::hp::QCollection<1> q_collection;
+  q_collection.push_back(dealii::QGauss<1>(3));
+  q_collection.push_back(dealii::QGauss<1>(1));
 
   // Create the MaterialProperty
   boost::property_tree::ptree mat_prop_database;
@@ -62,9 +67,9 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev)
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
       thermal_operator_dev(communicator, mat_properties);
-  thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
-                                                   affine_constraints);
-  thermal_operator_dev.reinit(dof_handler, affine_constraints, quad);
+  thermal_operator_dev.compute_inverse_mass_matrix(
+      dof_handler, affine_constraints, fe_collection);
+  thermal_operator_dev.reinit(dof_handler, affine_constraints, q_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator_dev.m());
   thermal_operator_dev.evaluate_material_properties(dummy);
@@ -113,12 +118,16 @@ BOOST_AUTO_TEST_CASE(spmv)
   geometry_database.put("height_divisions", 5);
   adamantine::Geometry<2> geometry(communicator, geometry_database);
   // Create the DoFHandler
-  dealii::FE_Q<2> fe(2);
-  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
-  dof_handler.distribute_dofs(fe);
+  dealii::hp::FECollection<2> fe_collection;
+  fe_collection.push_back(dealii::FE_Q<2>(2));
+  fe_collection.push_back(dealii::FE_Nothing<2>());
+  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation(), true);
+  dof_handler.distribute_dofs(fe_collection);
   dealii::AffineConstraints<double> affine_constraints;
   affine_constraints.close();
-  dealii::QGauss<1> quad(3);
+  dealii::hp::QCollection<1> q_collection;
+  q_collection.push_back(dealii::QGauss<1>(3));
+  q_collection.push_back(dealii::QGauss<1>(1));
 
   // Create the MaterialProperty
   boost::property_tree::ptree mat_prop_database;
@@ -140,9 +149,9 @@ BOOST_AUTO_TEST_CASE(spmv)
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
       thermal_operator_dev(communicator, mat_properties);
-  thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
-                                                   affine_constraints);
-  thermal_operator_dev.reinit(dof_handler, affine_constraints, quad);
+  thermal_operator_dev.compute_inverse_mass_matrix(
+      dof_handler, affine_constraints, fe_collection);
+  thermal_operator_dev.reinit(dof_handler, affine_constraints, q_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator_dev.m());
   thermal_operator_dev.evaluate_material_properties(dummy);
@@ -204,12 +213,16 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
   geometry_database.put("height_divisions", 5);
   adamantine::Geometry<2> geometry(communicator, geometry_database);
   // Create the DoFHandler
-  dealii::FE_Q<2> fe(2);
-  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
-  dof_handler.distribute_dofs(fe);
+  dealii::hp::FECollection<2> fe_collection;
+  fe_collection.push_back(dealii::FE_Q<2>(2));
+  fe_collection.push_back(dealii::FE_Nothing<2>());
+  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation(), true);
+  dof_handler.distribute_dofs(fe_collection);
   dealii::AffineConstraints<double> affine_constraints;
   affine_constraints.close();
-  dealii::QGauss<1> quad(3);
+  dealii::hp::QCollection<1> q_collection;
+  q_collection.push_back(dealii::QGauss<1>(3));
+  q_collection.push_back(dealii::QGauss<1>(1));
 
   // Create the MaterialProperty
   boost::property_tree::ptree mat_prop_database;
@@ -231,9 +244,9 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
       thermal_operator_dev(communicator, mat_properties);
-  thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
-                                                   affine_constraints);
-  thermal_operator_dev.reinit(dof_handler, affine_constraints, quad);
+  thermal_operator_dev.compute_inverse_mass_matrix(
+      dof_handler, affine_constraints, fe_collection);
+  thermal_operator_dev.reinit(dof_handler, affine_constraints, q_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator_dev.m());
   thermal_operator_dev.evaluate_material_properties(dummy);
@@ -242,9 +255,9 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
 
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>
       thermal_operator_host(communicator, mat_properties);
-  thermal_operator_host.compute_inverse_mass_matrix(dof_handler,
-                                                    affine_constraints);
-  thermal_operator_host.reinit(dof_handler, affine_constraints, quad);
+  thermal_operator_host.compute_inverse_mass_matrix(
+      dof_handler, affine_constraints, fe_collection);
+  thermal_operator_host.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator_host.evaluate_material_properties(dummy);
 
   // Compare vmult using matrix free and building the matrix
