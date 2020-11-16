@@ -17,9 +17,6 @@ namespace adamantine
 ScanPath::ScanPath(std::string scan_path_file, std::string file_format)
     : _current_segment(0)
 {
-  // General initializations
-  _current_time = -1.;
-
   // Parse the scan path
   ASSERT_THROW(boost::filesystem::exists(scan_path_file),
                "The file " + scan_path_file + " does not exist.");
@@ -146,7 +143,7 @@ void ScanPath::load_event_series_scan_path(std::string scan_path_file)
 
 void ScanPath::update_current_segment_info(
     double time, dealii::Point<3> &segment_start_point,
-    double &segment_start_time)
+    double &segment_start_time) const
 {
   // Get to the correct segment (assumes that the current time is never
   // before the current segment starts)
@@ -168,13 +165,12 @@ void ScanPath::update_current_segment_info(
   }
 }
 
-dealii::Point<3> ScanPath::value(double const &time)
+dealii::Point<3> ScanPath::value(double const &time) const
 {
   // Get to the correct segment (assumes that the current time is never
   // before the current segment starts)
   dealii::Point<3> segment_start_point;
   double segment_start_time = 0.0;
-  _current_time = time;
   update_current_segment_info(time, segment_start_point, segment_start_time);
 
   // Calculate the position in the direction given by "component"
@@ -187,13 +183,12 @@ dealii::Point<3> ScanPath::value(double const &time)
   return position;
 }
 
-double ScanPath::get_power_modifier(double const &time)
+double ScanPath::get_power_modifier(double const &time) const
 {
   // Get to the correct segment (assumes that the current time is never
   // before the current segment starts)
   dealii::Point<3> segment_start_point;
   double segment_start_time = 0.0;
-  _current_time = time;
   update_current_segment_info(time, segment_start_point, segment_start_time);
 
   return _segment_list[_current_segment].power_modifier;

@@ -88,7 +88,8 @@ public:
   /**
    * Compute the heat source at a given point at a given time.
    */
-  virtual double value(dealii::Point<dim> const &point, double const time) = 0;
+  virtual double value(dealii::Point<dim> const &point,
+                       double const time) const = 0;
 
 protected:
   /**

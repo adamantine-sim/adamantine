@@ -20,7 +20,7 @@ ElectronBeamHeatSource<dim>::ElectronBeamHeatSource(
 
 template <int dim>
 double ElectronBeamHeatSource<dim>::value(dealii::Point<dim> const &point,
-                                          double const time)
+                                          double const time) const
 {
   // NOTE: Due to the differing coordinate systems, "z" here is the second
   // component of the input point.

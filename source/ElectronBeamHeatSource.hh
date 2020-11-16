@@ -37,7 +37,8 @@ public:
    * Returns the value of an electron beam heat source at a specified point and
    * time.
    */
-  double value(dealii::Point<dim> const &point, double const time) override;
+  double value(dealii::Point<dim> const &point,
+               double const time) const override;
 };
 } // namespace adamantine
 
