@@ -57,22 +57,25 @@ BOOST_AUTO_TEST_CASE(scan_path)
   std::vector<ScanPathSegment> segment_event_series_list =
       tester.get_event_series_format_list();
 
-  BOOST_CHECK(segment_format_list.size() == 3);
+  BOOST_CHECK(segment_event_series_list.size() == 3);
 
-  BOOST_CHECK_CLOSE(segment_format_list[0].end_time, 0.1, tolerance);
-  BOOST_CHECK_CLOSE(segment_format_list[0].end_point[0], 0.0, tolerance);
-  BOOST_CHECK_CLOSE(segment_format_list[0].end_point[1], 0.0, tolerance);
-  BOOST_CHECK_CLOSE(segment_format_list[0].power_modifier, 0.0, tolerance);
+  BOOST_CHECK_CLOSE(segment_event_series_list[0].end_time, 0.1, tolerance);
+  BOOST_CHECK_CLOSE(segment_event_series_list[0].end_point[0], 0.0, tolerance);
+  BOOST_CHECK_CLOSE(segment_event_series_list[0].end_point[1], 0.0, tolerance);
+  BOOST_CHECK_CLOSE(segment_event_series_list[0].power_modifier, 0.0,
+                    tolerance);
 
-  BOOST_CHECK_CLOSE(segment_format_list[1].end_time, 1.0, tolerance);
-  BOOST_CHECK_CLOSE(segment_format_list[1].end_point[0], 0.5, tolerance);
-  BOOST_CHECK_CLOSE(segment_format_list[1].end_point[1], 0.0, tolerance);
-  BOOST_CHECK_CLOSE(segment_format_list[1].power_modifier, 1.0, tolerance);
+  BOOST_CHECK_CLOSE(segment_event_series_list[1].end_time, 1.0, tolerance);
+  BOOST_CHECK_CLOSE(segment_event_series_list[1].end_point[0], 0.5, tolerance);
+  BOOST_CHECK_CLOSE(segment_event_series_list[1].end_point[1], 0.0, tolerance);
+  BOOST_CHECK_CLOSE(segment_event_series_list[1].power_modifier, 1.0,
+                    tolerance);
 
-  BOOST_CHECK_CLOSE(segment_format_list[2].end_time, 2.0, tolerance);
-  BOOST_CHECK_CLOSE(segment_format_list[2].end_point[0], 0.5, tolerance);
-  BOOST_CHECK_CLOSE(segment_format_list[2].end_point[1], 0.5, tolerance);
-  BOOST_CHECK_CLOSE(segment_format_list[2].power_modifier, 0.5, tolerance);
+  BOOST_CHECK_CLOSE(segment_event_series_list[2].end_time, 2.0, tolerance);
+  BOOST_CHECK_CLOSE(segment_event_series_list[2].end_point[0], 0.5, tolerance);
+  BOOST_CHECK_CLOSE(segment_event_series_list[2].end_point[1], 0.5, tolerance);
+  BOOST_CHECK_CLOSE(segment_event_series_list[2].power_modifier, 0.5,
+                    tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(scan_path_location)
