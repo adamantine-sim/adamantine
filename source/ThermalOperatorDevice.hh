@@ -27,15 +27,12 @@ public:
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
-              dealii::QGaussLobatto<1> const &quad) override;
-
-  void reinit(dealii::DoFHandler<dim> const &dof_handler,
-              dealii::AffineConstraints<double> const &affine_constraints,
-              dealii::QGauss<1> const &quad) override;
+              dealii::hp::QCollection<1> const &q_collection) override;
 
   void compute_inverse_mass_matrix(
       dealii::DoFHandler<dim> const &dof_handler,
-      dealii::AffineConstraints<double> const &affine_constraints) override;
+      dealii::AffineConstraints<double> const &affine_constraints,
+      dealii::hp::FECollection<dim> const &fe_collection) override;
 
   void clear();
 

@@ -65,8 +65,8 @@ public:
 };
 
 template <int dim, int fe_degree>
-__device__ void MassMatrixOperatorQuad<dim, fe_degree>::
-operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const
+__device__ void MassMatrixOperatorQuad<dim, fe_degree>::operator()(
+    dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const
 {
   fe_eval->submit_value(1.);
 }
@@ -90,12 +90,12 @@ public:
 };
 
 template <int dim, int fe_degree>
-__device__ void LocalMassMarixOperator<dim, fe_degree>::
-operator()(unsigned int const cell,
-           typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
-               *gpu_data,
-           dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
-           double const * /*src*/, double *dst) const
+__device__ void LocalMassMarixOperator<dim, fe_degree>::operator()(
+    unsigned int const cell,
+    typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
+        *gpu_data,
+    dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
+    double const * /*src*/, double *dst) const
 {
   unsigned int const pos = dealii::CUDAWrappers::local_q_point_id<dim, double>(
       cell, gpu_data, n_dofs_1d, n_q_points);
@@ -124,8 +124,8 @@ private:
 };
 
 template <int dim, int fe_degree>
-__device__ void ThermalOperatorQuad<dim, fe_degree>::
-operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const
+__device__ void ThermalOperatorQuad<dim, fe_degree>::operator()(
+    dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const
 {
 
   fe_eval->submit_gradient(-_inv_rho_cp * _thermal_conductivity *
@@ -160,12 +160,12 @@ private:
 };
 
 template <int dim, int fe_degree>
-__device__ void LocalThermalOperatorDevice<dim, fe_degree>::
-operator()(unsigned int const cell,
-           typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
-               *gpu_data,
-           dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
-           double const *src, double *dst) const
+__device__ void LocalThermalOperatorDevice<dim, fe_degree>::operator()(
+    unsigned int const cell,
+    typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
+        *gpu_data,
+    dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
+    double const *src, double *dst) const
 {
   unsigned int const pos = dealii::CUDAWrappers::local_q_point_id<dim, double>(
       cell, gpu_data, n_dofs_1d, n_q_points);
@@ -200,26 +200,11 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
-    dealii::QGaussLobatto<1> const &quad)
+    dealii::hp::QCollection<1> const &q_collection)
 {
-  _matrix_free.reinit(dof_handler, affine_constraints, quad, _matrix_free_data);
-  _dof_handler = &dof_handler;
-  dealii::LA::distributed::Vector<double, MemorySpaceType> tmp;
-  _matrix_free.initialize_dof_vector(tmp);
-  _m = tmp.size();
-  _n_owned_cells =
-      dynamic_cast<dealii::parallel::DistributedTriangulationBase<dim> const *>(
-          &dof_handler.get_triangulation())
-          ->n_locally_owned_active_cells();
-}
-
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
-    dealii::DoFHandler<dim> const &dof_handler,
-    dealii::AffineConstraints<double> const &affine_constraints,
-    dealii::QGauss<1> const &quad)
-{
-  _matrix_free.reinit(dof_handler, affine_constraints, quad, _matrix_free_data);
+  // FIXME deal.II does not support QCollection on GPU
+  _matrix_free.reinit(dof_handler, affine_constraints, q_collection[0],
+                      _matrix_free_data);
   _dof_handler = &dof_handler;
   dealii::LA::distributed::Vector<double, MemorySpaceType> tmp;
   _matrix_free.initialize_dof_vector(tmp);
@@ -234,7 +219,8 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
     compute_inverse_mass_matrix(
         dealii::DoFHandler<dim> const &dof_handler,
-        dealii::AffineConstraints<double> const &affine_constraints)
+        dealii::AffineConstraints<double> const &affine_constraints,
+        dealii::hp::FECollection<dim> const & /*fe_collection*/)
 {
   // Compute the inverse of the mass matrix
   dealii::QGaussLobatto<1> mass_matrix_quad(fe_degree + 1);

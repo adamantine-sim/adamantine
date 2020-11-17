@@ -17,7 +17,7 @@
 
 #include <deal.II/base/time_stepping.h>
 #include <deal.II/base/time_stepping.templates.h>
-#include <deal.II/fe/fe_q.h>
+#include <deal.II/hp/fe_collection.h>
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -157,7 +157,7 @@ private:
   /**
    * Associated Lagrange finite elements.
    */
-  dealii::FE_Q<dim> _fe;
+  dealii::hp::FECollection<dim> _fe_collection;
   /**
    * Associated DoFHandler.
    */
@@ -169,7 +169,7 @@ private:
   /**
    * Associated quadature, either Gauss or Gauss-Lobatto.
    */
-  QuadratureType _quadrature;
+  dealii::hp::QCollection<1> _q_collection;
   /**
    * Shared pointer to the material properties associated to the domain.
    */

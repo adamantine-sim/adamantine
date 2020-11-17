@@ -11,6 +11,8 @@
 #include <deal.II/base/point.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/fe/fe_values.h>
+#include <deal.II/hp/fe_values.h>
+#include <deal.II/hp/q_collection.h>
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/optional.hpp>
@@ -327,23 +329,26 @@ MaterialProperty<dim>::compute_average_temperature(
   auto mp_cell = _mp_dof_handler.begin_active();
   auto mp_end_cell = _mp_dof_handler.end();
   auto enth_cell = temperature_dof_handler.begin_active();
-  dealii::FiniteElement<dim> const &fe = temperature_dof_handler.get_fe();
-  // We can use a lower degree of quadrature since we are projecting on a
-  // piecewise constant space
-  dealii::QGauss<dim> quadrature(fe.degree);
-  dealii::FEValues<dim> fe_values(
-      fe, quadrature,
+  dealii::hp::FECollection<dim> const &fe_collection =
+      temperature_dof_handler.get_fe_collection();
+  dealii::hp::QCollection<dim> q_collection;
+  q_collection.push_back(dealii::QGauss<dim>(fe_collection.max_degree() + 1));
+  q_collection.push_back(dealii::QGauss<dim>(1));
+  dealii::hp::FEValues<dim> hp_fe_values(
+      fe_collection, q_collection,
       dealii::UpdateFlags::update_values |
           dealii::UpdateFlags::update_quadrature_points |
           dealii::UpdateFlags::update_JxW_values);
-  unsigned int const dofs_per_cell = fe.dofs_per_cell;
   std::vector<dealii::types::global_dof_index> mp_dof_indices(1);
+  unsigned int const n_q_points = q_collection.max_n_quadrature_points();
+  unsigned int const dofs_per_cell = fe_collection.max_dofs_per_cell();
   std::vector<dealii::types::global_dof_index> enth_dof_indices(dofs_per_cell);
-  unsigned int const n_q_points = quadrature.size();
   for (; mp_cell != mp_end_cell; ++enth_cell, ++mp_cell)
-    if (mp_cell->is_locally_owned())
+    if ((mp_cell->is_locally_owned()) && (enth_cell->active_fe_index() == 0))
     {
-      fe_values.reinit(enth_cell);
+      hp_fe_values.reinit(enth_cell);
+      dealii::FEValues<dim> const &fe_values =
+          hp_fe_values.get_present_fe_values();
       mp_cell->get_dof_indices(mp_dof_indices);
       dealii::types::global_dof_index const mp_dof_index = mp_dof_indices[0];
       enth_cell->get_dof_indices(enth_dof_indices);

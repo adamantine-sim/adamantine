@@ -10,8 +10,8 @@
 
 #include <Operator.hh>
 
-#include <deal.II/base/quadrature_lib.h>
 #include <deal.II/dofs/dof_handler.h>
+#include <deal.II/hp/q_collection.h>
 #include <deal.II/lac/affine_constraints.h>
 
 namespace adamantine
@@ -24,20 +24,15 @@ public:
 
   virtual ~ThermalOperatorBase() = default;
 
-  // The function cannot be virtual and templated
   virtual void
   reinit(dealii::DoFHandler<dim> const &dof_handler,
          dealii::AffineConstraints<double> const &affine_constraints,
-         dealii::QGaussLobatto<1> const &quad) = 0;
-
-  virtual void
-  reinit(dealii::DoFHandler<dim> const &dof_handler,
-         dealii::AffineConstraints<double> const &affine_constraints,
-         dealii::QGauss<1> const &quad) = 0;
+         dealii::hp::QCollection<1> const &q_collection) = 0;
 
   virtual void compute_inverse_mass_matrix(
       dealii::DoFHandler<dim> const &dof_handler,
-      dealii::AffineConstraints<double> const &affine_constraints) = 0;
+      dealii::AffineConstraints<double> const &affine_constraints,
+      dealii::hp::FECollection<dim> const &fe_collection) = 0;
 
   virtual std::shared_ptr<
       dealii::LA::distributed::Vector<double, MemorySpaceType>>
