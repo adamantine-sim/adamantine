@@ -65,8 +65,9 @@ public:
    * Construtor.
    * \param[in] scan_path_file is the name of the text file containing the scan
    * path
+   * \param[in] file_format is the format of the scan path file
    */
-  ScanPath(std::string scan_path_file);
+  ScanPath(std::string scan_path_file, std::string file_format);
 
   /**
    * Calculates the location of the scan path at a given time for a single
@@ -94,6 +95,16 @@ private:
    * The current time.
    */
   double _current_time;
+
+  /**
+   * Method to load a "segment" scan path file
+   */
+  void load_segment_scan_path(std::string scan_path_file);
+
+  /**
+   * Method to load an "event series" scan path file
+   */
+  void load_event_series_scan_path(std::string scan_path_file);
 
   /**
    * Method to determine the current segment, its start point, and start time.
