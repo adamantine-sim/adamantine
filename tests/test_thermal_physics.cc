@@ -51,3 +51,8 @@ BOOST_AUTO_TEST_CASE(initial_temperature_host)
 {
   initial_temperature<dealii::MemorySpace::Host>();
 }
+
+BOOST_AUTO_TEST_CASE(energy_conservation_host)
+{
+  energy_conservation<dealii::MemorySpace::Host>();
+}
