@@ -30,8 +30,10 @@ public:
    *   - <B>max_power</B>: double in \f$[0, \infty)\f$
    *   - <B>input_file</B>: name of the file that contains the scan path
    *     segments
+   * \param[in] max_height is the height of the domain
    */
-  ElectronBeamHeatSource(boost::property_tree::ptree const &database);
+  ElectronBeamHeatSource(boost::property_tree::ptree const &database,
+                         double max_height);
 
   /**
    * Returns the value of an electron beam heat source at a specified point and

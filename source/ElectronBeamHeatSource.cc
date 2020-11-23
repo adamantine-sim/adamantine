@@ -13,8 +13,8 @@ namespace adamantine
 
 template <int dim>
 ElectronBeamHeatSource<dim>::ElectronBeamHeatSource(
-    boost::property_tree::ptree const &database)
-    : HeatSource<dim>(database)
+    boost::property_tree::ptree const &database, double max_height)
+    : HeatSource<dim>(database, max_height)
 {
 }
 

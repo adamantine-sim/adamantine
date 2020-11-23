@@ -13,9 +13,7 @@
 
 namespace adamantine
 {
-
 ScanPath::ScanPath(std::string scan_path_file, std::string file_format)
-    : _current_segment(0)
 {
   // Parse the scan path
   ASSERT_THROW(boost::filesystem::exists(scan_path_file),

@@ -8,60 +8,36 @@
 #ifndef HEAT_SOURCE_HH
 #define HEAT_SOURCE_HH
 
+#include <BeamHeatSourceProperties.hh>
 #include <ScanPath.hh>
 
 #include <deal.II/base/point.h>
 
-#include <boost/property_tree/ptree.hpp>
-
-#include <vector>
-
 namespace adamantine
 {
 /**
- * This structure stores all the physical properties necessary to define an
- * heat source.
- */
-struct HeatSourceProperties
-{
-public:
-  /**
-   * A metric of the depth of the heat source into the material. The specific
-   * definition of the depth may differ across heat source types.
-   */
-  double depth;
-  /**
-   * Energy conversion efficiency on the surface.
-   */
-  double absorption_efficiency;
-
-  /**
-   * Square of the beam radius.
-   */
-  double radius_squared;
-  /**
-   * Maximum power of the beam.
-   */
-  double max_power;
-};
-
-/**
- * This is the base class for describing the functional form of a heat source.
- * It has a pure virtual "value" method that needs to be implemented in a
- * derived class.
- * NOTE: The coordinate system in this class is different than for the finite
- * element mesh. In this class, the first two components of a dealii::Point<3>
- * describe the position along the surface of the part. The last component is
- * the height through the thickness of the part from the base plate. This is in
- * opposition to the finite element mesh where the first and last components of
- * a dealii::Point<3> describe the position along the surface of the part, and
- * the second component is the thickness. That is, the last two components are
- * swapped between the two coordinate systems.
+ * This is the base class for describing the functional form of a heat
+ * source. It has a pure virtual "value" method that needs to be implemented in
+ * a derived class.
+ * NOTE: The coordinate system in this class is different than
+ * for the finite element mesh. In this class, the first two components of a
+ * dealii::Point<3> describe the position along the surface of the part. The
+ * last component is the height through the thickness of the part from the base
+ * plate. This is in opposition to the finite element mesh where the first and
+ * last components of a dealii::Point<3> describe the position along the surface
+ * of the part, and the second component is the thickness. That is, the last two
+ * components are swapped between the two coordinate systems.
  */
 template <int dim>
 class HeatSource
 {
 public:
+  /**
+   * Default constructor. This constructor should only be used for non-beam heat
+   * source.
+   */
+  HeatSource() = default;
+
   /**
    * Constructor.
    * \param[in] database requires the following entries:
@@ -69,21 +45,22 @@ public:
    *   - <B>depth</B>: double in \f$[0,\infty)\f$
    *   - <B>diameter</B>: double in \f$[0,\infty)\f$
    *   - <B>max_power</B>: double in \f$[0, \infty)\f$
-   *   - <B>scan_path_file</B>: name of the file that contains the scan path
+   *   - <B>input_file</B>: name of the file that contains the scan path
    *     segments
+   * \param[in] max_height is the height of the domain
    */
-  HeatSource(boost::property_tree::ptree const &database);
+  HeatSource(boost::property_tree::ptree const &database,
+             double const max_height)
+      : _max_height(max_height), _beam(database),
+        _scan_path(database.get<std::string>("scan_path_file"),
+                   database.get<std::string>("scan_path_file_format"))
+  {
+  }
 
   /**
    * Destructor.
    */
   virtual ~HeatSource() = default;
-
-  /**
-   * Set the maximum height of the domain. This is the height at which the
-   * heat source penetrates the material.
-   */
-  void set_max_height(double height);
 
   /**
    * Compute the heat source at a given point at a given time.
@@ -95,23 +72,18 @@ protected:
   /**
    * Height of the domain.
    */
-  double _max_height;
+  double _max_height = 0.;
+
   /**
-   * Structure of the physical properties of the heat source.
+   * Structure of the physical properties of the beam heat source.
    */
-  HeatSourceProperties _beam;
+  BeamHeatSourceProperties _beam;
 
   /**
    * The scan path for the heat source.
    */
   ScanPath _scan_path;
 };
-
-template <int dim>
-inline void HeatSource<dim>::set_max_height(double height)
-{
-  _max_height = height;
-}
 
 } // namespace adamantine
 

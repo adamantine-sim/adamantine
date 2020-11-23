@@ -8,12 +8,11 @@
 #ifndef THERMAL_PHYSICS_HH
 #define THERMAL_PHYSICS_HH
 
-#include "ElectronBeamHeatSource.hh"
-#include "Geometry.hh"
-#include "GoldakHeatSource.hh"
-#include "ImplicitOperator.hh"
-#include "Physics.hh"
-#include "ThermalOperatorBase.hh"
+#include <Geometry.hh>
+#include <HeatSource.hh>
+#include <ImplicitOperator.hh>
+#include <Physics.hh>
+#include <ThermalOperatorBase.hh>
 
 #include <deal.II/base/time_stepping.h>
 #include <deal.II/base/time_stepping.templates.h>

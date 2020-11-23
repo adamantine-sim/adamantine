@@ -62,6 +62,11 @@ class ScanPath
 
 public:
   /**
+   * Default construtor. This creates an empty scan path with no segment.
+   */
+  ScanPath() = default;
+
+  /**
    * Construtor.
    * \param[in] scan_path_file is the name of the text file containing the scan
    * path
@@ -89,7 +94,7 @@ private:
   /**
    * The index of the current segment in the scan path.
    */
-  mutable unsigned int _current_segment;
+  mutable unsigned int _current_segment = 0;
 
   /**
    * Method to load a "segment" scan path file
