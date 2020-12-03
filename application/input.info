@@ -64,7 +64,8 @@ sources
     type goldak ; goldak (laser) or electron_beam
     depth 1e-3 ; [m] maximum depth reached by the laser
     diameter 1e-3 ; [m]
-    scan_path_file scan_path.txt
+    scan_path_file input_scan_path.txt
+    scan_path_file_format segment
     absorption_efficiency 0.3 ; number between 0 and 1 equivalent to
                               ; energy_conversion_efficiency * control_efficiency
                               ; for an electron beam
