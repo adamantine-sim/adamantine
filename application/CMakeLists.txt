@@ -18,3 +18,4 @@ set_target_properties(adamantine PROPERTIES
 DEAL_II_SETUP_TARGET(adamantine)
 target_link_libraries(adamantine Adamantine)
 file(COPY input.info DESTINATION ${CMAKE_BINARY_DIR}/bin)
+file(COPY input_scan_path.txt DESTINATION ${CMAKE_BINARY_DIR}/bin)
