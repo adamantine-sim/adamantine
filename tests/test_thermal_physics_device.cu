@@ -46,3 +46,8 @@ BOOST_AUTO_TEST_CASE(initial_temperature_device)
 {
   initial_temperature<dealii::MemorySpace::CUDA>();
 }
+
+BOOST_AUTO_TEST_CASE(energy_conservation_device)
+{
+  energy_conservation<dealii::MemorySpace::CUDA>();
+}

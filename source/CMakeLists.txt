@@ -1,4 +1,6 @@
 set(Adamantine_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/BeamHeatSourceProperties.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/CubeHeatSource.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ElectronBeamHeatSource.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Geometry.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/GoldakHeatSource.hh
@@ -18,10 +20,10 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/types.hh
   )
 set(Adamantine_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/CubeHeatSource.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ElectronBeamHeatSource.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/Geometry.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/GoldakHeatSource.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/HeatSource.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.cc

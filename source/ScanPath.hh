@@ -62,6 +62,11 @@ class ScanPath
 
 public:
   /**
+   * Default construtor. This creates an empty scan path with no segment.
+   */
+  ScanPath() = default;
+
+  /**
    * Construtor.
    * \param[in] scan_path_file is the name of the text file containing the scan
    * path
@@ -73,12 +78,12 @@ public:
    * Calculates the location of the scan path at a given time for a single
    * coordinate.
    */
-  dealii::Point<3> value(double const &time);
+  dealii::Point<3> value(double const &time) const;
 
   /**
    * Returns the power coefficient for the current segment
    */
-  double get_power_modifier(double const &time);
+  double get_power_modifier(double const &time) const;
 
 private:
   /**
@@ -89,12 +94,7 @@ private:
   /**
    * The index of the current segment in the scan path.
    */
-  unsigned int _current_segment;
-
-  /**
-   * The current time.
-   */
-  double _current_time;
+  mutable unsigned int _current_segment = 0;
 
   /**
    * Method to load a "segment" scan path file
@@ -111,7 +111,7 @@ private:
    */
   void update_current_segment_info(double time,
                                    dealii::Point<3> &segment_start_point,
-                                   double &segment_start_time);
+                                   double &segment_start_time) const;
 };
 } // namespace adamantine
 

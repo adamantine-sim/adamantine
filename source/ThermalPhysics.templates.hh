@@ -12,6 +12,9 @@
 #ifdef ADAMANTINE_HAVE_CUDA
 #include <ThermalOperatorDevice.hh>
 #endif
+#include <CubeHeatSource.hh>
+#include <ElectronBeamHeatSource.hh>
+#include <GoldakHeatSource.hh>
 #include <ThermalPhysics.hh>
 
 #include <deal.II/dofs/dof_tools.h>
@@ -139,14 +142,20 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   {
     boost::property_tree::ptree const &beam_database =
         source_database.get_child("beam_" + std::to_string(i));
-    if (beam_database.get<std::string>("type") == "goldak")
+    std::string type = beam_database.get<std::string>("type");
+    if (type == "goldak")
     {
-      _heat_sources[i] = std::make_unique<GoldakHeatSource<dim>>(beam_database);
+      _heat_sources[i] = std::make_unique<GoldakHeatSource<dim>>(
+          beam_database, _geometry.get_max_height());
     }
-    else if (beam_database.get<std::string>("type") == "electron_beam")
+    else if (type == "electron_beam")
     {
-      _heat_sources[i] =
-          std::make_unique<ElectronBeamHeatSource<dim>>(beam_database);
+      _heat_sources[i] = std::make_unique<ElectronBeamHeatSource<dim>>(
+          beam_database, _geometry.get_max_height());
+    }
+    else if (type == "cube")
+    {
+      _heat_sources[i] = std::make_unique<CubeHeatSource<dim>>(beam_database);
     }
     else
     {
@@ -154,7 +163,6 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
                               beam_database.get<std::string>("type") +
                               "' not recognized.");
     }
-    _heat_sources[i]->set_max_height(_geometry.get_max_height());
   }
 
   // Create the thermal operator

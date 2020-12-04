@@ -185,3 +185,90 @@ void initial_temperature()
   physics.initialize_dof_vector(1000., solution);
   BOOST_CHECK(solution.l1_norm() == 1000. * solution.size());
 }
+
+template <typename MemorySpaceType>
+void energy_conservation()
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  // Geometry database
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 10);
+  geometry_database.put("length_divisions", 10);
+  geometry_database.put("height", 10);
+  geometry_database.put("height_divisions", 10);
+  // Build Geometry
+  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  boost::property_tree::ptree database;
+  // Material property
+  database.put("materials.property_format", "polynomial");
+  database.put("materials.n_materials", 1);
+  database.put("materials.material_0.solid.density", 0.5);
+  database.put("materials.material_0.powder.density", 0.5);
+  database.put("materials.material_0.liquid.density", 0.5);
+  database.put("materials.material_0.solid.specific_heat", 4.);
+  database.put("materials.material_0.powder.specific_heat", 4.);
+  database.put("materials.material_0.liquid.specific_heat", 4.);
+  database.put("materials.material_0.solid.thermal_conductivity", 2.);
+  database.put("materials.material_0.powder.thermal_conductivity", 2.);
+  database.put("materials.material_0.liquid.thermal_conductivity", 2.);
+  // Source database
+  database.put("sources.n_beams", 1);
+  database.put("sources.beam_0.type", "cube");
+  database.put("sources.beam_0.start_time", 0);
+  database.put("sources.beam_0.end_time", 5);
+  database.put("sources.beam_0.value", 5);
+  database.put("sources.beam_0.min_x", 4);
+  database.put("sources.beam_0.min_y", 4);
+  database.put("sources.beam_0.max_x", 6);
+  database.put("sources.beam_0.max_y", 6);
+  // Time-stepping database
+  database.put("time_stepping.method", "forward_euler");
+  // Build ThermalPhysics
+  adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
+      physics(communicator, database, geometry);
+  physics.setup_dofs();
+  physics.compute_inverse_mass_matrix();
+
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
+  double constexpr initial_temperature = 10;
+  double constexpr final_temperature = 10.5;
+  physics.initialize_dof_vector(initial_temperature, solution);
+  std::vector<adamantine::Timer> timers(6);
+  double time = 0;
+  while (time < 100)
+  {
+    time = physics.evolve_one_time_step(time, 0.05, solution, timers);
+  }
+
+  double max = -1;
+  double min = 1e4;
+  if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
+  {
+    for (auto v : solution)
+    {
+      if (max < v)
+        max = v;
+      if (min > v)
+        min = v;
+    }
+  }
+  else
+  {
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+        solution_host(solution.get_partitioner());
+    solution_host.import(solution, dealii::VectorOperation::insert);
+    for (auto v : solution_host)
+    {
+      if (max < v)
+        max = v;
+      if (min > v)
+        min = v;
+    }
+  }
+
+  double constexpr tolerance = 1e-9;
+  BOOST_CHECK_CLOSE(solution.mean_value(), final_temperature, tolerance);
+  BOOST_CHECK_CLOSE(min, max, tolerance);
+}
