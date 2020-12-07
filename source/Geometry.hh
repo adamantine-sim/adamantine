@@ -43,16 +43,7 @@ public:
    */
   dealii::parallel::distributed::Triangulation<dim> &get_triangulation();
 
-  /**
-   * Return the maximum height of the domain.
-   */
-  double get_max_height() const;
-
 private:
-  /**
-   * Maximum height of the domain.
-   */
-  double _max_height;
   /**
    * Shared pointer to the underlying Triangulation.
    */
@@ -64,12 +55,6 @@ private:
    */
   void assign_material_state(dealii::types::boundary_id top_boundary);
 };
-
-template <int dim>
-inline double Geometry<dim>::get_max_height() const
-{
-  return _max_height;
-}
 
 template <int dim>
 inline dealii::parallel::distributed::Triangulation<dim> &

@@ -30,16 +30,14 @@ public:
    *   - <B>max_power</B>: double in \f$[0, \infty)\f$
    *   - <B>input_file</B>: name of the file that contains the scan path
    *     segments
-   * \param[in] max_height is the height of the domain
    */
-  GoldakHeatSource(boost::property_tree::ptree const &database,
-                   double max_height);
+  GoldakHeatSource(boost::property_tree::ptree const &database);
 
   /**
    * Returns the value of a Goldak heat source at a specified point and time.
    */
-  double value(dealii::Point<dim> const &point,
-               double const time) const override;
+  double value(dealii::Point<dim> const &point, double const time,
+               double const height) const override;
 };
 } // namespace adamantine
 

@@ -103,6 +103,11 @@ public:
    */
   std::vector<std::unique_ptr<HeatSource<dim>>> &get_heat_sources();
 
+  /**
+   * Return the current height of the object.
+   */
+  double get_current_height() const;
+
 private:
   using LA_Vector =
       typename dealii::LA::distributed::Vector<double, MemorySpaceType>;
@@ -123,11 +128,11 @@ private:
   /**
    * This flag is true if the time stepping method is embedded.
    */
-  bool _embedded_method;
+  bool _embedded_method = false;
   /**
    * This flag is true if the time stepping method is implicit.
    */
-  bool _implicit_method;
+  bool _implicit_method = false;
   /**
    * This flag is true if right preconditioning is used to invert the
    * ImplicitOperator.
@@ -149,6 +154,10 @@ private:
    * Tolerance to inverte the ImplicitOperator.
    */
   double _tolerance;
+  /**
+   * Current height of the object.
+   */
+  double _current_height = 0.;
   /**
    * Associated geometry.
    */
@@ -235,6 +244,14 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_heat_sources()
 {
   return _heat_sources;
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline double ThermalPhysics<dim, fe_degree, MemorySpaceType,
+                             QuadratureType>::get_current_height() const
+{
+  return _current_height;
 }
 } // namespace adamantine
 

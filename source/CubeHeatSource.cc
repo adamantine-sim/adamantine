@@ -30,7 +30,8 @@ CubeHeatSource<dim>::CubeHeatSource(boost::property_tree::ptree const &database)
 
 template <int dim>
 double CubeHeatSource<dim>::value(dealii::Point<dim> const &point,
-                                  double const time) const
+                                  double const time,
+                                  double const /*height*/) const
 {
   if ((time > _start_time) && (time < _end_time))
   {
