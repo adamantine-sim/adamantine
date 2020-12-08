@@ -47,11 +47,9 @@ public:
    *   - <B>max_power</B>: double in \f$[0, \infty)\f$
    *   - <B>input_file</B>: name of the file that contains the scan path
    *     segments
-   * \param[in] max_height is the height of the domain
    */
-  HeatSource(boost::property_tree::ptree const &database,
-             double const max_height)
-      : _max_height(max_height), _beam(database),
+  HeatSource(boost::property_tree::ptree const &database)
+      : _beam(database),
         _scan_path(database.get<std::string>("scan_path_file"),
                    database.get<std::string>("scan_path_file_format"))
   {
@@ -63,17 +61,13 @@ public:
   virtual ~HeatSource() = default;
 
   /**
-   * Compute the heat source at a given point at a given time.
+   * Compute the heat source at a given point at a given time given the current
+   * height of the object being manufactured.
    */
-  virtual double value(dealii::Point<dim> const &point,
-                       double const time) const = 0;
+  virtual double value(dealii::Point<dim> const &point, double const time,
+                       double const height) const = 0;
 
 protected:
-  /**
-   * Height of the domain.
-   */
-  double _max_height = 0.;
-
   /**
    * Structure of the physical properties of the beam heat source.
    */

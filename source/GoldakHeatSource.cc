@@ -13,18 +13,19 @@ namespace adamantine
 
 template <int dim>
 GoldakHeatSource<dim>::GoldakHeatSource(
-    boost::property_tree::ptree const &database, double const max_height)
-    : HeatSource<dim>(database, max_height)
+    boost::property_tree::ptree const &database)
+    : HeatSource<dim>(database)
 {
 }
 
 template <int dim>
 double GoldakHeatSource<dim>::value(dealii::Point<dim> const &point,
-                                    double const time) const
+                                    double const time,
+                                    double const height) const
 {
   // NOTE: Due to the differing coordinate systems, "z" here is the second
   // component of the input point.
-  double const z = point[1] - this->_max_height;
+  double const z = point[1] - height;
   if ((z + this->_beam.depth) < 0.)
   {
     return 0.;

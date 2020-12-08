@@ -29,38 +29,38 @@ BOOST_AUTO_TEST_CASE(heat_source_value_2d)
   database.put("max_power", 10.);
   database.put("scan_path_file", "scan_path.txt");
   database.put("scan_path_file_format", "segment");
-  GoldakHeatSource<2> goldak_heat_source(database, 0.2);
-  ElectronBeamHeatSource<2> eb_heat_source(database, 0.2);
+  GoldakHeatSource<2> goldak_heat_source(database);
+  ElectronBeamHeatSource<2> eb_heat_source(database);
 
   double g_value = 0.0;
   double eb_value = 0.0;
 
   std::cout << "Checking point 1..." << std::endl;
   dealii::Point<2> point1(0.0, 0.15);
-  g_value = goldak_heat_source.value(point1, 1.0e-7);
+  g_value = goldak_heat_source.value(point1, 1.0e-7, 0.2);
   BOOST_CHECK_CLOSE(g_value, 0.0, tolerance);
 
-  eb_value = eb_heat_source.value(point1, 1.0e-7);
+  eb_value = eb_heat_source.value(point1, 1.0e-7, 0.2);
   BOOST_CHECK_CLOSE(eb_value, 0.0, tolerance);
 
   std::cout << "Checking point 2..." << std::endl;
   dealii::Point<2> point2(10.0, 0.0);
-  g_value = goldak_heat_source.value(point2, 5.0e-7);
+  g_value = goldak_heat_source.value(point2, 5.0e-7, 0.2);
   BOOST_CHECK_CLOSE(g_value, 0.0, tolerance);
 
-  eb_value = eb_heat_source.value(point2, 5.0e-7);
+  eb_value = eb_heat_source.value(point2, 5.0e-7, 0.2);
   BOOST_CHECK_CLOSE(eb_value, 0.0, tolerance);
 
   // Check the beam center 0.001 s into the second segment
   std::cout << "Checking point 3..." << std::endl;
   dealii::Point<2> point3(8.0e-4, 0.2);
-  g_value = goldak_heat_source.value(point3, 0.001001);
+  g_value = goldak_heat_source.value(point3, 0.001001, 0.2);
   double pi_over_3_to_1p5 = std::pow(dealii::numbers::PI / 3.0, 1.5);
   double expected_value =
       2.0 * 0.1 * 10.0 / (0.5 * 0.5 * 0.1 * pi_over_3_to_1p5);
   BOOST_CHECK_CLOSE(g_value, expected_value, tolerance);
 
-  eb_value = eb_heat_source.value(point3, 0.001001);
+  eb_value = eb_heat_source.value(point3, 0.001001, 0.2);
   expected_value = -0.1 * 10. * 1.0 * std::log(0.1) /
                    (dealii::numbers::PI * 0.5 * 0.5 * 0.1) * 1. * 1.;
   BOOST_CHECK_CLOSE(eb_value, expected_value, tolerance);
@@ -68,13 +68,13 @@ BOOST_AUTO_TEST_CASE(heat_source_value_2d)
   // Check slightly off beam center 0.001 s into the second segment
   std::cout << "Checking point 4..." << std::endl;
   dealii::Point<2> point4(7.0e-4, 0.19);
-  g_value = goldak_heat_source.value(point4, 0.001001);
+  g_value = goldak_heat_source.value(point4, 0.001001, 0.2);
   expected_value = 2.0 * 0.1 * 10.0 / (0.5 * 0.5 * 0.1 * pi_over_3_to_1p5);
   expected_value *=
       std::exp(-3.0 * 1.0e-4 * 1.0e-4 / 0.25 - 3.0 * 0.01 * 0.01 / 0.1 / 0.1);
   BOOST_CHECK_CLOSE(g_value, expected_value, tolerance);
 
-  eb_value = eb_heat_source.value(point4, 0.001001);
+  eb_value = eb_heat_source.value(point4, 0.001001, 0.2);
   expected_value = -0.1 * 10. * 1.0 * std::log(0.1) /
                    (dealii::numbers::PI * 0.5 * 0.5 * 0.1) *
                    std::exp(std::log(0.1) * 1.0e-4 * 1.0e-4 / 0.25) *
@@ -95,37 +95,37 @@ BOOST_AUTO_TEST_CASE(heat_source_value_3d)
   database.put("scan_path_file", "scan_path.txt");
   database.put("scan_path_file_format", "segment");
 
-  GoldakHeatSource<3> goldak_heat_source(database, 0.2);
-  ElectronBeamHeatSource<3> eb_heat_source(database, 0.2);
+  GoldakHeatSource<3> goldak_heat_source(database);
+  ElectronBeamHeatSource<3> eb_heat_source(database);
 
   double g_value = 0.0;
   double eb_value = 0.0;
 
   std::cout << "Checking point 1..." << std::endl;
   dealii::Point<3> point1(0.0, 0.15, 0.0);
-  g_value = goldak_heat_source.value(point1, 1.0e-7);
+  g_value = goldak_heat_source.value(point1, 1.0e-7, 0.2);
   BOOST_CHECK_CLOSE(g_value, 0.0, tolerance);
 
-  eb_value = eb_heat_source.value(point1, 1.0e-7);
+  eb_value = eb_heat_source.value(point1, 1.0e-7, 0.2);
   BOOST_CHECK_CLOSE(eb_value, 0.0, tolerance);
 
   std::cout << "Checking point 2..." << std::endl;
   dealii::Point<3> point2(10.0, 0.0, 0.0);
-  g_value = goldak_heat_source.value(point2, 5.0e-7);
+  g_value = goldak_heat_source.value(point2, 5.0e-7, 0.2);
   BOOST_CHECK_CLOSE(g_value, 0.0, tolerance);
 
-  eb_value = eb_heat_source.value(point2, 5.0e-7);
+  eb_value = eb_heat_source.value(point2, 5.0e-7, 0.2);
   BOOST_CHECK_CLOSE(eb_value, 0.0, tolerance);
 
   // Check the beam center 0.001 s into the second segment
   std::cout << "Checking point 3..." << std::endl;
   dealii::Point<3> point3(8e-4, 0.2, 0.0);
-  g_value = goldak_heat_source.value(point3, 0.001001);
+  g_value = goldak_heat_source.value(point3, 0.001001, 0.2);
   double pi_over_3_to_1p5 = std::pow(dealii::numbers::PI / 3.0, 1.5);
   double expected_value = 2.0 * 0.1 * 10.0 / 0.5 / 0.5 / 0.1 / pi_over_3_to_1p5;
   BOOST_CHECK_CLOSE(g_value, expected_value, tolerance);
 
-  eb_value = eb_heat_source.value(point3, 0.001001);
+  eb_value = eb_heat_source.value(point3, 0.001001, 0.2);
   expected_value = -0.1 * 10. * 1.0 * std::log(0.1) /
                    (dealii::numbers::PI * 0.5 * 0.5 * 0.1) * 1. * 1.;
   BOOST_CHECK_CLOSE(eb_value, expected_value, tolerance);
@@ -133,13 +133,13 @@ BOOST_AUTO_TEST_CASE(heat_source_value_3d)
   // Check slightly off beam center 0.001 s into the second segment
   std::cout << "Checking point 4..." << std::endl;
   dealii::Point<3> point4(7.0e-4, 0.19, 0.0);
-  g_value = goldak_heat_source.value(point4, 0.001001);
+  g_value = goldak_heat_source.value(point4, 0.001001, 0.2);
   expected_value = 2.0 * 0.1 * 10.0 / (0.5 * 0.5 * 0.1 * pi_over_3_to_1p5);
   expected_value *=
       std::exp(-3.0 * 1.0e-4 * 1.0e-4 / 0.25 - 3.0 * 0.01 * 0.01 / 0.1 / 0.1);
   BOOST_CHECK_CLOSE(g_value, expected_value, tolerance);
 
-  eb_value = eb_heat_source.value(point4, 0.001001);
+  eb_value = eb_heat_source.value(point4, 0.001001, 0.2);
   expected_value = -0.1 * 10. * 1.0 * std::log(0.1) /
                    (dealii::numbers::PI * 0.5 * 0.5 * 0.1) *
                    std::exp(std::log(0.1) * 1.0e-4 * 1.0e-4 / 0.25) *

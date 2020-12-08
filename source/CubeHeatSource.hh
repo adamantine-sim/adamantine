@@ -38,8 +38,8 @@ public:
   /**
    * Return the value of the source for a given point and time.
    */
-  double value(dealii::Point<dim> const &point,
-               double const time) const override;
+  double value(dealii::Point<dim> const &point, double const time,
+               double const /*height*/) const override;
 
 private:
   double _start_time;
