@@ -117,7 +117,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     Geometry<dim> &geometry)
     : _embedded_method(false), _implicit_method(false), _geometry(geometry),
-      _dof_handler(_geometry.get_triangulation(), true)
+      _dof_handler(_geometry.get_triangulation())
 {
   // Create the FECollection
   _fe_collection.push_back(dealii::FE_Q<dim>(fe_degree));

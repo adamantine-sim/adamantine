@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev)
   dealii::hp::FECollection<2> fe_collection;
   fe_collection.push_back(dealii::FE_Q<2>(2));
   fe_collection.push_back(dealii::FE_Nothing<2>());
-  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation(), true);
+  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
   dof_handler.distribute_dofs(fe_collection);
   dealii::AffineConstraints<double> affine_constraints;
   affine_constraints.close();
@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE(spmv)
   dealii::hp::FECollection<2> fe_collection;
   fe_collection.push_back(dealii::FE_Q<2>(2));
   fe_collection.push_back(dealii::FE_Nothing<2>());
-  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation(), true);
+  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
   dof_handler.distribute_dofs(fe_collection);
   dealii::AffineConstraints<double> affine_constraints;
   affine_constraints.close();
@@ -216,7 +216,7 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
   dealii::hp::FECollection<2> fe_collection;
   fe_collection.push_back(dealii::FE_Q<2>(2));
   fe_collection.push_back(dealii::FE_Nothing<2>());
-  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation(), true);
+  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
   dof_handler.distribute_dofs(fe_collection);
   dealii::AffineConstraints<double> affine_constraints;
   affine_constraints.close();

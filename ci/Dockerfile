@@ -11,6 +11,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
       cmake \
       wget \
       curl \
+      libcurl4-gnutls-dev \
       bison \
       python2.7-dev \
       git \
@@ -121,8 +122,112 @@ RUN export P4EST_VERSION=2.2 && \
     rm -rf ${P4EST_SOURCE_DIR}
 ENV P4EST_DIR=${INSTALL_DIR}/p4est
 
+# Install HDF5
+RUN export HDF5_VERSION=1.12.0 && \
+    export HDF5_URL=http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.12/hdf5-${HDF5_VERSION}/src/hdf5-${HDF5_VERSION}.tar.bz2 && \
+    export HDF5_MD5=1fa68c4b11b6ef7a9d72ffa55995f898 && \
+    export HDF5_ARCHIVE=${PREFIX}/archive/hdf5-${HDF5_VERSION}.tar.bz2 && \
+    export HDF5_SOURCE_DIR=${PREFIX}/source/hdf5/${HDF5_VERSION} && \
+    export HDF5_BUILD_DIR=${PREFIX}/build/hdf5/${HDF5_VERSION} && \
+    export HDF5_INSTALL_DIR=/opt/hdf5/${HDF5_VERSION} && \
+    wget --quiet ${HDF5_URL} --output-document=${HDF5_ARCHIVE} && \
+    echo "${HDF5_MD5} ${HDF5_ARCHIVE}" | md5sum -c && \
+    mkdir -p ${HDF5_SOURCE_DIR} && \
+    tar -xf ${HDF5_ARCHIVE} -C ${HDF5_SOURCE_DIR} --strip-components=1 && \
+    mkdir -p ${HDF5_BUILD_DIR} && \
+    cd ${HDF5_BUILD_DIR} && \
+    ${HDF5_SOURCE_DIR}/configure \
+        --prefix=${HDF5_INSTALL_DIR} \
+        --enable-shared \
+        --disable-static \
+        --enable-parallel \
+        && \
+    make -j${NPROC} install && \
+    rm -rf ${HDF5_ARCHIVE} && \
+    rm -rf ${HDF5_BUILD_DIR} && \
+    rm -rf ${HDF5_SOURCE_DIR}
+
+ENV HDF5_DIR=/opt/hdf5/1.12.0
+
+# Install NetCDF
+RUN export NETCDF_VERSION=4.7.4 && \
+    export NETCDF_URL=https://github.com/Unidata/netcdf-c/archive/v${NETCDF_VERSION}.tar.gz && \
+    export NETCDF_ARCHIVE=${PREFIX}/archive/netcdf-${NETCDF_VERSION}.tar.gz && \
+    export NETCDF_SOURCE_DIR=${PREFIX}/source/netcdf/${NETCDF_VERSION} && \
+    export NETCDF_BUILD_DIR=${PREFIX}/build/netcdf/${NETCDF_VERSION} && \
+    export NETCDF_INSTALL_DIR=/opt/netcdf/${NETCDF_VERSION} && \
+    wget --quiet ${NETCDF_URL} --output-document=${NETCDF_ARCHIVE} && \
+    mkdir -p ${NETCDF_SOURCE_DIR} && \
+    tar -xf ${NETCDF_ARCHIVE} -C ${NETCDF_SOURCE_DIR} --strip-components=1 && \
+    mkdir -p ${NETCDF_BUILD_DIR} && \
+    cd ${NETCDF_BUILD_DIR} && \
+    ${NETCDF_SOURCE_DIR}/configure \
+        --prefix=${NETCDF_INSTALL_DIR} \
+        --enable-netcdf-4 \
+        --enable-shared \
+        --disable-static \
+        CC=mpicc \
+        CFLAGS="-I${HDF5_DIR}/include" \
+        LDFLAGS="-L${HDF5_DIR}/lib -lhdf5" \
+        && \
+    make -j${NPROC} install && \
+    rm -rf ${NETCDF_ARCHIVE} && \
+    rm -rf ${NETCDF_BUILD_DIR} && \
+    rm -rf ${NETCDF_SOURCE_DIR}
+
+ENV NETCDF_DIR=/opt/netcdf/4.7.4
+
+# Install Trilinos 13.0.1
+RUN export TRILINOS_HASH=4796b92fb0644ba8c531dd9953e7a4878b05c62d && \
+    export TRILINOS_URL=https://github.com/trilinos/Trilinos/archive/${TRILINOS_HASH}.tar.gz && \
+    export TRILINOS_ARCHIVE=${ARCHIVE_DIR}/trilinos.tar.gz && \
+    export TRILINOS_SOURCE_DIR=${SOURCE_DIR}/trilinos && \
+    export TRILINOS_BUILD_DIR=${BUILD_DIR}/trilinos && \
+    export TRILINOS_INSTALL_DIR=${INSTALL_DIR}/trilinos && \
+    wget --quiet ${TRILINOS_URL} --output-document=${TRILINOS_ARCHIVE} && \
+    mkdir -p ${TRILINOS_SOURCE_DIR} && \
+    tar -xf ${TRILINOS_ARCHIVE} -C ${TRILINOS_SOURCE_DIR} --strip-components=1 && \
+    mkdir ${TRILINOS_BUILD_DIR} && \
+    cd ${TRILINOS_BUILD_DIR} && \
+    cmake -DCMAKE_BUILD_TYPE=RELEASE -DBUILD_SHARED_LIBS=ON \
+        -DTPL_ENABLE_MPI=ON \
+        -DTPL_ENABLE_BLAS=ON \
+        -DTPL_ENABLE_LAPACK=ON \
+        -DTPL_ENABLE_Boost=ON \
+        -DBoost_INCLUDE_DIRS=${BOOST_ROOT}/include \
+        -DTPL_ENABLE_BoostLib=ON \
+        -DBoostLib_INCLUDE_DIRS=${BOOST_ROOT}/include \
+        -DBoostLib_LIBRARY_DIRS=${BOOST_ROOT}/lib \
+        -DTrilinos_ENABLE_ALL_PACKAGES=OFF \
+        -DTrilinos_ENABLE_ALL_OPTIONAL_PACKAGES=OFF \
+        -DTrilinos_ENABLE_TESTS=OFF \
+        -DTrilinos_ENABLE_EXAMPLES=OFF \
+        -DTrilinos_ENABLE_Amesos=ON \
+        -DTrilinos_ENABLE_AztecOO=ON \
+        -DTrilinos_ENABLE_Epetra=ON \
+        -DTrilinos_ENABLE_Ifpack=ON \
+        -DTrilinos_ENABLE_ML=ON \
+        -DTrilinos_ENABLE_SEACAS=ON \
+        -DTrilinos_ENABLE_EXPLICIT_INSTANTIATION=ON \
+        -DBLAS_LIBRARY_NAMES="openblas" \
+        -DBLAS_LIBRARY_DIRS=${OPENBLAS_DIR}/lib \
+        -DLAPACK_LIBRARY_NAMES="openblas" \
+        -DLAPACK_LIBRARY_DIRS=${OPENBLAS_DIR}/lib \
+        -DTPL_ENABLE_Netcdf=ON \
+        -DNetcdf_INCLUDE_DIRS=$NETCDF_DIR/include \
+        -DNetcdf_LIBRARY_DIRS=$NETCDF_DIR/lib \
+        -DTPL_ENABLE_Matio=OFF \
+        -DTPL_ENABLE_X11=OFF \
+        -DCMAKE_INSTALL_PREFIX=${TRILINOS_INSTALL_DIR} \
+        ${TRILINOS_SOURCE_DIR} && \
+    make -j${N_PROCS} install && \
+    rm -rf ${TRILINOS_ARCHIVE} && \
+    rm -rf ${TRILINOS_BUILD_DIR} && \
+    rm -rf ${TRILINOS_SOURCE_DIR}
+ENV TRILINOS_DIR=${INSTALL_DIR}/trilinos
+
 # Install deal.II 
-RUN export DEAL_II_HASH=551e93708c2f0b26f916795bd15f2f0e575e295c && \
+RUN export DEAL_II_HASH=1df2d07e5b72caaab00b8b7a5599a06e956d7f14 && \
     export DEAL_II_URL=https://github.com/Rombur/dealii/archive/${DEAL_II_HASH}.tar.gz && \
     export DEAL_II_ARCHIVE=${ARCHIVE_DIR}/dealii.tar.gz && \
     export DEAL_II_SOURCE_DIR=${SOURCE_DIR}/dealii && \
@@ -141,6 +246,9 @@ RUN export DEAL_II_HASH=551e93708c2f0b26f916795bd15f2f0e575e295c && \
         -DDEAL_II_WITH_P4EST=ON \
         -DP4EST_DIR=${P4EST_DIR} \
         -DDEAL_II_WITH_CUDA=ON \
+        -DDEAL_II_WITH_TRILINOS=ON \
+        -DDEAL_II_TRILINOS_WITH_SEACAS=ON \
+        -DTRILINOS_DIR=${TRILINOS_DIR} \
         -DCMAKE_INSTALL_PREFIX=${DEAL_II_INSTALL_DIR} \
         ${DEAL_II_SOURCE_DIR}  && \
     make -j${N_PROCS} install && \
