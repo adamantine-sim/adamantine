@@ -135,10 +135,12 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   // Create the heat sources
   boost::property_tree::ptree const &source_database =
       database.get_child("sources");
+  // PropertyTreeInput sources.n_beams
   unsigned int const n_beams = source_database.get<unsigned int>("n_beams");
   _heat_sources.resize(n_beams);
   for (unsigned int i = 0; i < n_beams; ++i)
   {
+    // PropertyTreeInput sources.beam_X.type
     boost::property_tree::ptree const &beam_database =
         source_database.get_child("beam_" + std::to_string(i));
     std::string type = beam_database.get<std::string>("type");
@@ -178,6 +180,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   // Create the time stepping scheme
   boost::property_tree::ptree const &time_stepping_database =
       database.get_child("time_stepping");
+  // PropertyTreeInput time_stepping.method
   std::string method = time_stepping_database.get<std::string>("method");
   std::transform(method.begin(), method.end(), method.begin(),
                  [](unsigned char c) { return std::tolower(c); });
@@ -259,12 +262,18 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
 
   if (_embedded_method == true)
   {
+    // PropertyTreeInput time_steppping.coarsening_parameter
     double coarsen_param =
         time_stepping_database.get("coarsening_parameter", 1.2);
+    // PropertyTreeInput time_steppping.refining_parameter
     double refine_param = time_stepping_database.get("refining_parameter", 0.8);
+    // PropertyTreeInput time_stepping.min_time_step
     double min_delta = time_stepping_database.get("min_time_step", 1e-14);
+    // PropertyTreeInput time_stepping.max_time_step
     double max_delta = time_stepping_database.get("max_time_step", 1e100);
+    // PropertyTreeInput time_stepping.refining_tolerance
     double refine_tol = time_stepping_database.get("refining_tolerance", 1e-8);
+    // PropertyTreeInput time_stepping.coarsening_tolerance
     double coarsen_tol =
         time_stepping_database.get("coarsening_tolerance", 1e-12);
     dealii::TimeStepping::EmbeddedExplicitRungeKutta<LA_Vector> *embedded_rk =
@@ -280,13 +289,19 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   // and create the implicit operator.
   if (_implicit_method == true)
   {
+    // PropertyTreeInput time_stepping.max_iteration
     _max_iter = time_stepping_database.get("max_iteration", 1000);
+    // PropertyTreeInput time_stepping.tolerance
     _tolerance = time_stepping_database.get("tolerance", 1e-12);
+    // PropertyTreeInput time_stepping.right_preconditioning
     _right_preconditioning =
         time_stepping_database.get("right_preconditioning", false);
+    // PropertyTreeInput time_stepping.n_tmp_vectors
     _max_n_tmp_vectors = time_stepping_database.get("n_tmp_vectors", 30);
+    // PropertyTreeInput time_stepping.newton_max_iteration
     unsigned int newton_max_iter =
         time_stepping_database.get("newton_max_iteration", 100);
+    // PropertyTreeInput time_stepping.newton_tolerance
     double newton_tolerance =
         time_stepping_database.get("newton_tolerance", 1e-6);
     dealii::TimeStepping::ImplicitRungeKutta<LA_Vector> *implicit_rk =
@@ -295,6 +310,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     implicit_rk->set_newton_solver_parameters(newton_max_iter,
                                               newton_tolerance);
 
+    // PropertyTreeInput time_stepping.jfnk
     bool jfnk = time_stepping_database.get("jfnk", false);
     _implicit_operator = std::make_unique<ImplicitOperator<MemorySpaceType>>(
         _thermal_operator, jfnk);
