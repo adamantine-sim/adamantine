@@ -207,11 +207,13 @@ void MaterialProperty<dim>::fill_properties(
   std::array<std::string, _n_state_properties> state_properties = {
       {"density", "specific_heat", "thermal_conductivity"}};
 
+  // PropertyTreeInput materials.property_format
   std::string property_format = database.get<std::string>("property_format");
   ASSERT_THROW((property_format == "table") ||
                    (property_format == "polynomial"),
                "property_format should be table or polynomial.");
   _use_table = (property_format == "table");
+  // PropertyTreeInput materials.n_materials
   unsigned int const n_materials = database.get<unsigned int>("n_materials");
   dealii::types::material_id next_material_id = 0;
   for (unsigned int i = 0; i < n_materials; ++i)

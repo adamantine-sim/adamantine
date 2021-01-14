@@ -439,10 +439,12 @@ void refine_mesh(
   dealii::DoFHandler<dim> &dof_handler = thermal_physics->get_dof_handler();
   // Use the Kelly error estimator to refine the mesh. This is done so that the
   // part of the domain that were heated stay refined.
+  // PropertyTreeInput refinement.n_heat_refinements
   unsigned int const n_kelly_refinements =
       refinement_database.get("n_heat_refinements", 2);
   double coarsening_fraction = 0.3;
   double refining_fraction = 0.6;
+  // PropertyTreeInput refinement.heat_cell_ratio
   double cells_fraction = refinement_database.get("heat_cell_ratio", 1.);
   dealii::parallel::distributed::Triangulation<dim> &triangulation =
       dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
@@ -450,8 +452,10 @@ void refine_mesh(
               dof_handler.get_triangulation()));
   // Number of times the mesh on the beam paths will be refined and maximum
   // number of time a cell can be refined.
+  // PropertyTreeInput refinement.n_beam_refinements
   unsigned int const n_beam_refinements =
       refinement_database.get("n_beam_refinements", 2);
+  // PropertyTreeInput refinement.max_level
   int max_level = refinement_database.get<int>("max_level");
   for (unsigned int i = 0; i < n_kelly_refinements; ++i)
   {
@@ -621,13 +625,16 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   boost::property_tree::ptree refinement_database =
       database.get_child("refinement");
 
+  // PropertyTreeInput discretization.fe_degree
   unsigned int const fe_degree =
       discretization_database.get<unsigned int>("fe_degree");
+  // PropertyTreeInput discretization.quadrature
   std::string quadrature_type =
       discretization_database.get("quadrature", "gauss");
   std::transform(quadrature_type.begin(), quadrature_type.end(),
                  quadrature_type.begin(),
                  [](unsigned char c) { return std::tolower(c); });
+  // PropertyTreeInput materials.initial_temperature
   double const initial_temperature =
       database.get("materials.initial_temperature", 300.);
 
@@ -657,11 +664,15 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
               solution);
   ++n_time_step;
 
+  // PropertyTreeInput refinement.verbose
   bool const verbose_refinement = refinement_database.get("verbose", false);
+  // PropertyTreeInput refinement.time_steps_between_refinement
   unsigned int const time_steps_refinement =
       refinement_database.get("time_steps_between_refinement", 10);
   double next_refinement_time = time;
+  // PropertyTreeINput time_stepping.time_step
   double time_step = time_stepping_database.get<double>("time_step");
+  // PropertyTreeINput time_stepping.duration
   double const duration = time_stepping_database.get<double>("duration");
   unsigned int const time_steps_output =
       post_processor_database.get("time_steps_between_output", 1);
