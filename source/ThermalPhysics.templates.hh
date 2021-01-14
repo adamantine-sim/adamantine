@@ -434,6 +434,22 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   source = 0.;
 
   // Compute the source term.
+
+  // Currently assumes that the material is always "material_0" and that the
+  // properties are scalar-valued
+  double specific_heat_solid =
+      _material_database.get<double>("material_0.solid.specific_heat");
+  double specific_heat_liquid =
+      _material_database.get<double>("material_0.liquid.specific_heat");
+  double density_solid =
+      _material_database.get<double>("material_0.solid.density");
+  double density_liquid =
+      _material_database.get<double>("material_0.liquid.density");
+
+  double solidus = _material_database.get<double>("material_0.solidus");
+  double liquidus = _material_database.get<double>("material_0.liquidus");
+  double latent_heat = _material_database.get<double>("material_0.latent_heat");
+
   dealii::hp::QCollection<dim> source_q_collection;
   source_q_collection.push_back(dealii::QGauss<dim>(fe_degree + 1));
   source_q_collection.push_back(dealii::QGauss<dim>(1));
@@ -458,22 +474,6 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         hp_fe_values.get_present_fe_values();
 
     // double const inv_rho_cp = _thermal_operator->get_inv_rho_cp(cell);
-
-    // Currently assumes that the material is always "material_0" and that the
-    // properties are scalar-valued
-    double specific_heat_solid =
-        _material_database.get<double>("material_0.solid.specific_heat");
-    double specific_heat_liquid =
-        _material_database.get<double>("material_0.liquid.specific_heat");
-    double density_solid =
-        _material_database.get<double>("material_0.solid.density");
-    double density_liquid =
-        _material_database.get<double>("material_0.liquid.density");
-
-    double solidus = _material_database.get<double>("material_0.solidus");
-    double liquidus = _material_database.get<double>("material_0.liquidus");
-    double latent_heat =
-        _material_database.get<double>("material_0.latent_heat");
 
     for (unsigned int i = 0; i < dofs_per_cell; ++i)
     {
