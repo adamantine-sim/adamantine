@@ -182,6 +182,9 @@ private:
    * Shared pointer to the material properties associated to the domain.
    */
   std::shared_ptr<MaterialProperty<dim>> _material_properties;
+
+  boost::property_tree::ptree _material_database;
+
   /**
    * Vector of heat sources.
    */

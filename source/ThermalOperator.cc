@@ -20,8 +20,10 @@ namespace adamantine
 template <int dim, int fe_degree, typename MemorySpaceType>
 ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
     MPI_Comm const &communicator,
-    std::shared_ptr<MaterialProperty<dim>> material_properties)
+    std::shared_ptr<MaterialProperty<dim>> material_properties,
+    boost::property_tree::ptree const &material_database)
     : _communicator(communicator), _material_properties(material_properties),
+      _material_database(material_database),
       _inverse_mass_matrix(
           new dealii::LA::distributed::Vector<double, MemorySpaceType>())
 {
@@ -178,6 +180,25 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
   for (unsigned int i = 0; i < dim; ++i)
     unit_tensor[i] = 1.;
 
+  // Currently assumes that the material is always "material_0" and that the
+  // properties are scalar-valued
+  double thermal_conductivity_solid =
+      _material_database.get<double>("material_0.solid.thermal_conductivity");
+  double thermal_conductivity_liquid =
+      _material_database.get<double>("material_0.liquid.thermal_conductivity");
+  double specific_heat_solid =
+      _material_database.get<double>("material_0.solid.specific_heat");
+  double specific_heat_liquid =
+      _material_database.get<double>("material_0.liquid.specific_heat");
+  double density_solid =
+      _material_database.get<double>("material_0.solid.density");
+  double density_liquid =
+      _material_database.get<double>("material_0.liquid.density");
+
+  double solidus = _material_database.get<double>("material_0.solidus");
+  double liquidus = _material_database.get<double>("material_0.liquidus");
+  double latent_heat = _material_database.get<double>("material_0.latent_heat");
+
   // Loop over the "cells". Note that we don't really work on a cell but on a
   // set of quadrature point.
   for (unsigned int cell = cell_subrange.first; cell < cell_subrange.second;
@@ -188,14 +209,61 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
     // Store in a local vector the local values of src
     fe_eval.read_dof_values(src);
     // Evaluate only the function gradients on the reference cell
-    fe_eval.evaluate(false, true);
+    // fe_eval.evaluate(false, true);
+    fe_eval.evaluate(
+        true,
+        true); // Need the temperature to calculate the material properties
+
     // Apply the Jacobian of the transformation, multiply by the variable
     // coefficients and the quadrature points
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
+    {
+      /*
       fe_eval.submit_gradient(-_inv_rho_cp(cell, q) *
                                   _thermal_conductivity(cell, q) *
                                   fe_eval.get_gradient(q),
                               q);
+      */
+
+      dealii::VectorizedArray<double> temperature = fe_eval.get_value(q);
+
+      // Calculate the liquid ratio
+      double liquid_ratio = -1.;
+      for (unsigned int n = 0; n < temperature.n_array_elements; ++n)
+      {
+        if (temperature[n] < solidus)
+          liquid_ratio = 0.;
+        else if (temperature[n] > liquidus)
+          liquid_ratio = 1.;
+        else
+        {
+          liquid_ratio = (temperature[n] - solidus) / (liquidus - solidus);
+
+          specific_heat_liquid += latent_heat / (liquidus - solidus);
+          specific_heat_solid += latent_heat / (liquidus - solidus);
+        }
+      }
+
+      // Calculate the local material properties
+      dealii::VectorizedArray<double> thermal_conductivity =
+          liquid_ratio * thermal_conductivity_liquid +
+          (1.0 - liquid_ratio) * thermal_conductivity_solid;
+
+      dealii::VectorizedArray<double> specific_heat =
+          liquid_ratio * specific_heat_liquid +
+          (1.0 - liquid_ratio) * specific_heat_solid;
+
+      dealii::VectorizedArray<double> density =
+          liquid_ratio * density_liquid + (1.0 - liquid_ratio) * density_solid;
+
+      dealii::VectorizedArray<double> inv_rho_cp =
+          1.0 / (density * specific_heat);
+
+      // Calculate the gradient contribution for the update
+      fe_eval.submit_gradient(
+          -inv_rho_cp * thermal_conductivity * fe_eval.get_gradient(q), q);
+    }
+
     // Sum over the quadrature points.
     fe_eval.integrate(false, true);
     fe_eval.distribute_local_to_global(dst);

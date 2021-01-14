@@ -129,6 +129,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   // Create the material properties
   boost::property_tree::ptree const &material_database =
       database.get_child("materials");
+  _material_database = material_database;
   _material_properties.reset(new MaterialProperty<dim>(
       communicator, _geometry.get_triangulation(), material_database));
 
@@ -167,7 +168,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
     _thermal_operator =
         std::make_shared<ThermalOperator<dim, fe_degree, MemorySpaceType>>(
-            communicator, _material_properties);
+            communicator, _material_properties, material_database);
 #ifdef ADAMANTINE_HAVE_CUDA
   else
     _thermal_operator = std::make_shared<
@@ -413,6 +414,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
         std::vector<Timer> &timers) const
 {
+  /*
   timers[evol_time_eval_mat_prop].start();
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
     _thermal_operator->evaluate_material_properties(y);
@@ -425,7 +427,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     _thermal_operator->evaluate_material_properties(y_host);
   }
   timers[evol_time_eval_mat_prop].stop();
-
+  */
   timers[evol_time_eval_th_ph].start();
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> source(
       y.get_partitioner());
@@ -444,7 +446,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
   dealii::Vector<double> cell_source(dofs_per_cell);
 
-  // Loop over the locally owned cells with an acttive FE index of zero
+  // Loop over the locally owned cells with an active FE index of zero
   for (auto const &cell : dealii::filter_iterators(
            _dof_handler.active_cell_iterators(),
            dealii::IteratorFilters::LocallyOwnedCell(),
@@ -454,7 +456,24 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     hp_fe_values.reinit(cell);
     dealii::FEValues<dim> const &fe_values =
         hp_fe_values.get_present_fe_values();
-    double const inv_rho_cp = _thermal_operator->get_inv_rho_cp(cell);
+
+    // double const inv_rho_cp = _thermal_operator->get_inv_rho_cp(cell);
+
+    // Currently assumes that the material is always "material_0" and that the
+    // properties are scalar-valued
+    double specific_heat_solid =
+        _material_database.get<double>("material_0.solid.specific_heat");
+    double specific_heat_liquid =
+        _material_database.get<double>("material_0.liquid.specific_heat");
+    double density_solid =
+        _material_database.get<double>("material_0.solid.density");
+    double density_liquid =
+        _material_database.get<double>("material_0.liquid.density");
+
+    double solidus = _material_database.get<double>("material_0.solidus");
+    double liquidus = _material_database.get<double>("material_0.liquidus");
+    double latent_heat =
+        _material_database.get<double>("material_0.latent_heat");
 
     for (unsigned int i = 0; i < dofs_per_cell; ++i)
     {
@@ -464,6 +483,31 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
         for (auto &beam : _heat_sources)
           quad_pt_source += beam->value(q_point, t, _current_height);
+
+        // Calculate the inv_rho_cp
+        double temperature = fe_values.shape_value(i, q);
+
+        double liquid_ratio = -1.;
+        if (temperature < solidus)
+          liquid_ratio = 0.;
+        else if (temperature > liquidus)
+          liquid_ratio = 1.;
+        else
+        {
+          liquid_ratio = (temperature - solidus) / (liquidus - solidus);
+
+          specific_heat_liquid += latent_heat / (liquidus - solidus);
+          specific_heat_solid += latent_heat / (liquidus - solidus);
+        }
+
+        // Calculate the local material properties
+        double specific_heat = liquid_ratio * specific_heat_liquid +
+                               (1.0 - liquid_ratio) * specific_heat_solid;
+
+        double density = liquid_ratio * density_liquid +
+                         (1.0 - liquid_ratio) * density_solid;
+
+        double inv_rho_cp = 1.0 / (density * specific_heat);
 
         cell_source[i] += inv_rho_cp * quad_pt_source *
                           fe_values.shape_value(i, q) * fe_values.JxW(q);

@@ -24,7 +24,8 @@ class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
   ThermalOperator(MPI_Comm const &communicator,
-                  std::shared_ptr<MaterialProperty<dim>> material_properties);
+                  std::shared_ptr<MaterialProperty<dim>> material_properties,
+                  boost::property_tree::ptree const &material_database);
 
   /**
    * Associate the AffineConstraints<double> and the MatrixFree objects to the
@@ -131,6 +132,12 @@ private:
    * Material properties associated with the domain.
    */
   std::shared_ptr<MaterialProperty<dim>> _material_properties;
+
+  /**
+   * Database of material properties associated with the domain.
+   */
+  boost::property_tree::ptree const _material_database;
+
   /**
    * Underlying MatrixFree object.
    */
