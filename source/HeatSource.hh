@@ -50,6 +50,8 @@ public:
    */
   HeatSource(boost::property_tree::ptree const &database)
       : _beam(database),
+        // PropertyTreeInput sources.beam_X.scan_path_file
+        // PropertyTreeInput sources.beam_X.scan_path_format
         _scan_path(database.get<std::string>("scan_path_file"),
                    database.get<std::string>("scan_path_file_format"))
   {

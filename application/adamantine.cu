@@ -48,11 +48,13 @@ int main(int argc, char *argv[])
 
     boost::optional<boost::property_tree::ptree &> profiling_database =
         database.get_child_optional("profiling");
+    // PropertyTreeInput profiling.timer
     if ((profiling_database) && (profiling_database.get().get("timer", false)))
       profiling = true;
 
     boost::property_tree::ptree geometry_database =
         database.get_child("geometry");
+    // PropertyTreeInput geometry.dim
     int const dim = geometry_database.get<int>("dim");
     adamantine::ASSERT_THROW((dim == 2) || (dim == 3), "dim should be 2 or 3");
 
@@ -60,8 +62,9 @@ int main(int argc, char *argv[])
     if (rank == 0)
       std::cout << "Starting simulation" << std::endl;
 
+    // PropertyTreeInput memory_space
     std::string memory_space =
-        database.get<std::string>("memory_space", "device");
+        database.get<std::string>("memory_space", "host");
 
     if (dim == 2)
     {
