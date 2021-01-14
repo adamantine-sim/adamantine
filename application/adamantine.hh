@@ -670,10 +670,14 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   unsigned int const time_steps_refinement =
       refinement_database.get("time_steps_between_refinement", 10);
   double next_refinement_time = time;
-  // PropertyTreeINput time_stepping.time_step
+  // PropertyTreeInput time_stepping.time_step
   double time_step = time_stepping_database.get<double>("time_step");
-  // PropertyTreeINput time_stepping.duration
+  // PropertyTreeInput time_stepping.duration
   double const duration = time_stepping_database.get<double>("duration");
+  // PropertyTreeInput post_processor.time_steps_between_output
+  unsigned int const time_steps_output =
+      post_processor_database.get("time_steps_between_output", 1);
+
   while (time < duration)
   {
     if ((time + time_step) > duration)
@@ -721,8 +725,11 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     }
 
     // Output the solution
-    output_pvtu(post_processor, cycle, n_time_step, time, affine_constraints,
-                solution);
+    if (n_time_step % time_steps_output == 0)
+    {
+      output_pvtu(post_processor, cycle, n_time_step, time, affine_constraints,
+                  solution);
+    }
     ++n_time_step;
   }
   post_processor.output_pvd();

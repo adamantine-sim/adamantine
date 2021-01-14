@@ -8,8 +8,8 @@ Installing `adamantine` requires:
 * A compiler that support C++17
 * CMake: 3.15 or later
 * Boost: 1.70.0 or later
-* deal.II: for compatibility purpose we recommend to use the adamantine branch [here](https://github.com/Rombur/dealii/tree/adamantine). 
-You need to compile deal.II with MPI and P4EST. If you want to use Exodus file, you also need Trilinos with SEACAS support. 
+* deal.II: for compatibility purpose we recommend to use the adamantine branch [here](https://github.com/Rombur/dealii/tree/adamantine).
+You need to compile deal.II with MPI and P4EST. If you want to use Exodus file, you also need Trilinos with SEACAS support.
 
 An example on how to install all the dependencies can be found in
 `ci/Dockerfile`.
@@ -28,7 +28,7 @@ executable and an example of input files.
 
 The list of configuration options is:
 * CMAKE\_BUILD\_TYPE: Debug/Release
-* DEAL\_II\_DIR:/path/to/dealii 
+* DEAL\_II\_DIR:/path/to/dealii
 * BOOST\_DIR=/path/to/boost
 * ADAMANTINE\_ENABLE\_CUDA=ON/OFF
 * ADAMANTINE\_ENABLE\_TESTS=ON/OFF
@@ -78,12 +78,12 @@ The following options are available:
   (optional)
   * material\_X.Y.Z: Z is either density in kg/m^3, specific\_heat in J/(K\*kg), or
   thermal\_conductivity in W/(m\*K) (optional)
-  * material\_X.A: A is either solidus in kelvin, liquidus in kelvin, or latent\_heat 
+  * material\_X.A: A is either solidus in kelvin, liquidus in kelvin, or latent\_heat
   in J/kg (optional)
 * sources:
   * n\_beams: number of electron beams
   * beam\_X: property tree for the beam with number X
-  * beam\_X.type: type of heat source: goldak or electron\_beam 
+  * beam\_X.type: type of heat source: goldak or electron\_beam
   * beam\_X.scan\_path\_file: scan path filename
   * beam\_X.scan\_path\_file\_format: format of the scan path: segment or
   event\_series
@@ -100,7 +100,7 @@ The following options are available:
   * duration: duration of the simulation in seconds
   * time\_step: length of the time steps used for the simulation in seconds
   * for embedded methods:
-    * coarsening\_parameter: coarsening of the time step when the error is small 
+    * coarsening\_parameter: coarsening of the time step when the error is small
     enough (default value: 1.2)
     * refining\_parameter: refining of the time step when the error is too large
     (default value: 0.8)
@@ -124,6 +124,9 @@ The following options are available:
     * jfnk: use Jacobian-Free Newton Krylov method (default value: false)
 * post\_processor:
   * file\_name: prefix of output files
+  * time_steps_between_output: number of time steps between the
+  fields being written to the output files (default value: 1)
+
 * discretization:
   * fe\_degree: degree of the finite element used
   * quadrature: quadrature used: gauss or lobatto (default value: gauss)
@@ -138,24 +141,24 @@ The following options are available:
 #### Segment format
 After the self-explainatory tree-line header, the column descriptions are:
 * Column 1: mode 0 for line mode, mode 1 for spot mode
-* Columns 2 to 4: (x,y,z) coordinates in units of mm. For line mode, this 
+* Columns 2 to 4: (x,y,z) coordinates in units of mm. For line mode, this
 is the ending position of the the line.
-* Column 5: the coefficient for the nominal power. Usually this is either 
+* Column 5: the coefficient for the nominal power. Usually this is either
 0 or 1, but sometimes intermediate values are used when turning a corner.
-* Column 6: in spot mode, this is the dwell time in seconds, in line mode 
+* Column 6: in spot mode, this is the dwell time in seconds, in line mode
 this is the velocity in m/s.
 
-The first entry must be a spot. If it was a line, there would be no way 
-to know where the line starts (since the coordinates are the ending coordinates). 
-By convention, we avoid using a zero second dwell time for the first spot 
+The first entry must be a spot. If it was a line, there would be no way
+to know where the line starts (since the coordinates are the ending coordinates).
+By convention, we avoid using a zero second dwell time for the first spot
 and instead choose some small positive number.
 #### Event format
-For an event series the first segment is a point, then the rest are lines. 
+For an event series the first segment is a point, then the rest are lines.
 The column descriptions are:
 * Column 1: segment endtime
 * Columns 2 to 4: (x,y,x) coordinates in units of mm. This is the ending
 position of the line.
-* Column 5: the coefficient for the nominal power. Usually this is either 
+* Column 5: the coefficient for the nominal power. Usually this is either
 0 or 1, but sometimes intermediate values are used when turning a corner.
 
 ## License
