@@ -50,14 +50,13 @@ void ScanPath::load_segment_scan_path(std::string scan_path_file)
       ScanPathSegment segment;
 
       // Set the segment type
-      ScanPathSegmentType segment_type;
+      ScanPathSegmentType segment_type = ScanPathSegmentType::line;
       if (split_line[0] == "0")
       {
         // Check to make sure the segment isn't the first, if it is, throw an
         // exception (the first segment must be a point in the spec).
         ASSERT_THROW(_segment_list.size() > 0,
                      "Error: Scan paths must begin with a 'point' segment.");
-        segment_type = ScanPathSegmentType::line;
       }
       else if (split_line[0] == "1")
       {

@@ -46,7 +46,7 @@ double MaterialProperty<dim>::get(
     StateProperty prop) const
 {
   unsigned int property = static_cast<unsigned int>(prop);
-  double const mp_dof_index = get_dof_index(cell);
+  auto const mp_dof_index = get_dof_index(cell);
 
   return _property_values[property][mp_dof_index];
 }
