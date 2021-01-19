@@ -137,7 +137,7 @@ private:
   /**
    * Return the index of the dof associated to the cell.
    */
-  double get_dof_index(
+  dealii::types::global_dof_index get_dof_index(
       typename dealii::Triangulation<dim>::active_cell_iterator const &cell)
       const;
 
@@ -229,14 +229,14 @@ inline double MaterialProperty<dim>::get_state_ratio(
     typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
     MaterialState material_state) const
 {
-  double const mp_dof_index = get_dof_index(cell);
-  unsigned int const mat_state = static_cast<unsigned int>(material_state);
+  auto const mp_dof_index = get_dof_index(cell);
+  auto const mat_state = static_cast<unsigned int>(material_state);
 
   return _state[mat_state][mp_dof_index];
 }
 
 template <int dim>
-inline double MaterialProperty<dim>::get_dof_index(
+inline dealii::types::global_dof_index MaterialProperty<dim>::get_dof_index(
     typename dealii::Triangulation<dim>::active_cell_iterator const &cell) const
 {
   // Get a DoFCellAccessor from a Triangulation::active_cell_iterator.
