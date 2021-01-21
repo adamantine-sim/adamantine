@@ -70,6 +70,32 @@ enum Timing
   evol_time_J_inv,
   evol_time_eval_mat_prop
 };
+
+/**
+ * This structure provides a mapping between the axes x, y, and z and the
+ * indices 0, 1, and 2. In 2D, the valid axes are x and z while in 3D x, y, and
+ * z are valid.
+ */
+template <int dim>
+struct axis;
+
+// dim == 2 specialization
+template <>
+struct axis<2>
+{
+  static int constexpr x = 0;
+  static int constexpr y = -1;
+  static int constexpr z = 1;
+};
+
+// dim == 3 specialization
+template <>
+struct axis<3>
+{
+  static int constexpr x = 0;
+  static int constexpr y = 1;
+  static int constexpr z = 2;
+};
 } // namespace adamantine
 
 #endif
