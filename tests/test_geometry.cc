@@ -59,6 +59,9 @@ BOOST_AUTO_TEST_CASE(geometry_2D)
   database.put("length_divisions", 4);
   database.put("height", 6);
   database.put("height_divisions", 5);
+  database.put("material_height", 6.);
+  database.put("use_powder", true);
+  database.put("powder_layer", 1.2);
 
   adamantine::Geometry<2> geometry(communicator, database);
   dealii::parallel::distributed::Triangulation<2> const &tria =
@@ -81,6 +84,9 @@ BOOST_AUTO_TEST_CASE(geometry_3D)
   database.put("height_divisions", 2);
   database.put("width", 6);
   database.put("width_divisions", 5);
+  database.put("material_height", 4);
+  database.put("use_powder", true);
+  database.put("powder_layer", 2);
 
   adamantine::Geometry<3> geometry(communicator, database);
   dealii::parallel::distributed::Triangulation<3> const &tria =
@@ -99,7 +105,9 @@ BOOST_AUTO_TEST_CASE(gmsh)
   database.put("import_mesh", true);
   database.put("mesh_file", "extruded_cube.msh");
   database.put("mesh_format", "gmsh");
-  database.put("top_boundary_id", 1);
+  database.put("material_height", 1.);
+  database.put("use_powder", true);
+  database.put("powder_layer", 0.05);
 
   adamantine::Geometry<3> geometry(communicator, database);
   dealii::parallel::distributed::Triangulation<3> const &tria =

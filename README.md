@@ -46,12 +46,17 @@ valid as `input.info`.
 The following options are available:
 * geometry
   * dim: the dimension of the problem (2 or 3)
+  * material\_height: below this height the domain contains material. Above this
+  height the domain is empty (default value: 1e9)
+  * use\_powder: the additive manufacturing process use powder: true or false
+  (default value: false)
+  * if use\_powder is true:
+    * powder\_layer: thickness of the initial layer of powder in meters
   * import\_mesh: true of false
   * if import\_mesh is true:
     * mesh\_format: abaqus, assimp, unv, ucd, dbmesh, gmsh, tecplot, xda, vtk,
     vtu, exoduss, or default, i.e., use the file suffix to try to determine the
     mesh format
-    * top\_boundary\_id: boundary id of the top boundary in the imported mesh
   * if import\_mesh is false:
     * length: the length of the domain in meters
     * height: the height of the domain in meters

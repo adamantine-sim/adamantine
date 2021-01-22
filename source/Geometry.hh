@@ -23,17 +23,6 @@ class Geometry
 public:
   /**
    * Constructor.
-   * \param[in] database requires the following entries:
-   *   - <B>length_divisions</B>: unsigned int in \f$[1,\infty)\f$ [optional:
-   *   default value is 10]
-   *   - <B>height_divisions</B>: unsigned int in \f$[1,\infty)\f$ [optional:
-   *   default value is 10]
-   *   - <B>width_divisions</B>: unsigned int in \f$[1,\infty)\f$ [optional:
-   *   default value is 10, only used in three dimensional calculation]
-   *   - <B>length</B>: double in \f$(0,\infty)\f$
-   *   - <B>height</B>: double in \f$(0,\infty)\f$
-   *   - <B>width</B>: double in \f$(0,\infty)\f$ [only used in three
-   *   dimensional calculation]
    */
   Geometry(MPI_Comm const &communicator,
            boost::property_tree::ptree const &database);
@@ -50,10 +39,9 @@ private:
   dealii::parallel::distributed::Triangulation<dim> _triangulation;
 
   /**
-   * Assign the material state to the mesh. The top cells are set to be powder;
-   * the others are solid.
+   * Assign the material state to the mesh.
    */
-  void assign_material_state(dealii::types::boundary_id top_boundary);
+  void assign_material_state(boost::property_tree::ptree const &database);
 };
 
 template <int dim>
