@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE(heat_source_value_3d)
   double eb_value = 0.0;
 
   std::cout << "Checking point 1..." << std::endl;
-  dealii::Point<3> point1(0.0, 0.15, 0.0);
+  dealii::Point<3> point1(0.0, 0.0, 0.15);
   g_value = goldak_heat_source.value(point1, 1.0e-7, 0.2);
   BOOST_CHECK_CLOSE(g_value, 0.0, tolerance);
 
@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE(heat_source_value_3d)
 
   // Check the beam center 0.001 s into the second segment
   std::cout << "Checking point 3..." << std::endl;
-  dealii::Point<3> point3(8e-4, 0.2, 0.0);
+  dealii::Point<3> point3(8e-4, 0.0, 0.2);
   g_value = goldak_heat_source.value(point3, 0.001001, 0.2);
   double pi_over_3_to_1p5 = std::pow(dealii::numbers::PI / 3.0, 1.5);
   double expected_value = 2.0 * 0.1 * 10.0 / 0.5 / 0.5 / 0.1 / pi_over_3_to_1p5;
@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE(heat_source_value_3d)
 
   // Check slightly off beam center 0.001 s into the second segment
   std::cout << "Checking point 4..." << std::endl;
-  dealii::Point<3> point4(7.0e-4, 0.19, 0.0);
+  dealii::Point<3> point4(7.0e-4, 0.0, 0.19);
   g_value = goldak_heat_source.value(point4, 0.001001, 0.2);
   expected_value = 2.0 * 0.1 * 10.0 / (0.5 * 0.5 * 0.1 * pi_over_3_to_1p5);
   expected_value *=

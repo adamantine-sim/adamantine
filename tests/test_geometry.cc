@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(geometry_3D)
 
   BOOST_CHECK(tria.n_active_cells() == 40);
 
-  dealii::types::boundary_id const top_boundary = 3;
+  dealii::types::boundary_id const top_boundary = 5;
   check_material_id(tria, top_boundary);
 }
 

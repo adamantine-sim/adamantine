@@ -33,9 +33,13 @@ public:
    */
   BeamHeatSourceProperties(boost::property_tree::ptree const &database)
   {
+    // PropertyTreeInput sources.beam_X.depth
     depth = database.get<double>("depth");
+    // PropertyTreeInput sources.beam_X.absorption_efficiency
     absorption_efficiency = database.get<double>("absorption_efficiency");
+    // PropertyTreeInput sources.beam_X.diameter
     radius_squared = std::pow(database.get<double>("diameter") / 2.0, 2);
+    // PropertyTreeInput sources.beam_X.max_power
     max_power = database.get<double>("max_power");
   }
 

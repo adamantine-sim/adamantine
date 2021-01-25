@@ -24,11 +24,14 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
                         boost::property_tree::ptree const &database)
     : _triangulation(communicator)
 {
+  // PropertyTreeInput geometry.import_mesh
   bool import_mesh = database.get<bool>("import_mesh");
 
   if (import_mesh == true)
   {
+    // PropertyTreeInput geometry.mesh_file
     std::string mesh_file = database.get<std::string>("mesh_file");
+    // PropertyTreeInput geometry.mesh_format
     std::string mesh_format = database.get<std::string>("mesh_format");
     dealii::GridIn<dim> grid_in;
     grid_in.attach_triangulation(_triangulation);
@@ -39,9 +42,7 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
     }
     else if (mesh_format == "assimp")
     {
-      // assimp is a special case
       grid_in_format = dealii::GridIn<dim>::Format::assimp;
-      grid_in.read_assimp(mesh_file);
     }
     else if (mesh_format == "unv")
     {
@@ -75,6 +76,10 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
     {
       grid_in_format = dealii::GridIn<dim>::Format::vtu;
     }
+    else if (mesh_format == "exodusii")
+    {
+      grid_in_format = dealii::GridIn<dim>::Format::exodusii;
+    }
     else
     {
       grid_in_format = dealii::GridIn<dim>::Format::Default;
@@ -85,6 +90,7 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
       grid_in.read(mesh_file, grid_in_format);
     }
 
+    // PropertyTreeInput geometry.top_boundary_id
     dealii::types::boundary_id const top_boundary =
         database.get<int>("top_boundary_id");
     assign_material_state(top_boundary);
@@ -92,17 +98,23 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
   else
   {
     std::vector<unsigned int> repetitions(dim);
-    repetitions[0] = database.get("length_divisions", 10);
-    repetitions[1] = database.get("height_divisions", 10);
+    // PropertyTreeInput geometry.length_divisions
+    repetitions[axis<dim>::x] = database.get("length_divisions", 10);
+    // PropertyTreeInput geometry.height_divisions
+    repetitions[axis<dim>::z] = database.get("height_divisions", 10);
+    // PropertyTreeInput geometry.width_divisions
     if (dim == 3)
-      repetitions[2] = database.get("width_divisions", 10);
+      repetitions[axis<dim>::y] = database.get("width_divisions", 10);
 
     dealii::Point<dim> p1;
     dealii::Point<dim> p2;
-    p2[0] = database.get<double>("length");
-    p2[1] = database.get<double>("height");
+    // PropertyTreeInput geometry.length
+    p2[axis<dim>::x] = database.get<double>("length");
+    // PropertyTreeInput geometry.height
+    p2[axis<dim>::z] = database.get<double>("height");
+    // PropertyTreeInput geometry.width
     if (dim == 3)
-      p2[2] = database.get<double>("width");
+      p2[axis<dim>::y] = database.get<double>("width");
 
     // For now we assume that the geometry is very simple.
     dealii::GridGenerator::subdivided_hyper_rectangle(
@@ -115,7 +127,7 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
     }
 
     // Assign the MaterialState.
-    dealii::types::boundary_id const top_boundary = 3;
+    dealii::types::boundary_id const top_boundary = (dim == 2) ? 3 : 5;
     assign_material_state(top_boundary);
   }
 }

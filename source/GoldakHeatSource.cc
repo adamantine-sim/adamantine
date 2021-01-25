@@ -7,6 +7,7 @@
 
 #include <GoldakHeatSource.hh>
 #include <instantiation.hh>
+#include <types.hh>
 
 namespace adamantine
 {
@@ -23,9 +24,7 @@ double GoldakHeatSource<dim>::value(dealii::Point<dim> const &point,
                                     double const time,
                                     double const height) const
 {
-  // NOTE: Due to the differing coordinate systems, "z" here is the second
-  // component of the input point.
-  double const z = point[1] - height;
+  double const z = point[axis<dim>::z] - height;
   if ((z + this->_beam.depth) < 0.)
   {
     return 0.;
@@ -33,12 +32,12 @@ double GoldakHeatSource<dim>::value(dealii::Point<dim> const &point,
   else
   {
     dealii::Point<3> const beam_center = this->_scan_path.value(time);
-    double xpy_squared = std::pow(point[0] - beam_center[0], 2);
+    double xpy_squared =
+        std::pow(point[axis<dim>::x] - beam_center[axis<dim>::x], 2);
     if (dim == 3)
     {
-      // NOTE: Due to the differing coordinate systems, "y" here is the third
-      // component of the input point.
-      xpy_squared += std::pow(point[2] - beam_center[1], 2);
+      xpy_squared +=
+          std::pow(point[axis<dim>::y] - beam_center[axis<dim>::y], 2);
     }
     double segment_power_modifier = this->_scan_path.get_power_modifier(time);
     double pi_over_3_to_1p5 = std::pow(dealii::numbers::PI / 3.0, 1.5);
