@@ -99,22 +99,22 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
   {
     std::vector<unsigned int> repetitions(dim);
     // PropertyTreeInput geometry.length_divisions
-    repetitions[0] = database.get("length_divisions", 10);
+    repetitions[axis<dim>::x] = database.get("length_divisions", 10);
     // PropertyTreeInput geometry.height_divisions
-    repetitions[1] = database.get("height_divisions", 10);
+    repetitions[axis<dim>::z] = database.get("height_divisions", 10);
     // PropertyTreeInput geometry.width_divisions
     if (dim == 3)
-      repetitions[2] = database.get("width_divisions", 10);
+      repetitions[axis<dim>::y] = database.get("width_divisions", 10);
 
     dealii::Point<dim> p1;
     dealii::Point<dim> p2;
     // PropertyTreeInput geometry.length
-    p2[0] = database.get<double>("length");
+    p2[axis<dim>::x] = database.get<double>("length");
     // PropertyTreeInput geometry.height
-    p2[1] = database.get<double>("height");
+    p2[axis<dim>::z] = database.get<double>("height");
     // PropertyTreeInput geometry.width
     if (dim == 3)
-      p2[2] = database.get<double>("width");
+      p2[axis<dim>::y] = database.get<double>("width");
 
     // For now we assume that the geometry is very simple.
     dealii::GridGenerator::subdivided_hyper_rectangle(
@@ -127,7 +127,7 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
     }
 
     // Assign the MaterialState.
-    dealii::types::boundary_id const top_boundary = 3;
+    dealii::types::boundary_id const top_boundary = (dim == 2) ? 3 : 5;
     assign_material_state(top_boundary);
   }
 }
