@@ -95,7 +95,17 @@ public:
   void evaluate_material_properties(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &state) override;
-
+  /**
+   * Extract the stateful properties from the _material_properties object.
+   */
+  void extract_stateful_material_properties(
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
+      override;
+  /**
+   * Modify the stateful properties from the _material_properties object to
+   * match the evolved values in ThermalOperator.
+   */
+  void sync_stateful_material_properties() override;
   /**
    * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given cell.
    */
@@ -128,6 +138,15 @@ private:
    * Table of thermal conductivity coefficient.
    */
   dealii::Table<2, dealii::VectorizedArray<double>> _thermal_conductivity;
+  /**
+   * Table of the powder fraction
+   */
+  dealii::Table<2, dealii::VectorizedArray<double>> _powder_fraction;
+  /**
+   * Table of the material index
+   */
+  dealii::Table<2, dealii::VectorizedArray<dealii::types::material_id>>
+      _material_id;
   /**
    * Material properties associated with the domain.
    */

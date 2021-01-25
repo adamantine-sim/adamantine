@@ -44,7 +44,7 @@ public:
    *   solid [optional]
    *   - <B>material_X.Y.Z</B>: string where Z is either density, specific_heat,
    *   or thermal_conductivity, describe the behavior of the property as a
-   *   function of the temperatur (e.g. "2.*T") [optional]
+   *   function of the temperature (e.g. "2.*T") [optional]
    *   - <B>material.X.A</B>: A is either solidus, liquidus, or latent heat
    * [optional]
    */
@@ -69,8 +69,15 @@ public:
       Property prop) const;
 
   /**
-   * Reinitialize the DoFHandler associated with MaterialProperty and resize the
-   * state vectors.
+   * Return the material id for a given cell.
+   */
+  dealii::types::material_id get_material_id(
+      typename dealii::Triangulation<dim>::active_cell_iterator const &cell)
+      const;
+
+  /**
+   * Reinitialize the DoFHandler associated with MaterialProperty and resize
+   * the state vectors.
    */
   void reinit_dofs();
 

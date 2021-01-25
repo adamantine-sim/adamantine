@@ -14,6 +14,8 @@
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
 
+#include <algorithm>
+
 namespace adamantine
 {
 
@@ -186,14 +188,20 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
       _material_database.get<double>("material_0.solid.thermal_conductivity");
   double thermal_conductivity_liquid =
       _material_database.get<double>("material_0.liquid.thermal_conductivity");
-  double specific_heat_solid =
+  double thermal_conductivity_powder =
+      _material_database.get<double>("material_0.powder.thermal_conductivity");
+  dealii::VectorizedArray<double> specific_heat_solid =
       _material_database.get<double>("material_0.solid.specific_heat");
-  double specific_heat_liquid =
+  dealii::VectorizedArray<double> specific_heat_liquid =
       _material_database.get<double>("material_0.liquid.specific_heat");
+  dealii::VectorizedArray<double> specific_heat_powder =
+      _material_database.get<double>("material_0.powder.specific_heat");
   double density_solid =
       _material_database.get<double>("material_0.solid.density");
   double density_liquid =
       _material_database.get<double>("material_0.liquid.density");
+  double density_powder =
+      _material_database.get<double>("material_0.powder.density");
 
   double solidus = _material_database.get<double>("material_0.solidus");
   double liquidus = _material_database.get<double>("material_0.liquidus");
@@ -228,33 +236,48 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
       dealii::VectorizedArray<double> temperature = fe_eval.get_value(q);
 
       // Calculate the liquid ratio
-      double liquid_ratio = -1.;
-      for (unsigned int n = 0; n < temperature.n_array_elements; ++n)
+      dealii::VectorizedArray<double> liquid_ratio = -1.;
+      dealii::VectorizedArray<double> powder_ratio = -1.;
+      dealii::VectorizedArray<double> solid_ratio = -1.;
+      for (unsigned int n = 0; n < _matrix_free.n_components_filled(cell); ++n)
       {
         if (temperature[n] < solidus)
-          liquid_ratio = 0.;
+          liquid_ratio[n] = 0.;
         else if (temperature[n] > liquidus)
-          liquid_ratio = 1.;
+          liquid_ratio[n] = 1.;
         else
         {
-          liquid_ratio = (temperature[n] - solidus) / (liquidus - solidus);
+          liquid_ratio[n] = (temperature[n] - solidus) / (liquidus - solidus);
 
-          specific_heat_liquid += latent_heat / (liquidus - solidus);
-          specific_heat_solid += latent_heat / (liquidus - solidus);
+          // Because the powder can only become liquid, the solid can only
+          // become liquid, and the liquid can only become solid, the ratio of
+          // powder can only decrease.
+          powder_ratio[n] =
+              std::min(1. - liquid_ratio[n], _powder_fraction(cell, q)[n]);
+          // Use max to make sure that we don't create matter because of
+          // round-off.
+          solid_ratio[n] = std::max(1. - liquid_ratio[n] - powder_ratio[n], 0.);
+
+          specific_heat_liquid[n] += latent_heat / (liquidus - solidus);
+          specific_heat_solid[n] += latent_heat / (liquidus - solidus);
+          specific_heat_powder[n] += latent_heat / (liquidus - solidus);
         }
       }
 
       // Calculate the local material properties
       dealii::VectorizedArray<double> thermal_conductivity =
           liquid_ratio * thermal_conductivity_liquid +
-          (1.0 - liquid_ratio) * thermal_conductivity_solid;
+          solid_ratio * thermal_conductivity_solid +
+          powder_ratio * thermal_conductivity_powder;
 
       dealii::VectorizedArray<double> specific_heat =
           liquid_ratio * specific_heat_liquid +
-          (1.0 - liquid_ratio) * specific_heat_solid;
+          solid_ratio * specific_heat_solid +
+          powder_ratio * specific_heat_powder;
 
-      dealii::VectorizedArray<double> density =
-          liquid_ratio * density_liquid + (1.0 - liquid_ratio) * density_solid;
+      dealii::VectorizedArray<double> density = liquid_ratio * density_liquid +
+                                                solid_ratio * density_solid +
+                                                powder_ratio * density_powder;
 
       dealii::VectorizedArray<double> inv_rho_cp =
           1.0 / (density * specific_heat);
@@ -304,6 +327,47 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
         _cell_it_to_mf_cell_map[cell_it] = std::make_pair(cell, i);
       }
 }
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, fe_degree, MemorySpaceType>::
+    extract_stateful_material_properties(
+        dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature)
+{
+  // Update the state of the materials
+  _material_properties->update(_matrix_free.get_dof_handler(), temperature);
+
+  unsigned int const n_cells = _matrix_free.n_macro_cells();
+  dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
+      _matrix_free);
+
+  _powder_fraction.reinit(n_cells, fe_eval.n_q_points);
+  _material_id.reinit(n_cells, fe_eval.n_q_points);
+
+  for (unsigned int cell = 0; cell < n_cells; ++cell)
+    for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
+      for (unsigned int i = 0; i < _matrix_free.n_components_filled(cell); ++i)
+      {
+        typename dealii::DoFHandler<dim>::cell_iterator cell_it =
+            _matrix_free.get_cell_iterator(cell, i);
+        // Cast to Triangulation<dim>::cell_iterator to access the material_id
+        typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
+            cell_it);
+
+        _powder_fraction(cell, q)[i] = _material_properties->get_state_ratio(
+            cell_tria, MaterialState::powder);
+
+        _material_id(cell, q)[i] =
+            _material_properties->get_material_id(cell_tria);
+      }
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, fe_degree,
+                     MemorySpaceType>::sync_stateful_material_properties()
+{
+  // TODO
+}
+
 } // namespace adamantine
 
 INSTANTIATE_DIM_FEDEGREE_HOST(TUPLE(ThermalOperator))

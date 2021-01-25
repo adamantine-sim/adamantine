@@ -63,6 +63,13 @@ double MaterialProperty<dim>::get(
 }
 
 template <int dim>
+dealii::types::material_id MaterialProperty<dim>::get_material_id(
+    typename dealii::Triangulation<dim>::active_cell_iterator const &cell) const
+{
+  return cell->material_id();
+}
+
+template <int dim>
 void MaterialProperty<dim>::reinit_dofs()
 {
   _mp_dof_handler.distribute_dofs(_fe);
@@ -122,7 +129,7 @@ void MaterialProperty<dim>::update(
     // only decrease.
     powder_ratio = std::min(1. - liquid_ratio, _state[powder][dof]);
     // Use max to make sure that we don't create matter because of round-off.
-    solid_ratio = std::max(1 - liquid_ratio - powder_ratio, 0.);
+    solid_ratio = std::max(1. - liquid_ratio - powder_ratio, 0.);
 
     // Update the value
     _state[liquid][dof] = liquid_ratio;

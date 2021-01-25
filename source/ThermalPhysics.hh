@@ -92,6 +92,13 @@ public:
                         dealii::LA::distributed::Vector<double, MemorySpaceType>
                             &vector) const override;
 
+  /**
+   *
+   */
+  void extract_stateful_material_properties(
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
+      override;
+
   dealii::DoFHandler<dim> &get_dof_handler() override;
 
   dealii::AffineConstraints<double> &get_affine_constraints() override;
@@ -237,6 +244,7 @@ inline std::shared_ptr<MaterialProperty<dim>>
 ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_material_property()
 {
+  _thermal_operator->sync_stateful_material_properties();
   return _material_properties;
 }
 

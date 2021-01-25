@@ -554,6 +554,16 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 
   return solution;
 }
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+    extract_stateful_material_properties(
+        dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
+{
+  _thermal_operator->extract_stateful_material_properties(vector);
+}
+
 } // namespace adamantine
 
 #endif

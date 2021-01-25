@@ -646,6 +646,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   thermal_physics->compute_inverse_mass_matrix();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   thermal_physics->initialize_dof_vector(initial_temperature, solution);
+  thermal_physics->extract_stateful_material_properties(solution);
   unsigned int progress = 0;
   unsigned int cycle = 0;
   unsigned int n_time_step = 0;
