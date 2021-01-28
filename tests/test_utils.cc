@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 - 2020, the adamantine authors.
+/* Copyright (c) 2017 - 2021, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
