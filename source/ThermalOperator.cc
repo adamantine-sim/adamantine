@@ -23,10 +23,9 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
     MPI_Comm const &communicator,
     std::shared_ptr<MaterialProperty<dim>> material_properties,
-    std::vector<std::shared_ptr<HeatSource<dim>>> heat_sources,
-    boost::property_tree::ptree const &material_database)
+    std::vector<std::shared_ptr<HeatSource<dim>>> heat_sources)
     : _communicator(communicator), _material_properties(material_properties),
-      _heat_sources(heat_sources), _material_database(material_database),
+      _heat_sources(heat_sources),
       _inverse_mass_matrix(
           new dealii::LA::distributed::Vector<double, MemorySpaceType>())
 {

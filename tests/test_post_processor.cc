@@ -8,6 +8,7 @@
 #define BOOST_TEST_MODULE PostProcessor
 
 #include <Geometry.hh>
+#include <GoldakHeatSource.hh>
 #include <MaterialProperty.hh>
 #include <PostProcessor.hh>
 #include <ThermalOperator.hh>
@@ -60,9 +61,19 @@ BOOST_AUTO_TEST_CASE(post_processor)
       new adamantine::MaterialProperty<2>(
           communicator, geometry.get_triangulation(), mat_prop_database));
 
+  boost::property_tree::ptree beam_database;
+  beam_database.put("depth", 0.1);
+  beam_database.put("absorption_efficiency", 0.1);
+  beam_database.put("diameter", 1.0);
+  beam_database.put("max_power", 10.);
+  std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
+  heat_sources.resize(1);
+  heat_sources[0] =
+      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
+
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
-      communicator, mat_properties);
+      communicator, mat_properties, heat_sources);
   thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);

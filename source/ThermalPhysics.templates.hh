@@ -175,8 +175,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
     _thermal_operator =
         std::make_shared<ThermalOperator<dim, fe_degree, MemorySpaceType>>(
-            communicator, _material_properties, _heat_sources,
-            material_database);
+            communicator, _material_properties, _heat_sources);
 #ifdef ADAMANTINE_HAVE_CUDA
   else
     _thermal_operator = std::make_shared<
