@@ -147,16 +147,21 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     std::string type = beam_database.get<std::string>("type");
     if (type == "goldak")
     {
-      _heat_sources[i] = std::make_unique<GoldakHeatSource<dim>>(beam_database);
+      //_heat_sources[i] =
+      // std::make_unique<GoldakHeatSource<dim>>(beam_database);
+      _heat_sources[i] = std::make_shared<GoldakHeatSource<dim>>(beam_database);
     }
     else if (type == "electron_beam")
     {
+      //_heat_sources[i] =
+      //  std::make_unique<ElectronBeamHeatSource<dim>>(beam_database);
       _heat_sources[i] =
-          std::make_unique<ElectronBeamHeatSource<dim>>(beam_database);
+          std::make_shared<ElectronBeamHeatSource<dim>>(beam_database);
     }
     else if (type == "cube")
     {
-      _heat_sources[i] = std::make_unique<CubeHeatSource<dim>>(beam_database);
+      //_heat_sources[i] = std::make_unique<CubeHeatSource<dim>>(beam_database);
+      _heat_sources[i] = std::make_shared<CubeHeatSource<dim>>(beam_database);
     }
     else
     {
@@ -170,7 +175,8 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
     _thermal_operator =
         std::make_shared<ThermalOperator<dim, fe_degree, MemorySpaceType>>(
-            communicator, _material_properties, material_database);
+            communicator, _material_properties, _heat_sources,
+            material_database);
 #ifdef ADAMANTINE_HAVE_CUDA
   else
     _thermal_operator = std::make_shared<
@@ -430,110 +436,15 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
         std::vector<Timer> &timers) const
 {
-  /*
-  timers[evol_time_eval_mat_prop].start();
-  if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
-    _thermal_operator->evaluate_material_properties(y);
-  else
-  {
-    // TODO do this on the GPU
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> y_host(
-        y.get_partitioner());
-    y_host.import(y, dealii::VectorOperation::insert);
-    _thermal_operator->evaluate_material_properties(y_host);
-  }
-  timers[evol_time_eval_mat_prop].stop();
-  */
+
   timers[evol_time_eval_th_ph].start();
+
+  // Do we still need this?
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> source(
       y.get_partitioner());
   source = 0.;
 
-  // Compute the source term.
-
-  // Currently assumes that the material is always "material_0" and that the
-  // properties are scalar-valued
-  double specific_heat_solid =
-      _material_database.get<double>("material_0.solid.specific_heat");
-  double specific_heat_liquid =
-      _material_database.get<double>("material_0.liquid.specific_heat");
-  double density_solid =
-      _material_database.get<double>("material_0.solid.density");
-  double density_liquid =
-      _material_database.get<double>("material_0.liquid.density");
-
-  double solidus = _material_database.get<double>("material_0.solidus");
-  double liquidus = _material_database.get<double>("material_0.liquidus");
-  double latent_heat = _material_database.get<double>("material_0.latent_heat");
-
-  dealii::hp::QCollection<dim> source_q_collection;
-  source_q_collection.push_back(dealii::QGauss<dim>(fe_degree + 1));
-  source_q_collection.push_back(dealii::QGauss<dim>(1));
-  dealii::hp::FEValues<dim> hp_fe_values(_fe_collection, source_q_collection,
-                                         dealii::update_quadrature_points |
-                                             dealii::update_values |
-                                             dealii::update_JxW_values);
-  unsigned int const dofs_per_cell = _fe_collection.max_dofs_per_cell();
-  unsigned int const n_q_points = source_q_collection.max_n_quadrature_points();
-  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
-  dealii::Vector<double> cell_source(dofs_per_cell);
-
-  // Loop over the locally owned cells with an active FE index of zero
-  for (auto const &cell : dealii::filter_iterators(
-           _dof_handler.active_cell_iterators(),
-           dealii::IteratorFilters::LocallyOwnedCell(),
-           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
-  {
-    cell_source = 0.;
-    hp_fe_values.reinit(cell);
-    dealii::FEValues<dim> const &fe_values =
-        hp_fe_values.get_present_fe_values();
-
-    // double const inv_rho_cp = _thermal_operator->get_inv_rho_cp(cell);
-
-    for (unsigned int i = 0; i < dofs_per_cell; ++i)
-    {
-      for (unsigned int q = 0; q < n_q_points; ++q)
-      {
-        double quad_pt_source = 0.;
-        dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
-        for (auto &beam : _heat_sources)
-          quad_pt_source += beam->value(q_point, t, _current_height);
-
-        // Calculate the inv_rho_cp
-        double temperature = fe_values.shape_value(i, q);
-
-        double liquid_ratio = -1.;
-        if (temperature < solidus)
-          liquid_ratio = 0.;
-        else if (temperature > liquidus)
-          liquid_ratio = 1.;
-        else
-        {
-          liquid_ratio = (temperature - solidus) / (liquidus - solidus);
-
-          specific_heat_liquid += latent_heat / (liquidus - solidus);
-          specific_heat_solid += latent_heat / (liquidus - solidus);
-        }
-
-        // Calculate the local material properties
-        double specific_heat = liquid_ratio * specific_heat_liquid +
-                               (1.0 - liquid_ratio) * specific_heat_solid;
-
-        double density = liquid_ratio * density_liquid +
-                         (1.0 - liquid_ratio) * density_solid;
-
-        double inv_rho_cp = 1.0 / (density * specific_heat);
-
-        cell_source[i] += inv_rho_cp * quad_pt_source *
-                          fe_values.shape_value(i, q) * fe_values.JxW(q);
-      }
-    }
-    cell->get_dof_indices(local_dof_indices);
-    _affine_constraints.distribute_local_to_global(cell_source,
-                                                   local_dof_indices, source);
-  }
-  source.compress(dealii::VectorOperation::add);
+  _thermal_operator->update_time_and_height(t, _current_height);
 
   return vmult_and_scale<dim, fe_degree, MemorySpaceType>(_thermal_operator, y,
                                                           source, timers);

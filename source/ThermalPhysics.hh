@@ -108,7 +108,7 @@ public:
   /**
    * Return the heat sources.
    */
-  std::vector<std::unique_ptr<HeatSource<dim>>> &get_heat_sources();
+  std::vector<std::shared_ptr<HeatSource<dim>>> &get_heat_sources();
 
   /**
    * Return the current height of the object.
@@ -197,7 +197,9 @@ private:
    */
   // Use unique_ptr due to a strange bug involving TBB, std::vector, and
   // dealii::FunctionParser.
-  std::vector<std::unique_ptr<HeatSource<dim>>> _heat_sources;
+  // std::vector<std::unique_ptr<HeatSource<dim>>> _heat_sources;
+  std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
+
   /**
    * Shared pointer to the underlying ThermalOperator.
    */
@@ -250,7 +252,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType,
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-inline std::vector<std::unique_ptr<HeatSource<dim>>> &
+inline std::vector<std::shared_ptr<HeatSource<dim>>> &
 ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_heat_sources()
 {

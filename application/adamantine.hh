@@ -127,7 +127,7 @@ inline void initialize_timers(MPI_Comm const &communicator,
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &initialize(
+std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &initialize(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
     std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
@@ -143,7 +143,7 @@ std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &initialize(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &
+std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &
 initialize_quadrature(
     std::string const &quadrature_type, MPI_Comm const &communicator,
     boost::property_tree::ptree const &database,
@@ -164,7 +164,7 @@ initialize_quadrature(
 }
 
 template <int dim, typename MemorySpaceType>
-std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &
+std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &
 initialize_thermal_physics(
     unsigned int fe_degree, std::string const &quadrature_type,
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
@@ -393,7 +393,7 @@ compute_cells_to_refine(
     dealii::parallel::distributed::Triangulation<dim> &triangulation,
     double const time, double const next_refinement_time,
     unsigned int const n_time_steps,
-    std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
     double const current_height)
 {
 
@@ -431,7 +431,7 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void refine_mesh(
     std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
@@ -523,7 +523,7 @@ template <int dim, typename MemorySpaceType>
 void refine_mesh(
     std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database,
@@ -641,7 +641,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   adamantine::Geometry<dim> geometry(communicator, geometry_database);
 
   std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> thermal_physics;
-  std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources =
+  std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources =
       initialize_thermal_physics<dim>(fe_degree, quadrature_type, communicator,
                                       database, geometry, thermal_physics);
 

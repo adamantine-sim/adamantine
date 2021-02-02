@@ -23,9 +23,10 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
     MPI_Comm const &communicator,
     std::shared_ptr<MaterialProperty<dim>> material_properties,
+    std::vector<std::shared_ptr<HeatSource<dim>>> heat_sources,
     boost::property_tree::ptree const &material_database)
     : _communicator(communicator), _material_properties(material_properties),
-      _material_database(material_database),
+      _heat_sources(heat_sources), _material_database(material_database),
       _inverse_mass_matrix(
           new dealii::LA::distributed::Vector<double, MemorySpaceType>())
 {
@@ -182,31 +183,6 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
   for (unsigned int i = 0; i < dim; ++i)
     unit_tensor[i] = 1.;
 
-  // Currently assumes that the material is always "material_0" and that the
-  // properties are scalar-valued
-  double thermal_conductivity_solid =
-      _material_database.get<double>("material_0.solid.thermal_conductivity");
-  double thermal_conductivity_liquid =
-      _material_database.get<double>("material_0.liquid.thermal_conductivity");
-  double thermal_conductivity_powder =
-      _material_database.get<double>("material_0.powder.thermal_conductivity");
-  dealii::VectorizedArray<double> specific_heat_solid =
-      _material_database.get<double>("material_0.solid.specific_heat");
-  dealii::VectorizedArray<double> specific_heat_liquid =
-      _material_database.get<double>("material_0.liquid.specific_heat");
-  dealii::VectorizedArray<double> specific_heat_powder =
-      _material_database.get<double>("material_0.powder.specific_heat");
-  double density_solid =
-      _material_database.get<double>("material_0.solid.density");
-  double density_liquid =
-      _material_database.get<double>("material_0.liquid.density");
-  double density_powder =
-      _material_database.get<double>("material_0.powder.density");
-
-  double solidus = _material_database.get<double>("material_0.solidus");
-  double liquidus = _material_database.get<double>("material_0.liquidus");
-  double latent_heat = _material_database.get<double>("material_0.latent_heat");
-
   std::array<dealii::VectorizedArray<double>,
              static_cast<unsigned int>(MaterialState::SIZE)>
       state_ratios = {dealii::make_vectorized_array(-1.0),
@@ -232,12 +208,6 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
     // coefficients and the quadrature points
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
     {
-      /*
-      fe_eval.submit_gradient(-_inv_rho_cp(cell, q) *
-                                  _thermal_conductivity(cell, q) *
-                                  fe_eval.get_gradient(q),
-                              q);
-      */
 
       dealii::VectorizedArray<double> temperature = fe_eval.get_value(q);
 
@@ -256,10 +226,27 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
       // Calculate the gradient contribution for the update
       fe_eval.submit_gradient(
           -inv_rho_cp * thermal_conductivity * fe_eval.get_gradient(q), q);
+
+      // Calculate the value contribution for the update
+      dealii::Point<dim, dealii::VectorizedArray<double>> const &q_point =
+          fe_eval.quadrature_point(q);
+
+      dealii::VectorizedArray<double> quad_pt_source = 0.0;
+      for (unsigned int i = 0; i < _matrix_free.n_components_filled(cell); ++i)
+      {
+        dealii::Point<dim> q_point_loc;
+        for (unsigned int d = 0; d < dim; ++d)
+          q_point_loc(d) = q_point(d)[i];
+
+        for (auto &beam : _heat_sources)
+          quad_pt_source[i] += beam->value(q_point_loc, _time, _current_height);
+      }
+
+      fe_eval.submit_value(quad_pt_source, q);
     }
 
     // Sum over the quadrature points.
-    fe_eval.integrate(false, true);
+    fe_eval.integrate(true, true);
     fe_eval.distribute_local_to_global(dst);
   }
 }

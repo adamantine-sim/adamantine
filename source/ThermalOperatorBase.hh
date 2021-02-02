@@ -60,6 +60,8 @@ public:
 
   virtual double get_inv_rho_cp(
       typename dealii::DoFHandler<dim>::cell_iterator const &) const = 0;
+
+  virtual void update_time_and_height(double time, double height) = 0;
 };
 } // namespace adamantine
 #endif

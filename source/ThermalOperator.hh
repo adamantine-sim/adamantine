@@ -8,6 +8,7 @@
 #ifndef THERMAL_OPERATOR_HH
 #define THERMAL_OPERATOR_HH
 
+#include <HeatSource.hh>
 #include <MaterialProperty.hh>
 #include <ThermalOperatorBase.hh>
 
@@ -25,6 +26,7 @@ class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 public:
   ThermalOperator(MPI_Comm const &communicator,
                   std::shared_ptr<MaterialProperty<dim>> material_properties,
+                  std::vector<std::shared_ptr<HeatSource<dim>>> heat_sources,
                   boost::property_tree::ptree const &material_database);
 
   /**
@@ -90,7 +92,7 @@ public:
       const override;
 
   /**
-   * Evaluate the material properties for a given state field.
+   * Evaluate the material properties for a given state field. (Is this needed?)
    */
   void evaluate_material_properties(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
@@ -112,6 +114,12 @@ public:
    */
   double get_inv_rho_cp(
       typename dealii::DoFHandler<dim>::cell_iterator const &) const override;
+
+  /**
+   * Update the time and the current height, to be used to calculate the source
+   * term.
+   */
+  void update_time_and_height(double time, double height) override;
 
 private:
   /**
@@ -175,6 +183,10 @@ private:
   std::map<typename dealii::DoFHandler<dim>::cell_iterator,
            std::pair<unsigned int, unsigned int>>
       _cell_it_to_mf_cell_map;
+
+  double _time;
+  double _current_height;
+  std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
 };
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -231,6 +243,15 @@ inline double ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
 
   return _inv_rho_cp(cell_comp_pair->second.first,
                      0)[cell_comp_pair->second.second];
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+inline void
+ThermalOperator<dim, fe_degree, MemorySpaceType>::update_time_and_height(
+    double time, double height)
+{
+  _time = time;
+  _current_height = height;
 }
 
 } // namespace adamantine
