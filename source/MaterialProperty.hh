@@ -18,6 +18,7 @@
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/la_vector.h>
+#include <deal.II/matrix_free/matrix_free.h>
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -111,6 +112,44 @@ public:
    */
   dealii::DoFHandler<dim> const &get_dof_handler() const;
 
+  // New public members of the reworked MaterialProperies
+  /**
+   * Update the state ratios at a quadrature point
+   */
+  void update_state_ratios(
+      unsigned int cell, unsigned int q,
+      dealii::VectorizedArray<double> temperature,
+      std::array<dealii::VectorizedArray<double>,
+                 static_cast<unsigned int>(MaterialState::SIZE)> &state_ratios);
+  /**
+   * Calculate inv_rho_cp at a quadrature point
+   */
+  dealii::VectorizedArray<double>
+  get_inv_rho_cp(unsigned int cell, unsigned int q,
+                 std::array<dealii::VectorizedArray<double>,
+                            static_cast<unsigned int>(MaterialState::SIZE)>
+                     state_ratios,
+                 dealii::VectorizedArray<double> temperature);
+  /**
+   * Calculate the thermal conductivity at a quadrature point
+   */
+  dealii::VectorizedArray<double> get_thermal_conductivity(
+      unsigned int cell, unsigned int q,
+      std::array<dealii::VectorizedArray<double>,
+                 static_cast<unsigned int>(MaterialState::SIZE)>
+          state_ratios,
+      dealii::VectorizedArray<double> temperature);
+  /**
+   *
+   */
+  void set_powder_ratio(unsigned int cell, unsigned int q, unsigned int i,
+                        double value);
+  /**
+   *
+   */
+  void set_material_id(unsigned int cell, unsigned int q, unsigned int i,
+                       dealii::types::material_id value);
+
 private:
   /**
    * Maximum different number of states a given material can be.
@@ -163,10 +202,21 @@ private:
       double const temperature) const;
 
   /**
-   * Compute a property using a polynomial representation given the temperature.
+   * Compute a property using a polynomial representation given the
+   * temperature.
    */
   double compute_property_from_polynomial(std::vector<double> const &coef,
                                           double const temperature) const;
+  /**
+   * Compute a material property a quadrature point for a mix of states
+   */
+  dealii::VectorizedArray<double> compute_material_property(
+      StateProperty state_property,
+      dealii::VectorizedArray<dealii::types::material_id> material_id,
+      std::array<dealii::VectorizedArray<double>,
+                 static_cast<unsigned int>(MaterialState::SIZE)>
+          state_ratios,
+      dealii::VectorizedArray<double> temperature) const;
 
   /**
    * MPI communicator.
@@ -221,6 +271,17 @@ private:
    * DoFHandler associated to the _state array.
    */
   dealii::DoFHandler<dim> _mp_dof_handler;
+
+  // New private members for the reworked MaterialProperies
+  /**
+   * Table of the powder fraction
+   */
+  dealii::Table<2, dealii::VectorizedArray<double>> _powder_ratio;
+  /**
+   * Table of the material index
+   */
+  dealii::Table<2, dealii::VectorizedArray<dealii::types::material_id>>
+      _material_id;
 };
 
 template <int dim>
@@ -262,6 +323,24 @@ MaterialProperty<dim>::get_dof_handler() const
 {
   return _mp_dof_handler;
 }
+
+template <int dim>
+inline void
+MaterialProperty<dim>::set_powder_ratio(unsigned int cell, unsigned int q,
+                                        unsigned int i, double value)
+{
+  _powder_ratio(cell, q)[i] = value;
+}
+
+template <int dim>
+inline void
+MaterialProperty<dim>::set_material_id(unsigned int cell, unsigned int q,
+                                       unsigned int i,
+                                       dealii::types::material_id value)
+{
+  _material_id(cell, q)[i] = value;
+}
+
 } // namespace adamantine
 
 #endif

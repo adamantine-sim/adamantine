@@ -207,6 +207,12 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
   double liquidus = _material_database.get<double>("material_0.liquidus");
   double latent_heat = _material_database.get<double>("material_0.latent_heat");
 
+  std::array<dealii::VectorizedArray<double>,
+             static_cast<unsigned int>(MaterialState::SIZE)>
+      state_ratios = {dealii::make_vectorized_array(-1.0),
+                      dealii::make_vectorized_array(-1.0),
+                      dealii::make_vectorized_array(-1.0)};
+
   // Loop over the "cells". Note that we don't really work on a cell but on a
   // set of quadrature point.
   for (unsigned int cell = cell_subrange.first; cell < cell_subrange.second;
@@ -235,52 +241,17 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
 
       dealii::VectorizedArray<double> temperature = fe_eval.get_value(q);
 
-      // Calculate the liquid ratio
-      dealii::VectorizedArray<double> liquid_ratio = -1.;
-      dealii::VectorizedArray<double> powder_ratio = -1.;
-      dealii::VectorizedArray<double> solid_ratio = -1.;
-      for (unsigned int n = 0; n < _matrix_free.n_components_filled(cell); ++n)
-      {
-        if (temperature[n] < solidus)
-          liquid_ratio[n] = 0.;
-        else if (temperature[n] > liquidus)
-          liquid_ratio[n] = 1.;
-        else
-        {
-          liquid_ratio[n] = (temperature[n] - solidus) / (liquidus - solidus);
-
-          // Because the powder can only become liquid, the solid can only
-          // become liquid, and the liquid can only become solid, the ratio of
-          // powder can only decrease.
-          powder_ratio[n] =
-              std::min(1. - liquid_ratio[n], _powder_fraction(cell, q)[n]);
-          // Use max to make sure that we don't create matter because of
-          // round-off.
-          solid_ratio[n] = std::max(1. - liquid_ratio[n] - powder_ratio[n], 0.);
-
-          specific_heat_liquid[n] += latent_heat / (liquidus - solidus);
-          specific_heat_solid[n] += latent_heat / (liquidus - solidus);
-          specific_heat_powder[n] += latent_heat / (liquidus - solidus);
-        }
-      }
-
       // Calculate the local material properties
-      dealii::VectorizedArray<double> thermal_conductivity =
-          liquid_ratio * thermal_conductivity_liquid +
-          solid_ratio * thermal_conductivity_solid +
-          powder_ratio * thermal_conductivity_powder;
-
-      dealii::VectorizedArray<double> specific_heat =
-          liquid_ratio * specific_heat_liquid +
-          solid_ratio * specific_heat_solid +
-          powder_ratio * specific_heat_powder;
-
-      dealii::VectorizedArray<double> density = liquid_ratio * density_liquid +
-                                                solid_ratio * density_solid +
-                                                powder_ratio * density_powder;
+      _material_properties->update_state_ratios(cell, q, temperature,
+                                                state_ratios);
 
       dealii::VectorizedArray<double> inv_rho_cp =
-          1.0 / (density * specific_heat);
+          _material_properties->get_inv_rho_cp(cell, q, state_ratios,
+                                               temperature);
+
+      dealii::VectorizedArray<double> thermal_conductivity =
+          _material_properties->get_thermal_conductivity(cell, q, state_ratios,
+                                                         temperature);
 
       // Calculate the gradient contribution for the update
       fe_eval.submit_gradient(
@@ -333,15 +304,12 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
     extract_stateful_material_properties(
         dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature)
 {
-  // Update the state of the materials
+  // Update the state of the materials (is this needed here?)
   _material_properties->update(_matrix_free.get_dof_handler(), temperature);
 
   unsigned int const n_cells = _matrix_free.n_macro_cells();
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
       _matrix_free);
-
-  _powder_fraction.reinit(n_cells, fe_eval.n_q_points);
-  _material_id.reinit(n_cells, fe_eval.n_q_points);
 
   for (unsigned int cell = 0; cell < n_cells; ++cell)
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
@@ -353,11 +321,13 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
         typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
             cell_it);
 
-        _powder_fraction(cell, q)[i] = _material_properties->get_state_ratio(
-            cell_tria, MaterialState::powder);
+        _material_properties->set_powder_ratio(
+            cell, q, i,
+            _material_properties->get_state_ratio(cell_tria,
+                                                  MaterialState::powder));
 
-        _material_id(cell, q)[i] =
-            _material_properties->get_material_id(cell_tria);
+        _material_properties->set_material_id(
+            cell, q, i, _material_properties->get_material_id(cell_tria));
       }
 }
 
