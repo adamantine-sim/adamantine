@@ -228,11 +228,6 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
                                                          temperature);
 
       // Calculate the gradient contribution for the update
-
-      std::cout << temperature[0] << " " << state_ratios[0][0] << " "
-                << state_ratios[1][0] << " " << state_ratios[2][0] << " "
-                << thermal_conductivity[0] << " " << inv_rho_cp[0] << std::endl;
-
       fe_eval.submit_gradient(
           -inv_rho_cp * thermal_conductivity * fe_eval.get_gradient(q), q);
 
