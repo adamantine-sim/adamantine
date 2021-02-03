@@ -149,6 +149,19 @@ public:
    */
   void set_material_id(unsigned int cell, unsigned int q, unsigned int i,
                        dealii::types::material_id value);
+  /**
+   *
+   */
+  dealii::types::material_id get_material_id(unsigned int cell, unsigned int q,
+                                             unsigned int i) const;
+  /**
+   *
+   */
+  void reinit_powder_ratio(unsigned int n_cells, unsigned int n_q_points);
+  /**
+   *
+   */
+  void reinit_material_id(unsigned int n_cells, unsigned int n_q_points);
 
 private:
   /**
@@ -158,13 +171,13 @@ private:
       static_cast<unsigned int>(MaterialState::SIZE);
 
   /**
-   * Number of Stateproperty defined.
+   * Number of state properties defined.
    */
   static unsigned int constexpr _n_state_properties =
       static_cast<unsigned int>(StateProperty::SIZE);
 
   /**
-   * Number of Stateproperty defined.
+   * Number of properties defined.
    */
   static unsigned int constexpr _n_properties =
       static_cast<unsigned int>(Property::SIZE);
@@ -212,7 +225,9 @@ private:
    */
   dealii::VectorizedArray<double> compute_material_property(
       StateProperty state_property,
-      dealii::VectorizedArray<dealii::types::material_id> material_id,
+      std::array<dealii::types::material_id,
+                 dealii::VectorizedArray<double>::size()>
+          material_id,
       std::array<dealii::VectorizedArray<double>,
                  static_cast<unsigned int>(MaterialState::SIZE)>
           state_ratios,
@@ -280,7 +295,8 @@ private:
   /**
    * Table of the material index
    */
-  dealii::Table<2, dealii::VectorizedArray<dealii::types::material_id>>
+  dealii::Table<2, std::array<dealii::types::material_id,
+                              dealii::VectorizedArray<double>::size()>>
       _material_id;
 };
 
@@ -339,6 +355,29 @@ MaterialProperty<dim>::set_material_id(unsigned int cell, unsigned int q,
                                        dealii::types::material_id value)
 {
   _material_id(cell, q)[i] = value;
+}
+
+template <int dim>
+inline dealii::types::material_id
+MaterialProperty<dim>::get_material_id(unsigned int cell, unsigned int q,
+                                       unsigned int i) const
+{
+  return _material_id(cell, q)[i];
+}
+
+template <int dim>
+inline void MaterialProperty<dim>::reinit_powder_ratio(unsigned int n_cells,
+                                                       unsigned int n_q_points)
+{
+  _powder_ratio.reinit(n_cells, n_q_points);
+}
+
+template <int dim>
+inline void MaterialProperty<dim>::reinit_material_id(unsigned int n_cells,
+                                                      unsigned int n_q_points)
+{
+
+  _material_id.reinit(n_cells, n_q_points);
 }
 
 } // namespace adamantine

@@ -216,6 +216,62 @@ BOOST_AUTO_TEST_CASE(ratios)
         mat_prop.get(cell, adamantine::StateProperty::specific_heat);
     BOOST_CHECK(specific_heat == 10.);
   }
+
+  // Checks for the new MaterialProperies methods
+  mat_prop.reinit_material_id(10, 6);
+  mat_prop.reinit_powder_ratio(10, 6);
+  for (unsigned int cell = 0; cell < 10; ++cell)
+  {
+    for (unsigned int q = 0; q < 6; ++q)
+    {
+      for (unsigned int i = 0; i < dealii::VectorizedArray<double>::size(); ++i)
+      {
+        mat_prop.set_material_id(cell, q, i, 0);
+        BOOST_CHECK(mat_prop.get_material_id(cell, q, i) == 0);
+        mat_prop.set_powder_ratio(cell, q, i, 1.0);
+      }
+    }
+  }
+
+  unsigned int constexpr liquid =
+      static_cast<unsigned int>(adamantine::MaterialState::liquid);
+  unsigned int constexpr powder =
+      static_cast<unsigned int>(adamantine::MaterialState::powder);
+  unsigned int constexpr solid =
+      static_cast<unsigned int>(adamantine::MaterialState::solid);
+
+  std::array<dealii::VectorizedArray<double>,
+             static_cast<unsigned int>(adamantine::MaterialState::SIZE)>
+      state_ratios = {dealii::make_vectorized_array(1.0),
+                      dealii::make_vectorized_array(0.0),
+                      dealii::make_vectorized_array(0.0)};
+
+  dealii::VectorizedArray<double> test_temperature = 10.0;
+  mat_prop.update_state_ratios(0, 0, test_temperature, state_ratios);
+
+  double constexpr tolerance = 1e-10;
+  for (unsigned int n = 0; n < dealii::VectorizedArray<double>::size(); ++n)
+  {
+    BOOST_CHECK_CLOSE(state_ratios[powder][n], 1.0, tolerance);
+    BOOST_CHECK_CLOSE(state_ratios[liquid][n], 0.0, tolerance);
+    BOOST_CHECK_CLOSE(state_ratios[solid][n], 0.0, tolerance);
+  }
+
+  dealii::VectorizedArray<double> thermal_conductivity =
+      mat_prop.get_thermal_conductivity(0, 0, state_ratios, test_temperature);
+
+  for (unsigned int n = 0; n < dealii::VectorizedArray<double>::size(); ++n)
+  {
+    BOOST_CHECK_CLOSE(thermal_conductivity[n], 1.0, tolerance);
+  }
+
+  dealii::VectorizedArray<double> inv_rho_cp =
+      mat_prop.get_inv_rho_cp(0, 0, state_ratios, test_temperature);
+
+  for (unsigned int n = 0; n < dealii::VectorizedArray<double>::size(); ++n)
+  {
+    BOOST_CHECK_CLOSE(inv_rho_cp[n], 1.0, tolerance);
+  }
 }
 
 BOOST_AUTO_TEST_CASE(material_property_table)

@@ -31,9 +31,9 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
 {
   _matrix_free_data.tasks_parallel_scheme =
       dealii::MatrixFree<dim, double>::AdditionalData::partition_color;
-  _matrix_free_data.mapping_update_flags = dealii::update_gradients |
-                                           dealii::update_JxW_values |
-                                           dealii::update_quadrature_points;
+  _matrix_free_data.mapping_update_flags =
+      dealii::update_values | dealii::update_gradients |
+      dealii::update_JxW_values | dealii::update_quadrature_points;
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -178,6 +178,11 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
       data.create_cell_subrange_hp_by_index(cell_range, 0);
 
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(data);
+
+  unsigned int const n_cells = _matrix_free.n_cell_batches();
+  _material_properties->reinit_powder_ratio(n_cells, fe_eval.n_q_points);
+  _material_properties->reinit_material_id(n_cells, fe_eval.n_q_points);
+
   dealii::Tensor<1, dim> unit_tensor;
   for (unsigned int i = 0; i < dim; ++i)
     unit_tensor[i] = 1.;
@@ -189,7 +194,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
                       dealii::make_vectorized_array(-1.0)};
 
   // Loop over the "cells". Note that we don't really work on a cell but on a
-  // set of quadrature point.
+  // set of quadrature points.
   for (unsigned int cell = cell_subrange.first; cell < cell_subrange.second;
        ++cell)
   {
@@ -223,6 +228,11 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
                                                          temperature);
 
       // Calculate the gradient contribution for the update
+
+      std::cout << temperature[0] << " " << state_ratios[0][0] << " "
+                << state_ratios[1][0] << " " << state_ratios[2][0] << " "
+                << thermal_conductivity[0] << " " << inv_rho_cp[0] << std::endl;
+
       fe_eval.submit_gradient(
           -inv_rho_cp * thermal_conductivity * fe_eval.get_gradient(q), q);
 
@@ -231,7 +241,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
           fe_eval.quadrature_point(q);
 
       dealii::VectorizedArray<double> quad_pt_source = 0.0;
-      for (unsigned int i = 0; i < _matrix_free.n_components_filled(cell); ++i)
+      for (unsigned int i = 0;
+           i < _matrix_free.n_active_entries_per_cell_batch(cell); ++i)
       {
         dealii::Point<dim> q_point_loc;
         for (unsigned int d = 0; d < dim; ++d)
@@ -240,6 +251,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
         for (auto &beam : _heat_sources)
           quad_pt_source[i] += beam->value(q_point_loc, _time, _current_height);
       }
+      quad_pt_source *= inv_rho_cp;
+      // std::cout << quad_pt_source << std::endl;
 
       fe_eval.submit_value(quad_pt_source, q);
     }
@@ -259,14 +272,15 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
   // Update the state of the materials
   _material_properties->update(_matrix_free.get_dof_handler(), temperature);
 
-  unsigned int const n_cells = _matrix_free.n_macro_cells();
+  unsigned int const n_cells = _matrix_free.n_cell_batches();
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
       _matrix_free);
   _inv_rho_cp.reinit(n_cells, fe_eval.n_q_points);
   _thermal_conductivity.reinit(n_cells, fe_eval.n_q_points);
   for (unsigned int cell = 0; cell < n_cells; ++cell)
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
-      for (unsigned int i = 0; i < _matrix_free.n_components_filled(cell); ++i)
+      for (unsigned int i = 0;
+           i < _matrix_free.n_active_entries_per_cell_batch(cell); ++i)
       {
         typename dealii::DoFHandler<dim>::cell_iterator cell_it =
             _matrix_free.get_cell_iterator(cell, i);
@@ -293,13 +307,17 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
   // Update the state of the materials (is this needed here?)
   _material_properties->update(_matrix_free.get_dof_handler(), temperature);
 
-  unsigned int const n_cells = _matrix_free.n_macro_cells();
+  unsigned int const n_cells = _matrix_free.n_cell_batches();
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
       _matrix_free);
 
+  _material_properties->reinit_powder_ratio(n_cells, fe_eval.n_q_points);
+  _material_properties->reinit_material_id(n_cells, fe_eval.n_q_points);
+
   for (unsigned int cell = 0; cell < n_cells; ++cell)
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
-      for (unsigned int i = 0; i < _matrix_free.n_components_filled(cell); ++i)
+      for (unsigned int i = 0;
+           i < _matrix_free.n_active_entries_per_cell_batch(cell); ++i)
       {
         typename dealii::DoFHandler<dim>::cell_iterator cell_it =
             _matrix_free.get_cell_iterator(cell, i);
@@ -311,7 +329,6 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
             cell, q, i,
             _material_properties->get_state_ratio(cell_tria,
                                                   MaterialState::powder));
-
         _material_properties->set_material_id(
             cell, q, i, _material_properties->get_material_id(cell_tria));
       }

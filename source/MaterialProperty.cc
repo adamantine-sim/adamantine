@@ -437,12 +437,13 @@ void MaterialProperty<dim>::update_state_ratios(
       static_cast<unsigned int>(Property::liquidus);
 
   // Loop over the vectorized arrays
-  for (unsigned int n = 0; n < temperature.n_array_elements; ++n)
+  for (unsigned int n = 0; n < temperature.size(); ++n)
   {
     // Get the material id at this point
     dealii::types::material_id material_id = _material_id(cell, q)[n];
 
     // Get the material thermodynamic properties
+
     auto const tmp = _properties.find(material_id);
     ASSERT(tmp != _properties.end(), "Material not found.");
 
@@ -460,17 +461,16 @@ void MaterialProperty<dim>::update_state_ratios(
     {
       state_ratios[liquid][n] =
           (temperature[n] - solidus) / (liquidus - solidus);
-
-      // Because the powder can only become liquid, the solid can only
-      // become liquid, and the liquid can only become solid, the ratio of
-      // powder can only decrease.
-      state_ratios[powder][n] =
-          std::min(1. - state_ratios[liquid][n], state_ratios[powder][n]);
-      // Use max to make sure that we don't create matter because of
-      // round-off.
-      state_ratios[solid][n] =
-          std::max(1. - state_ratios[liquid][n] - state_ratios[powder][n], 0.);
     }
+    // Because the powder can only become liquid, the solid can only
+    // become liquid, and the liquid can only become solid, the ratio of
+    // powder can only decrease.
+    state_ratios[powder][n] =
+        std::min(1. - state_ratios[liquid][n], state_ratios[powder][n]);
+    // Use max to make sure that we don't create matter because of
+    // round-off.
+    state_ratios[solid][n] =
+        std::max(1. - state_ratios[liquid][n] - state_ratios[powder][n], 0.);
   }
 
   _powder_ratio(cell, q) = state_ratios[powder];
@@ -484,8 +484,8 @@ dealii::VectorizedArray<double> MaterialProperty<dim>::get_inv_rho_cp(
         state_ratios,
     dealii::VectorizedArray<double> temperature)
 {
-  // Here we need the specific heat (including the latent heat contribution) and
-  // the density
+  // Here we need the specific heat (including the latent heat contribution)
+  // and the density
 
   // First, get the state-independent material properties
   unsigned int constexpr prop_solidus =
@@ -497,7 +497,7 @@ dealii::VectorizedArray<double> MaterialProperty<dim>::get_inv_rho_cp(
 
   dealii::VectorizedArray<double> solidus, liquidus, latent_heat;
 
-  for (unsigned int n = 0; n < solidus.n_array_elements; ++n)
+  for (unsigned int n = 0; n < solidus.size(); ++n)
   {
     auto const tmp = _properties.find(_material_id(cell, q)[n]);
     ASSERT(tmp != _properties.end(), "Material not found.");
@@ -508,19 +508,20 @@ dealii::VectorizedArray<double> MaterialProperty<dim>::get_inv_rho_cp(
   }
 
   // Now compute the state-dependent properties
+  // std::cout << "density" << std::endl;
   dealii::VectorizedArray<double> density = compute_material_property(
-      StateProperty::thermal_conductivity, _material_id(cell, q), state_ratios,
-      temperature);
+      StateProperty::density, _material_id(cell, q), state_ratios, temperature);
 
+  // std::cout << "specific_heat" << std::endl;
   dealii::VectorizedArray<double> specific_heat = compute_material_property(
-      StateProperty::thermal_conductivity, _material_id(cell, q), state_ratios,
+      StateProperty::specific_heat, _material_id(cell, q), state_ratios,
       temperature);
 
   // Add in the latent heat contribution
   unsigned int constexpr liquid =
       static_cast<unsigned int>(MaterialState::liquid);
 
-  for (unsigned int n = 0; n < specific_heat.n_array_elements; ++n)
+  for (unsigned int n = 0; n < specific_heat.size(); ++n)
   {
     if (state_ratios[liquid][n] > 0.0 && (state_ratios[liquid][n] < 1.0))
     {
@@ -548,13 +549,15 @@ template <int dim>
 dealii::VectorizedArray<double>
 MaterialProperty<dim>::compute_material_property(
     StateProperty state_property,
-    dealii::VectorizedArray<dealii::types::material_id> material_id,
+    std::array<dealii::types::material_id,
+               dealii::VectorizedArray<double>::size()>
+        material_id,
     std::array<dealii::VectorizedArray<double>,
                static_cast<unsigned int>(MaterialState::SIZE)>
         state_ratios,
     dealii::VectorizedArray<double> temperature) const
 {
-  dealii::VectorizedArray<double> value;
+  dealii::VectorizedArray<double> value = 0.0;
   unsigned int property_index = static_cast<unsigned int>(state_property);
 
   if (_use_table)
@@ -562,7 +565,7 @@ MaterialProperty<dim>::compute_material_property(
     for (unsigned int material_state = 0; material_state < _n_material_states;
          ++material_state)
     {
-      for (unsigned int n = 0; n < temperature.n_array_elements; ++n)
+      for (unsigned int n = 0; n < temperature.size(); ++n)
       {
 
         const dealii::types::material_id m_id = material_id[n];
@@ -580,7 +583,7 @@ MaterialProperty<dim>::compute_material_property(
     for (unsigned int material_state = 0; material_state < _n_material_states;
          ++material_state)
     {
-      for (unsigned int n = 0; n < temperature.n_array_elements; ++n)
+      for (unsigned int n = 0; n < temperature.size(); ++n)
       {
 
         dealii::types::material_id m_id = material_id[n];

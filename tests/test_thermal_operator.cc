@@ -68,6 +68,8 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
   beam_database.put("absorption_efficiency", 0.1);
   beam_database.put("diameter", 1.0);
   beam_database.put("max_power", 10.);
+  beam_database.put("scan_path_file", "scan_path.txt");
+  beam_database.put("scan_path_file_format", "segment");
   std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
   heat_sources.resize(1);
   heat_sources[0] =
@@ -152,6 +154,9 @@ BOOST_AUTO_TEST_CASE(spmv)
   mat_prop_database.put("material_0.solid.thermal_conductivity", 1.);
   mat_prop_database.put("material_0.powder.thermal_conductivity", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity", 1.);
+  mat_prop_database.put("material_0.solidus", 400.);
+  mat_prop_database.put("material_0.liquidus", 500.);
+  mat_prop_database.put("material_0.latent_heat", 0.);
   std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
       new adamantine::MaterialProperty<2>(
           communicator, geometry.get_triangulation(), mat_prop_database));
@@ -160,7 +165,9 @@ BOOST_AUTO_TEST_CASE(spmv)
   beam_database.put("depth", 0.1);
   beam_database.put("absorption_efficiency", 0.1);
   beam_database.put("diameter", 1.0);
-  beam_database.put("max_power", 10.);
+  beam_database.put("max_power", 0.0);
+  beam_database.put("scan_path_file", "scan_path.txt");
+  beam_database.put("scan_path_file_format", "segment");
   std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
   heat_sources.resize(1);
   heat_sources[0] =
@@ -174,7 +181,9 @@ BOOST_AUTO_TEST_CASE(spmv)
                                                fe_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator.m());
-  thermal_operator.evaluate_material_properties(dummy);
+  // thermal_operator.evaluate_material_properties(dummy);
+  thermal_operator.update_time_and_height(0.0, 6.0);
+  thermal_operator.extract_stateful_material_properties(dummy);
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
 
@@ -202,7 +211,7 @@ BOOST_AUTO_TEST_CASE(spmv)
   for (unsigned int i = 0; i < thermal_operator.m(); ++i)
   {
     src = 0.;
-    src[i] = 1;
+    src[i] = 1.;
     thermal_operator.vmult(dst_1, src);
     sparse_matrix.vmult(dst_2, src);
     for (unsigned int j = 0; j < thermal_operator.m(); ++j)
