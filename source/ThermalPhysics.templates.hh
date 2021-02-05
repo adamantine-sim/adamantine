@@ -315,6 +315,19 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     _implicit_operator = std::make_unique<ImplicitOperator<MemorySpaceType>>(
         _thermal_operator, jfnk);
   }
+
+  // Set material on part of the domain
+  // PropertyTreeInput geometry.material_height
+  double const material_height = database.get("geometry.material_height", 1e9);
+  for (auto const &cell : _dof_handler.active_cell_iterators())
+  {
+    // If the center of the cell is below material_height, it contains material
+    // otherwise it does not.
+    if (cell->center()[axis<dim>::z] < material_height)
+      cell->set_active_fe_index(0);
+    else
+      cell->set_active_fe_index(1);
+  }
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -335,7 +348,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
   _thermal_operator->reinit(_dof_handler, _affine_constraints, _q_collection);
 
   // Update the current height of the object
-  // Loop over the locally owned cells with an acttive FE index of zero
+  // Loop over the locally owned cells with an active FE index of zero
   for (auto const &cell : dealii::filter_iterators(
            _dof_handler.active_cell_iterators(),
            dealii::IteratorFilters::LocallyOwnedCell(),
