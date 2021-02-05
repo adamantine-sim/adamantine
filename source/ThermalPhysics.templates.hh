@@ -9,7 +9,7 @@
 #define THERMAL_PHYSICS_TEMPLATES_HH
 
 #include <ThermalOperator.hh>
-#ifdef ADAMANTINE_HAVE_CUDA
+#if defined(ADAMANTINE_HAVE_CUDA) && defined(__CUDACC__)
 #include <ThermalOperatorDevice.hh>
 #endif
 #include <CubeHeatSource.hh>
@@ -170,7 +170,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     _thermal_operator =
         std::make_shared<ThermalOperator<dim, fe_degree, MemorySpaceType>>(
             communicator, _material_properties);
-#ifdef ADAMANTINE_HAVE_CUDA
+#if defined(ADAMANTINE_HAVE_CUDA) && defined(__CUDACC__)
   else
     _thermal_operator = std::make_shared<
         ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>>(
