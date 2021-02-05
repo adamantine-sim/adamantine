@@ -10,6 +10,7 @@
 
 #include <deal.II/base/index_set.h>
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/fe/mapping_q1.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
@@ -38,8 +39,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::reinit(
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::hp::QCollection<1> const &q_collection)
 {
-  _matrix_free.reinit(dof_handler, affine_constraints, q_collection,
-                      _matrix_free_data);
+  _matrix_free.reinit(dealii::StaticMappingQ1<dim>::mapping, dof_handler,
+                      affine_constraints, q_collection, _matrix_free_data);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -211,14 +212,15 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
   // Update the state of the materials
   _material_properties->update(_matrix_free.get_dof_handler(), temperature);
 
-  unsigned int const n_cells = _matrix_free.n_macro_cells();
+  unsigned int const n_cells = _matrix_free.n_cell_batches();
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
       _matrix_free);
   _inv_rho_cp.reinit(n_cells, fe_eval.n_q_points);
   _thermal_conductivity.reinit(n_cells, fe_eval.n_q_points);
   for (unsigned int cell = 0; cell < n_cells; ++cell)
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
-      for (unsigned int i = 0; i < _matrix_free.n_components_filled(cell); ++i)
+      for (unsigned int i = 0;
+           i < _matrix_free.n_active_entries_per_cell_batch(cell); ++i)
       {
         typename dealii::DoFHandler<dim>::cell_iterator cell_it =
             _matrix_free.get_cell_iterator(cell, i);
