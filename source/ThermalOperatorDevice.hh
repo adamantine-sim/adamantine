@@ -84,9 +84,6 @@ private:
   MPI_Comm const &_communicator;
   dealii::types::global_dof_index _m;
   unsigned int _n_owned_cells;
-  // FIXME We should be able to get the DoFHandler from
-  // dealii::CUDAWrappers::MatrixFree. For now use a non-owning pointer
-  dealii::DoFHandler<dim> const *_dof_handler;
   typename dealii::CUDAWrappers::MatrixFree<dim, double>::AdditionalData
       _matrix_free_data;
   std::shared_ptr<MaterialProperty<dim>> _material_properties;
