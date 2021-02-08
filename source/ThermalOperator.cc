@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2020, the adamantine authors.
+/* Copyright (c) 2016 - 2021, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -10,6 +10,7 @@
 
 #include <deal.II/base/index_set.h>
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/fe/mapping_q1.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
@@ -42,8 +43,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::reinit(
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::hp::QCollection<1> const &q_collection)
 {
-  _matrix_free.reinit(dof_handler, affine_constraints, q_collection,
-                      _matrix_free_data);
+  _matrix_free.reinit(dealii::StaticMappingQ1<dim>::mapping, dof_handler,
+                      affine_constraints, q_collection, _matrix_free_data);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>

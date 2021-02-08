@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2020, the adamantine authors.
+/* Copyright (c) 2016 - 2021, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -85,15 +85,7 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
       grid_in_format = dealii::GridIn<dim>::Format::Default;
     }
 
-    if (grid_in_format != dealii::GridIn<dim>::Format::assimp)
-    {
-      grid_in.read(mesh_file, grid_in_format);
-    }
-
-    // PropertyTreeInput geometry.top_boundary_id
-    dealii::types::boundary_id const top_boundary =
-        database.get<int>("top_boundary_id");
-    assign_material_state(top_boundary);
+    grid_in.read(mesh_file, grid_in_format);
   }
   else
   {
@@ -125,38 +117,45 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
     {
       cell->set_material_id(0);
     }
-
-    // Assign the MaterialState.
-    dealii::types::boundary_id const top_boundary = (dim == 2) ? 3 : 5;
-    assign_material_state(top_boundary);
   }
+
+  assign_material_state(database);
 }
 
 template <int dim>
 void Geometry<dim>::assign_material_state(
-    dealii::types::boundary_id top_boundary)
+    boost::property_tree::ptree const &database)
 {
-  for (auto cell : _triangulation.active_cell_iterators())
+  // PropertyTreeInput geometry.material_height
+  double const material_height = database.get("material_height", 1e9);
+  // PropertyTreeInput geometry.use_powder
+  bool const use_powder = database.get("use_powder", false);
+
+  if (use_powder)
   {
-    if (cell->at_boundary())
+    // PropertyTreeInput geometry.powder_layer
+    double const powder_layer = database.get<double>("powder_layer");
+    double const solid_height = material_height - powder_layer;
+
+    for (auto cell : _triangulation.active_cell_iterators())
     {
-      bool is_powder = false;
-      for (unsigned int i = 0; i < dealii::GeometryInfo<dim>::faces_per_cell;
-           ++i)
+      if (cell->center()[axis<dim>::z] < solid_height)
       {
-        if ((cell->face(i)->at_boundary()) &&
-            (cell->face(i)->boundary_id() == top_boundary))
-        {
-          cell->set_user_index(static_cast<int>(MaterialState::powder));
-          is_powder = true;
-          break;
-        }
-      }
-      if (is_powder == false)
         cell->set_user_index(static_cast<int>(MaterialState::solid));
+      }
+      else
+      {
+        cell->set_user_index(static_cast<int>(MaterialState::powder));
+      }
     }
-    else
+  }
+  else
+  {
+    // Everything is made of solid material
+    for (auto cell : _triangulation.active_cell_iterators())
+    {
       cell->set_user_index(static_cast<int>(MaterialState::solid));
+    }
   }
 }
 } // namespace adamantine

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2020, the adamantine authors.
+/* Copyright (c) 2016 - 2021, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -13,37 +13,6 @@
 
 namespace
 {
-// Some form of this should be in deal.II
-template <int dim, unsigned int n_dofs_1d, unsigned int n_q_points>
-std::array<std::array<unsigned int, dim>, n_q_points> get_ijk()
-{
-  std::array<std::array<unsigned int, dim>, n_q_points> ijk;
-  if (dim == 1)
-  {
-    for (unsigned int i = 0; i < n_q_points; ++i)
-      ijk[i][0] = i % n_dofs_1d;
-  }
-  else if (dim == 2)
-  {
-    for (unsigned int i = 0; i < n_q_points; ++i)
-    {
-      ijk[i][0] = i % n_dofs_1d;
-      ijk[i][1] = i / n_dofs_1d;
-    }
-  }
-  else if (dim == 3)
-  {
-    for (unsigned int i = 0; i < n_q_points; ++i)
-    {
-      ijk[i][0] = i % n_dofs_1d;
-      ijk[i][1] = (i / n_dofs_1d) % n_dofs_1d;
-      ijk[i][2] = (i / n_dofs_1d) / n_dofs_1d;
-    }
-  }
-
-  return ijk;
-}
-
 __global__ void invert_mass_matrix(double *values, unsigned int size)
 {
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -205,7 +174,6 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
   // FIXME deal.II does not support QCollection on GPU
   _matrix_free.reinit(dof_handler, affine_constraints, q_collection[0],
                       _matrix_free_data);
-  _dof_handler = &dof_handler;
   dealii::LA::distributed::Vector<double, MemorySpaceType> tmp;
   _matrix_free.initialize_dof_vector(tmp);
   _m = tmp.size();
@@ -300,7 +268,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
             &temperature)
 {
   // Update the material properties
-  _material_properties->update(*_dof_handler, temperature);
+  _material_properties->update(_matrix_free.get_dof_handler(), temperature);
 
   unsigned int const n_coefs =
       dealii::Utilities::pow(fe_degree + 1, dim) * _n_owned_cells;
@@ -310,8 +278,8 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
   dealii::LA::ReadWriteVector<double> th_conductivity_host(n_coefs);
 
   unsigned int constexpr n_dofs_1d = fe_degree + 1;
-  unsigned int constexpr n_q_points = dealii::Utilities::pow(n_dofs_1d, dim);
-  auto ijk = get_ijk<dim, n_dofs_1d, n_q_points>();
+  unsigned int constexpr n_q_points_per_cell =
+      dealii::Utilities::pow(n_dofs_1d, dim);
   auto graph = _matrix_free.get_colored_graph();
   unsigned int const n_colors = graph.size();
   for (unsigned int color = 0; color < n_colors; ++color)
@@ -319,6 +287,9 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
     typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data gpu_data =
         _matrix_free.get_data(color);
     unsigned int const n_cells = gpu_data.n_cells;
+    auto gpu_data_host =
+        dealii::CUDAWrappers::copy_mf_data_to_host<dim, double>(
+            gpu_data, _matrix_free_data.mapping_update_flags);
     for (unsigned int cell_id = 0; cell_id < n_cells; ++cell_id)
     {
       auto cell = graph[color][cell_id];
@@ -328,11 +299,11 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
       _inv_rho_cp_cells[cell] = cell_inv_rho_cp;
       double const cell_th_conductivity =
           _material_properties->get(cell, StateProperty::thermal_conductivity);
-      for (unsigned int i = 0; i < n_q_points; ++i)
+      for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
       {
         unsigned int const pos =
             dealii::CUDAWrappers::local_q_point_id_host<dim, double>(
-                cell_id, gpu_data, n_dofs_1d, n_q_points, ijk[i]);
+                cell_id, gpu_data_host, n_q_points_per_cell, i);
         inv_rho_cp_host[pos] = cell_inv_rho_cp;
         th_conductivity_host[pos] = cell_th_conductivity;
       }
