@@ -334,8 +334,8 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
   unsigned int const n_coefs =
       dealii::Utilities::pow(fe_degree + 1, dim) * _n_owned_cells;
 
-  _material_properties->reinit_powder_ratio(n_coefs);
-  _material_properties->reinit_material_id(n_coefs);
+  _material_properties->_powder_ratio.reinit(n_coefs);
+  _material_properties->_material_id.reinit(n_coefs);
 
   dealii::LA::ReadWriteVector<double> powder_ratio_host(n_coefs);
   dealii::LA::ReadWriteVector<dealii::types::material_id> material_id_host(
@@ -369,8 +369,10 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
   }
 
   // Copy the coefficient to the host
-  _material_properties->set_powder_ratio_vector(powder_ratio_host);
-  _material_properties->set_material_id_vector(material_id_host);
+  _material_properties->_powder_ratio.import(powder_ratio_host,
+                                             dealii::VectorOperation::insert);
+  _material_properties->material_id.import(material_id_host,
+                                           dealii::VectorOperation::insert);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>

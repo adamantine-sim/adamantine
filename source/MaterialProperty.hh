@@ -189,6 +189,26 @@ public:
   void reinit_material_id(unsigned int n_cells, unsigned int n_q_points);
 #endif
 
+#ifdef ADAMANTINE_HAVE_CUDA
+  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _powder_ratio;
+
+  dealii::LinearAlgebra::CUDAWrappers::Vector<dealii::types::material_id>
+      _material_id;
+#else
+  /**
+   * Table of the powder fraction, public to minimize the reimplementation of
+   * methods for GPUs.
+   */
+  dealii::Table<2, dealii::VectorizedArray<double>> _powder_ratio;
+  /**
+   * Table of the material index, public to minimize the reimplementation of
+   * methods for GPUs.
+   */
+  dealii::Table<2, std::array<dealii::types::material_id,
+                              dealii::VectorizedArray<double>::size()>>
+      _material_id;
+#endif
+
 private:
   /**
    * Maximum different number of states a given material can be.
@@ -312,26 +332,6 @@ private:
    * DoFHandler associated to the _state array.
    */
   dealii::DoFHandler<dim> _mp_dof_handler;
-
-  // New private members for the reworked MaterialProperies
-
-#ifdef ADAMANTINE_HAVE_CUDA
-  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _powder_ratio;
-
-  dealii::LinearAlgebra::CUDAWrappers::Vector<dealii::types::material_id>
-      _material_id;
-#else
-  /**
-   * Table of the powder fraction
-   */
-  dealii::Table<2, dealii::VectorizedArray<double>> _powder_ratio;
-  /**
-   * Table of the material index
-   */
-  dealii::Table<2, std::array<dealii::types::material_id,
-                              dealii::VectorizedArray<double>::size()>>
-      _material_id;
-#endif
 };
 
 template <int dim>
