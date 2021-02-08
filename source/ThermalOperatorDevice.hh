@@ -116,9 +116,6 @@ private:
       _inv_rho_cp_cells;
 
   // New implementation
-  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _powder_fraction;
-  dealii::LinearAlgebra::CUDAWrappers::Vector<dealii::types::material_id>
-      _material_id;
   double _time;
   double _current_height;
   std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
