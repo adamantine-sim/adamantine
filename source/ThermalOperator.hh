@@ -97,6 +97,11 @@ public:
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &state) override;
   /**
+   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given cell.
+   */
+  double get_inv_rho_cp(
+      typename dealii::DoFHandler<dim>::cell_iterator const &) const override;
+  /**
    * Extract the stateful properties from the _material_properties object and
    * populate new vectors with the correct order.
    */
@@ -108,12 +113,6 @@ public:
    * match the evolved values in ThermalOperator.
    */
   void sync_stateful_material_properties() override;
-  /**
-   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given cell.
-   */
-  double get_inv_rho_cp(
-      typename dealii::DoFHandler<dim>::cell_iterator const &) const override;
-
   /**
    * Update the time and the current height, to be used to calculate the source
    * term.

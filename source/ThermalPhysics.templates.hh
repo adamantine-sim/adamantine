@@ -180,7 +180,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   else
     _thermal_operator = std::make_shared<
         ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>>(
-        communicator, _material_properties);
+        communicator, _material_properties, _heat_sources);
 #endif
 
   // Create the time stepping scheme

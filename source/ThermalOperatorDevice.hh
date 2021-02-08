@@ -6,8 +6,9 @@
  */
 
 #ifndef THERMAL_OPERATOR_DEVICE_HH
-#define THERMAL_OPERATOR_DEVIcE_HH
+#define THERMAL_OPERATOR_DEVICE_HH
 
+#include <HeatSource.hh>
 #include <MaterialProperty.hh>
 #include <ThermalOperatorBase.hh>
 
@@ -23,7 +24,8 @@ class ThermalOperatorDevice final
 public:
   ThermalOperatorDevice(
       MPI_Comm const &communicator,
-      std::shared_ptr<MaterialProperty<dim>> material_properties);
+      std::shared_ptr<MaterialProperty<dim>> material_properties,
+      std::vector<std::shared_ptr<HeatSource<dim>>> heat_sources);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
@@ -39,6 +41,9 @@ public:
   dealii::types::global_dof_index m() const override;
 
   dealii::types::global_dof_index n() const override;
+
+  std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
+  get_inverse_mass_matrix() const override;
 
   dealii::CUDAWrappers::MatrixFree<dim, double> const &get_matrix_free() const;
 
@@ -63,9 +68,6 @@ public:
                  dealii::LA::distributed::Vector<double, MemorySpaceType> const
                      &src) const override;
 
-  std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
-  get_inverse_mass_matrix() const override;
-
   void initialize_dof_vector(
       dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
       const override;
@@ -79,6 +81,24 @@ public:
    */
   double get_inv_rho_cp(
       typename dealii::DoFHandler<dim>::cell_iterator const &) const override;
+
+  /**
+   * Extract the stateful properties from the _material_properties object and
+   * populate new vectors with the correct order.
+   */
+  void extract_stateful_material_properties(
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
+      override;
+  /**
+   * Modify the stateful properties from the _material_properties object to
+   * match the evolved values in ThermalOperator.
+   */
+  void sync_stateful_material_properties() override;
+  /**
+   * Update the time and the current height, to be used to calculate the source
+   * term.
+   */
+  void update_time_and_height(double time, double height) override;
 
 private:
   MPI_Comm const &_communicator;
@@ -97,6 +117,14 @@ private:
       _inverse_mass_matrix;
   std::map<typename dealii::DoFHandler<dim>::cell_iterator, double>
       _inv_rho_cp_cells;
+
+  // New implementation
+  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _powder_fraction;
+  dealii::LinearAlgebra::CUDAWrappers::Vector<dealii::types::material_id>
+      _material_id;
+  double _time;
+  double _current_height;
+  std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
 };
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -147,6 +175,15 @@ ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
   ASSERT(inv_rho_cp != _inv_rho_cp_cells.end(), "Internal error");
 
   return inv_rho_cp->second;
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+inline void
+ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::update_time_and_height(
+    double time, double height)
+{
+  _time = time;
+  _current_height = height;
 }
 
 } // namespace adamantine
