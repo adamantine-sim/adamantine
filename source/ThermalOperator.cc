@@ -261,42 +261,6 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
 
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::
-    evaluate_material_properties(
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &temperature)
-{
-  // Update the state of the materials
-  _material_properties->update(_matrix_free.get_dof_handler(), temperature);
-
-  unsigned int const n_cells = _matrix_free.n_cell_batches();
-  dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
-      _matrix_free);
-  _inv_rho_cp.reinit(n_cells, fe_eval.n_q_points);
-  _thermal_conductivity.reinit(n_cells, fe_eval.n_q_points);
-  for (unsigned int cell = 0; cell < n_cells; ++cell)
-    for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
-      for (unsigned int i = 0;
-           i < _matrix_free.n_active_entries_per_cell_batch(cell); ++i)
-      {
-        typename dealii::DoFHandler<dim>::cell_iterator cell_it =
-            _matrix_free.get_cell_iterator(cell, i);
-        // Cast to Triangulation<dim>::cell_iterator to access the material_id
-        typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
-            cell_it);
-
-        _thermal_conductivity(cell, q)[i] = _material_properties->get(
-            cell_tria, StateProperty::thermal_conductivity);
-
-        _inv_rho_cp(cell, q)[i] =
-            1. / (_material_properties->get(cell_tria, StateProperty::density) *
-                  _material_properties->get(cell_tria,
-                                            StateProperty::specific_heat));
-        _cell_it_to_mf_cell_map[cell_it] = std::make_pair(cell, i);
-      }
-}
-
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::
     extract_stateful_material_properties(
         dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature)
 {

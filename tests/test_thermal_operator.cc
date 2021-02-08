@@ -83,7 +83,6 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
                                                fe_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator.m());
-  thermal_operator.evaluate_material_properties(dummy);
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
 
@@ -181,7 +180,6 @@ BOOST_AUTO_TEST_CASE(spmv)
                                                fe_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator.m());
-  // thermal_operator.evaluate_material_properties(dummy);
   thermal_operator.update_time_and_height(0.0, 6.0);
   thermal_operator.extract_stateful_material_properties(dummy);
   BOOST_CHECK(thermal_operator.m() == 99);

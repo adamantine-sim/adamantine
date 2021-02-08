@@ -87,7 +87,6 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
                                                 fe_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator->m());
-  thermal_operator->evaluate_material_properties(dummy);
 
   // Initialize the ImplicitOperator
   adamantine::ImplicitOperator<dealii::MemorySpace::Host> implicit_operator(

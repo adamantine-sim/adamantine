@@ -42,10 +42,6 @@ public:
       dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
       const = 0;
 
-  virtual void evaluate_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &state) = 0;
-
   virtual void sync_stateful_material_properties() = 0;
 
   virtual void extract_stateful_material_properties(
@@ -57,9 +53,6 @@ public:
   {
     ASSERT(false, "Internal error");
   }
-
-  virtual double get_inv_rho_cp(
-      typename dealii::DoFHandler<dim>::cell_iterator const &) const = 0;
 
   virtual void update_time_and_height(double time, double height) = 0;
 };

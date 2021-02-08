@@ -89,18 +89,6 @@ public:
   void initialize_dof_vector(
       dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
       const override;
-
-  /**
-   * Evaluate the material properties for a given state field. (Is this needed?)
-   */
-  void evaluate_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &state) override;
-  /**
-   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given cell.
-   */
-  double get_inv_rho_cp(
-      typename dealii::DoFHandler<dim>::cell_iterator const &) const override;
   /**
    * Extract the stateful properties from the _material_properties object and
    * populate new vectors with the correct order.
@@ -137,23 +125,7 @@ private:
    * Data to configure the MatrixFree object.
    */
   typename dealii::MatrixFree<dim, double>::AdditionalData _matrix_free_data;
-  /**
-   * Store the \f$ \frac{1}{\rho C_p}\f$ coefficient.
-   */
-  dealii::Table<2, dealii::VectorizedArray<double>> _inv_rho_cp;
-  /**
-   * Table of thermal conductivity coefficient.
-   */
-  dealii::Table<2, dealii::VectorizedArray<double>> _thermal_conductivity;
-  /**
-   * Table of the powder fraction
-   */
-  dealii::Table<2, dealii::VectorizedArray<double>> _powder_fraction;
-  /**
-   * Table of the material index
-   */
-  dealii::Table<2, dealii::VectorizedArray<dealii::types::material_id>>
-      _material_id;
+
   /**
    * Material properties associated with the domain.
    */
@@ -225,17 +197,6 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::initialize_dof_vector(
     dealii::LA::distributed::Vector<double, MemorySpaceType> &vector) const
 {
   _matrix_free.initialize_dof_vector(vector);
-}
-
-template <int dim, int fe_degree, typename MemorySpaceType>
-inline double ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
-    typename dealii::DoFHandler<dim>::cell_iterator const &cell) const
-{
-  auto cell_comp_pair = _cell_it_to_mf_cell_map.find(cell);
-  ASSERT(cell_comp_pair != _cell_it_to_mf_cell_map.end(), "Internal error");
-
-  return _inv_rho_cp(cell_comp_pair->second.first,
-                     0)[cell_comp_pair->second.second];
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
