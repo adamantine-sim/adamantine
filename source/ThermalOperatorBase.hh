@@ -44,10 +44,6 @@ public:
 
   virtual void sync_stateful_material_properties() = 0;
 
-  /*
-    virtual void extract_stateful_material_properties(
-        dealii::LA::distributed::Vector<double, MemorySpaceType> &vector) = 0;
-  */
   virtual void extract_stateful_material_properties(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
           &vector) = 0;

@@ -218,17 +218,17 @@ BOOST_AUTO_TEST_CASE(ratios)
   }
 
   // Checks for the new MaterialProperies methods
-  mat_prop.reinit_material_id(10, 6);
-  mat_prop.reinit_powder_ratio(10, 6);
+  mat_prop._material_id.reinit(10, 6);
+  mat_prop._powder_ratio.reinit(10, 6);
   for (unsigned int cell = 0; cell < 10; ++cell)
   {
     for (unsigned int q = 0; q < 6; ++q)
     {
       for (unsigned int i = 0; i < dealii::VectorizedArray<double>::size(); ++i)
       {
-        mat_prop.set_material_id(cell, q, i, 0);
-        BOOST_CHECK(mat_prop.get_material_id(cell, q, i) == 0);
-        mat_prop.set_powder_ratio(cell, q, i, 1.0);
+        mat_prop._material_id(cell, q)[i] = 0;
+        BOOST_CHECK(mat_prop._material_id(cell, q)[i] == 0);
+        mat_prop._powder_ratio(cell, q)[i] = 1.0;
       }
     }
   }

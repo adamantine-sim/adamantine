@@ -181,8 +181,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(data);
 
   unsigned int const n_cells = _matrix_free.n_cell_batches();
-  _material_properties->reinit_powder_ratio(n_cells, fe_eval.n_q_points);
-  _material_properties->reinit_material_id(n_cells, fe_eval.n_q_points);
+  _material_properties->_powder_ratio.reinit(n_cells, fe_eval.n_q_points);
+  _material_properties->_material_id.reinit(n_cells, fe_eval.n_q_points);
 
   dealii::Tensor<1, dim> unit_tensor;
   for (unsigned int i = 0; i < dim; ++i)
@@ -271,8 +271,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
       _matrix_free);
 
-  _material_properties->reinit_powder_ratio(n_cells, fe_eval.n_q_points);
-  _material_properties->reinit_material_id(n_cells, fe_eval.n_q_points);
+  _material_properties->_powder_ratio.reinit(n_cells, fe_eval.n_q_points);
+  _material_properties->_material_id.reinit(n_cells, fe_eval.n_q_points);
 
   for (unsigned int cell = 0; cell < n_cells; ++cell)
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
@@ -285,12 +285,11 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
         typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
             cell_it);
 
-        _material_properties->set_powder_ratio(
-            cell, q, i,
+        _material_properties->_powder_ratio(cell, q)[i] =
             _material_properties->get_state_ratio(cell_tria,
-                                                  MaterialState::powder));
-        _material_properties->set_material_id(
-            cell, q, i, _material_properties->get_material_id(cell_tria));
+                                                  MaterialState::powder);
+        _material_properties->_material_id(cell, q)[i] =
+            _material_properties->get_material_id(cell_tria);
       }
 }
 
