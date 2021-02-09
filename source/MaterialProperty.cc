@@ -417,6 +417,14 @@ double MaterialProperty<dim>::compute_property_from_polynomial(
   return value;
 }
 
+#ifdef ADAMANTINE_HAVE_CUDA
+void MaterialProperty<dim>::update_state_ratios(
+    unsigned int pos, double temperature,
+    std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
+        &state_ratios)
+{
+}
+#else
 template <int dim>
 void MaterialProperty<dim>::update_state_ratios(
     unsigned int cell, unsigned int q,
@@ -475,7 +483,18 @@ void MaterialProperty<dim>::update_state_ratios(
 
   _powder_ratio(cell, q) = state_ratios[powder];
 }
+#endif
 
+#ifdef ADAMANTINE_HAVE_CUDA
+template <int dim>
+double MaterialProperty<dim>::get_inv_rho_cp(
+    unsigned int pos,
+    std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
+        state_ratios,
+    double temperature)
+{
+}
+#else
 template <int dim>
 dealii::VectorizedArray<double> MaterialProperty<dim>::get_inv_rho_cp(
     unsigned int cell, unsigned int q,
@@ -531,7 +550,21 @@ dealii::VectorizedArray<double> MaterialProperty<dim>::get_inv_rho_cp(
 
   return 1.0 / (density * specific_heat);
 }
+#endif
 
+#ifdef ADAMANTINE_HAVE_CUDA
+template <int dim>
+double MaterialProperty<dim>::get_thermal_conductivity(
+    unsigned int pos,
+    std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
+        state_ratios,
+    double temperature)
+{
+  return compute_material_property(StateProperty::thermal_conductivity,
+                                   _material_id(pos), state_ratios,
+                                   temperature);
+}
+#else
 template <int dim>
 dealii::VectorizedArray<double> MaterialProperty<dim>::get_thermal_conductivity(
     unsigned int cell, unsigned int q,
@@ -544,6 +577,7 @@ dealii::VectorizedArray<double> MaterialProperty<dim>::get_thermal_conductivity(
                                    _material_id(cell, q), state_ratios,
                                    temperature);
 }
+#endif
 
 template <int dim>
 dealii::VectorizedArray<double>

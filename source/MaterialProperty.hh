@@ -117,29 +117,52 @@ public:
   /**
    * Update the state ratios at a quadrature point
    */
+#ifdef ADAMANTINE_HAVE_CUDA
+  void update_state_ratios(
+      unsigned int pos, double temperature,
+      std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
+          &state_ratios);
+#else
   void update_state_ratios(
       unsigned int cell, unsigned int q,
       dealii::VectorizedArray<double> temperature,
       std::array<dealii::VectorizedArray<double>,
                  static_cast<unsigned int>(MaterialState::SIZE)> &state_ratios);
+#endif
   /**
    * Calculate inv_rho_cp at a quadrature point
    */
+#ifdef ADAMANTINE_HAVE_CUDA
+  double MaterialProperty<dim>::get_inv_rho_cp(
+      unsigned int pos,
+      std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
+          state_ratios,
+      double temperature);
+#else
   dealii::VectorizedArray<double>
   get_inv_rho_cp(unsigned int cell, unsigned int q,
                  std::array<dealii::VectorizedArray<double>,
                             static_cast<unsigned int>(MaterialState::SIZE)>
                      state_ratios,
                  dealii::VectorizedArray<double> temperature);
+#endif
   /**
    * Calculate the thermal conductivity at a quadrature point
    */
+#ifdef ADAMANTINE_HAVE_CUDA
+  double get_thermal_conductivity(
+      unsigned int pos,
+      std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
+          state_ratios,
+      double temperature);
+#else
   dealii::VectorizedArray<double> get_thermal_conductivity(
       unsigned int cell, unsigned int q,
       std::array<dealii::VectorizedArray<double>,
                  static_cast<unsigned int>(MaterialState::SIZE)>
           state_ratios,
       dealii::VectorizedArray<double> temperature);
+#endif
 
 #ifdef ADAMANTINE_HAVE_CUDA
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _powder_ratio;
