@@ -252,8 +252,12 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::vmult_add(
     dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
+  // LocalThermalOperatorDevice<dim, fe_degree> local_operator(
+  //      _inv_rho_cp.get_values(), _thermal_conductivity.get_values());
+  // Temp values
   LocalThermalOperatorDevice<dim, fe_degree> local_operator(
-      _inv_rho_cp.get_values(), _thermal_conductivity.get_values());
+      _powder_ratio.get_values(), _powder_ratio.get_values());
+
   _matrix_free.cell_loop(local_operator, src, dst);
   _matrix_free.copy_constrained_values(src, dst);
 }
@@ -267,6 +271,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::Tvmult_add(
   vmult_add(dst, src);
 }
 
+/*
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
     evaluate_material_properties(
@@ -321,6 +326,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
   _thermal_conductivity.import(th_conductivity_host,
                                dealii::VectorOperation::insert);
 }
+*/
 
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
@@ -334,8 +340,8 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
   unsigned int const n_coefs =
       dealii::Utilities::pow(fe_degree + 1, dim) * _n_owned_cells;
 
-  _material_properties->_powder_ratio.reinit(n_coefs);
-  _material_properties->_material_id.reinit(n_coefs);
+  _powder_ratio.reinit(n_coefs);
+  _material_id.reinit(n_coefs);
 
   dealii::LA::ReadWriteVector<double> powder_ratio_host(n_coefs);
   dealii::LA::ReadWriteVector<dealii::types::material_id> material_id_host(
@@ -369,10 +375,8 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
   }
 
   // Copy the coefficient to the host
-  _material_properties->_powder_ratio.import(powder_ratio_host,
-                                             dealii::VectorOperation::insert);
-  _material_properties->material_id.import(material_id_host,
-                                           dealii::VectorOperation::insert);
+  _powder_ratio.import(powder_ratio_host, dealii::VectorOperation::insert);
+  _material_id.import(material_id_host, dealii::VectorOperation::insert);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
