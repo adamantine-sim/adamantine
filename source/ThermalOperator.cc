@@ -261,7 +261,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::
     extract_stateful_material_properties(
-        dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature)
+        dealii::LA::distributed::Vector<double, MemorySpaceType> const &temperature)
 {
   // Update the state of the materials (is this needed here?)
   _material_properties->update(_matrix_free.get_dof_handler(), temperature);

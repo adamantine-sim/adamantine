@@ -46,7 +46,7 @@ public:
 
   virtual void extract_stateful_material_properties(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-          &vector) = 0;
+          const &vector) = 0;
 
   void evaluate_material_properties(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> const

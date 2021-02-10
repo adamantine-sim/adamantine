@@ -89,7 +89,7 @@ public:
    * populate new vectors with the correct order.
    */
   void extract_stateful_material_properties(
-      dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const & vector)
       override;
   /**
    * Modify the stateful properties from the _material_properties object to
@@ -165,16 +165,19 @@ ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::jacobian_vmult(
   vmult(dst, src);
 }
 
+/*
 template <int dim, int fe_degree, typename MemorySpaceType>
 inline double
 ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
     typename dealii::DoFHandler<dim>::cell_iterator const &cell) const
 {
-  auto inv_rho_cp = _inv_rho_cp_cells.find(cell);
-  ASSERT(inv_rho_cp != _inv_rho_cp_cells.end(), "Internal error");
+  // Temporary hard coding
+  //auto inv_rho_cp = _inv_rho_cp_cells.find(cell);
+  //ASSERT(inv_rho_cp != _inv_rho_cp_cells.end(), "Internal error");
 
-  return inv_rho_cp->second;
+  return 1.0; //inv_rho_cp->second;
 }
+*/
 
 template <int dim, int fe_degree, typename MemorySpaceType>
 inline void

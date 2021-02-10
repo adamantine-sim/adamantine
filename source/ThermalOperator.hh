@@ -94,7 +94,7 @@ public:
    * populate new vectors with the correct order.
    */
   void extract_stateful_material_properties(
-      dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const &vector)
       override;
   /**
    * Modify the stateful properties from the _material_properties object to
