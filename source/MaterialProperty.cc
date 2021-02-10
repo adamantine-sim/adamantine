@@ -418,6 +418,7 @@ double MaterialProperty<dim>::compute_property_from_polynomial(
 }
 
 #ifdef ADAMANTINE_HAVE_CUDA
+template <int dim>
 void MaterialProperty<dim>::update_state_ratios(
     unsigned int pos, double temperature,
     std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
@@ -560,9 +561,11 @@ double MaterialProperty<dim>::get_thermal_conductivity(
         state_ratios,
     double temperature)
 {
-  return compute_material_property(StateProperty::thermal_conductivity,
-                                   _material_id(pos), state_ratios,
-                                   temperature);
+  /*
+return compute_material_property(StateProperty::thermal_conductivity,
+                                 _material_id[pos], state_ratios,
+                                 temperature);
+                                 */
 }
 #else
 template <int dim>

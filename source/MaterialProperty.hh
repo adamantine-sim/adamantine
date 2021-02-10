@@ -133,7 +133,7 @@ public:
    * Calculate inv_rho_cp at a quadrature point
    */
 #ifdef ADAMANTINE_HAVE_CUDA
-  double MaterialProperty<dim>::get_inv_rho_cp(
+  double get_inv_rho_cp(
       unsigned int pos,
       std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
           state_ratios,
