@@ -218,6 +218,7 @@ BOOST_AUTO_TEST_CASE(ratios)
   }
 
   // Checks for the new MaterialProperies methods
+  /*
   mat_prop._material_id.reinit(10, 6);
   mat_prop._powder_ratio.reinit(10, 6);
   for (unsigned int cell = 0; cell < 10; ++cell)
@@ -272,6 +273,7 @@ BOOST_AUTO_TEST_CASE(ratios)
   {
     BOOST_CHECK_CLOSE(inv_rho_cp[n], 1.0, tolerance);
   }
+  */
 }
 
 BOOST_AUTO_TEST_CASE(material_property_table)

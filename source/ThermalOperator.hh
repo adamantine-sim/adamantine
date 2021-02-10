@@ -117,6 +117,27 @@ private:
       dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
       std::pair<unsigned int, unsigned int> const &cell_range) const;
 
+  void
+  update_state_ratios(unsigned int cell, unsigned int q,
+                      dealii::VectorizedArray<double> temperature,
+                      std::array<dealii::VectorizedArray<double>,
+                                 static_cast<unsigned int>(MaterialState::SIZE)>
+                          &state_ratios) const;
+
+  dealii::VectorizedArray<double>
+  get_inv_rho_cp(unsigned int cell, unsigned int q,
+                 std::array<dealii::VectorizedArray<double>,
+                            static_cast<unsigned int>(MaterialState::SIZE)>
+                     state_ratios,
+                 dealii::VectorizedArray<double> temperature) const;
+
+  dealii::VectorizedArray<double> get_thermal_conductivity(
+      unsigned int cell, unsigned int q,
+      std::array<dealii::VectorizedArray<double>,
+                 static_cast<unsigned int>(MaterialState::SIZE)>
+          state_ratios,
+      dealii::VectorizedArray<double> temperature) const;
+
   /**
    * MPI communicator.
    */
@@ -152,6 +173,19 @@ private:
   double _time;
   double _current_height;
   std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
+
+  /**
+   * Table of the powder fraction, public to minimize the reimplementation of
+   * methods for GPUs.
+   */
+  mutable dealii::Table<2, dealii::VectorizedArray<double>> _powder_ratio;
+  /**
+   * Table of the material index, public to minimize the reimplementation of
+   * methods for GPUs.
+   */
+  mutable dealii::Table<2, std::array<dealii::types::material_id,
+                                      dealii::VectorizedArray<double>::size()>>
+      _material_id;
 };
 
 template <int dim, int fe_degree, typename MemorySpaceType>

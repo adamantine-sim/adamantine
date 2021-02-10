@@ -56,6 +56,29 @@ public:
   }
 
   virtual void update_time_and_height(double time, double height) = 0;
+
+  /*
+    virtual void
+    update_state_ratios(unsigned int cell, unsigned int q,
+                        dealii::VectorizedArray<double> temperature,
+                        std::array<dealii::VectorizedArray<double>,
+                                   static_cast<unsigned
+    int>(MaterialState::SIZE)> &state_ratios) = 0;
+
+    virtual dealii::VectorizedArray<double>
+    get_inv_rho_cp(unsigned int cell, unsigned int q,
+                   std::array<dealii::VectorizedArray<double>,
+                              static_cast<unsigned int>(MaterialState::SIZE)>
+                       state_ratios,
+                   dealii::VectorizedArray<double> temperature) = 0;
+
+    virtual dealii::VectorizedArray<double> get_thermal_conductivity(
+        unsigned int cell, unsigned int q,
+        std::array<dealii::VectorizedArray<double>,
+                   static_cast<unsigned int>(MaterialState::SIZE)>
+            state_ratios,
+        dealii::VectorizedArray<double> temperature) = 0;
+        */
 };
 } // namespace adamantine
 #endif

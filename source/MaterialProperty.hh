@@ -114,75 +114,24 @@ public:
   dealii::DoFHandler<dim> const &get_dof_handler() const;
 
   // New public members of the reworked MaterialProperies
+
   /**
-   * Update the state ratios at a quadrature point
+   * Compute a material property a quadrature point for a mix of states
    */
-#ifdef ADAMANTINE_HAVE_CUDA
-  void update_state_ratios(
-      unsigned int pos, double temperature,
-      std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
-          &state_ratios);
-#else
-  void update_state_ratios(
-      unsigned int cell, unsigned int q,
-      dealii::VectorizedArray<double> temperature,
-      std::array<dealii::VectorizedArray<double>,
-                 static_cast<unsigned int>(MaterialState::SIZE)> &state_ratios);
-#endif
-  /**
-   * Calculate inv_rho_cp at a quadrature point
-   */
-#ifdef ADAMANTINE_HAVE_CUDA
-  double get_inv_rho_cp(
-      unsigned int pos,
-      std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
-          state_ratios,
-      double temperature);
-#else
-  dealii::VectorizedArray<double>
-  get_inv_rho_cp(unsigned int cell, unsigned int q,
-                 std::array<dealii::VectorizedArray<double>,
-                            static_cast<unsigned int>(MaterialState::SIZE)>
-                     state_ratios,
-                 dealii::VectorizedArray<double> temperature);
-#endif
-  /**
-   * Calculate the thermal conductivity at a quadrature point
-   */
-#ifdef ADAMANTINE_HAVE_CUDA
-  double get_thermal_conductivity(
-      unsigned int pos,
-      std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
-          state_ratios,
-      double temperature);
-#else
-  dealii::VectorizedArray<double> get_thermal_conductivity(
-      unsigned int cell, unsigned int q,
+  dealii::VectorizedArray<double> compute_material_property(
+      StateProperty state_property,
+      std::array<dealii::types::material_id,
+                 dealii::VectorizedArray<double>::size()>
+          material_id,
       std::array<dealii::VectorizedArray<double>,
                  static_cast<unsigned int>(MaterialState::SIZE)>
           state_ratios,
-      dealii::VectorizedArray<double> temperature);
-#endif
+      dealii::VectorizedArray<double> temperature) const;
 
-#ifdef ADAMANTINE_HAVE_CUDA
-  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _powder_ratio;
-
-  dealii::LinearAlgebra::CUDAWrappers::Vector<dealii::types::material_id>
-      _material_id;
-#else
-  /**
-   * Table of the powder fraction, public to minimize the reimplementation of
-   * methods for GPUs.
-   */
-  dealii::Table<2, dealii::VectorizedArray<double>> _powder_ratio;
-  /**
-   * Table of the material index, public to minimize the reimplementation of
-   * methods for GPUs.
-   */
-  dealii::Table<2, std::array<dealii::types::material_id,
-                              dealii::VectorizedArray<double>::size()>>
-      _material_id;
-#endif
+  std::unordered_map<dealii::types::material_id,
+                     std::array<double, static_cast<unsigned int>(
+                                            MaterialState::SIZE)>>::iterator
+      get_properties_by_id(dealii::types::material_id);
 
 private:
   /**
@@ -241,18 +190,6 @@ private:
    */
   double compute_property_from_polynomial(std::vector<double> const &coef,
                                           double const temperature) const;
-  /**
-   * Compute a material property a quadrature point for a mix of states
-   */
-  dealii::VectorizedArray<double> compute_material_property(
-      StateProperty state_property,
-      std::array<dealii::types::material_id,
-                 dealii::VectorizedArray<double>::size()>
-          material_id,
-      std::array<dealii::VectorizedArray<double>,
-                 static_cast<unsigned int>(MaterialState::SIZE)>
-          state_ratios,
-      dealii::VectorizedArray<double> temperature) const;
 
   /**
    * MPI communicator.

@@ -417,171 +417,6 @@ double MaterialProperty<dim>::compute_property_from_polynomial(
   return value;
 }
 
-#ifdef ADAMANTINE_HAVE_CUDA
-template <int dim>
-void MaterialProperty<dim>::update_state_ratios(
-    unsigned int pos, double temperature,
-    std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
-        &state_ratios)
-{
-}
-#else
-template <int dim>
-void MaterialProperty<dim>::update_state_ratios(
-    unsigned int cell, unsigned int q,
-    dealii::VectorizedArray<double> temperature,
-    std::array<dealii::VectorizedArray<double>,
-               static_cast<unsigned int>(MaterialState::SIZE)> &state_ratios)
-{
-
-  unsigned int constexpr liquid =
-      static_cast<unsigned int>(MaterialState::liquid);
-  unsigned int constexpr powder =
-      static_cast<unsigned int>(MaterialState::powder);
-  unsigned int constexpr solid =
-      static_cast<unsigned int>(MaterialState::solid);
-  unsigned int constexpr prop_solidus =
-      static_cast<unsigned int>(Property::solidus);
-  unsigned int constexpr prop_liquidus =
-      static_cast<unsigned int>(Property::liquidus);
-
-  // Loop over the vectorized arrays
-  for (unsigned int n = 0; n < temperature.size(); ++n)
-  {
-    // Get the material id at this point
-    dealii::types::material_id material_id = _material_id(cell, q)[n];
-
-    // Get the material thermodynamic properties
-
-    auto const tmp = _properties.find(material_id);
-    ASSERT(tmp != _properties.end(), "Material not found.");
-
-    double const solidus = tmp->second[prop_solidus];
-    double const liquidus = tmp->second[prop_liquidus];
-
-    // Update the state ratios
-    state_ratios[powder] = _powder_ratio(cell, q);
-
-    if (temperature[n] < solidus)
-      state_ratios[liquid][n] = 0.;
-    else if (temperature[n] > liquidus)
-      state_ratios[liquid][n] = 1.;
-    else
-    {
-      state_ratios[liquid][n] =
-          (temperature[n] - solidus) / (liquidus - solidus);
-    }
-    // Because the powder can only become liquid, the solid can only
-    // become liquid, and the liquid can only become solid, the ratio of
-    // powder can only decrease.
-    state_ratios[powder][n] =
-        std::min(1. - state_ratios[liquid][n], state_ratios[powder][n]);
-    // Use max to make sure that we don't create matter because of
-    // round-off.
-    state_ratios[solid][n] =
-        std::max(1. - state_ratios[liquid][n] - state_ratios[powder][n], 0.);
-  }
-
-  _powder_ratio(cell, q) = state_ratios[powder];
-}
-#endif
-
-#ifdef ADAMANTINE_HAVE_CUDA
-template <int dim>
-double MaterialProperty<dim>::get_inv_rho_cp(
-    unsigned int pos,
-    std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
-        state_ratios,
-    double temperature)
-{
-}
-#else
-template <int dim>
-dealii::VectorizedArray<double> MaterialProperty<dim>::get_inv_rho_cp(
-    unsigned int cell, unsigned int q,
-    std::array<dealii::VectorizedArray<double>,
-               static_cast<unsigned int>(MaterialState::SIZE)>
-        state_ratios,
-    dealii::VectorizedArray<double> temperature)
-{
-  // Here we need the specific heat (including the latent heat contribution)
-  // and the density
-
-  // First, get the state-independent material properties
-  unsigned int constexpr prop_solidus =
-      static_cast<unsigned int>(Property::solidus);
-  unsigned int constexpr prop_liquidus =
-      static_cast<unsigned int>(Property::liquidus);
-  unsigned int constexpr prop_latent_heat =
-      static_cast<unsigned int>(Property::latent_heat);
-
-  dealii::VectorizedArray<double> solidus, liquidus, latent_heat;
-
-  for (unsigned int n = 0; n < solidus.size(); ++n)
-  {
-    auto const tmp = _properties.find(_material_id(cell, q)[n]);
-    ASSERT(tmp != _properties.end(), "Material not found.");
-
-    solidus[n] = tmp->second[prop_solidus];
-    liquidus[n] = tmp->second[prop_liquidus];
-    latent_heat[n] = tmp->second[prop_latent_heat];
-  }
-
-  // Now compute the state-dependent properties
-  // std::cout << "density" << std::endl;
-  dealii::VectorizedArray<double> density = compute_material_property(
-      StateProperty::density, _material_id(cell, q), state_ratios, temperature);
-
-  // std::cout << "specific_heat" << std::endl;
-  dealii::VectorizedArray<double> specific_heat = compute_material_property(
-      StateProperty::specific_heat, _material_id(cell, q), state_ratios,
-      temperature);
-
-  // Add in the latent heat contribution
-  unsigned int constexpr liquid =
-      static_cast<unsigned int>(MaterialState::liquid);
-
-  for (unsigned int n = 0; n < specific_heat.size(); ++n)
-  {
-    if (state_ratios[liquid][n] > 0.0 && (state_ratios[liquid][n] < 1.0))
-    {
-      specific_heat[n] += latent_heat[n] / (liquidus[n] - solidus[n]);
-    }
-  }
-
-  return 1.0 / (density * specific_heat);
-}
-#endif
-
-#ifdef ADAMANTINE_HAVE_CUDA
-template <int dim>
-double MaterialProperty<dim>::get_thermal_conductivity(
-    unsigned int pos,
-    std::array<double, static_cast<unsigned int>(MaterialState::SIZE)>
-        state_ratios,
-    double temperature)
-{
-  /*
-return compute_material_property(StateProperty::thermal_conductivity,
-                                 _material_id[pos], state_ratios,
-                                 temperature);
-                                 */
-}
-#else
-template <int dim>
-dealii::VectorizedArray<double> MaterialProperty<dim>::get_thermal_conductivity(
-    unsigned int cell, unsigned int q,
-    std::array<dealii::VectorizedArray<double>,
-               static_cast<unsigned int>(MaterialState::SIZE)>
-        state_ratios,
-    dealii::VectorizedArray<double> temperature)
-{
-  return compute_material_property(StateProperty::thermal_conductivity,
-                                   _material_id(cell, q), state_ratios,
-                                   temperature);
-}
-#endif
-
 template <int dim>
 dealii::VectorizedArray<double>
 MaterialProperty<dim>::compute_material_property(
@@ -634,6 +469,17 @@ MaterialProperty<dim>::compute_material_property(
     }
   }
   return value;
+}
+
+template <int dim>
+std::unordered_map<dealii::types::material_id,
+                   std::array<double, static_cast<unsigned int>(
+                                          MaterialState::SIZE)>>::iterator
+MaterialProperty<dim>::get_properties_by_id(dealii::types::material_id id)
+{
+  auto properties = _properties.find(id);
+  ASSERT(properties != _properties.end(), "Material not found.");
+  return properties;
 }
 
 } // namespace adamantine

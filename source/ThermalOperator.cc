@@ -181,8 +181,10 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(data);
 
   unsigned int const n_cells = _matrix_free.n_cell_batches();
-  _material_properties->_powder_ratio.reinit(n_cells, fe_eval.n_q_points);
-  _material_properties->_material_id.reinit(n_cells, fe_eval.n_q_points);
+
+  // Is this necessary?
+  _powder_ratio.reinit(n_cells, fe_eval.n_q_points);
+  _material_id.reinit(n_cells, fe_eval.n_q_points);
 
   dealii::Tensor<1, dim> unit_tensor;
   for (unsigned int i = 0; i < dim; ++i)
@@ -217,16 +219,13 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
       dealii::VectorizedArray<double> temperature = fe_eval.get_value(q);
 
       // Calculate the local material properties
-      _material_properties->update_state_ratios(cell, q, temperature,
-                                                state_ratios);
+      update_state_ratios(cell, q, temperature, state_ratios);
 
       dealii::VectorizedArray<double> inv_rho_cp =
-          _material_properties->get_inv_rho_cp(cell, q, state_ratios,
-                                               temperature);
+          get_inv_rho_cp(cell, q, state_ratios, temperature);
 
       dealii::VectorizedArray<double> thermal_conductivity =
-          _material_properties->get_thermal_conductivity(cell, q, state_ratios,
-                                                         temperature);
+          get_thermal_conductivity(cell, q, state_ratios, temperature);
 
       // Calculate the gradient contribution for the update
       fe_eval.submit_gradient(
@@ -271,8 +270,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
       _matrix_free);
 
-  _material_properties->_powder_ratio.reinit(n_cells, fe_eval.n_q_points);
-  _material_properties->_material_id.reinit(n_cells, fe_eval.n_q_points);
+  _powder_ratio.reinit(n_cells, fe_eval.n_q_points);
+  _material_id.reinit(n_cells, fe_eval.n_q_points);
 
   for (unsigned int cell = 0; cell < n_cells; ++cell)
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
@@ -285,10 +284,9 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
         typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
             cell_it);
 
-        _material_properties->_powder_ratio(cell, q)[i] =
-            _material_properties->get_state_ratio(cell_tria,
-                                                  MaterialState::powder);
-        _material_properties->_material_id(cell, q)[i] =
+        _powder_ratio(cell, q)[i] = _material_properties->get_state_ratio(
+            cell_tria, MaterialState::powder);
+        _material_id(cell, q)[i] =
             _material_properties->get_material_id(cell_tria);
       }
 }
@@ -298,6 +296,139 @@ void ThermalOperator<dim, fe_degree,
                      MemorySpaceType>::sync_stateful_material_properties()
 {
   // TODO
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, fe_degree, MemorySpaceType>::update_state_ratios(
+    unsigned int cell, unsigned int q,
+    dealii::VectorizedArray<double> temperature,
+    std::array<dealii::VectorizedArray<double>,
+               static_cast<unsigned int>(MaterialState::SIZE)> &state_ratios)
+    const
+{
+
+  unsigned int constexpr liquid =
+      static_cast<unsigned int>(MaterialState::liquid);
+  unsigned int constexpr powder =
+      static_cast<unsigned int>(MaterialState::powder);
+  unsigned int constexpr solid =
+      static_cast<unsigned int>(MaterialState::solid);
+  unsigned int constexpr prop_solidus =
+      static_cast<unsigned int>(Property::solidus);
+  unsigned int constexpr prop_liquidus =
+      static_cast<unsigned int>(Property::liquidus);
+
+  // Loop over the vectorized arrays
+  for (unsigned int n = 0; n < temperature.size(); ++n)
+  {
+    // Get the material id at this point
+    dealii::types::material_id material_id = _material_id(cell, q)[n];
+
+    // Get the material thermodynamic properties
+
+    auto const tmp = _material_properties->get_properties_by_id(material_id);
+
+    double const solidus = tmp->second[prop_solidus];
+    double const liquidus = tmp->second[prop_liquidus];
+
+    // Update the state ratios
+    state_ratios[powder] = _powder_ratio(cell, q);
+
+    if (temperature[n] < solidus)
+      state_ratios[liquid][n] = 0.;
+    else if (temperature[n] > liquidus)
+      state_ratios[liquid][n] = 1.;
+    else
+    {
+      state_ratios[liquid][n] =
+          (temperature[n] - solidus) / (liquidus - solidus);
+    }
+    // Because the powder can only become liquid, the solid can only
+    // become liquid, and the liquid can only become solid, the ratio of
+    // powder can only decrease.
+    state_ratios[powder][n] =
+        std::min(1. - state_ratios[liquid][n], state_ratios[powder][n]);
+    // Use max to make sure that we don't create matter because of
+    // round-off.
+    state_ratios[solid][n] =
+        std::max(1. - state_ratios[liquid][n] - state_ratios[powder][n], 0.);
+  }
+
+  _powder_ratio(cell, q) = state_ratios[powder];
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+dealii::VectorizedArray<double>
+ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
+    unsigned int cell, unsigned int q,
+    std::array<dealii::VectorizedArray<double>,
+               static_cast<unsigned int>(MaterialState::SIZE)>
+        state_ratios,
+    dealii::VectorizedArray<double> temperature) const
+{
+  // Here we need the specific heat (including the latent heat contribution)
+  // and the density
+
+  // First, get the state-independent material properties
+  unsigned int constexpr prop_solidus =
+      static_cast<unsigned int>(Property::solidus);
+  unsigned int constexpr prop_liquidus =
+      static_cast<unsigned int>(Property::liquidus);
+  unsigned int constexpr prop_latent_heat =
+      static_cast<unsigned int>(Property::latent_heat);
+
+  dealii::VectorizedArray<double> solidus, liquidus, latent_heat;
+
+  for (unsigned int n = 0; n < solidus.size(); ++n)
+  {
+    auto const tmp =
+        _material_properties->get_properties_by_id(_material_id(cell, q)[n]);
+
+    solidus[n] = tmp->second[prop_solidus];
+    liquidus[n] = tmp->second[prop_liquidus];
+    latent_heat[n] = tmp->second[prop_latent_heat];
+  }
+
+  // Now compute the state-dependent properties
+  // std::cout << "density" << std::endl;
+  dealii::VectorizedArray<double> density =
+      _material_properties->compute_material_property(
+          StateProperty::density, _material_id(cell, q), state_ratios,
+          temperature);
+
+  // std::cout << "specific_heat" << std::endl;
+  dealii::VectorizedArray<double> specific_heat =
+      _material_properties->compute_material_property(
+          StateProperty::specific_heat, _material_id(cell, q), state_ratios,
+          temperature);
+
+  // Add in the latent heat contribution
+  unsigned int constexpr liquid =
+      static_cast<unsigned int>(MaterialState::liquid);
+
+  for (unsigned int n = 0; n < specific_heat.size(); ++n)
+  {
+    if (state_ratios[liquid][n] > 0.0 && (state_ratios[liquid][n] < 1.0))
+    {
+      specific_heat[n] += latent_heat[n] / (liquidus[n] - solidus[n]);
+    }
+  }
+
+  return 1.0 / (density * specific_heat);
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+dealii::VectorizedArray<double>
+ThermalOperator<dim, fe_degree, MemorySpaceType>::get_thermal_conductivity(
+    unsigned int cell, unsigned int q,
+    std::array<dealii::VectorizedArray<double>,
+               static_cast<unsigned int>(MaterialState::SIZE)>
+        state_ratios,
+    dealii::VectorizedArray<double> temperature) const
+{
+  return _material_properties->compute_material_property(
+      StateProperty::thermal_conductivity, _material_id(cell, q), state_ratios,
+      temperature);
 }
 
 } // namespace adamantine
