@@ -12,6 +12,7 @@
 #include <MaterialProperty.hh>
 #include <ThermalOperatorBase.hh>
 
+#include <deal.II/lac/read_write_vector.h>
 #include <deal.II/lac/cuda_vector.h>
 #include <deal.II/matrix_free/cuda_matrix_free.h>
 
@@ -95,7 +96,7 @@ public:
    * Modify the stateful properties from the _material_properties object to
    * match the evolved values in ThermalOperator.
    */
-  void sync_stateful_material_properties() override;
+  void sync_stateful_material_properties() override {};
   /**
    * Update the time and the current height, to be used to calculate the source
    * term.
@@ -122,8 +123,8 @@ private:
   double _current_height;
   std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _powder_ratio;
-  dealii::LinearAlgebra::CUDAWrappers::Vector<dealii::types::material_id>
-      _material_id;
+  //dealii::LinearAlgebra::CUDAWrappers::Vector<dealii::types::material_id>
+  //    _material_id;
 };
 
 template <int dim, int fe_degree, typename MemorySpaceType>

@@ -341,11 +341,11 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
       dealii::Utilities::pow(fe_degree + 1, dim) * _n_owned_cells;
 
   _powder_ratio.reinit(n_coefs);
-  _material_id.reinit(n_coefs);
+  //_material_id.reinit(n_coefs);
 
   dealii::LA::ReadWriteVector<double> powder_ratio_host(n_coefs);
-  dealii::LA::ReadWriteVector<dealii::types::material_id> material_id_host(
-      n_coefs);
+  //dealii::LA::ReadWriteVector<dealii::types::material_id> material_id_host(
+  //    n_coefs);
 
   unsigned int constexpr n_dofs_1d = fe_degree + 1;
   unsigned int constexpr n_q_points_per_cell = dealii::Utilities::pow(n_dofs_1d, dim);
@@ -371,14 +371,14 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
         powder_ratio_host[pos] =
             _material_properties->get_state_ratio(cell, MaterialState::powder);
 
-        material_id_host[pos] = _material_properties->get_material_id(cell);
+        //material_id_host[pos] = _material_properties->get_material_id(cell);
       }
     }
   }
 
   // Copy the coefficient to the host
   _powder_ratio.import(powder_ratio_host, dealii::VectorOperation::insert);
-  _material_id.import(material_id_host, dealii::VectorOperation::insert);
+  //_material_id.import(material_id_host, dealii::VectorOperation::insert);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>

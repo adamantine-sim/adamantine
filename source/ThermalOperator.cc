@@ -26,9 +26,9 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
     std::shared_ptr<MaterialProperty<dim>> material_properties,
     std::vector<std::shared_ptr<HeatSource<dim>>> heat_sources)
     : _communicator(communicator), _material_properties(material_properties),
-      _heat_sources(heat_sources),
       _inverse_mass_matrix(
-          new dealii::LA::distributed::Vector<double, MemorySpaceType>())
+          new dealii::LA::distributed::Vector<double, MemorySpaceType>()), 
+      _heat_sources(heat_sources)
 {
   _matrix_free_data.tasks_parallel_scheme =
       dealii::MatrixFree<dim, double>::AdditionalData::partition_color;
@@ -192,9 +192,9 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
 
   std::array<dealii::VectorizedArray<double>,
              static_cast<unsigned int>(MaterialState::SIZE)>
-      state_ratios = {dealii::make_vectorized_array(-1.0),
+      state_ratios = {{dealii::make_vectorized_array(-1.0),
                       dealii::make_vectorized_array(-1.0),
-                      dealii::make_vectorized_array(-1.0)};
+                      dealii::make_vectorized_array(-1.0)}};
 
   // Loop over the "cells". Note that we don't really work on a cell but on a
   // set of quadrature points.
@@ -261,7 +261,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::
     extract_stateful_material_properties(
-        dealii::LA::distributed::Vector<double, MemorySpaceType> const &temperature)
+        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const &temperature)
 {
   // Update the state of the materials (is this needed here?)
   _material_properties->update(_matrix_free.get_dof_handler(), temperature);
