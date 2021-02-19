@@ -357,8 +357,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
     // Loop over the faces
     for (auto face_index : dealii::GeometryInfo<dim>::face_indices())
     {
-      _current_height =
-          std::max(_current_height, cell->face(face_index)->center()[1]);
+      _current_height = std::max(
+          _current_height, cell->face(face_index)->center()[axis<dim>::z]);
     }
   }
 }
