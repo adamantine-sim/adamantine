@@ -53,7 +53,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(solution);
-  std::vector<adamantine::Timer> timers(6);
+  std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
   while (time < 0.1)
     time = physics.evolve_one_time_step(time, time_step, solution, timers);
@@ -115,7 +115,7 @@ void thermal_2d_manufactured_solution()
   physics.compute_inverse_mass_matrix();
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
-  std::vector<adamantine::Timer> timers(6);
+  std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   physics.initialize_dof_vector(solution);
   double time = physics.evolve_one_time_step(0., 0.1, solution, timers);
 
@@ -235,7 +235,7 @@ void energy_conservation()
   double constexpr initial_temperature = 10;
   double constexpr final_temperature = 10.5;
   physics.initialize_dof_vector(initial_temperature, solution);
-  std::vector<adamantine::Timer> timers(6);
+  std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
   while (time < 100)
   {

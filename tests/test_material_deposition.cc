@@ -263,7 +263,7 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   auto elements_to_activate = adamantine::get_elements_to_activate(
       dof_handler, material_deposition_boxes);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
-  std::vector<adamantine::Timer> timers(6);
+  std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   thermal_physics.initialize_dof_vector(solution);
   std::vector<unsigned int> n_cells_ref = {610, 620, 630, 650, 650,
                                            660, 670, 680, 720, 720};

@@ -37,10 +37,13 @@ void output_pvtu(
     unsigned int n_time_step, double time,
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
-        &solution)
+        &solution,
+    std::vector<adamantine::Timer> &timers)
 {
+  timers[adamantine::output].start();
   affine_constraints.distribute(solution);
   post_processor.output_pvtu(cycle, n_time_step, time, solution);
+  timers[adamantine::output].stop();
 }
 
 #ifdef ADAMANTINE_HAVE_CUDA
@@ -53,13 +56,16 @@ void output_pvtu(
     unsigned int n_time_step, double time,
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
-        &solution)
+        &solution,
+    std::vector<adamantine::Timer> &timers)
 {
+  timers[adamantine::output].start();
   dealii::LinearAlgebra::distributed::Vector<double, dealii::MemorySpace::Host>
       solution_host(solution.get_partitioner());
   solution_host.import(solution, dealii::VectorOperation::insert);
   affine_constraints.distribute(solution_host);
   post_processor.output_pvtu(cycle, n_time_step, time, solution_host);
+  timers[adamantine::output].stop();
 }
 #endif
 
@@ -116,6 +122,7 @@ inline void initialize_timers(MPI_Comm const &communicator,
 {
   timers.push_back(adamantine::Timer(communicator, "Main"));
   timers.push_back(adamantine::Timer(communicator, "Refinement"));
+  timers.push_back(adamantine::Timer(communicator, "Add Material"));
   timers.push_back(adamantine::Timer(communicator, "Evolve One Time Step"));
   timers.push_back(adamantine::Timer(
       communicator, "Evolve One Time Step: evaluate_thermal_physics"));
@@ -123,6 +130,7 @@ inline void initialize_timers(MPI_Comm const &communicator,
       communicator, "Evolve One Time Step: id_minus_tau_J_inverse"));
   timers.push_back(adamantine::Timer(
       communicator, "Evolve One Time Step: evaluate_material_properties"));
+  timers.push_back(adamantine::Timer(communicator, "Output"));
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -661,7 +669,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   dealii::AffineConstraints<double> &affine_constraints =
       thermal_physics->get_affine_constraints();
   output_pvtu(post_processor, cycle, n_time_step, time, affine_constraints,
-              solution);
+              solution, timers);
   ++n_time_step;
 
   // PropertyTreeInput refinement.verbose
@@ -683,8 +691,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // Unless we use an embedded method, we know in advance the time step.
   // Thus we can get for each time step, the list of elements that we will need
   // to activate. This list will be invalidated every time we refine the mesh.
+  timers[adamantine::add_material].start();
   auto elements_to_activate = adamantine::get_elements_to_activate(
       thermal_physics->get_dof_handler(), material_deposition_boxes);
+  timers[adamantine::add_material].stop();
 
   while (time < duration)
   {
@@ -708,14 +718,17 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
                   << std::endl;
 
+      timers[adamantine::add_material].start();
       elements_to_activate = adamantine::get_elements_to_activate(
           thermal_physics->get_dof_handler(), material_deposition_boxes);
+      timers[adamantine::add_material].stop();
     }
 
     // Add material if necessary.
     // We use an epsilon to get the "expected" behavior when the deposition time
     // and the time match should match exactly but don't because of floating
     // point accuracy.
+    timers[adamantine::add_material].start();
     double const eps = time_step / 1e12;
     auto activation_start =
         std::lower_bound(deposition_times.begin(), deposition_times.end(),
@@ -738,6 +751,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                                elements_to_activate.begin() + activation_end);
     deposition_times.erase(deposition_times.begin() + activation_start,
                            deposition_times.begin() + activation_end);
+    timers[adamantine::add_material].stop();
 
     // Time can be different than time + time_step if an embedded scheme is
     // used. Note that this is a problem when adding material because it means
@@ -777,7 +791,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     if (n_time_step % time_steps_output == 0)
     {
       output_pvtu(post_processor, cycle, n_time_step, time, affine_constraints,
-                  solution);
+                  solution, timers);
     }
     ++n_time_step;
   }
