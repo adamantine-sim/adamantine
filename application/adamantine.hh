@@ -12,6 +12,7 @@
 #include <PostProcessor.hh>
 #include <ThermalPhysics.hh>
 #include <Timer.hh>
+#include <material_deposition.hh>
 #include <utils.hh>
 
 #include <deal.II/base/mpi.h>
@@ -20,7 +21,6 @@
 #include <deal.II/grid/grid_refinement.h>
 #include <deal.II/numerics/error_estimator.h>
 
-#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/info_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -678,6 +678,14 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   unsigned int const time_steps_output =
       post_processor_database.get("time_steps_between_output", 1);
 
+  auto [material_deposition_boxes, deposition_times] =
+      adamantine::read_material_deposition<dim>(geometry_database);
+  // Unless we use an embedded method, we know in advance the time step.
+  // Thus we can get for each time step, the list of elements that we will need
+  // to activate. This list will be invalidated every time we refine the mesh.
+  auto elements_to_activate = adamantine::get_elements_to_activate(
+      thermal_physics->get_dof_handler(), material_deposition_boxes);
+
   while (time < duration)
   {
     if ((time + time_step) > duration)
@@ -699,13 +707,54 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       if ((rank == 0) && (verbose_refinement == true))
         std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
                   << std::endl;
+
+      elements_to_activate = adamantine::get_elements_to_activate(
+          thermal_physics->get_dof_handler(), material_deposition_boxes);
     }
 
-    // time can be different than time + time_step if an embedded scheme is
-    // used.
+    // Add material if necessary.
+    // We use an epsilon to get the "expected" behavior when the deposition time
+    // and the time match should match exactly but don't because of floating
+    // point accuracy.
+    double const eps = time_step / 1e12;
+    auto activation_start =
+        std::lower_bound(deposition_times.begin(), deposition_times.end(),
+                         time - eps) -
+        deposition_times.begin();
+    auto activation_end =
+        std::lower_bound(deposition_times.begin(), deposition_times.end(),
+                         time + time_step - eps) -
+        deposition_times.begin();
+    for (unsigned int i = activation_start; i < activation_end; ++i)
+      thermal_physics->add_material(elements_to_activate[i],
+                                    initial_temperature, solution);
+
+    if ((rank == 0) && (verbose_refinement == true) &&
+        (activation_end - activation_start > 0))
+      std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
+                << std::endl;
+    // Remove elements that have been activated
+    elements_to_activate.erase(elements_to_activate.begin() + activation_start,
+                               elements_to_activate.begin() + activation_end);
+    deposition_times.erase(deposition_times.begin() + activation_start,
+                           deposition_times.begin() + activation_end);
+
+    // Time can be different than time + time_step if an embedded scheme is
+    // used. Note that this is a problem when adding material because it means
+    // that the amount of material that needs to be added is not known.
+#if ADAMANTINE_DEBUG
+    double const old_time = time;
+    bool const adding_material =
+        (activation_start == activation_end) ? false : true;
+#endif
     timers[adamantine::evol_time].start();
     time = thermal_physics->evolve_one_time_step(time, time_step, solution,
                                                  timers);
+#if ADAMANTINE_DEBUG
+    adamantine::ASSERT(!adding_material ||
+                           ((time - old_time) < time_step / 1e-9),
+                       "Unexpected time step while adding material.");
+#endif
     timers[adamantine::evol_time].stop();
 
     // Get the new time step

@@ -73,6 +73,13 @@ public:
 
   void compute_inverse_mass_matrix() override;
 
+  void add_material(
+      std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator> const
+          &elements_to_activate,
+      double initial_temperature,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
+      override;
+
   double evolve_one_time_step(
       double t, double delta_t,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
