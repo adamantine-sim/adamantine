@@ -11,6 +11,7 @@ list(APPEND
      test_heat_source
      test_implicit_operator
      test_integration_2d
+     test_material_deposition
      test_material_property
      test_newton_solver
      test_post_processor
@@ -41,6 +42,9 @@ endif()
 
 adamantine_COPY_INPUT_FILE(integration_2d.info tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d_gold.txt tests/data)
+adamantine_COPY_INPUT_FILE(material_deposition_2d.txt tests/data)
+adamantine_COPY_INPUT_FILE(material_deposition_3d.txt tests/data)
+adamantine_COPY_INPUT_FILE(material_path_test_material_deposition.txt tests/data)
 adamantine_COPY_INPUT_FILE(scan_path.txt tests/data)
 adamantine_COPY_INPUT_FILE(scan_path_event_series.inp tests/data)
 adamantine_COPY_INPUT_FILE(scan_path_test_thermal_physics.txt tests/data)
