@@ -473,7 +473,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
   dealii::Vector<double> cell_source(dofs_per_cell);
 
-  // Loop over the locally owned cells with an acttive FE index of zero
+  // Loop over the locally owned cells with an active FE index of zero
   for (auto const &cell : dealii::filter_iterators(
            _dof_handler.active_cell_iterators(),
            dealii::IteratorFilters::LocallyOwnedCell(),
