@@ -319,7 +319,9 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   // Set material on part of the domain
   // PropertyTreeInput geometry.material_height
   double const material_height = database.get("geometry.material_height", 1e9);
-  for (auto const &cell : _dof_handler.active_cell_iterators())
+  for (auto const &cell :
+       dealii::filter_iterators(_dof_handler.active_cell_iterators(),
+                                dealii::IteratorFilters::LocallyOwnedCell()))
   {
     // If the center of the cell is below material_height, it contains material
     // otherwise it does not.
