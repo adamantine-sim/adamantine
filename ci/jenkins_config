@@ -3,6 +3,7 @@ pipeline {
 
     environment {
       CODECOV_TOKEN = "1860986c-371d-4258-8eff-f164be875494"
+      OMP_NUM_THREADS = 2
     }
 
     stages {
