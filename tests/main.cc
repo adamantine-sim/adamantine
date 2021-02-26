@@ -10,12 +10,15 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <Kokkos_Core.hpp>
+
 bool init_function() { return true; }
 
 int main(int argc, char *argv[])
 {
   dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
+  Kokkos::ScopeGuard guard(argc, argv);
 
   return boost::unit_test::unit_test_main(&init_function, argc, argv);
 }

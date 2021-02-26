@@ -7,11 +7,15 @@
 
 #include "adamantine.hh"
 
+#include <Kokkos_Core.hpp>
+
 int main(int argc, char *argv[])
 {
   dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
   MPI_Comm communicator = MPI_COMM_WORLD;
+
+  Kokkos::ScopeGuard guard(argc, argv);
 
   std::vector<adamantine::Timer> timers;
   initialize_timers(communicator, timers);

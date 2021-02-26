@@ -41,6 +41,16 @@ public:
   virtual void compute_inverse_mass_matrix() = 0;
 
   /**
+   * Activate more elements of the mesh and interpolate the solution to the new
+   * domain.
+   */
+  virtual void add_material(
+      std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator> const
+          &elements_to_activate,
+      double initial_temperature,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &solution) = 0;
+
+  /**
    * Evolve the physics from time t to time t+delta_t. solution first contains
    * the field at time t and after execution of the function, the field at time
    * t+delta_t.

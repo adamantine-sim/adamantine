@@ -65,10 +65,13 @@ enum Timing
 {
   main,
   refine,
+  add_material,
   evol_time,
   evol_time_eval_th_ph,
   evol_time_J_inv,
-  evol_time_eval_mat_prop
+  evol_time_eval_mat_prop,
+  output,
+  n_timers
 };
 
 /**
