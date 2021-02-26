@@ -17,10 +17,15 @@ list(APPEND
      test_post_processor
      test_scan_path
      test_thermal_operator
-     test_thermal_physics
      test_timer
      test_utils
      )
+
+set(MPI_UNIT_TESTS "")
+list(APPEND
+     MPI_UNIT_TESTS
+     test_thermal_physics
+    )
 
 set(CUDA_UNIT_TESTS "")
 list(APPEND
@@ -32,6 +37,10 @@ list(APPEND
 
 foreach(TEST_NAME ${UNIT_TESTS})
   adamantine_ADD_BOOST_TEST(${TEST_NAME})
+endforeach()
+
+foreach(TEST_NAME ${MPI_UNIT_TESTS})
+  adamantine_ADD_BOOST_TEST(${TEST_NAME} 1 2)
 endforeach()
 
 if (ADAMANTINE_ENABLE_CUDA)
