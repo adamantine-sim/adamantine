@@ -11,7 +11,7 @@ pipeline {
           stage('CPU') {
             agent {
               docker {
-                image "rombur/adamantine-stack:latest"
+                image "rombur/adamantine-stack:21.02.2"
                   alwaysPull true
                   label 'docker'
               }
@@ -46,7 +46,7 @@ pipeline {
           stage('CUDA') {
             agent {
               docker {
-                image "rombur/adamantine-stack:latest"
+                image "rombur/adamantine-stack:21.02.2"
                   alwaysPull true
                   label 'nvidia-docker && volta'
               }
