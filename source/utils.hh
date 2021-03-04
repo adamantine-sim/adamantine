@@ -8,8 +8,7 @@
 #ifndef UTILS_HH
 #define UTILS_HH
 
-#include <boost/assert.hpp>
-
+#include <cassert>
 #include <exception>
 #include <stdexcept>
 #include <string>
@@ -19,7 +18,7 @@ namespace adamantine
 
 inline void ASSERT(bool cond, std::string const &message)
 {
-  BOOST_ASSERT_MSG(cond, message.c_str());
+  assert((cond) && (message.c_str()));
   (void)cond;
   (void)message;
 }
