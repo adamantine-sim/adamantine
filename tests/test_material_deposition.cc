@@ -271,7 +271,14 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   double time =
       thermal_physics.evolve_one_time_step(0., time_step, solution, timers);
   double const eps = time_step / 1e12;
-  for (unsigned int i = 0; i < 10; ++i)
+  // The build is too slow in debug mode when using sanitizer. In that case
+  // reduce the size of the loop
+#ifdef ADAMANTINE_DEBUG
+  unsigned int const i_max = 2;
+#else
+  unsigned int const i_max = 10;
+#endif
+  for (unsigned int i = 0; i < i_max; ++i)
   {
     auto activation_start =
         std::lower_bound(deposition_times.begin(), deposition_times.end(),
