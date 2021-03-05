@@ -95,55 +95,59 @@ BOOST_AUTO_TEST_CASE(read_material_deposition_file_3d)
 BOOST_AUTO_TEST_CASE(get_elements_to_activate_2d)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
-
-  // Geometry database
-  boost::property_tree::ptree geometry_database;
-  geometry_database.put("import_mesh", false);
-  geometry_database.put("length", 12);
-  geometry_database.put("length_divisions", 12);
-  geometry_database.put("height", 6);
-  geometry_database.put("height_divisions", 6);
-
-  adamantine::Geometry<2> geometry(communicator, geometry_database);
-  dealii::parallel::distributed::Triangulation<2> const &tria =
-      geometry.get_triangulation();
-
-  dealii::hp::FECollection<2> fe_collection;
-  fe_collection.push_back(dealii::FE_Q<2>(1));
-  fe_collection.push_back(dealii::FE_Nothing<2>());
-  dealii::DoFHandler<2> dof_handler(tria);
-  dof_handler.distribute_dofs(fe_collection);
-  for (auto &cell : dof_handler.active_cell_iterators())
-    cell->set_active_fe_index(1);
-
-  std::vector<dealii::BoundingBox<2>> bounding_boxes;
-  bounding_boxes.emplace_back(
-      std::make_pair(dealii::Point<2>(0.1, 0.1), dealii::Point<2>(0.2, 0.2)));
-  bounding_boxes.emplace_back(
-      std::make_pair(dealii::Point<2>(1.1, 0.1), dealii::Point<2>(2.2, 0.2)));
-  bounding_boxes.emplace_back(
-      std::make_pair(dealii::Point<2>(4.5, 4.5), dealii::Point<2>(5.5, 5.5)));
-
-  auto elements_to_activate =
-      adamantine::get_elements_to_activate(dof_handler, bounding_boxes);
-
-  BOOST_CHECK(elements_to_activate.size() == bounding_boxes.size());
-
-  std::vector<std::vector<dealii::CellId>> cell_id_ref(3);
-  cell_id_ref[0].push_back(dealii::CellId("0_0:"));
-  cell_id_ref[1].push_back(dealii::CellId("1_0:"));
-  cell_id_ref[1].push_back(dealii::CellId("4_0:"));
-  cell_id_ref[2].push_back(dealii::CellId("40_0:"));
-  cell_id_ref[2].push_back(dealii::CellId("41_0:"));
-  cell_id_ref[2].push_back(dealii::CellId("42_0:"));
-  cell_id_ref[2].push_back(dealii::CellId("43_0:"));
-
-  for (unsigned int i = 0; i < cell_id_ref.size(); ++i)
+  if (dealii::Utilities::MPI::n_mpi_processes(communicator) == 1)
   {
-    BOOST_CHECK(elements_to_activate[i].size() == cell_id_ref[i].size());
-    for (unsigned int j = 0; j < cell_id_ref[i].size(); ++j)
+    // Geometry database
+    boost::property_tree::ptree geometry_database;
+    geometry_database.put("import_mesh", false);
+    geometry_database.put("length", 12);
+    geometry_database.put("length_divisions", 12);
+    geometry_database.put("height", 6);
+    geometry_database.put("height_divisions", 6);
+
+    adamantine::Geometry<2> geometry(communicator, geometry_database);
+    dealii::parallel::distributed::Triangulation<2> const &tria =
+        geometry.get_triangulation();
+
+    dealii::hp::FECollection<2> fe_collection;
+    fe_collection.push_back(dealii::FE_Q<2>(1));
+    fe_collection.push_back(dealii::FE_Nothing<2>());
+    dealii::DoFHandler<2> dof_handler(tria);
+    dof_handler.distribute_dofs(fe_collection);
+    for (auto const &cell :
+         dealii::filter_iterators(dof_handler.active_cell_iterators(),
+                                  dealii::IteratorFilters::LocallyOwnedCell()))
+      cell->set_active_fe_index(1);
+
+    std::vector<dealii::BoundingBox<2>> bounding_boxes;
+    bounding_boxes.emplace_back(
+        std::make_pair(dealii::Point<2>(0.1, 0.1), dealii::Point<2>(0.2, 0.2)));
+    bounding_boxes.emplace_back(
+        std::make_pair(dealii::Point<2>(1.1, 0.1), dealii::Point<2>(2.2, 0.2)));
+    bounding_boxes.emplace_back(
+        std::make_pair(dealii::Point<2>(4.5, 4.5), dealii::Point<2>(5.5, 5.5)));
+
+    auto elements_to_activate =
+        adamantine::get_elements_to_activate(dof_handler, bounding_boxes);
+
+    BOOST_CHECK(elements_to_activate.size() == bounding_boxes.size());
+
+    std::vector<std::vector<dealii::CellId>> cell_id_ref(3);
+    cell_id_ref[0].push_back(dealii::CellId("0_0:"));
+    cell_id_ref[1].push_back(dealii::CellId("1_0:"));
+    cell_id_ref[1].push_back(dealii::CellId("4_0:"));
+    cell_id_ref[2].push_back(dealii::CellId("40_0:"));
+    cell_id_ref[2].push_back(dealii::CellId("41_0:"));
+    cell_id_ref[2].push_back(dealii::CellId("42_0:"));
+    cell_id_ref[2].push_back(dealii::CellId("43_0:"));
+
+    for (unsigned int i = 0; i < cell_id_ref.size(); ++i)
     {
-      BOOST_CHECK(elements_to_activate[i][j]->id() == cell_id_ref[i][j]);
+      BOOST_CHECK(elements_to_activate[i].size() == cell_id_ref[i].size());
+      for (unsigned int j = 0; j < cell_id_ref[i].size(); ++j)
+      {
+        BOOST_CHECK(elements_to_activate[i][j]->id() == cell_id_ref[i][j]);
+      }
     }
   }
 }
@@ -151,61 +155,65 @@ BOOST_AUTO_TEST_CASE(get_elements_to_activate_2d)
 BOOST_AUTO_TEST_CASE(get_elements_to_activate_3d)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
-
-  // Geometry database
-  boost::property_tree::ptree geometry_database;
-  geometry_database.put("import_mesh", false);
-  geometry_database.put("length", 12);
-  geometry_database.put("length_divisions", 12);
-  geometry_database.put("width", 6);
-  geometry_database.put("width_divisions", 6);
-  geometry_database.put("height", 6);
-  geometry_database.put("height_divisions", 6);
-
-  adamantine::Geometry<3> geometry(communicator, geometry_database);
-  dealii::parallel::distributed::Triangulation<3> const &tria =
-      geometry.get_triangulation();
-
-  dealii::hp::FECollection<3> fe_collection;
-  fe_collection.push_back(dealii::FE_Q<3>(1));
-  fe_collection.push_back(dealii::FE_Nothing<3>());
-  dealii::DoFHandler<3> dof_handler(tria);
-  dof_handler.distribute_dofs(fe_collection);
-  for (auto &cell : dof_handler.active_cell_iterators())
-    cell->set_active_fe_index(1);
-
-  std::vector<dealii::BoundingBox<3>> bounding_boxes;
-  bounding_boxes.emplace_back(std::make_pair(dealii::Point<3>(0.1, 0.1, 0.1),
-                                             dealii::Point<3>(0.2, 0.2, 0.2)));
-  bounding_boxes.emplace_back(std::make_pair(dealii::Point<3>(1.1, 0.1, 0.1),
-                                             dealii::Point<3>(2.2, 0.2, 0.2)));
-  bounding_boxes.emplace_back(std::make_pair(dealii::Point<3>(4.5, 4.5, 4.5),
-                                             dealii::Point<3>(5.5, 5.5, 5.5)));
-
-  auto elements_to_activate =
-      adamantine::get_elements_to_activate(dof_handler, bounding_boxes);
-
-  BOOST_CHECK(elements_to_activate.size() == bounding_boxes.size());
-
-  std::vector<std::vector<dealii::CellId>> cell_id_ref(3);
-  cell_id_ref[0].push_back(dealii::CellId("0_0:"));
-  cell_id_ref[1].push_back(dealii::CellId("1_0:"));
-  cell_id_ref[1].push_back(dealii::CellId("8_0:"));
-  cell_id_ref[2].push_back(dealii::CellId("272_0:"));
-  cell_id_ref[2].push_back(dealii::CellId("273_0:"));
-  cell_id_ref[2].push_back(dealii::CellId("276_0:"));
-  cell_id_ref[2].push_back(dealii::CellId("277_0:"));
-  cell_id_ref[2].push_back(dealii::CellId("274_0:"));
-  cell_id_ref[2].push_back(dealii::CellId("275_0:"));
-  cell_id_ref[2].push_back(dealii::CellId("278_0:"));
-  cell_id_ref[2].push_back(dealii::CellId("279_0:"));
-
-  for (unsigned int i = 0; i < cell_id_ref.size(); ++i)
+  if (dealii::Utilities::MPI::n_mpi_processes(communicator) == 1)
   {
-    BOOST_CHECK(elements_to_activate[i].size() == cell_id_ref[i].size());
-    for (unsigned int j = 0; j < cell_id_ref[i].size(); ++j)
+    // Geometry database
+    boost::property_tree::ptree geometry_database;
+    geometry_database.put("import_mesh", false);
+    geometry_database.put("length", 12);
+    geometry_database.put("length_divisions", 12);
+    geometry_database.put("width", 6);
+    geometry_database.put("width_divisions", 6);
+    geometry_database.put("height", 6);
+    geometry_database.put("height_divisions", 6);
+
+    adamantine::Geometry<3> geometry(communicator, geometry_database);
+    dealii::parallel::distributed::Triangulation<3> const &tria =
+        geometry.get_triangulation();
+
+    dealii::hp::FECollection<3> fe_collection;
+    fe_collection.push_back(dealii::FE_Q<3>(1));
+    fe_collection.push_back(dealii::FE_Nothing<3>());
+    dealii::DoFHandler<3> dof_handler(tria);
+    dof_handler.distribute_dofs(fe_collection);
+    for (auto const &cell :
+         dealii::filter_iterators(dof_handler.active_cell_iterators(),
+                                  dealii::IteratorFilters::LocallyOwnedCell()))
+      cell->set_active_fe_index(1);
+
+    std::vector<dealii::BoundingBox<3>> bounding_boxes;
+    bounding_boxes.emplace_back(std::make_pair(
+        dealii::Point<3>(0.1, 0.1, 0.1), dealii::Point<3>(0.2, 0.2, 0.2)));
+    bounding_boxes.emplace_back(std::make_pair(
+        dealii::Point<3>(1.1, 0.1, 0.1), dealii::Point<3>(2.2, 0.2, 0.2)));
+    bounding_boxes.emplace_back(std::make_pair(
+        dealii::Point<3>(4.5, 4.5, 4.5), dealii::Point<3>(5.5, 5.5, 5.5)));
+
+    auto elements_to_activate =
+        adamantine::get_elements_to_activate(dof_handler, bounding_boxes);
+
+    BOOST_CHECK(elements_to_activate.size() == bounding_boxes.size());
+
+    std::vector<std::vector<dealii::CellId>> cell_id_ref(3);
+    cell_id_ref[0].push_back(dealii::CellId("0_0:"));
+    cell_id_ref[1].push_back(dealii::CellId("1_0:"));
+    cell_id_ref[1].push_back(dealii::CellId("8_0:"));
+    cell_id_ref[2].push_back(dealii::CellId("272_0:"));
+    cell_id_ref[2].push_back(dealii::CellId("273_0:"));
+    cell_id_ref[2].push_back(dealii::CellId("276_0:"));
+    cell_id_ref[2].push_back(dealii::CellId("277_0:"));
+    cell_id_ref[2].push_back(dealii::CellId("274_0:"));
+    cell_id_ref[2].push_back(dealii::CellId("275_0:"));
+    cell_id_ref[2].push_back(dealii::CellId("278_0:"));
+    cell_id_ref[2].push_back(dealii::CellId("279_0:"));
+
+    for (unsigned int i = 0; i < cell_id_ref.size(); ++i)
     {
-      BOOST_CHECK(elements_to_activate[i][j]->id() == cell_id_ref[i][j]);
+      BOOST_CHECK(elements_to_activate[i].size() == cell_id_ref[i].size());
+      for (unsigned int j = 0; j < cell_id_ref[i].size(); ++j)
+      {
+        BOOST_CHECK(elements_to_activate[i][j]->id() == cell_id_ref[i][j]);
+      }
     }
   }
 }
@@ -306,6 +314,7 @@ BOOST_AUTO_TEST_CASE(material_deposition)
       (void)cell;
       ++n_cells;
     }
-    BOOST_CHECK(n_cells == n_cells_ref[i]);
+    BOOST_CHECK(dealii::Utilities::MPI::sum(n_cells, communicator) ==
+                n_cells_ref[i]);
   }
 }
