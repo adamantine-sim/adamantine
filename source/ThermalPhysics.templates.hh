@@ -397,10 +397,11 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   {
     val = std::numeric_limits<double>::infinity();
   }
+  solution.update_ghost_values();
   std::vector<dealii::types::global_dof_index> dof_indices(dofs_per_cell);
-  for (auto cell : _dof_handler.active_cell_iterators())
+  for (auto const &cell : _dof_handler.active_cell_iterators())
   {
-    if (cell->active_fe_index() == 0)
+    if ((cell->is_locally_owned()) && (cell->active_fe_index() == 0))
     {
       cell->get_dof_values(solution, cell_solution);
       data_to_transfer.push_back(cell_solution);
@@ -444,7 +445,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   unsigned int cell_i = 0;
   for (auto const &cell : _dof_handler.active_cell_iterators())
   {
-    if (transferred_data[cell_i][0] != std::numeric_limits<double>::infinity())
+    if ((cell->is_locally_owned()) && (transferred_data[cell_i][0] !=
+                                       std::numeric_limits<double>::infinity()))
     {
       cell->set_dof_values(transferred_data[cell_i], solution);
     }
