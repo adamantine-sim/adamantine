@@ -7,10 +7,18 @@
 
 #include "adamantine.hh"
 
+#ifdef ADAMANTINE_WITH_CALIPER
+#include <caliper/cali-manager.h>
+#endif
+
 #include <Kokkos_Core.hpp>
 
 int main(int argc, char *argv[])
 {
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("main");
+#endif
+
   dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
   MPI_Comm communicator = MPI_COMM_WORLD;
@@ -50,11 +58,28 @@ int main(int argc, char *argv[])
     boost::property_tree::ptree database;
     boost::property_tree::info_parser::read_info(filename, database);
 
-    boost::optional<boost::property_tree::ptree &> profiling_database =
+#ifdef ADAMANTINE_WITH_CALIPER
+    cali::ConfigManager caliper_manager;
+#endif
+    boost::optional<boost::property_tree::ptree &> profiling_optional_database =
         database.get_child_optional("profiling");
-    // PropertyTreeInput profiling.timer
-    if ((profiling_database) && (profiling_database.get().get("timer", false)))
-      profiling = true;
+    if (profiling_optional_database)
+    {
+      auto profiling_database = profiling_optional_database.get();
+      // PropertyTreeInput profiling.timer
+      if (profiling_database.get("timer", false))
+        profiling = true;
+#ifdef ADAMANTINE_WITH_CALIPER
+      // PropertyTreeInput profiling.caliper
+      auto caliper_optional_string =
+          profiling_database.get_optional<std::string>("caliper");
+      if (caliper_optional_string)
+        caliper_manager.add(caliper_optional_string.get().c_str());
+#endif
+    }
+#ifdef ADAMANTINE_WITH_CALIPER
+    caliper_manager.start();
+#endif
 
     boost::property_tree::ptree geometry_database =
         database.get_child("geometry");
@@ -95,6 +120,11 @@ int main(int argc, char *argv[])
 
     if (rank == 0)
       std::cout << "Simulation done" << std::endl;
+
+#ifdef ADAMANTINE_WITH_CALIPER
+    CALI_MARK_END("main");
+    caliper_manager.flush();
+#endif
   }
   catch (boost::bad_any_cast &exception)
   {
