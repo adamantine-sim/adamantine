@@ -10,8 +10,6 @@ list(APPEND
      test_geometry
      test_heat_source
      test_implicit_operator
-     test_integration_2d
-     test_material_deposition
      test_material_property
      test_newton_solver
      test_post_processor
@@ -24,6 +22,8 @@ list(APPEND
 set(MPI_UNIT_TESTS "")
 list(APPEND
      MPI_UNIT_TESTS
+     test_integration_2d
+     test_material_deposition
      test_thermal_physics
     )
 
