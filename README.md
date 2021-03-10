@@ -10,6 +10,7 @@ Installing `adamantine` requires:
 * Boost: 1.70.0 or later
 * deal.II: for compatibility purpose we recommend to use the adamantine branch [here](https://github.com/Rombur/dealii/tree/adamantine).
 You need to compile deal.II with MPI, P4EST, and ArborX. If you want to use Exodus file, you also need Trilinos with SEACAS support.
+`adamantine` also optionally supports profiling through [Caliper](https://github.com/llnl/Caliper).
 
 An example on how to install all the dependencies can be found in
 `ci/Dockerfile`.
@@ -27,12 +28,14 @@ in a newly created `bin` subdirectory. You will find in this subdirectory the
 executable and an example of input files.
 
 The list of configuration options is:
-* CMAKE\_BUILD\_TYPE: Debug/Release
-* DEAL\_II\_DIR:/path/to/dealii
-* BOOST\_DIR=/path/to/boost
+* ADAMNATINE\_ENABLE\_CALIPER=ON/OFF
+* ADAMANTINE\_ENABLE\_COVERAGE=ON/OFF
 * ADAMANTINE\_ENABLE\_CUDA=ON/OFF
 * ADAMANTINE\_ENABLE\_TESTS=ON/OFF
-* ADAMANTINE\_ENABLE\_COVERAGE=ON/OFF
+* BOOST\_DIR=/path/to/boost
+* CMAKE\_BUILD\_TYPE: Debug/Release
+* CALIPER\_DIR=/path/to/caliper (optional)
+* DEAL\_II\_DIR:/path/to/dealii
 
 ## Run
 After compiling `adamantine`, you can run a simulation using
@@ -135,12 +138,12 @@ The following options are available:
   * file\_name: prefix of output files
   * time_steps_between_output: number of time steps between the
   fields being written to the output files (default value: 1)
-
 * discretization:
   * fe\_degree: degree of the finite element used
   * quadrature: quadrature used: gauss or lobatto (default value: gauss)
 * profiling (optional):
   * timer: output timing information (default value: false)
+  * caliper: configuration string for Caliper (optional)
 * memory\_space: device (use GPU) or host (use CPU) (default value: host)
 
 
