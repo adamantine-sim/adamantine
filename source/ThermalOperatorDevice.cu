@@ -271,63 +271,6 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::Tvmult_add(
   vmult_add(dst, src);
 }
 
-/*
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
-    evaluate_material_properties(
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &temperature)
-{
-  // Update the material properties
-  _material_properties->update(_matrix_free.get_dof_handler(), temperature);
-
-  unsigned int const n_coefs =
-      dealii::Utilities::pow(fe_degree + 1, dim) * _n_owned_cells;
-  _inv_rho_cp.reinit(n_coefs);
-  _thermal_conductivity.reinit(n_coefs);
-  dealii::LA::ReadWriteVector<double> inv_rho_cp_host(n_coefs);
-  dealii::LA::ReadWriteVector<double> th_conductivity_host(n_coefs);
-
-  unsigned int constexpr n_dofs_1d = fe_degree + 1;
-  unsigned int constexpr n_q_points_per_cell =
-      dealii::Utilities::pow(n_dofs_1d, dim);
-  auto graph = _matrix_free.get_colored_graph();
-  unsigned int const n_colors = graph.size();
-  for (unsigned int color = 0; color < n_colors; ++color)
-  {
-    typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data gpu_data =
-        _matrix_free.get_data(color);
-    unsigned int const n_cells = gpu_data.n_cells;
-    auto gpu_data_host =
-        dealii::CUDAWrappers::copy_mf_data_to_host<dim, double>(
-            gpu_data, _matrix_free_data.mapping_update_flags);
-    for (unsigned int cell_id = 0; cell_id < n_cells; ++cell_id)
-    {
-      auto cell = graph[color][cell_id];
-      double const cell_inv_rho_cp =
-          1. / (_material_properties->get(cell, StateProperty::density) *
-                _material_properties->get(cell, StateProperty::specific_heat));
-      _inv_rho_cp_cells[cell] = cell_inv_rho_cp;
-      double const cell_th_conductivity =
-          _material_properties->get(cell, StateProperty::thermal_conductivity);
-      for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
-      {
-        unsigned int const pos =
-            dealii::CUDAWrappers::local_q_point_id_host<dim, double>(
-                cell_id, gpu_data_host, n_q_points_per_cell, i);
-        inv_rho_cp_host[pos] = cell_inv_rho_cp;
-        th_conductivity_host[pos] = cell_th_conductivity;
-      }
-    }
-  }
-
-  // Copy the coefficient to the host
-  _inv_rho_cp.import(inv_rho_cp_host, dealii::VectorOperation::insert);
-  _thermal_conductivity.import(th_conductivity_host,
-                               dealii::VectorOperation::insert);
-}
-*/
-
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
     extract_stateful_material_properties(
@@ -349,7 +292,6 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
 
   unsigned int constexpr n_dofs_1d = fe_degree + 1;
   unsigned int constexpr n_q_points_per_cell = dealii::Utilities::pow(n_dofs_1d, dim);
-  //auto ijk = get_ijk<dim, n_dofs_1d, n_q_points>();
   auto graph = _matrix_free.get_colored_graph();
   unsigned int const n_colors = graph.size();
   for (unsigned int color = 0; color < n_colors; ++color)
