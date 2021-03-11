@@ -553,7 +553,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   source = 0.;
 
   _thermal_operator->update_time_and_height(t, _current_height);
-  
+  /*  
   // Compute the source term.
   dealii::hp::QCollection<dim> source_q_collection;
   source_q_collection.push_back(dealii::QGauss<dim>(fe_degree + 1));
@@ -597,7 +597,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
                                                    local_dof_indices, source);
   }
   source.compress(dealii::VectorOperation::add);
-
+  */
   return vmult_and_scale<dim, fe_degree, MemorySpaceType>(_thermal_operator, y,
                                                           source, timers);
 }
