@@ -9,7 +9,7 @@ Installing `adamantine` requires:
 * CMake: 3.15 or later
 * Boost: 1.70.0 or later
 * deal.II: for compatibility purpose we recommend to use the adamantine branch [here](https://github.com/Rombur/dealii/tree/adamantine).
-You need to compile deal.II with MPI and P4EST. If you want to use Exodus file, you also need Trilinos with SEACAS support.
+You need to compile deal.II with MPI, P4EST, and ArborX. If you want to use Exodus file, you also need Trilinos with SEACAS support.
 
 An example on how to install all the dependencies can be found in
 `ci/Dockerfile`.
@@ -52,6 +52,10 @@ The following options are available:
   (default value: false)
   * if use\_powder is true:
     * powder\_layer: thickness of the initial layer of powder in meters
+  * material\_deposition: material is deposed during the simulation: true or
+  false (default value: false)
+  * if material\_deposition is true:
+    * material\_deposition\_file: material deposition filename
   * import\_mesh: true of false
   * if import\_mesh is true:
     * mesh\_format: abaqus, assimp, unv, ucd, dbmesh, gmsh, tecplot, xda, vtk,
@@ -165,6 +169,17 @@ The column descriptions are:
 position of the line.
 * Column 5: the coefficient for the nominal power. Usually this is either
 0 or 1, but sometimes intermediate values are used when turning a corner.
+
+### Material deposition
+The first entry of the file is the dimension the problem: 2 or 3. 
+* For 2D problems, the column descriptions are:
+  * Column 1 to 2: (x,y) coordinates of the center of the deposition box in m.
+  * Column 3 to 4: (x,y) length of deposition box in m.
+  * Column 5: deposition time in s.
+* For 3D problems, the column descriptions are:
+  * Column 1 to 3: (x,y,z) coordinates of the center of the deposition box in m.
+  * Column 4 to 6: (x,y,z) length of deposition box in m.
+  * Column 7: deposition time in s.
 
 ## License
 `adamantine` is distributed under the 3-Clause BSD License.

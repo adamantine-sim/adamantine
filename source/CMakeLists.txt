@@ -16,6 +16,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.templates.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/material_deposition.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/utils.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/types.hh
   )
@@ -32,6 +33,7 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/material_deposition.cc
   )
 
 if (ADAMANTINE_ENABLE_CUDA)

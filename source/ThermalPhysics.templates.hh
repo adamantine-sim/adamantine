@@ -17,6 +17,7 @@
 #include <GoldakHeatSource.hh>
 #include <ThermalPhysics.hh>
 
+#include <deal.II/distributed/cell_data_transfer.templates.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_q.h>
@@ -27,6 +28,7 @@
 #include <deal.II/lac/solver_gmres.h>
 
 #include <algorithm>
+#include <execution>
 
 namespace adamantine
 {
@@ -325,7 +327,9 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   // Set material on part of the domain
   // PropertyTreeInput geometry.material_height
   double const material_height = database.get("geometry.material_height", 1e9);
-  for (auto const &cell : _dof_handler.active_cell_iterators())
+  for (auto const &cell :
+       dealii::filter_iterators(_dof_handler.active_cell_iterators(),
+                                dealii::IteratorFilters::LocallyOwnedCell()))
   {
     // If the center of the cell is below material_height, it contains material
     // otherwise it does not.
@@ -363,8 +367,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
     // Loop over the faces
     for (auto face_index : dealii::GeometryInfo<dim>::face_indices())
     {
-      _current_height =
-          std::max(_current_height, cell->face(face_index)->center()[1]);
+      _current_height = std::max(
+          _current_height, cell->face(face_index)->center()[axis<dim>::z]);
     }
   }
 }
@@ -379,6 +383,98 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
   if (_implicit_method == true)
     _implicit_operator->set_inverse_mass_matrix(
         _thermal_operator->get_inverse_mass_matrix());
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+    add_material(
+        std::vector<
+            typename dealii::DoFHandler<dim>::active_cell_iterator> const
+            &elements_to_activate,
+        double initial_temperature,
+        dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
+{
+  std::vector<dealii::Vector<double>> data_to_transfer;
+  unsigned int const dofs_per_cell = _dof_handler.get_fe().n_dofs_per_cell();
+  dealii::Vector<double> cell_solution(dofs_per_cell);
+  dealii::Vector<double> dummy_cell_solution(dofs_per_cell);
+  for (auto &val : dummy_cell_solution)
+  {
+    val = std::numeric_limits<double>::infinity();
+  }
+  solution.update_ghost_values();
+  std::vector<dealii::types::global_dof_index> dof_indices(dofs_per_cell);
+  for (auto const &cell : _dof_handler.active_cell_iterators())
+  {
+    if ((cell->is_locally_owned()) && (cell->active_fe_index() == 0))
+    {
+      cell->get_dof_values(solution, cell_solution);
+      data_to_transfer.push_back(cell_solution);
+    }
+    else
+    {
+      data_to_transfer.push_back(dummy_cell_solution);
+    }
+  }
+
+  // Activate elements by updating the fe_index
+  for (auto const &cell : elements_to_activate)
+  {
+    cell->set_active_fe_index(0);
+  }
+
+  dealii::parallel::distributed::Triangulation<dim> &triangulation =
+      dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
+          const_cast<dealii::Triangulation<dim> &>(
+              _dof_handler.get_triangulation()));
+  triangulation.prepare_coarsening_and_refinement();
+  dealii::parallel::distributed::CellDataTransfer<
+      dim, dim, std::vector<dealii::Vector<double>>>
+      cell_data_trans(triangulation);
+  cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
+  triangulation.execute_coarsening_and_refinement();
+
+  setup_dofs();
+
+  // Update MaterialProperty DoFHandler and resize the state vectors
+  _material_properties->reinit_dofs();
+
+  // Recompute the inverse of the mass matrix
+  compute_inverse_mass_matrix();
+
+  initialize_dof_vector(initial_temperature, solution);
+  std::vector<dealii::Vector<double>> transferred_data(
+      triangulation.n_active_cells(), dealii::Vector<double>(dofs_per_cell));
+  cell_data_trans.unpack(transferred_data);
+
+  unsigned int cell_i = 0;
+  for (auto const &cell : _dof_handler.active_cell_iterators())
+  {
+    if ((cell->is_locally_owned()) && (transferred_data[cell_i][0] !=
+                                       std::numeric_limits<double>::infinity()))
+    {
+      cell->set_dof_values(transferred_data[cell_i], solution);
+    }
+    ++cell_i;
+  }
+
+  // Communicate the results.
+  solution.compress(dealii::VectorOperation::min);
+
+  // Set the value to the newly create DoFs. Here we need to be careful with the
+  // hanging nodes. When there is a hanging node, the dofs at the vertices are
+  // "doubled": there is a dof associated to the coarse cell and a dof
+  // associated to the fine cell. The final value is decided by
+  // AffineConstraints. Thus, we need to make sure that the newly activated
+  // cells are at the same level than their neighbors.
+  std::for_each(std::execution::par_unseq, solution.begin(), solution.end(),
+                [&](double &val) {
+                  if (val == std::numeric_limits<double>::infinity())
+                  {
+                    val = initial_temperature;
+                  }
+                });
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -457,6 +553,50 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   source = 0.;
 
   _thermal_operator->update_time_and_height(t, _current_height);
+  
+  // Compute the source term.
+  dealii::hp::QCollection<dim> source_q_collection;
+  source_q_collection.push_back(dealii::QGauss<dim>(fe_degree + 1));
+  source_q_collection.push_back(dealii::QGauss<dim>(1));
+  dealii::hp::FEValues<dim> hp_fe_values(_fe_collection, source_q_collection,
+                                         dealii::update_quadrature_points |
+                                             dealii::update_values |
+                                             dealii::update_JxW_values);
+  unsigned int const dofs_per_cell = _fe_collection.max_dofs_per_cell();
+  unsigned int const n_q_points = source_q_collection.max_n_quadrature_points();
+  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
+  dealii::Vector<double> cell_source(dofs_per_cell);
+
+  // Loop over the locally owned cells with an active FE index of zero
+  for (auto const &cell : dealii::filter_iterators(
+           _dof_handler.active_cell_iterators(),
+           dealii::IteratorFilters::LocallyOwnedCell(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+  {
+    cell_source = 0.;
+    hp_fe_values.reinit(cell);
+    dealii::FEValues<dim> const &fe_values =
+        hp_fe_values.get_present_fe_values();
+    double const inv_rho_cp = _thermal_operator->get_inv_rho_cp(cell);
+
+    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+    {
+      for (unsigned int q = 0; q < n_q_points; ++q)
+      {
+        double quad_pt_source = 0.;
+        dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
+        for (auto &beam : _heat_sources)
+          quad_pt_source += beam->value(q_point, t, _current_height);
+
+        cell_source[i] += inv_rho_cp * quad_pt_source *
+                          fe_values.shape_value(i, q) * fe_values.JxW(q);
+      }
+    }
+    cell->get_dof_indices(local_dof_indices);
+    _affine_constraints.distribute_local_to_global(cell_source,
+                                                   local_dof_indices, source);
+  }
+  source.compress(dealii::VectorOperation::add);
 
   return vmult_and_scale<dim, fe_degree, MemorySpaceType>(_thermal_operator, y,
                                                           source, timers);

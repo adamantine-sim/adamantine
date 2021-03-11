@@ -334,6 +334,7 @@ MaterialProperty<dim>::compute_average_temperature(
   // The triangulation is the same for both DoFHandler
   dealii::LA::distributed::Vector<double> temperature_average(
       _mp_dof_handler.locally_owned_dofs(), temperature.get_mpi_communicator());
+  temperature.update_ghost_values();
   temperature_average = 0.;
   auto mp_cell = _mp_dof_handler.begin_active();
   auto mp_end_cell = _mp_dof_handler.end();
@@ -353,6 +354,9 @@ MaterialProperty<dim>::compute_average_temperature(
   unsigned int const dofs_per_cell = fe_collection.max_dofs_per_cell();
   std::vector<dealii::types::global_dof_index> enth_dof_indices(dofs_per_cell);
   for (; mp_cell != mp_end_cell; ++enth_cell, ++mp_cell)
+  {
+    ASSERT(mp_cell->is_locally_owned() == enth_cell->is_locally_owned(),
+           "Internal Error");
     if ((mp_cell->is_locally_owned()) && (enth_cell->active_fe_index() == 0))
     {
       hp_fe_values.reinit(enth_cell);
@@ -372,6 +376,7 @@ MaterialProperty<dim>::compute_average_temperature(
         }
       temperature_average[mp_dof_index] /= volume;
     }
+  }
 
   return temperature_average;
 }

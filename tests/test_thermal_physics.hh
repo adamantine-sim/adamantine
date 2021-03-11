@@ -54,7 +54,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(solution);
   physics.extract_stateful_material_properties(solution);
-  std::vector<adamantine::Timer> timers(6);
+  std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
   while (time < 0.1)
     time = physics.evolve_one_time_step(time, time_step, solution, timers);
@@ -116,7 +116,7 @@ void thermal_2d_manufactured_solution()
   physics.compute_inverse_mass_matrix();
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
-  std::vector<adamantine::Timer> timers(6);
+  std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   physics.initialize_dof_vector(solution);
   physics.extract_stateful_material_properties(solution);
   double time = physics.evolve_one_time_step(0., 0.1, solution, timers);
@@ -125,8 +125,8 @@ void thermal_2d_manufactured_solution()
   BOOST_CHECK(time == 0.1);
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
   {
-    for (unsigned int i = 0; i < solution.size(); ++i)
-      BOOST_CHECK_CLOSE(solution[i], 0.1, tolerance);
+    for (unsigned int i = 0; i < solution.local_size(); ++i)
+      BOOST_CHECK_CLOSE(solution.local_element(i), 0.1, tolerance);
   }
   else
   {
@@ -238,8 +238,12 @@ void energy_conservation()
   double constexpr initial_temperature = 10;
   double constexpr final_temperature = 10.5;
   physics.initialize_dof_vector(initial_temperature, solution);
+<<<<<<< HEAD
   physics.extract_stateful_material_properties(solution);
   std::vector<adamantine::Timer> timers(6);
+=======
+  std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
+>>>>>>> master
   double time = 0;
   while (time < 100)
   {

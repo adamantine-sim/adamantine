@@ -73,32 +73,30 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
       mass_matrix_q_collection.max_n_quadrature_points();
   std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
   dealii::Vector<double> cell_mass(dofs_per_cell);
-  for (auto cell :
-       dealii::filter_iterators(dof_handler.active_cell_iterators(),
-                                dealii::IteratorFilters::LocallyOwnedCell()))
+  for (auto const &cell : dealii::filter_iterators(
+           dof_handler.active_cell_iterators(),
+           dealii::IteratorFilters::LocallyOwnedCell(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
   {
-    if (cell->active_fe_index() == 0)
+    cell_mass = 0.;
+    hp_fe_values.reinit(cell);
+    dealii::FEValues<dim> const &fe_values =
+        hp_fe_values.get_present_fe_values();
+    for (unsigned int i = 0; i < dofs_per_cell; ++i)
     {
-      cell_mass = 0.;
-      hp_fe_values.reinit(cell);
-      dealii::FEValues<dim> const &fe_values =
-          hp_fe_values.get_present_fe_values();
-      for (unsigned int i = 0; i < dofs_per_cell; ++i)
+      for (unsigned int q = 0; q < n_q_points; ++q)
       {
-        for (unsigned int q = 0; q < n_q_points; ++q)
+        for (unsigned int j = 0; j < dofs_per_cell; ++j)
         {
-          for (unsigned int j = 0; j < dofs_per_cell; ++j)
-          {
 
-            cell_mass[i] += fe_values.shape_value(j, q) *
-                            fe_values.shape_value(i, q) * fe_values.JxW(q);
-          }
+          cell_mass[i] += fe_values.shape_value(j, q) *
+                          fe_values.shape_value(i, q) * fe_values.JxW(q);
         }
       }
-      cell->get_dof_indices(local_dof_indices);
-      affine_constraints.distribute_local_to_global(
-          cell_mass, local_dof_indices, *_inverse_mass_matrix);
     }
+    cell->get_dof_indices(local_dof_indices);
+    affine_constraints.distribute_local_to_global(cell_mass, local_dof_indices,
+                                                  *_inverse_mass_matrix);
   }
   _inverse_mass_matrix->compress(dealii::VectorOperation::add);
 

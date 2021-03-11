@@ -7,6 +7,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
       gcc \
       gfortran \
       clang-format \
+      clang \
       build-essential \
       cmake \
       wget \
@@ -251,8 +252,8 @@ RUN export KOKKOS_VERSION=3.3.01 && \
 ENV KOKKOS_DIR=${INSTALL_DIR}/kokkos
 
 # Install ArborX
-RUN export ARBORX_VERSION=v1.0-rc0 && \
-    export ARBORX_URL=https://github.com/arborx/ArborX/archive/${ARBORX_VERSION}.tar.gz && \
+RUN export ARBORX_HASH=731d3cb9c942158089cbd8c6e3ce64098bb46fb7 && \
+    export ARBORX_URL=https://github.com/arborx/ArborX/archive/${ARBORX_HASH}.tar.gz && \
     export ARBORX_ARCHIVE=${ARCHIVE_DIR}/arborx-${ARBORX_VERSION}.tar.gz && \
     export ARBORX_SOURCE_DIR=${SOURCE_DIR}/arborx && \
     export ARBORX_BUILD_DIR=${BUILD_DIR}/arborx && \
@@ -262,7 +263,6 @@ RUN export ARBORX_VERSION=v1.0-rc0 && \
     tar -xf ${ARBORX_ARCHIVE} -C ${ARBORX_SOURCE_DIR} --strip-components=1 && \
     mkdir -p ${ARBORX_BUILD_DIR} && \
     cd ${ARBORX_BUILD_DIR} && \
-    ls ${KOKKOS_DIR} && \
     cmake -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=ON \
         -DCMAKE_PREFIX_PATH=${KOKKOS_DIR} \
