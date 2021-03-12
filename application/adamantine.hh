@@ -663,9 +663,11 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   thermal_physics->initialize_dof_vector(initial_temperature, solution);
   std::cout << solution.local_element(0) << std::endl;
 
+  // I'm not sure if there's a better way to do this.
+  // extract_stateful_material_properties expects a MemorySpace::Host vector,
+  // but solution could be either Host or CUDA.
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       solution_host(solution.size());
-  // solution.import(solution_host, dealii::VectorOperation::insert);
   solution_host.import(solution, dealii::VectorOperation::insert);
   thermal_physics->extract_stateful_material_properties(solution_host);
 

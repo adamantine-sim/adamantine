@@ -97,10 +97,12 @@ public:
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &vector) override;
   /**
-   * Modify the stateful properties from the _material_properties object to
-   * match the evolved values in ThermalOperator.
+   * Modify the stateful properties from the MaterialProperty object to
+   * match the evolved values in ThermalOperator. The main purpose of this is to
+   * update the material state variables in the MaterialProperty object.
    */
   void sync_stateful_material_properties() override;
+
   /**
    * Update the time and the current height, to be used to calculate the source
    * term.
@@ -117,6 +119,12 @@ private:
       dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
       std::pair<unsigned int, unsigned int> const &cell_range) const;
 
+  /**
+   * Calculate the state ratios given the temperature and the current powder
+   * ratio. Even though this is const, it modifies the mutable _powder_ratio
+   * member (this method is const because it is called in local_apply which has
+   * to be const).
+   */
   void
   update_state_ratios(unsigned int cell, unsigned int q,
                       dealii::VectorizedArray<double> temperature,
@@ -124,6 +132,9 @@ private:
                                  static_cast<unsigned int>(MaterialState::SIZE)>
                           &state_ratios) const;
 
+  /**
+   * Calculates the inverse of the density times the heat capacity.
+   */
   dealii::VectorizedArray<double>
   get_inv_rho_cp(unsigned int cell, unsigned int q,
                  std::array<dealii::VectorizedArray<double>,
@@ -131,6 +142,9 @@ private:
                      state_ratios,
                  dealii::VectorizedArray<double> temperature) const;
 
+  /**
+   * Calculates the thermal conductivity.
+   */
   dealii::VectorizedArray<double> get_thermal_conductivity(
       unsigned int cell, unsigned int q,
       std::array<dealii::VectorizedArray<double>,
@@ -175,13 +189,13 @@ private:
   std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
 
   /**
-   * Table of the powder fraction, public to minimize the reimplementation of
-   * methods for GPUs.
+   * Table of the powder fraction, mutable so that it can be changed in
+   * local_apply, which is const.
    */
   mutable dealii::Table<2, dealii::VectorizedArray<double>> _powder_ratio;
   /**
-   * Table of the material index, public to minimize the reimplementation of
-   * methods for GPUs.
+   * Table of the material index, mutable so that it can be changed in
+   * local_apply, which is const.
    */
   mutable dealii::Table<2, std::array<dealii::types::material_id,
                                       dealii::VectorizedArray<double>::size()>>
