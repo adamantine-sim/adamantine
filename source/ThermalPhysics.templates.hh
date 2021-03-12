@@ -553,7 +553,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   source = 0.;
 
   _thermal_operator->update_time_and_height(t, _current_height);
-  /*  
+  /*
   // Compute the source term.
   dealii::hp::QCollection<dim> source_q_collection;
   source_q_collection.push_back(dealii::QGauss<dim>(fe_degree + 1));
@@ -596,8 +596,8 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     _affine_constraints.distribute_local_to_global(cell_source,
                                                    local_dof_indices, source);
   }
-  source.compress(dealii::VectorOperation::add);
   */
+  source.compress(dealii::VectorOperation::add);
   return vmult_and_scale<dim, fe_degree, MemorySpaceType>(_thermal_operator, y,
                                                           source, timers);
 }
@@ -638,7 +638,8 @@ template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
 void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     extract_stateful_material_properties(
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &vector)
+        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+            &vector)
 {
   _thermal_operator->extract_stateful_material_properties(vector);
 }

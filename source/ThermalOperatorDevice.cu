@@ -143,7 +143,8 @@ __device__ void LocalThermalOperatorDevice<dim, fe_degree>::operator()(
   fe_eval.read_dof_values(src);
   fe_eval.evaluate(true, true);
 
-  // Temporary hard-coded values
+  // FIXME: Temporary hard-coded values since the code to calculate them has
+  // been removed. These should be calculated inside ThermalOperatorQuad.
   double thermal_conductivity = 1.0; // _thermal_conductivity[pos]
   double inv_rho_cp = 1.0;           // _inv_rho_cp[pos]
 
@@ -254,7 +255,11 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::vmult_add(
 {
   // LocalThermalOperatorDevice<dim, fe_degree> local_operator(
   //      _inv_rho_cp.get_values(), _thermal_conductivity.get_values());
-  // Temp values
+  // FIXME: In the old version of the material properties calculation, we pass
+  // inv_rho_cp and thermal_conductivity into LocalThermalOperatorDevice. Now we
+  // need to pass in the powder_ratio and the material_id. However, we need a
+  // new data type for the material_id, so here we're passing in the
+  // powder_ratio twice.
   LocalThermalOperatorDevice<dim, fe_degree> local_operator(
       _powder_ratio.get_values(), _powder_ratio.get_values());
 
@@ -274,9 +279,12 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::Tvmult_add(
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
     extract_stateful_material_properties(
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-            const &temperature)
+        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+            &temperature)
 {
+  // FIXME: There are several places in here where the material_id is needed but
+  // I still need to determine a data type
+
   // Update the material properties (is this needed here?)
   //_material_properties->update(*_dof_handler, temperature);
 
@@ -287,11 +295,12 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
   //_material_id.reinit(n_coefs);
 
   dealii::LA::ReadWriteVector<double> powder_ratio_host(n_coefs);
-  //dealii::LA::ReadWriteVector<dealii::types::material_id> material_id_host(
+  // dealii::LA::ReadWriteVector<dealii::types::material_id> material_id_host(
   //    n_coefs);
 
   unsigned int constexpr n_dofs_1d = fe_degree + 1;
-  unsigned int constexpr n_q_points_per_cell = dealii::Utilities::pow(n_dofs_1d, dim);
+  unsigned int constexpr n_q_points_per_cell =
+      dealii::Utilities::pow(n_dofs_1d, dim);
   auto graph = _matrix_free.get_colored_graph();
   unsigned int const n_colors = graph.size();
   for (unsigned int color = 0; color < n_colors; ++color)
@@ -308,12 +317,12 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
       for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
       {
         unsigned int const pos =
-                dealii::CUDAWrappers::local_q_point_id_host<dim, double>(
+            dealii::CUDAWrappers::local_q_point_id_host<dim, double>(
                 cell_id, gpu_data_host, n_q_points_per_cell, i);
         powder_ratio_host[pos] =
             _material_properties->get_state_ratio(cell, MaterialState::powder);
 
-        //material_id_host[pos] = _material_properties->get_material_id(cell);
+        // material_id_host[pos] = _material_properties->get_material_id(cell);
       }
     }
   }

@@ -103,8 +103,8 @@ public:
    *
    */
   void extract_stateful_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &vector)
-      override;
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+          &vector) override;
 
   dealii::DoFHandler<dim> &get_dof_handler() override;
 

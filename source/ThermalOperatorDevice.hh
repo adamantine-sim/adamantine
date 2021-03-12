@@ -12,7 +12,7 @@
 #include <MaterialProperty.hh>
 #include <ThermalOperatorBase.hh>
 
-#include <deal.II/lac/read_write_vector.h>
+//#include <deal.II/lac/read_write_vector.h> // EDIT
 #include <deal.II/lac/cuda_vector.h>
 #include <deal.II/matrix_free/cuda_matrix_free.h>
 
@@ -73,30 +73,18 @@ public:
       dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
       const override;
 
-  /*
-    void evaluate_material_properties(
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &state) override;
-  */
-  /**
-   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given cell.
-   */
-  /*
- double get_inv_rho_cp(
-     typename dealii::DoFHandler<dim>::cell_iterator const &) const override;
-*/
   /**
    * Extract the stateful properties from the _material_properties object and
    * populate new vectors with the correct order.
    */
   void extract_stateful_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const & vector)
-      override;
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+          &vector) override;
   /**
    * Modify the stateful properties from the _material_properties object to
    * match the evolved values in ThermalOperator.
    */
-  void sync_stateful_material_properties() override {};
+  void sync_stateful_material_properties() override{};
   /**
    * Update the time and the current height, to be used to calculate the source
    * term.
@@ -111,19 +99,16 @@ private:
       _matrix_free_data;
   std::shared_ptr<MaterialProperty<dim>> _material_properties;
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
-  // dealii::LinearAlgebra::CUDAWrappers::Vector<double> _inv_rho_cp;
-  // dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity;
   std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
       _inverse_mass_matrix;
-  // std::map<typename dealii::DoFHandler<dim>::cell_iterator, double>
-  //  _inv_rho_cp_cells;
 
-  // New implementation
   double _time;
   double _current_height;
   std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _powder_ratio;
-  //dealii::LinearAlgebra::CUDAWrappers::Vector<dealii::types::material_id>
+
+  // CUDAWrappers don't work for unsigned ints, need a new data type
+  // dealii::LinearAlgebra::CUDAWrappers::Vector<dealii::types::material_id>
   //    _material_id;
 };
 
@@ -165,20 +150,6 @@ ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::jacobian_vmult(
 {
   vmult(dst, src);
 }
-
-/*
-template <int dim, int fe_degree, typename MemorySpaceType>
-inline double
-ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
-    typename dealii::DoFHandler<dim>::cell_iterator const &cell) const
-{
-  // Temporary hard coding
-  //auto inv_rho_cp = _inv_rho_cp_cells.find(cell);
-  //ASSERT(inv_rho_cp != _inv_rho_cp_cells.end(), "Internal error");
-
-  return 1.0; //inv_rho_cp->second;
-}
-*/
 
 template <int dim, int fe_degree, typename MemorySpaceType>
 inline void

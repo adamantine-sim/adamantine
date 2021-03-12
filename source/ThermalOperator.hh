@@ -94,8 +94,8 @@ public:
    * populate new vectors with the correct order.
    */
   void extract_stateful_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const &vector)
-      override;
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+          &vector) override;
   /**
    * Modify the stateful properties from the _material_properties object to
    * match the evolved values in ThermalOperator.

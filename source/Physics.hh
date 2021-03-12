@@ -84,7 +84,8 @@ public:
    * Initialize the given vector.
    */
   virtual void extract_stateful_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &vector) = 0;
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+          &vector) = 0;
 
   /**
    * Return the DoFHandler.
