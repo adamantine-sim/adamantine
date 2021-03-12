@@ -123,8 +123,11 @@ RUN export P4EST_VERSION=2.2 && \
     rm -rf ${P4EST_SOURCE_DIR}
 ENV P4EST_DIR=${INSTALL_DIR}/p4est
 
-# Temporarly comment this because ArborX and Trilinos use incompatible version
-# of Kokkos. The commented code is only necessary to read Exodus file.
+# adamantine supports Exodus files through deal.II which itself depends on
+# Trilinos to read such mesh. In this case, Kokkos should be enable in Trilinos
+# and ArborX should use the Trilinos-installed Kokkos. Since we don't have any
+# Exodus file in our testsuite, we install Kokkos directly and instead of
+# Trilinos in order to decrease the size of the image.
 ## Install HDF5
 #RUN export HDF5_VERSION=1.12.0 && \
 #    export HDF5_URL=http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.12/hdf5-${HDF5_VERSION}/src/hdf5-${HDF5_VERSION}.tar.bz2 && \
@@ -209,6 +212,7 @@ ENV P4EST_DIR=${INSTALL_DIR}/p4est
 #        -DTrilinos_ENABLE_AztecOO=ON \
 #        -DTrilinos_ENABLE_Epetra=ON \
 #        -DTrilinos_ENABLE_Ifpack=ON \
+#        -DTrilinos_ENABLE_Kokkos=ON \
 #        -DTrilinos_ENABLE_ML=ON \
 #        -DTrilinos_ENABLE_SEACAS=ON \
 #        -DTrilinos_ENABLE_EXPLICIT_INSTANTIATION=ON \
@@ -275,7 +279,7 @@ RUN export ARBORX_HASH=731d3cb9c942158089cbd8c6e3ce64098bb46fb7 && \
 ENV ARBORX_DIR=${INSTALL_DIR}/arborx
 
 # Install deal.II 
-RUN export DEAL_II_HASH=d0fcb5995442cebd028fdb82842248c443c929a0 && \
+RUN export DEAL_II_HASH=9b598a48765e61f0419c42497aad1eeb03c1e4bb && \
     export DEAL_II_URL=https://github.com/Rombur/dealii/archive/${DEAL_II_HASH}.tar.gz && \
     export DEAL_II_ARCHIVE=${ARCHIVE_DIR}/dealii.tar.gz && \
     export DEAL_II_SOURCE_DIR=${SOURCE_DIR}/dealii && \
