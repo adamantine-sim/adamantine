@@ -180,10 +180,6 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
 
   unsigned int const n_cells = _matrix_free.n_cell_batches();
 
-  // Is this necessary?
-  _powder_ratio.reinit(n_cells, fe_eval.n_q_points);
-  _material_id.reinit(n_cells, fe_eval.n_q_points);
-
   dealii::Tensor<1, dim> unit_tensor;
   for (unsigned int i = 0; i < dim; ++i)
     unit_tensor[i] = 1.;
@@ -245,7 +241,6 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
           quad_pt_source[i] += beam->value(q_point_loc, _time, _current_height);
       }
       quad_pt_source *= inv_rho_cp;
-      // std::cout << quad_pt_source << std::endl;
 
       fe_eval.submit_value(quad_pt_source, q);
     }
@@ -389,13 +384,11 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
   }
 
   // Now compute the state-dependent properties
-  // std::cout << "density" << std::endl;
   dealii::VectorizedArray<double> density =
       _material_properties->compute_material_property(
           StateProperty::density, _material_id(cell, q), state_ratios,
           temperature);
 
-  // std::cout << "specific_heat" << std::endl;
   dealii::VectorizedArray<double> specific_heat =
       _material_properties->compute_material_property(
           StateProperty::specific_heat, _material_id(cell, q), state_ratios,

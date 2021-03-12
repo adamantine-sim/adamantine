@@ -81,7 +81,8 @@ public:
                             &vector) const = 0;
 
   /**
-   * Initialize the given vector.
+   * Populate the stateful material properties in the Physics object from the
+   * MaterialProperty object.
    */
   virtual void extract_stateful_material_properties(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>

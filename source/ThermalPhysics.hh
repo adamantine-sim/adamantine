@@ -100,7 +100,8 @@ public:
                             &vector) const override;
 
   /**
-   *
+   * Populate the stateful material properties in the Physics object from the
+   * MaterialProperty object.
    */
   void extract_stateful_material_properties(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -202,9 +203,6 @@ private:
   /**
    * Vector of heat sources.
    */
-  // Use unique_ptr due to a strange bug involving TBB, std::vector, and
-  // dealii::FunctionParser.
-  // std::vector<std::unique_ptr<HeatSource<dim>>> _heat_sources;
   std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
 
   /**

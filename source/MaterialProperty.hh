@@ -16,7 +16,6 @@
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/grid/filtered_iterator.h>
-#include <deal.II/lac/cuda_vector.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/la_vector.h>
 #include <deal.II/matrix_free/matrix_free.h>
@@ -113,8 +112,6 @@ public:
    */
   dealii::DoFHandler<dim> const &get_dof_handler() const;
 
-  // New public members of the reworked MaterialProperies
-
   /**
    * Compute a material property a quadrature point for a mix of states
    */
@@ -128,6 +125,9 @@ public:
           state_ratios,
       dealii::VectorizedArray<double> temperature) const;
 
+  /**
+   * Returns the material properties map for the given material.
+   */
   std::unordered_map<dealii::types::material_id,
                      std::array<double, static_cast<unsigned int>(
                                             MaterialState::SIZE)>>::iterator

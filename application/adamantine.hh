@@ -661,7 +661,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   thermal_physics->compute_inverse_mass_matrix();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   thermal_physics->initialize_dof_vector(initial_temperature, solution);
-  std::cout << solution.local_element(0) << std::endl;
 
   // I'm not sure if there's a better way to do this.
   // extract_stateful_material_properties expects a MemorySpace::Host vector,
@@ -675,8 +674,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   unsigned int cycle = 0;
   unsigned int n_time_step = 0;
   double time = 0.;
+
   // Output the initial solution
-  std::cout << solution.local_element(0) << std::endl;
   dealii::AffineConstraints<double> &affine_constraints =
       thermal_physics->get_affine_constraints();
   output_pvtu(post_processor, cycle, n_time_step, time, affine_constraints,
