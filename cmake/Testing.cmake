@@ -1,6 +1,5 @@
 function(adamantine_ADD_BOOST_TEST TEST_NAME)
     add_executable(${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_NAME}.cc ${tests_SOURCES})
-    DEAL_II_SETUP_TARGET(${TEST_NAME})
     target_link_libraries(${TEST_NAME} Boost::boost)
     target_link_libraries(${TEST_NAME} Boost::chrono)
     target_link_libraries(${TEST_NAME} Boost::filesystem)
@@ -17,6 +16,7 @@ function(adamantine_ADD_BOOST_TEST TEST_NAME)
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
+    DEAL_II_SETUP_TARGET(${TEST_NAME})
     if(ARGN)
         set(NUMBER_OF_PROCESSES_TO_EXECUTE ${ARGN})
     else()
@@ -35,7 +35,6 @@ endfunction()
 
 function(adamantine_ADD_BOOST_CUDA_TEST TEST_NAME)
     add_executable(${TEST_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_NAME}.cu ${tests_SOURCES})
-    DEAL_II_SETUP_TARGET(${TEST_NAME})
     target_link_libraries(${TEST_NAME} Boost::boost)
     target_link_libraries(${TEST_NAME} Boost::chrono)
     target_link_libraries(${TEST_NAME} Boost::filesystem)
@@ -53,6 +52,7 @@ function(adamantine_ADD_BOOST_CUDA_TEST TEST_NAME)
         CUDA_STANDARD 17
         CUDA_STANDARD_REQUIRED ON
     )
+    DEAL_II_SETUP_TARGET(${TEST_NAME})
     if(ARGN)
         set(NUMBER_OF_PROCESSES_TO_EXECUTE ${ARGN})
     else()
