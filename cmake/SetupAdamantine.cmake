@@ -1,6 +1,6 @@
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
-  add_definitions(-DADAMANTINE_DEBUG)
+  add_compile_definitions(ADAMANTINE_DEBUG)
 endif()
 
 # deal.II flags override any other flags so we need to trick deal.II by
