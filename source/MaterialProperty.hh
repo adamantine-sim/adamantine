@@ -113,7 +113,7 @@ public:
   dealii::DoFHandler<dim> const &get_dof_handler() const;
 
   /**
-   * Compute a material property a quadrature point for a mix of states
+   * Compute a material property at a quadrature point for a mix of states.
    */
   dealii::VectorizedArray<double> compute_material_property(
       StateProperty state_property,

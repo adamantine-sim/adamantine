@@ -103,9 +103,7 @@ public:
    * Populate the stateful material properties in the Physics object from the
    * MaterialProperty object.
    */
-  void extract_stateful_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-          &vector) override;
+  void extract_stateful_material_properties() override;
 
   dealii::DoFHandler<dim> &get_dof_handler() override;
 
@@ -197,9 +195,10 @@ private:
    * Shared pointer to the material properties associated to the domain.
    */
   std::shared_ptr<MaterialProperty<dim>> _material_properties;
-
+  /**
+   * Property tree for the material properties from the user input.
+   */
   boost::property_tree::ptree _material_database;
-
   /**
    * Vector of heat sources.
    */

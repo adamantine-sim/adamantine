@@ -24,9 +24,10 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
-  ThermalOperator(MPI_Comm const &communicator,
-                  std::shared_ptr<MaterialProperty<dim>> material_properties,
-                  std::vector<std::shared_ptr<HeatSource<dim>>> heat_sources);
+  ThermalOperator(
+      MPI_Comm const &communicator,
+      std::shared_ptr<MaterialProperty<dim>> material_properties,
+      std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources);
 
   /**
    * Associate the AffineConstraints<double> and the MatrixFree objects to the
@@ -93,9 +94,7 @@ public:
    * Extract the stateful properties from the _material_properties object and
    * populate new vectors with the correct order.
    */
-  void extract_stateful_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &vector) override;
+  void extract_stateful_material_properties() override;
   /**
    * Modify the stateful properties from the MaterialProperty object to
    * match the evolved values in ThermalOperator. The main purpose of this is to

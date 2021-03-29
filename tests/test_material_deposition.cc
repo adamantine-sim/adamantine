@@ -274,7 +274,7 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   thermal_physics.initialize_dof_vector(solution);
 
-  thermal_physics.extract_stateful_material_properties(solution);
+  thermal_physics.extract_stateful_material_properties();
 
   std::vector<unsigned int> n_cells_ref = {610, 620, 630, 650, 650,
                                            660, 670, 680, 720, 720};

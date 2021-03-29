@@ -661,14 +661,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   thermal_physics->compute_inverse_mass_matrix();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   thermal_physics->initialize_dof_vector(initial_temperature, solution);
-
-  // I'm not sure if there's a better way to do this.
-  // extract_stateful_material_properties expects a MemorySpace::Host vector,
-  // but solution could be either Host or CUDA.
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      solution_host(solution.size());
-  solution_host.import(solution, dealii::VectorOperation::insert);
-  thermal_physics->extract_stateful_material_properties(solution_host);
+  thermal_physics->extract_stateful_material_properties();
 
   unsigned int progress = 0;
   unsigned int cycle = 0;

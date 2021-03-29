@@ -24,7 +24,7 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
     MPI_Comm const &communicator,
     std::shared_ptr<MaterialProperty<dim>> material_properties,
-    std::vector<std::shared_ptr<HeatSource<dim>>> heat_sources)
+    std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources)
     : _communicator(communicator), _material_properties(material_properties),
       _inverse_mass_matrix(
           new dealii::LA::distributed::Vector<double, MemorySpaceType>()),
@@ -200,10 +200,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
     // Store in a local vector the local values of src
     fe_eval.read_dof_values(src);
     // Evaluate only the function gradients on the reference cell
-    // fe_eval.evaluate(false, true);
-    fe_eval.evaluate(
-        true,
-        true); // Need the temperature to calculate the material properties
+    fe_eval.evaluate(dealii::EvaluationFlags::values |
+                     dealii::EvaluationFlags::gradients);
 
     // Apply the Jacobian of the transformation, multiply by the variable
     // coefficients and the quadrature points
@@ -246,20 +244,16 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
     }
 
     // Sum over the quadrature points.
-    fe_eval.integrate(true, true);
+    fe_eval.integrate(dealii::EvaluationFlags::values |
+                      dealii::EvaluationFlags::gradients);
     fe_eval.distribute_local_to_global(dst);
   }
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::
-    extract_stateful_material_properties(
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &temperature)
+void ThermalOperator<dim, fe_degree,
+                     MemorySpaceType>::extract_stateful_material_properties()
 {
-  // Update the state of the materials (is this needed here?)
-  _material_properties->update(_matrix_free.get_dof_handler(), temperature);
-
   unsigned int const n_cells = _matrix_free.n_cell_batches();
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
       _matrix_free);

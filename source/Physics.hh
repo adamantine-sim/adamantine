@@ -84,9 +84,7 @@ public:
    * Populate the stateful material properties in the Physics object from the
    * MaterialProperty object.
    */
-  virtual void extract_stateful_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-          &vector) = 0;
+  virtual void extract_stateful_material_properties() = 0;
 
   /**
    * Return the DoFHandler.

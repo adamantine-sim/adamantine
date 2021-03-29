@@ -277,16 +277,11 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::Tvmult_add(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
-    extract_stateful_material_properties(
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &temperature)
+void ThermalOperatorDevice<
+    dim, fe_degree, MemorySpaceType>::extract_stateful_material_properties()
 {
   // FIXME: There are several places in here where the material_id is needed but
   // I still need to determine a data type
-
-  // Update the material properties (is this needed here?)
-  //_material_properties->update(*_dof_handler, temperature);
 
   unsigned int const n_coefs =
       dealii::Utilities::pow(fe_degree + 1, dim) * _n_owned_cells;
@@ -327,7 +322,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
     }
   }
 
-  // Copy the coefficient to the host
+  // Copy the coefficient to the device
   _powder_ratio.import(powder_ratio_host, dealii::VectorOperation::insert);
   //_material_id.import(material_id_host, dealii::VectorOperation::insert);
 }

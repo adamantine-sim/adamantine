@@ -44,16 +44,7 @@ public:
 
   virtual void sync_stateful_material_properties() = 0;
 
-  virtual void extract_stateful_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &vector) = 0;
-
-  void evaluate_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> const
-          &)
-  {
-    ASSERT(false, "Internal error");
-  }
+  virtual void extract_stateful_material_properties() = 0;
 
   virtual void update_time_and_height(double time, double height) = 0;
 };

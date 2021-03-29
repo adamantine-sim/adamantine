@@ -53,10 +53,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(solution);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      solution_host(solution.size());
-  solution_host.import(solution, dealii::VectorOperation::insert);
-  physics.extract_stateful_material_properties(solution_host);
+  physics.extract_stateful_material_properties();
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
   while (time < 0.1)
@@ -121,10 +118,7 @@ void thermal_2d_manufactured_solution()
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   physics.initialize_dof_vector(solution);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      solution_host(solution.size());
-  solution_host.import(solution, dealii::VectorOperation::insert);
-  physics.extract_stateful_material_properties(solution_host);
+  physics.extract_stateful_material_properties();
   double time = physics.evolve_one_time_step(0., 0.1, solution, timers);
 
   double const tolerance = 1e-5;
@@ -191,10 +185,7 @@ void initial_temperature()
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(1000., solution);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      solution_host(solution.size());
-  solution_host.import(solution, dealii::VectorOperation::insert);
-  physics.extract_stateful_material_properties(solution_host);
+  physics.extract_stateful_material_properties();
   BOOST_CHECK(solution.l1_norm() == 1000. * solution.size());
 }
 
@@ -247,7 +238,7 @@ void energy_conservation()
   double constexpr initial_temperature = 10;
   double constexpr final_temperature = 10.5;
   physics.initialize_dof_vector(initial_temperature, solution);
-  physics.extract_stateful_material_properties(solution);
+  physics.extract_stateful_material_properties();
 
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
 
