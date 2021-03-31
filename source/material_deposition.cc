@@ -123,8 +123,9 @@ get_elements_to_activate(
   }
 
   // Perform the search
-  dealii::BVH bvh(bounding_boxes);
-  dealii::BoundingBoxIntersect bb_intersect(material_deposition_boxes);
+  dealii::ArborXWrappers::BVH bvh(bounding_boxes);
+  dealii::ArborXWrappers::BoundingBoxIntersectPredicate bb_intersect(
+      material_deposition_boxes);
   auto [indices, offset] = bvh.query(bb_intersect);
 
   unsigned int n_queries = material_deposition_boxes.size();
