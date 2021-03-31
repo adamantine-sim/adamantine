@@ -283,7 +283,74 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree,
                      MemorySpaceType>::sync_stateful_material_properties()
 {
-  // TODO
+  unsigned int const n_cells = _matrix_free.n_cell_batches();
+  dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
+      _matrix_free);
+
+  for (unsigned int cell = 0; cell < n_cells; ++cell)
+    for (unsigned int i = 0;
+         i < _matrix_free.n_active_entries_per_cell_batch(cell); ++i)
+    {
+      double powder_ratio_sum = 0;
+
+      std::vector<dealii::types::material_id> unique_ids;
+      std::vector<unsigned int> id_frequency;
+
+      for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
+      {
+
+        powder_ratio_sum += _powder_ratio(cell, q)[i];
+
+        auto matching_id = std::find(begin(unique_ids), end(unique_ids),
+                                     _material_id(cell, q)[i]);
+        if (matching_id == end(unique_ids))
+        {
+          unique_ids.push_back(_material_id(cell, q)[i]);
+          id_frequency.push_back(1);
+        }
+        else
+        {
+          id_frequency.at(std::distance(unique_ids.begin(), matching_id))++;
+        }
+
+        /*
+        bool new_index = true;
+        for (unsigned int index : unique_ids)
+        {
+          if (unique_ids.at(index) == _material_id(cell, q)[i])
+          {
+            new_index = false;
+            id_frequency.at(index)++;
+            break;
+          }
+        }
+        if (new_index)
+        {
+            unique_ids.push_back(_material_id(cell, q)[i]);
+            id_frequency.push_back(1);
+        }
+        */
+      }
+      typename dealii::DoFHandler<dim>::cell_iterator cell_it =
+          _matrix_free.get_cell_iterator(cell, i);
+      // Cast to Triangulation<dim>::cell_iterator to access the material_id
+      typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
+          cell_it);
+
+      double cell_powder_ratio = powder_ratio_sum / fe_eval.n_q_points;
+      _material_properties->set_state_ratio(cell_tria, MaterialState::powder,
+                                            cell_powder_ratio);
+
+      // Find the mode of the material ids in the cell
+      auto unique_id_iterator =
+          std::max_element(id_frequency.begin(), id_frequency.end());
+      unsigned int unique_id_index =
+          std::distance(id_frequency.begin(), unique_id_iterator);
+
+      dealii::types::material_id cell_material_id =
+          unique_ids.at(unique_id_index);
+      _material_properties->set_material_id(cell_tria, cell_material_id);
+    }
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>

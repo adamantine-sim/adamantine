@@ -219,3 +219,74 @@ BOOST_AUTO_TEST_CASE(spmv)
       BOOST_CHECK_CLOSE(dst_1[j], -dst_2[j], tolerance);
   }
 }
+
+BOOST_AUTO_TEST_CASE(sync_material_properties)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  // Create the Geometry
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 12);
+  geometry_database.put("length_divisions", 4);
+  geometry_database.put("height", 6);
+  geometry_database.put("height_divisions", 5);
+  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  // Create the DoFHandler
+  dealii::hp::FECollection<2> fe_collection;
+  fe_collection.push_back(dealii::FE_Q<2>(2));
+  fe_collection.push_back(dealii::FE_Nothing<2>());
+  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
+  dof_handler.distribute_dofs(fe_collection);
+  dealii::AffineConstraints<double> affine_constraints;
+  affine_constraints.close();
+  dealii::hp::QCollection<1> q_collection;
+  q_collection.push_back(dealii::QGauss<1>(3));
+  q_collection.push_back(dealii::QGauss<1>(1));
+
+  // Create the MaterialProperty
+  boost::property_tree::ptree mat_prop_database;
+  mat_prop_database.put("property_format", "polynomial");
+  mat_prop_database.put("n_materials", 1);
+  mat_prop_database.put("material_0.solid.density", 1.);
+  mat_prop_database.put("material_0.powder.density", 1.);
+  mat_prop_database.put("material_0.liquid.density", 1.);
+  mat_prop_database.put("material_0.solid.specific_heat", 1.);
+  mat_prop_database.put("material_0.powder.specific_heat", 1.);
+  mat_prop_database.put("material_0.liquid.specific_heat", 1.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity", 1.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity", 1.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity", 1.);
+  mat_prop_database.put("material_0.solidus", 400.);
+  mat_prop_database.put("material_0.liquidus", 500.);
+  mat_prop_database.put("material_0.latent_heat", 0.);
+  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
+      new adamantine::MaterialProperty<2>(
+          communicator, geometry.get_triangulation(), mat_prop_database));
+
+  boost::property_tree::ptree beam_database;
+  beam_database.put("depth", 0.1);
+  beam_database.put("absorption_efficiency", 0.1);
+  beam_database.put("diameter", 1.0);
+  beam_database.put("max_power", 0.0);
+  beam_database.put("scan_path_file", "scan_path.txt");
+  beam_database.put("scan_path_file_format", "segment");
+  std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
+  heat_sources.resize(1);
+  heat_sources[0] =
+      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
+
+  // Initialize the ThermalOperator
+  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
+      communicator, mat_properties, heat_sources);
+  thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
+  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
+                                               fe_collection);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
+      thermal_operator.m());
+  thermal_operator.update_time_and_height(0.0, 6.0);
+  thermal_operator.extract_stateful_material_properties();
+  thermal_operator.sync_stateful_material_properties();
+
+  // BOOST_CHECK_CLOSE(dst_1[j], -dst_2[j], tolerance);
+}

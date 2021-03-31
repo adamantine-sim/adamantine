@@ -77,6 +77,13 @@ public:
       const;
 
   /**
+   * Set the material id for a given cell.
+   */
+  void set_material_id(
+      typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
+      dealii::types::material_id id);
+
+  /**
    * Reinitialize the DoFHandler associated with MaterialProperty and resize
    * the state vectors.
    */
@@ -100,12 +107,18 @@ public:
   get_state();
 
   /**
-   * Get the ratio of a given MaterialState for a given cell. The sum
-   * of the states for a given cell is equal to 1.
+   * Get the ratio of a given MaterialState for a given cell.
    */
   double get_state_ratio(
       typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
       MaterialState material_state) const;
+
+  /**
+   * Set the ratio of a given MaterialState for a given cell.
+   */
+  void set_state_ratio(
+      typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
+      MaterialState material_state, double state_ratio_value);
 
   /**
    * Return the underlying the DoFHandler.
@@ -263,6 +276,17 @@ inline double MaterialProperty<dim>::get_state_ratio(
   auto const mat_state = static_cast<unsigned int>(material_state);
 
   return _state[mat_state][mp_dof_index];
+}
+
+template <int dim>
+inline void MaterialProperty<dim>::set_state_ratio(
+    typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
+    MaterialState material_state, double state_ratio_value)
+{
+  auto const mp_dof_index = get_dof_index(cell);
+  auto const mat_state = static_cast<unsigned int>(material_state);
+
+  _state[mat_state][mp_dof_index] = state_ratio_value;
 }
 
 template <int dim>

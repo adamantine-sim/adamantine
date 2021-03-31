@@ -70,6 +70,14 @@ dealii::types::material_id MaterialProperty<dim>::get_material_id(
 }
 
 template <int dim>
+void MaterialProperty<dim>::set_material_id(
+    typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
+    dealii::types::material_id id)
+{
+  cell->set_material_id(id);
+}
+
+template <int dim>
 void MaterialProperty<dim>::reinit_dofs()
 {
   _mp_dof_handler.distribute_dofs(_fe);
