@@ -11,6 +11,10 @@ IncludeCategories:
     Priority: 200
   - Regex: "boost*"
     Priority: 300
+  - Regex: "caliper*"
+    Priority: 400
+  - Regex: "Kokkos*"
+    Priority: 500
   - Regex: "<[a-z_]+>"
     Priority: 1000
 ...

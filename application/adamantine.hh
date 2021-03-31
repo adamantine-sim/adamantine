@@ -25,6 +25,10 @@
 #include <boost/property_tree/info_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
+#ifdef ADAMANTINE_WITH_CALIPER
+#include <caliper/cali.h>
+#endif
+
 #include <cmath>
 #include <iostream>
 
@@ -621,6 +625,10 @@ dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
 run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     std::vector<adamantine::Timer> &timers)
 {
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_CXX_MARK_FUNCTION;
+#endif
+
   // Extract property tree children
   boost::property_tree::ptree geometry_database =
       database.get_child("geometry");
@@ -699,8 +707,14 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       thermal_physics->get_dof_handler(), material_deposition_boxes);
   timers[adamantine::add_material].stop();
 
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_CXX_MARK_LOOP_BEGIN(main_loop_id, "main_loop");
+#endif
   while (time < duration)
   {
+#ifdef ADAMANTINE_WITH_CALIPER
+    CALI_CXX_MARK_LOOP_ITERATION(main_loop_id, n_time_step - 1);
+#endif
     if ((time + time_step) > duration)
       time_step = duration - time;
     unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
@@ -798,6 +812,11 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     }
     ++n_time_step;
   }
+
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_CXX_MARK_LOOP_END(main_loop_id);
+#endif
+
   post_processor.output_pvd();
 
   // This is only used for integration test
