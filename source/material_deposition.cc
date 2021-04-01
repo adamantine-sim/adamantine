@@ -128,7 +128,7 @@ get_elements_to_activate(
       material_deposition_boxes);
   auto [indices, offset] = bvh.query(bb_intersect);
 
-  unsigned int n_queries = material_deposition_boxes.size();
+  unsigned int const n_queries = material_deposition_boxes.size();
   std::vector<
       std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>
       elements_to_activate(n_queries);
