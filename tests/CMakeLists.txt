@@ -22,6 +22,7 @@ list(APPEND
 set(MPI_UNIT_TESTS "")
 list(APPEND
      MPI_UNIT_TESTS
+     test_experimental_data
      test_integration_2d
      test_material_deposition
      test_thermal_physics
@@ -49,6 +50,8 @@ if (ADAMANTINE_ENABLE_CUDA)
   endforeach()
 endif()
 
+adamantine_COPY_INPUT_FILE(experimental_data_0_0.csv tests/data)
+adamantine_COPY_INPUT_FILE(extruded_cube.msh tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d.info tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d_gold.txt tests/data)
 adamantine_COPY_INPUT_FILE(material_deposition_2d.txt tests/data)
@@ -57,4 +60,3 @@ adamantine_COPY_INPUT_FILE(material_path_test_material_deposition.txt tests/data
 adamantine_COPY_INPUT_FILE(scan_path.txt tests/data)
 adamantine_COPY_INPUT_FILE(scan_path_event_series.inp tests/data)
 adamantine_COPY_INPUT_FILE(scan_path_test_thermal_physics.txt tests/data)
-adamantine_COPY_INPUT_FILE(extruded_cube.msh tests/data)
