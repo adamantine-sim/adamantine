@@ -286,7 +286,7 @@ BOOST_AUTO_TEST_CASE(sync_material_properties)
       thermal_operator.m());
   thermal_operator.update_time_and_height(0.0, 6.0);
   thermal_operator.extract_stateful_material_properties();
-  thermal_operator.sync_stateful_material_properties();
+  thermal_operator.sync_material_properties(dummy);
 
   // BOOST_CHECK_CLOSE(dst_1[j], -dst_2[j], tolerance);
 }

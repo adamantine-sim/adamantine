@@ -807,6 +807,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // Output the solution
     if (n_time_step % time_steps_output == 0)
     {
+      thermal_physics->sync_material_properties(solution);
       output_pvtu(post_processor, cycle, n_time_step, time, affine_constraints,
                   solution, timers);
     }

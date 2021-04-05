@@ -79,10 +79,13 @@ public:
    */
   void extract_stateful_material_properties() override;
   /**
-   * Modify the stateful properties from the _material_properties object to
-   * match the evolved values in ThermalOperator.
+   * Modify the properties from the MaterialProperty object to
+   * match the evolved values in ThermalOperator. The main purpose of this is to
+   * update the material state variables in the MaterialProperty object.
    */
-  void sync_stateful_material_properties() override{};
+  void sync_material_properties(
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const
+          &temperature) override{};
   /**
    * Update the time and the current height, to be used to calculate the source
    * term.

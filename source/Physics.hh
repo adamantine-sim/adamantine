@@ -87,6 +87,15 @@ public:
   virtual void extract_stateful_material_properties() = 0;
 
   /**
+   * Modify the stateful properties from the MaterialProperty object to
+   * match the evolved values. The main purpose of this is to
+   * update the material state variables in the MaterialProperty object.
+   */
+  virtual void sync_material_properties(
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const
+          &temperature) = 0;
+
+  /**
    * Return the DoFHandler.
    */
   virtual dealii::DoFHandler<dim> &get_dof_handler() = 0;

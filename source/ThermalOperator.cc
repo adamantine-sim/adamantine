@@ -280,13 +280,15 @@ void ThermalOperator<dim, fe_degree,
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree,
-                     MemorySpaceType>::sync_stateful_material_properties()
+void ThermalOperator<dim, fe_degree, MemorySpaceType>::sync_material_properties(
+    dealii::LA::distributed::Vector<double, MemorySpaceType> const &temperature)
 {
   unsigned int const n_cells = _matrix_free.n_cell_batches();
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
       _matrix_free);
 
+  // First update the stateful material properties in the MaterialProperty
+  // object
   for (unsigned int cell = 0; cell < n_cells; ++cell)
     for (unsigned int i = 0;
          i < _matrix_free.n_active_entries_per_cell_batch(cell); ++i)
@@ -351,6 +353,10 @@ void ThermalOperator<dim, fe_degree,
           unique_ids.at(unique_id_index);
       _material_properties->set_material_id(cell_tria, cell_material_id);
     }
+
+  // Second, update the non-stateful material properties in the MaterialProperty
+  // object
+  _material_properties->update(_matrix_free.get_dof_handler(), temperature);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
