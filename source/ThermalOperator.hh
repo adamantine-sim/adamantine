@@ -109,6 +109,13 @@ public:
    * term.
    */
   void update_time_and_height(double time, double height) override;
+  /**
+   * Changes the stateful material properties to the designated values for the
+   * entire domain. This is primarily for testing purposes.
+   */
+  void set_stateful_material_property(
+      const double powder_ratio,
+      const dealii::types::material_id material_id) const;
 
 private:
   /**
@@ -119,19 +126,6 @@ private:
       dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
       dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
       std::pair<unsigned int, unsigned int> const &cell_range) const;
-
-  /**
-   * Calculate the state ratios given the temperature and the current powder
-   * ratio. Even though this is const, it modifies the mutable _powder_ratio
-   * member (this method is const because it is called in local_apply which has
-   * to be const).
-   */
-  void
-  update_state_ratios(unsigned int cell, unsigned int q,
-                      dealii::VectorizedArray<double> temperature,
-                      std::array<dealii::VectorizedArray<double>,
-                                 static_cast<unsigned int>(MaterialState::SIZE)>
-                          &state_ratios) const;
 
   /**
    * Calculates the inverse of the density times the heat capacity.
@@ -152,7 +146,18 @@ private:
                  static_cast<unsigned int>(MaterialState::SIZE)>
           state_ratios,
       dealii::VectorizedArray<double> temperature) const;
-
+  /**
+   * Calculate the state ratios given the temperature and the current powder
+   * ratio. Even though this is const, it modifies the mutable _powder_ratio
+   * member (this method is const because it is called in local_apply which has
+   * to be const).
+   */
+  void
+  update_state_ratios(unsigned int cell, unsigned int q,
+                      dealii::VectorizedArray<double> temperature,
+                      std::array<dealii::VectorizedArray<double>,
+                                 static_cast<unsigned int>(MaterialState::SIZE)>
+                          &state_ratios) const;
   /**
    * MPI communicator.
    */

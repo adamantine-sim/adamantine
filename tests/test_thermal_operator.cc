@@ -222,6 +222,11 @@ BOOST_AUTO_TEST_CASE(spmv)
 
 BOOST_AUTO_TEST_CASE(sync_material_properties)
 {
+  // NOTE: This test currently verifies that if the state or id changes for the
+  // entire domain in ThermalOperator that this change is reflected in
+  // MaterialProperty. Ideally there would also be a test to make sure that
+  // localized changes are also properly synced.
+
   MPI_Comm communicator = MPI_COMM_WORLD;
 
   // Create the Geometry
@@ -247,7 +252,7 @@ BOOST_AUTO_TEST_CASE(sync_material_properties)
   // Create the MaterialProperty
   boost::property_tree::ptree mat_prop_database;
   mat_prop_database.put("property_format", "polynomial");
-  mat_prop_database.put("n_materials", 1);
+  mat_prop_database.put("n_materials", 2);
   mat_prop_database.put("material_0.solid.density", 1.);
   mat_prop_database.put("material_0.powder.density", 1.);
   mat_prop_database.put("material_0.liquid.density", 1.);
@@ -260,15 +265,27 @@ BOOST_AUTO_TEST_CASE(sync_material_properties)
   mat_prop_database.put("material_0.solidus", 400.);
   mat_prop_database.put("material_0.liquidus", 500.);
   mat_prop_database.put("material_0.latent_heat", 0.);
+  mat_prop_database.put("material_1.solid.density", 1.);
+  mat_prop_database.put("material_1.powder.density", 1.);
+  mat_prop_database.put("material_1.liquid.density", 1.);
+  mat_prop_database.put("material_1.solid.specific_heat", 1.);
+  mat_prop_database.put("material_1.powder.specific_heat", 1.);
+  mat_prop_database.put("material_1.liquid.specific_heat", 1.);
+  mat_prop_database.put("material_1.solid.thermal_conductivity", 1.);
+  mat_prop_database.put("material_1.powder.thermal_conductivity", 1.);
+  mat_prop_database.put("material_1.liquid.thermal_conductivity", 1.);
+  mat_prop_database.put("material_1.solidus", 400.);
+  mat_prop_database.put("material_1.liquidus", 500.);
+  mat_prop_database.put("material_1.latent_heat", 0.);
   std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
       new adamantine::MaterialProperty<2>(
           communicator, geometry.get_triangulation(), mat_prop_database));
 
   boost::property_tree::ptree beam_database;
-  beam_database.put("depth", 0.1);
+  beam_database.put("depth", 6.);
   beam_database.put("absorption_efficiency", 0.1);
-  beam_database.put("diameter", 1.0);
-  beam_database.put("max_power", 0.0);
+  beam_database.put("diameter", 12.0);
+  beam_database.put("max_power", 1000.0);
   beam_database.put("scan_path_file", "scan_path.txt");
   beam_database.put("scan_path_file_format", "segment");
   std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
@@ -288,5 +305,41 @@ BOOST_AUTO_TEST_CASE(sync_material_properties)
   thermal_operator.extract_stateful_material_properties();
   thermal_operator.sync_material_properties(dummy);
 
-  // BOOST_CHECK_CLOSE(dst_1[j], -dst_2[j], tolerance);
+  // Initially it should be all solid with material id 0
+  for (auto cell : geometry.get_triangulation().active_cell_iterators())
+  {
+    double powder_ratio = mat_properties->get_state_ratio(
+        cell, adamantine::MaterialState::powder);
+    BOOST_CHECK(powder_ratio == 0.);
+    double solid_ratio =
+        mat_properties->get_state_ratio(cell, adamantine::MaterialState::solid);
+    BOOST_CHECK(solid_ratio == 1.);
+    double liquid_ratio = mat_properties->get_state_ratio(
+        cell, adamantine::MaterialState::liquid);
+    BOOST_CHECK(liquid_ratio == 0.);
+
+    dealii::types::material_id id = mat_properties->get_material_id(cell);
+    BOOST_CHECK(id == 0);
+  }
+
+  // Change the state in the ThermalOperator
+  thermal_operator.set_stateful_material_property(1.0, 1);
+  thermal_operator.sync_material_properties(dummy);
+
+  // Now it should all be powder with material id 1
+  for (auto cell : geometry.get_triangulation().active_cell_iterators())
+  {
+    double powder_ratio = mat_properties->get_state_ratio(
+        cell, adamantine::MaterialState::powder);
+    BOOST_CHECK(powder_ratio == 1.);
+    double solid_ratio =
+        mat_properties->get_state_ratio(cell, adamantine::MaterialState::solid);
+    BOOST_CHECK(solid_ratio == 0.);
+    double liquid_ratio = mat_properties->get_state_ratio(
+        cell, adamantine::MaterialState::liquid);
+    BOOST_CHECK(liquid_ratio == 0.);
+
+    dealii::types::material_id id = mat_properties->get_material_id(cell);
+    BOOST_CHECK(id == 1);
+  }
 }

@@ -280,6 +280,28 @@ void ThermalOperator<dim, fe_degree,
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, fe_degree, MemorySpaceType>::
+    set_stateful_material_property(
+        const double powder_ratio,
+        const dealii::types::material_id material_id) const
+{
+  unsigned int const n_cells = _matrix_free.n_cell_batches();
+  dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
+      _matrix_free);
+
+  for (unsigned int cell = 0; cell < n_cells; ++cell)
+    for (unsigned int i = 0;
+         i < _matrix_free.n_active_entries_per_cell_batch(cell); ++i)
+    {
+      for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
+      {
+        _powder_ratio(cell, q)[i] = powder_ratio;
+        _material_id(cell, q)[i] = material_id;
+      }
+    }
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::sync_material_properties(
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &temperature)
 {
@@ -300,7 +322,6 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::sync_material_properties(
 
       for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
       {
-
         powder_ratio_sum += _powder_ratio(cell, q)[i];
 
         auto matching_id = std::find(begin(unique_ids), end(unique_ids),
@@ -314,24 +335,6 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::sync_material_properties(
         {
           id_frequency.at(std::distance(unique_ids.begin(), matching_id))++;
         }
-
-        /*
-        bool new_index = true;
-        for (unsigned int index : unique_ids)
-        {
-          if (unique_ids.at(index) == _material_id(cell, q)[i])
-          {
-            new_index = false;
-            id_frequency.at(index)++;
-            break;
-          }
-        }
-        if (new_index)
-        {
-            unique_ids.push_back(_material_id(cell, q)[i]);
-            id_frequency.push_back(1);
-        }
-        */
       }
       typename dealii::DoFHandler<dim>::cell_iterator cell_it =
           _matrix_free.get_cell_iterator(cell, i);
