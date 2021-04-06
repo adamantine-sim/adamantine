@@ -47,7 +47,7 @@ valid as `input.info`.
 
 ### Input file
 The following options are available:
-* geometry
+* geometry:
   * dim: the dimension of the problem (2 or 3)
   * material\_height: below this height the domain contains material. Above this
   height the domain is empty (default value: 1e9)
@@ -71,7 +71,7 @@ The following options are available:
     * length\_divisions: number of cell layers in length (default value: 10)
     * height\_divisions: number of cell layers in the height (default value: 10)
     * width\_divisions: number of cell layers in width (only in 3D) (default value: 10)
-* refinement
+* refinement:
   * n\_heat\_refinements: number of coarsening/refinement to execute (default value: 2)
   * heat\_cell\_ratio: this is the ratio (n new cells)/(n old cells) after heat
   refinement (default value: 1)
@@ -136,7 +136,7 @@ The following options are available:
     * jfnk: use Jacobian-Free Newton Krylov method (default value: false)
 * post\_processor:
   * file\_name: prefix of output files
-  * time_steps_between_output: number of time steps between the
+  * time\_steps\_between\_output: number of time steps between the
   fields being written to the output files (default value: 1)
 * discretization:
   * fe\_degree: degree of the finite element used
@@ -145,6 +145,15 @@ The following options are available:
   * timer: output timing information (default value: false)
   * caliper: configuration string for Caliper (optional)
 * memory\_space: device (use GPU) or host (use CPU) (default value: host)
+* experiment: (optional)
+  * file: format of the file names. The format is pretty arbitrary, the keywords \#frame 
+  and \#camera are replaced by the frame and the camera number. The format of
+  the file itself should be csv.
+  * first\_frame: number associated to the first frame (default value: 0)
+  * last\_frame: number associated to the last frame
+  * first\_camera\_id: number associated to the first camera
+  * last\_camera\_id: number associated to the last camera
+  * data\_columns: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D)
 
 
 ### Scan path
