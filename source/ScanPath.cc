@@ -177,7 +177,14 @@ dealii::Point<3> ScanPath::value(double const &time) const
           (_segment_list[_current_segment].end_time - segment_start_time) *
           (time - segment_start_time);
 
-  return position;
+  if (time <= _segment_list.back().end_time)
+  {
+    return position;
+  }
+  else
+  {
+    return _segment_list.back().end_point;
+  }
 }
 
 double ScanPath::get_power_modifier(double const &time) const
@@ -188,7 +195,14 @@ double ScanPath::get_power_modifier(double const &time) const
   double segment_start_time = 0.0;
   update_current_segment_info(time, segment_start_point, segment_start_time);
 
-  return _segment_list[_current_segment].power_modifier;
+  if (time <= _segment_list.back().end_time)
+  {
+    return _segment_list[_current_segment].power_modifier;
+  }
+  else
+  {
+    return 0.0;
+  }
 }
 
 } // namespace adamantine

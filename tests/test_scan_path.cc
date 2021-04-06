@@ -96,6 +96,14 @@ BOOST_AUTO_TEST_CASE(scan_path_location)
   BOOST_CHECK_CLOSE(p2[0], 8.0e-4, tolerance);
   BOOST_CHECK_CLOSE(p2[1], 0.0, tolerance);
   BOOST_CHECK_CLOSE(p2[2], 0.0, tolerance);
+
+  time = 100.0;
+  dealii::Point<3> p3 = scan_path.value(time);
+  BOOST_CHECK_CLOSE(p3[0], 0.002, tolerance);
+  BOOST_CHECK_CLOSE(p3[1], 0.0, tolerance);
+  BOOST_CHECK_CLOSE(p3[2], 0.0, tolerance);
+  double power = scan_path.get_power_modifier(time);
+  BOOST_CHECK_CLOSE(power, 0.0, tolerance);
 }
 
 } // namespace adamantine
