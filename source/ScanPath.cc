@@ -164,6 +164,16 @@ void ScanPath::update_current_segment_info(
 
 dealii::Point<3> ScanPath::value(double const &time) const
 {
+  // If the current time is after the scan path data is over, return a point
+  // that is (presumably) out of the domain.
+  if (time > _segment_list.back().end_time)
+  {
+    dealii::Point<3> out_of_domain_point(std::numeric_limits<double>::max(),
+                                         std::numeric_limits<double>::max(),
+                                         std::numeric_limits<double>::max());
+    return out_of_domain_point;
+  }
+
   // Get to the correct segment (assumes that the current time is never
   // before the current segment starts)
   dealii::Point<3> segment_start_point;
@@ -182,6 +192,11 @@ dealii::Point<3> ScanPath::value(double const &time) const
 
 double ScanPath::get_power_modifier(double const &time) const
 {
+  // If the current time is after the scan path data is over, set the power to
+  // zero.
+  if (time > _segment_list.back().end_time)
+    return 0.0;
+
   // Get to the correct segment (assumes that the current time is never
   // before the current segment starts)
   dealii::Point<3> segment_start_point;

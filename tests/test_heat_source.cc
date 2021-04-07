@@ -80,6 +80,15 @@ BOOST_AUTO_TEST_CASE(heat_source_value_2d)
                    std::exp(std::log(0.1) * 1.0e-4 * 1.0e-4 / 0.25) *
                    (-3.0 * 0.01 * 0.01 / 0.1 / 0.1 + 2.0 * 0.01 / 0.1 + 1.0);
   BOOST_CHECK_CLOSE(eb_value, expected_value, tolerance);
+
+  // Checking beyond the defined time, where the expected value is zero
+  std::cout << "Checking point 5..." << std::endl;
+  g_value = goldak_heat_source.value(point4, 100.0, 0.2);
+  expected_value = 0.0;
+  BOOST_CHECK_CLOSE(g_value, expected_value, tolerance);
+
+  eb_value = eb_heat_source.value(point4, 100.0, 0.2);
+  BOOST_CHECK_CLOSE(eb_value, expected_value, tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(heat_source_value_3d)
