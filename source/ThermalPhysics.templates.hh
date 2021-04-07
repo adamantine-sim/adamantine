@@ -332,6 +332,14 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     else
       cell->set_active_fe_index(1);
   }
+
+  // Set the initial height of the heat source
+  double temp_height = -std::numeric_limits<double>::max();
+  for (auto const &source : _heat_sources)
+  {
+    temp_height = std::max(temp_height, source->get_current_height(0.0));
+  }
+  _current_source_height = temp_height;
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -350,21 +358,6 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
   _affine_constraints.close();
 
   _thermal_operator->reinit(_dof_handler, _affine_constraints, _q_collection);
-
-  // Update the current height of the object
-  // Loop over the locally owned cells with an active FE index of zero
-  for (auto const &cell : dealii::filter_iterators(
-           _dof_handler.active_cell_iterators(),
-           dealii::IteratorFilters::LocallyOwnedCell(),
-           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
-  {
-    // Loop over the faces
-    for (auto face_index : dealii::GeometryInfo<dim>::face_indices())
-    {
-      _current_height = std::max(
-          _current_height, cell->face(face_index)->center()[axis<dim>::z]);
-    }
-  }
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -479,6 +472,15 @@ double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
         std::vector<Timer> &timers)
 {
+
+  // Update the height of the heat source
+  double temp_height = -std::numeric_limits<double>::max();
+  for (auto const &source : _heat_sources)
+  {
+    temp_height = std::max(temp_height, source->get_current_height(t));
+  }
+  _current_source_height = temp_height;
+
   auto eval = [&](double const t, LA_Vector const &y) {
     return evaluate_thermal_physics(t, y, timers);
   };
@@ -588,7 +590,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         double quad_pt_source = 0.;
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
         for (auto &beam : _heat_sources)
-          quad_pt_source += beam->value(q_point, t, _current_height);
+          quad_pt_source += beam->value(q_point, t, _current_source_height);
 
         cell_source[i] += inv_rho_cp * quad_pt_source *
                           fe_values.shape_value(i, q) * fe_values.JxW(q);

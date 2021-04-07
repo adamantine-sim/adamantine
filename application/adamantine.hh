@@ -406,7 +406,7 @@ compute_cells_to_refine(
     double const time, double const next_refinement_time,
     unsigned int const n_time_steps,
     std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources,
-    double const current_height)
+    double const current_source_height)
 {
 
   // Compute the position of the beams between time and next_refinement_time and
@@ -428,7 +428,8 @@ compute_cells_to_refine(
                triangulation.active_cell_iterators(),
                dealii::IteratorFilters::LocallyOwnedCell()))
       {
-        if (beam->value(cell->center(), current_time, current_height) > 1e-15)
+        if (beam->value(cell->center(), current_time, current_source_height) >
+            1e-15)
         {
           cells_to_refine.push_back(cell);
         }
@@ -495,18 +496,18 @@ void refine_mesh(
   }
 
   // Refine the mesh along the trajectory of the sources.
-  double current_height =
+  double current_source_height =
       dynamic_cast<adamantine::ThermalPhysics<dim, fe_degree, MemorySpaceType,
                                               dealii::QGauss<1>> *>(
           thermal_physics.get())
           ? dynamic_cast<adamantine::ThermalPhysics<
                 dim, fe_degree, MemorySpaceType, dealii::QGauss<1>> *>(
                 thermal_physics.get())
-                ->get_current_height()
+                ->get_current_source_height()
           : dynamic_cast<adamantine::ThermalPhysics<
                 dim, fe_degree, MemorySpaceType, dealii::QGaussLobatto<1>> *>(
                 thermal_physics.get())
-                ->get_current_height();
+                ->get_current_source_height();
 
   for (unsigned int i = 0; i < n_beam_refinements; ++i)
   {
@@ -516,7 +517,7 @@ void refine_mesh(
         cells_to_refine =
             compute_cells_to_refine(triangulation, time, next_refinement_time,
                                     time_steps_refinement, heat_sources,
-                                    current_height);
+                                    current_source_height);
 
     // Flag the cells for refinement.
     for (auto &cell : cells_to_refine)

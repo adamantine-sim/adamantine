@@ -147,4 +147,51 @@ BOOST_AUTO_TEST_CASE(heat_source_value_3d)
   BOOST_CHECK_CLOSE(eb_value, expected_value, tolerance);
 }
 
+BOOST_AUTO_TEST_CASE(heat_source_height)
+{
+  double const tolerance = 1e-12;
+
+  boost::property_tree::ptree database;
+
+  database.put("depth", 0.1);
+  database.put("absorption_efficiency", 0.1);
+  database.put("diameter", 1.0);
+  database.put("max_power", 10.);
+  database.put("scan_path_file", "scan_path_layers.txt");
+  database.put("scan_path_file_format", "segment");
+  GoldakHeatSource<2> goldak_heat_source(database);
+  ElectronBeamHeatSource<2> eb_heat_source(database);
+
+  double g_height = 0.0;
+  double eb_height = 0.0;
+
+  // Check the height for the first segment
+  g_height = goldak_heat_source.get_current_height(1.0e-7);
+  BOOST_CHECK_SMALL(std::abs(g_height - 0.0), tolerance);
+
+  eb_height = eb_heat_source.get_current_height(1.0e-7);
+  BOOST_CHECK_SMALL(std::abs(eb_height - 0.0), tolerance);
+
+  // Check the height for the second segment
+  g_height = goldak_heat_source.get_current_height(0.001001);
+  BOOST_CHECK_SMALL(std::abs(g_height - 0.0), tolerance);
+
+  eb_height = eb_heat_source.get_current_height(0.001001);
+  BOOST_CHECK_SMALL(std::abs(eb_height - 0.0), tolerance);
+
+  // Check the height for the third segment
+  g_height = goldak_heat_source.get_current_height(0.003);
+  BOOST_CHECK_CLOSE(g_height, 0.001, tolerance);
+
+  eb_height = eb_heat_source.get_current_height(0.003);
+  BOOST_CHECK_CLOSE(eb_height, 0.001, tolerance);
+
+  for (int i = 0; i < 100; ++i)
+  {
+    double test_time = static_cast<double>(i) * 0.0001;
+    std::cout << test_time << " "
+              << goldak_heat_source.get_current_height(test_time) << std::endl;
+  }
+}
+
 } // namespace adamantine
