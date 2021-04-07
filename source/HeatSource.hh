@@ -91,7 +91,7 @@ protected:
 template <int dim>
 inline double HeatSource<dim>::get_current_height(double const time) const
 {
-  return _scan_path.value(time)[3];
+  return _scan_path.value(time)[2];
 }
 
 } // namespace adamantine

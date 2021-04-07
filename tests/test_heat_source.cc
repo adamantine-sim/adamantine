@@ -194,13 +194,6 @@ BOOST_AUTO_TEST_CASE(heat_source_height)
 
   eb_height = eb_heat_source.get_current_height(0.003);
   BOOST_CHECK_CLOSE(eb_height, 0.001, tolerance);
-
-  for (int i = 0; i < 100; ++i)
-  {
-    double test_time = static_cast<double>(i) * 0.0001;
-    std::cout << test_time << " "
-              << goldak_heat_source.get_current_height(test_time) << std::endl;
-  }
 }
 
 } // namespace adamantine
