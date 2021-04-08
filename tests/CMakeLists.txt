@@ -60,3 +60,4 @@ adamantine_COPY_INPUT_FILE(material_path_test_material_deposition.txt tests/data
 adamantine_COPY_INPUT_FILE(scan_path.txt tests/data)
 adamantine_COPY_INPUT_FILE(scan_path_event_series.inp tests/data)
 adamantine_COPY_INPUT_FILE(scan_path_test_thermal_physics.txt tests/data)
+adamantine_COPY_INPUT_FILE(scan_path_layers.txt tests/data)

@@ -168,9 +168,9 @@ dealii::Point<3> ScanPath::value(double const &time) const
   // that is (presumably) out of the domain.
   if (time > _segment_list.back().end_time)
   {
-    dealii::Point<3> out_of_domain_point(std::numeric_limits<double>::max(),
-                                         std::numeric_limits<double>::max(),
-                                         std::numeric_limits<double>::max());
+    dealii::Point<3> out_of_domain_point(std::numeric_limits<double>::lowest(),
+                                         std::numeric_limits<double>::lowest(),
+                                         std::numeric_limits<double>::lowest());
     return out_of_domain_point;
   }
 
