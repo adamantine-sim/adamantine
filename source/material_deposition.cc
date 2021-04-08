@@ -20,7 +20,9 @@ namespace adamantine
 {
 template <int dim>
 std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
-read_material_deposition(boost::property_tree::ptree const &geometry_database)
+create_material_deposition_boxes(
+    boost::property_tree::ptree const &geometry_database,
+    std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources)
 {
   // PropertyTreeInput geometry.material_deposition
   bool material_deposition =
@@ -29,7 +31,42 @@ read_material_deposition(boost::property_tree::ptree const &geometry_database)
   {
     return {{}, {}};
   }
+  else
+  {
+    std::string method =
+        geometry_database.get<std::string>("material_deposition_method");
 
+    ASSERT_THROW(method.compare("file") == 0 ||
+                     method.compare("scan_paths") == 0,
+                 "Error: Method type for material deposition, '" + method +
+                     "', is not recognized. Valid options are: 'file' "
+                     "and 'scan_paths'");
+    if (method.compare("file") == 0)
+    {
+      return read_material_deposition<dim>(geometry_database);
+    }
+    else
+    {
+      std::vector<
+          std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>>
+          box_and_time_list;
+      for (auto const &source : heat_sources)
+      {
+        std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
+            temp_boxes_and_times = deposition_along_scan_path<dim>(
+                geometry_database, source->get_scan_path());
+        box_and_time_list.push_back(temp_boxes_and_times);
+      }
+
+      return merge_bounding_box_lists(box_and_time_list);
+    }
+  }
+}
+
+template <int dim>
+std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
+read_material_deposition(boost::property_tree::ptree const &geometry_database)
+{
   // PropertyTreeInput geometry.material_deposition_file
   std::string material_deposition_filename =
       geometry_database.get<std::string>("material_deposition_file");
@@ -98,6 +135,34 @@ read_material_deposition(boost::property_tree::ptree const &geometry_database)
 }
 
 template <int dim>
+std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
+deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
+                           ScanPath const &scan_path)
+{
+  std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
+      boxes_and_times;
+
+  // TODO
+
+  return boxes_and_times;
+}
+
+template <int dim>
+std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
+merge_bounding_box_lists(
+    std::vector<
+        std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>>
+        bounding_box_lists)
+{
+  std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
+      merged_list;
+
+  // TODO
+
+  return merged_list;
+}
+
+template <int dim>
 std::vector<std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>
 get_elements_to_activate(
     dealii::DoFHandler<dim> const &dof_handler,
@@ -147,6 +212,15 @@ get_elements_to_activate(
 //-------------------- Explicit Instantiations --------------------//
 namespace adamantine
 {
+template std::pair<std::vector<dealii::BoundingBox<2>>, std::vector<double>>
+create_material_deposition_boxes(
+    boost::property_tree::ptree const &geometry_database,
+    std::vector<std::unique_ptr<adamantine::HeatSource<2>>> &heat_sources);
+template std::pair<std::vector<dealii::BoundingBox<3>>, std::vector<double>>
+create_material_deposition_boxes(
+    boost::property_tree::ptree const &geometry_database,
+    std::vector<std::unique_ptr<adamantine::HeatSource<3>>> &heat_sources);
+
 template std::pair<std::vector<dealii::BoundingBox<2>>, std::vector<double>>
 read_material_deposition(boost::property_tree::ptree const &geometry_database);
 template std::pair<std::vector<dealii::BoundingBox<3>>, std::vector<double>>

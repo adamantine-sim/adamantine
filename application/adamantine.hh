@@ -695,7 +695,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       post_processor_database.get("time_steps_between_output", 1);
 
   auto [material_deposition_boxes, deposition_times] =
-      adamantine::read_material_deposition<dim>(geometry_database);
+      adamantine::create_material_deposition_boxes<dim>(geometry_database,
+                                                        heat_sources);
   // Unless we use an embedded method, we know in advance the time step.
   // Thus we can get for each time step, the list of elements that we will need
   // to activate. This list will be invalidated every time we refine the mesh.

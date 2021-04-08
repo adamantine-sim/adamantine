@@ -68,6 +68,10 @@ public:
    */
   virtual double value(dealii::Point<dim> const &point, double const time,
                        double const height) const = 0;
+  /**
+   * Return the scan path for the heat source.
+   */
+  virtual ScanPath const &get_scan_path() const;
 
 protected:
   /**
@@ -80,6 +84,12 @@ protected:
    */
   ScanPath _scan_path;
 };
+
+template <int dim>
+inline ScanPath const &HeatSource<dim>::get_scan_path() const
+{
+  return _scan_path;
+}
 
 } // namespace adamantine
 
