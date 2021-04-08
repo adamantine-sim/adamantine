@@ -333,8 +333,10 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
       cell->set_active_fe_index(1);
   }
 
-  // Set the initial height of the heat source
-  double temp_height = -std::numeric_limits<double>::max();
+  // Set the initial height of the heat source. Right now this is just the
+  // maximum heat source height, which can lead to unexpected behavior for
+  // different sources with different heights.
+  double temp_height = std::numeric_limits<double>::lowest();
   for (auto const &source : _heat_sources)
   {
     temp_height = std::max(temp_height, source->get_current_height(0.0));
@@ -473,8 +475,10 @@ double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         std::vector<Timer> &timers)
 {
 
-  // Update the height of the heat source
-  double temp_height = -std::numeric_limits<double>::max();
+  // Update the height of the heat source. Right now this is just the
+  // maximum heat source height, which can lead to unexpected behavior for
+  // different sources with different heights.
+  double temp_height = std::numeric_limits<double>::lowest();
   for (auto const &source : _heat_sources)
   {
     temp_height = std::max(temp_height, source->get_current_height(t));
