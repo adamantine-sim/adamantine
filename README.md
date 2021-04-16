@@ -87,7 +87,7 @@ The following options are available:
   in J/kg (optional)
 * memory\_space: device (use GPU) or host (use CPU) (default value: host)
 * post\_processor:
-  * file\_name: prefix of output files
+  * filename\_prefix: prefix of output files
   * time\_steps\_between\_output: number of time steps between the
   fields being written to the output files (default value: 1)
 * refinement:
