@@ -23,7 +23,7 @@ PostProcessor<dim>::PostProcessor(
       _material_properties(material_properties)
 {
   // PropertyTreeInput post_processor.file_name
-  _filename = database.get<std::string>("file_name");
+  _filename_prefix = database.get<std::string>("filename_prefix");
 }
 
 template <int dim>
@@ -82,8 +82,8 @@ void PostProcessor<dim>::output_pvtu(
   // Output the data.
   _data_out.build_patches();
   std::string local_filename =
-      _filename + "." + dealii::Utilities::int_to_string(cycle, 2) + "." +
-      dealii::Utilities::int_to_string(time_step, 6) + "." +
+      _filename_prefix + "." + dealii::Utilities::int_to_string(cycle, 2) +
+      "." + dealii::Utilities::int_to_string(time_step, 6) + "." +
       dealii::Utilities::int_to_string(subdomain_id, 6);
   std::ofstream output((local_filename + ".vtu").c_str());
   dealii::DataOutBase::VtkFlags flags(time, cycle);
@@ -100,14 +100,14 @@ void PostProcessor<dim>::output_pvtu(
     for (unsigned int i = 0; i < comm_size; ++i)
     {
       std::string local_name =
-          _filename + "." + dealii::Utilities::int_to_string(cycle, 2) + "." +
-          dealii::Utilities::int_to_string(time_step, 6) + "." +
+          _filename_prefix + "." + dealii::Utilities::int_to_string(cycle, 2) +
+          "." + dealii::Utilities::int_to_string(time_step, 6) + "." +
           dealii::Utilities::int_to_string(i, 6) + ".vtu";
       filenames.push_back(local_name);
     }
     std::string pvtu_filename =
-        _filename + "." + dealii::Utilities::int_to_string(cycle, 2) + "." +
-        dealii::Utilities::int_to_string(time_step, 6) + ".pvtu";
+        _filename_prefix + "." + dealii::Utilities::int_to_string(cycle, 2) +
+        "." + dealii::Utilities::int_to_string(time_step, 6) + ".pvtu";
     std::ofstream pvtu_output(pvtu_filename.c_str());
     _data_out.write_pvtu_record(pvtu_output, filenames);
 
@@ -120,7 +120,7 @@ void PostProcessor<dim>::output_pvtu(
 template <int dim>
 void PostProcessor<dim>::output_pvd()
 {
-  std::ofstream output(_filename + ".pvd");
+  std::ofstream output(_filename_prefix + ".pvd");
   dealii::DataOutBase::write_pvd_record(output, _times_filenames);
 }
 

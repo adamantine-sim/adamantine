@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(post_processor)
 
   // Create the PostProcessor
   boost::property_tree::ptree post_processor_database;
-  post_processor_database.put("file_name", "test");
+  post_processor_database.put("filename_prefix", "test");
   adamantine::PostProcessor<2> post_processor(
       communicator, post_processor_database, dof_handler, mat_properties);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src;

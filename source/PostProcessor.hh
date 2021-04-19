@@ -53,9 +53,9 @@ private:
    */
   MPI_Comm _communicator;
   /**
-   * Root of the different output files.
+   * Prefix of the different output files.
    */
-  std::string _filename;
+  std::string _filename_prefix;
   /**
    * Vector of pair of time and pvtu file.
    */
