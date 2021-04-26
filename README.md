@@ -199,9 +199,3 @@ The first entry of the file is the dimension the problem: 2 or 3.
 ## Questions
 If you have any question, find a bug, or have feature request please open an
 issue.
-
-## Continuous Integration
-Provider  | Service    | Status
---------- |----------- | ------
-Travis CI | unit tests | [![Build Status](https://travis-ci.org/Rombur/adamantine.svg?branch=master)](https://travis-ci.org/Rombur/adamantine)
-Codecov   | coverage   | [![codecov](https://codecov.io/gh/Rombur/adamantine/branch/master/graphs/badge.svg)](https://codecov.io/gh/Rombur/adamantine)
