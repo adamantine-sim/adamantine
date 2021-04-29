@@ -51,6 +51,13 @@ merge_bounding_box_lists(
         std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>>
         bounding_box_lists);
 /**
+ * Removes duplicate boxes from a bounding box list
+ */
+template <int dim>
+void remove_duplicate_boxes(
+    std::vector<std::pair<std::vector<dealii::BoundingBox<dim>>,
+                          std::vector<double>>> &bounding_box_lists);
+/**
  * Return a vector of cells to activate for each time deposition.
  */
 template <int dim>

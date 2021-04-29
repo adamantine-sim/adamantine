@@ -206,4 +206,9 @@ double ScanPath::get_power_modifier(double const &time) const
   return _segment_list[_current_segment].power_modifier;
 }
 
+std::vector<ScanPathSegment> ScanPath::get_segment_list() const
+{
+  return _segment_list;
+}
+
 } // namespace adamantine

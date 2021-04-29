@@ -85,6 +85,11 @@ public:
    */
   double get_power_modifier(double const &time) const;
 
+  /**
+   * Returns the scan path's list of segments
+   */
+  std::vector<ScanPathSegment> get_segment_list() const;
+
 private:
   /**
    * The list of information about each segment in the scan path.
