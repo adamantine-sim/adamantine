@@ -98,6 +98,7 @@ inline ScanPath const &HeatSource<dim>::get_scan_path() const
   return _scan_path;
 }
 
+template <int dim>
 inline double HeatSource<dim>::get_current_height(double const time) const
 {
   return _scan_path.value(time)[2];
