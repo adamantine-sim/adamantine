@@ -99,9 +99,9 @@ BOOST_AUTO_TEST_CASE(scan_path_location)
 
   time = 100.0;
   dealii::Point<3> p3 = scan_path.value(time);
-  BOOST_CHECK_CLOSE(p3[0], std::numeric_limits<double>::max(), tolerance);
-  BOOST_CHECK_CLOSE(p3[1], std::numeric_limits<double>::max(), tolerance);
-  BOOST_CHECK_CLOSE(p3[2], std::numeric_limits<double>::max(), tolerance);
+  BOOST_CHECK_CLOSE(p3[0], std::numeric_limits<double>::lowest(), tolerance);
+  BOOST_CHECK_CLOSE(p3[1], std::numeric_limits<double>::lowest(), tolerance);
+  BOOST_CHECK_CLOSE(p3[2], std::numeric_limits<double>::lowest(), tolerance);
   double power = scan_path.get_power_modifier(time);
   BOOST_CHECK_CLOSE(power, 0.0, tolerance);
 }

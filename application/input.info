@@ -85,7 +85,7 @@ time_stepping
 
 post_processor
 {
-  file_name output
+  filename_prefix output
 }
 
 discretization

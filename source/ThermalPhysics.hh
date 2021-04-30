@@ -111,9 +111,9 @@ public:
   std::vector<std::unique_ptr<HeatSource<dim>>> &get_heat_sources();
 
   /**
-   * Return the current height of the object.
+   * Return the current height of the heat source.
    */
-  double get_current_height() const;
+  double get_current_source_height() const;
 
 private:
   using LA_Vector =
@@ -164,7 +164,7 @@ private:
   /**
    * Current height of the object.
    */
-  double _current_height = 0.;
+  double _current_source_height = 0.;
   /**
    * Associated geometry.
    */
@@ -256,9 +256,9 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType,
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
 inline double ThermalPhysics<dim, fe_degree, MemorySpaceType,
-                             QuadratureType>::get_current_height() const
+                             QuadratureType>::get_current_source_height() const
 {
-  return _current_height;
+  return _current_source_height;
 }
 } // namespace adamantine
 

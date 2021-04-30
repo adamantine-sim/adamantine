@@ -47,6 +47,9 @@ valid as `input.info`.
 
 ### Input file
 The following options are available:
+* discretization:
+  * fe\_degree: degree of the finite element used
+  * quadrature: quadrature used: gauss or lobatto (default value: gauss)
 * geometry:
   * dim: the dimension of the problem (2 or 3)
   * material\_height: below this height the domain contains material. Above this
@@ -69,7 +72,7 @@ The following options are available:
   * import\_mesh: true of false
   * if import\_mesh is true:
     * mesh\_format: abaqus, assimp, unv, ucd, dbmesh, gmsh, tecplot, xda, vtk,
-    vtu, exoduss, or default, i.e., use the file suffix to try to determine the
+    vtu, exodus, or default, i.e., use the file suffix to try to determine the
     mesh format
   * if import\_mesh is false:
     * length: the length of the domain in meters
@@ -78,16 +81,6 @@ The following options are available:
     * length\_divisions: number of cell layers in length (default value: 10)
     * height\_divisions: number of cell layers in the height (default value: 10)
     * width\_divisions: number of cell layers in width (only in 3D) (default value: 10)
-* refinement:
-  * n\_heat\_refinements: number of coarsening/refinement to execute (default value: 2)
-  * heat\_cell\_ratio: this is the ratio (n new cells)/(n old cells) after heat
-  refinement (default value: 1)
-  * n\_beam\_refinements: number of times the cells on the paths of the beams
-  are refined (default value: 2)
-  * max\_level: maximum number of times a cell can be refined
-  * time\_steps\_between\_refinement: number of time steps after which the
-  refinement process is performed (default value: 2)
-  * verbose: true or false (default value: false)
 * materials:
   * n\_materials: number of materials
   * property\_format: format of the material property: table or polynomial
@@ -99,6 +92,21 @@ The following options are available:
   thermal\_conductivity in W/(m\*K) (optional)
   * material\_X.A: A is either solidus in kelvin, liquidus in kelvin, or latent\_heat
   in J/kg (optional)
+* memory\_space: device (use GPU) or host (use CPU) (default value: host)
+* post\_processor:
+  * filename\_prefix: prefix of output files
+  * time\_steps\_between\_output: number of time steps between the
+  fields being written to the output files (default value: 1)
+* refinement:
+  * n\_heat\_refinements: number of coarsening/refinement to execute (default value: 2)
+  * heat\_cell\_ratio: this is the ratio (n new cells)/(n old cells) after heat
+  refinement (default value: 1)
+  * n\_beam\_refinements: number of times the cells on the paths of the beams
+  are refined (default value: 2)
+  * max\_level: maximum number of times a cell can be refined
+  * time\_steps\_between\_refinement: number of time steps after which the
+  refinement process is performed (default value: 2)
+  * verbose: true or false (default value: false)
 * sources:
   * n\_beams: number of electron beams
   * beam\_X: property tree for the beam with number X
@@ -141,17 +149,6 @@ The following options are available:
     (default value: 100)
     * newton\_tolerance: tolerance of the Newton solver (default value: 1e-6)
     * jfnk: use Jacobian-Free Newton Krylov method (default value: false)
-* post\_processor:
-  * file\_name: prefix of output files
-  * time\_steps\_between\_output: number of time steps between the
-  fields being written to the output files (default value: 1)
-* discretization:
-  * fe\_degree: degree of the finite element used
-  * quadrature: quadrature used: gauss or lobatto (default value: gauss)
-* profiling (optional):
-  * timer: output timing information (default value: false)
-  * caliper: configuration string for Caliper (optional)
-* memory\_space: device (use GPU) or host (use CPU) (default value: host)
 * experiment: (optional)
   * file: format of the file names. The format is pretty arbitrary, the keywords \#frame
   and \#camera are replaced by the frame and the camera number. The format of
@@ -161,6 +158,9 @@ The following options are available:
   * first\_camera\_id: number associated to the first camera
   * last\_camera\_id: number associated to the last camera
   * data\_columns: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D)
+* profiling (optional):
+  * timer: output timing information (default value: false)
+  * caliper: configuration string for Caliper (optional)
 
 
 ### Scan path
@@ -206,9 +206,3 @@ The first entry of the file is the dimension the problem: 2 or 3.
 ## Questions
 If you have any question, find a bug, or have feature request please open an
 issue.
-
-## Continuous Integration
-Provider  | Service    | Status
---------- |----------- | ------
-Travis CI | unit tests | [![Build Status](https://travis-ci.org/Rombur/adamantine.svg?branch=master)](https://travis-ci.org/Rombur/adamantine)
-Codecov   | coverage   | [![codecov](https://codecov.io/gh/Rombur/adamantine/branch/master/graphs/badge.svg)](https://codecov.io/gh/Rombur/adamantine)

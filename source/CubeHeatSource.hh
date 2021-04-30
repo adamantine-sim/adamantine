@@ -40,6 +40,11 @@ public:
    */
   double value(dealii::Point<dim> const &point, double const time,
                double const /*height*/) const override;
+  /**
+   * Compute the current height of the where the heat source meets the material
+   * (i.e. the current scan path height).
+   */
+  virtual double get_current_height(double const time) const override;
 
 private:
   double _start_time;

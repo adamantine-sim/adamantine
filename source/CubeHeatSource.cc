@@ -7,6 +7,7 @@
 
 #include <CubeHeatSource.hh>
 #include <instantiation.hh>
+#include <types.hh>
 
 namespace adamantine
 {
@@ -51,6 +52,13 @@ double CubeHeatSource<dim>::value(dealii::Point<dim> const &point,
 
   return 0.;
 }
+
+template <int dim>
+double CubeHeatSource<dim>::get_current_height(double const /*time*/) const
+{
+  return _max_point[axis<dim>::z];
+}
+
 } // namespace adamantine
 
 INSTANTIATE_DIM(CubeHeatSource)

@@ -43,6 +43,8 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   database.put("sources.beam_0.max_power", 1e300);
   database.put("sources.beam_0.absorption_efficiency", 0.1);
   database.put("sources.beam_0.type", "electron_beam");
+  database.put("sources.beam_0.scan_path_file",
+               "scan_path_test_thermal_physics.txt");
   database.put("sources.beam_0.scan_path_file_format", "segment");
 
   // Build ThermalPhysics
@@ -120,7 +122,12 @@ void thermal_2d_manufactured_solution()
   double time = physics.evolve_one_time_step(0., 0.1, solution, timers);
 
   double const tolerance = 1e-5;
+
   BOOST_CHECK(time == 0.1);
+
+  BOOST_CHECK_SMALL(std::abs(physics.get_current_source_height() - 0.0),
+                    tolerance);
+
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
   {
     for (unsigned int i = 0; i < solution.local_size(); ++i)
@@ -171,6 +178,8 @@ void initial_temperature()
   database.put("sources.beam_0.scan_path_file", "scan_path.txt");
   database.put("sources.beam_0.absorption_efficiency", 0.3);
   database.put("sources.beam_0.type", "electron_beam");
+  database.put("sources.beam_0.scan_path_file",
+               "scan_path_test_thermal_physics.txt");
   database.put("sources.beam_0.scan_path_file_format", "segment");
 
   // Time-stepping database

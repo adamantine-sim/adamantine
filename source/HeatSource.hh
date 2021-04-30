@@ -10,6 +10,7 @@
 
 #include <BeamHeatSourceProperties.hh>
 #include <ScanPath.hh>
+#include <types.hh>
 
 #include <deal.II/base/point.h>
 
@@ -73,6 +74,12 @@ public:
    */
   virtual ScanPath const &get_scan_path() const;
 
+  /**
+   * Compute the current height of the where the heat source meets the material
+   * (i.e. the current scan path height).
+   */
+  virtual double get_current_height(double const time) const;
+
 protected:
   /**
    * Structure of the physical properties of the beam heat source.
@@ -89,6 +96,11 @@ template <int dim>
 inline ScanPath const &HeatSource<dim>::get_scan_path() const
 {
   return _scan_path;
+}
+
+inline double HeatSource<dim>::get_current_height(double const time) const
+{
+  return _scan_path.value(time)[2];
 }
 
 } // namespace adamantine
