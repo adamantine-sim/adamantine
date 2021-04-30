@@ -22,7 +22,7 @@ template <int dim>
 std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources)
+    std::vector<std::unique_ptr<HeatSource<dim>>> &heat_sources)
 {
   // PropertyTreeInput geometry.material_deposition
   bool material_deposition =
@@ -146,8 +146,9 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
       boxes_and_times;
 
   // Load the box size information and lead time
-  double deposition_chunk_length = geometry_database.get<double>("deposition_chunk_length"));
-  double deposition_height = geometry_database.get<double>("deposition_height"));
+  double deposition_chunk_length =
+      geometry_database.get<double>("deposition_chunk_length");
+  double deposition_height = geometry_database.get<double>("deposition_height");
   double deposition_width =
       geometry_database.get<double>("deposition_width", 0.0);
 
@@ -161,7 +162,7 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
   for (ScanPathSegment segment : segment_list)
   {
     // Only add material if the power is on
-    double eps = std::numeric_limits<double>::epsilon();
+    double eps = 1.0e-12; // std::numeric_limits<double>::epsilon();
     if (segment.power_modifier > eps)
     {
       dealii::Point<3> segment_end_point = segment.end_point;
@@ -171,6 +172,10 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
       double segment_velocity =
           segment_length / (segment.end_time - segment_start_time);
 
+      std::cout << "segment velocity: " << segment_velocity << " "
+                << segment_length << " " << segment.end_time << " "
+                << segment_start_time << std::endl;
+
       // Set the segment orienation
       bool segment_along_x;
       if constexpr (dim == 2)
@@ -179,9 +184,10 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
       {
         double distance_x = segment_end_point(0) - segment_start_point(0);
         double distance_y = segment_end_point(1) - segment_start_point(1);
-        ASSERT_THROW((distance_x > eps) && (distance_y > eps),
+        ASSERT_THROW(!((distance_x > eps) && (distance_y > eps)),
                      "Error: For automated material deposition, scan path "
                      "segments must align with the coordinate system.");
+
         if (distance_x > eps)
           segment_along_x = true;
         else
@@ -192,29 +198,29 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
 
       while (in_segment)
       {
+        std::cout << "center: " << center(0) << " " << center(1) << " "
+                  << segment.power_modifier << std::endl;
         double distance_to_box_center = center.distance(segment_start_point);
         double time_to_box_center = distance_to_box_center / segment_velocity;
+
+        std::cout << "dist to box center: " << distance_to_box_center
+                  << std::endl;
 
         std::vector<double> box_size(3);
 
         if constexpr (dim == 2)
         {
           box_size.at(1) = deposition_height;
+          box_size.at(0) = next_box_length;
 
-          if (distance_to_box_center < segment_length)
-            box_size.at(0) = next_box_length;
-          else
-          {
-          }
-
-          dealii::BoundingBox<dim> box(
-              dealii::Point<dim>(center[0] - 0.5 * box_size[0],
-                                 center[1] - 0.5 * box_size[1]),
+          dealii::BoundingBox<dim> box(std::make_pair(
+              dealii::Point<dim>(center[0] - 0.5 * box_size[0], center[1]),
               dealii::Point<dim>(center[0] + 0.5 * box_size[0],
-                                 center[1] + 0.5 * box_size[1]));
+                                 center[1] + box_size[1])));
 
           boxes_and_times.first.push_back(box);
-          boxes_and_times.second.push_back(time_to_box_center);
+          boxes_and_times.second.push_back(segment_start_time +
+                                           time_to_box_center + lead_time);
         }
         else
         {
@@ -231,20 +237,20 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
             box_size.at(0) = deposition_width;
           }
 
-          dealii::BoundingBox<dim> box(
+          dealii::BoundingBox<dim> box(std::make_pair(
               dealii::Point<dim>(center[0] - 0.5 * box_size[0],
-                                 center[1] - 0.5 * box_size[1],
-                                 center[2] - 0.5 * box_size[2]),
+                                 center[1] - 0.5 * box_size[1], center[2]),
               dealii::Point<dim>(center[0] + 0.5 * box_size[0],
                                  center[1] + 0.5 * box_size[1],
-                                 center[2] + 0.5 * box_size[2]));
+                                 center[2] + box_size[2])));
 
           boxes_and_times.first.push_back(box);
-          boxes_and_times.second.push_back(time_to_box_center);
+          boxes_and_times.second.push_back(segment_start_time +
+                                           time_to_box_center + lead_time);
         }
 
         // Get the next box center
-        if (distance_to_box_center > segment_length)
+        if (distance_to_box_center + eps > segment_length)
         {
           in_segment = false;
         }
@@ -260,6 +266,7 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
                                (segment_length - distance_to_box_center) / 2.0;
             next_box_length = segment_length - distance_to_box_center;
           }
+          std::cout << "center increment: " << center_increment << std::endl;
 
           if (segment_along_x)
           {
@@ -272,80 +279,81 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
         }
       }
     }
-
-    return boxes_and_times;
+    segment_start_point = segment.end_point;
+    segment_start_time = segment.end_time;
+    ;
   }
+  return boxes_and_times;
+}
 
-  template <int dim>
-  void remove_duplicate_boxes(
-      std::vector<std::pair<std::vector<dealii::BoundingBox<dim>>,
-                            std::vector<double>>> &
-      bounding_box_lists)
-  {
-    // TODO
-  }
+template <int dim>
+void remove_duplicate_boxes(
+    std::vector<std::pair<std::vector<dealii::BoundingBox<dim>>,
+                          std::vector<double>>> &bounding_box_lists)
+{
+  // TODO
+}
 
-  template <int dim>
+template <int dim>
+std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
+merge_bounding_box_lists(
+    std::vector<
+        std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>>
+        bounding_box_lists)
+{
   std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
-  merge_bounding_box_lists(
-      std::vector<
-          std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>>
-          bounding_box_lists)
+      merged_list;
+
+  // TODO
+
+  return merged_list;
+}
+
+template <int dim>
+std::vector<std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>
+get_elements_to_activate(
+    dealii::DoFHandler<dim> const &dof_handler,
+    std::vector<dealii::BoundingBox<dim>> const &material_deposition_boxes)
+{
+  // Exit early if we can
+  if (material_deposition_boxes.size() == 0)
+    return std::vector<
+        std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>();
+
+  // We activate the cells that intersect a box. To do that we use ArborX.
+  // First, we create the bounding boxes of all the non-activated cells.
+  std::vector<dealii::BoundingBox<dim>> bounding_boxes;
+  std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>
+      cell_iterators;
+  for (auto const &cell : dealii::filter_iterators(
+           dof_handler.active_cell_iterators(),
+           dealii::IteratorFilters::LocallyOwnedCell(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(1)))
   {
-    std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
-        merged_list;
-
-    // TODO
-
-    return merged_list;
+    bounding_boxes.push_back(cell->bounding_box());
+    cell_iterators.push_back(cell);
   }
 
-  template <int dim>
+  // Perform the search
+  dealii::ArborXWrappers::BVH bvh(bounding_boxes);
+  dealii::ArborXWrappers::BoundingBoxIntersectPredicate bb_intersect(
+      material_deposition_boxes);
+  auto [indices, offset] = bvh.query(bb_intersect);
+
+  unsigned int const n_queries = material_deposition_boxes.size();
   std::vector<
       std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>
-  get_elements_to_activate(
-      dealii::DoFHandler<dim> const &dof_handler,
-      std::vector<dealii::BoundingBox<dim>> const &material_deposition_boxes)
+      elements_to_activate(n_queries);
+  for (unsigned int i = 0; i < n_queries; ++i)
   {
-    // Exit early if we can
-    if (material_deposition_boxes.size() == 0)
-      return std::vector<std::vector<
-          typename dealii::DoFHandler<dim>::active_cell_iterator>>();
-
-    // We activate the cells that intersect a box. To do that we use ArborX.
-    // First, we create the bounding boxes of all the non-activated cells.
-    std::vector<dealii::BoundingBox<dim>> bounding_boxes;
-    std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>
-        cell_iterators;
-    for (auto const &cell : dealii::filter_iterators(
-             dof_handler.active_cell_iterators(),
-             dealii::IteratorFilters::LocallyOwnedCell(),
-             dealii::IteratorFilters::ActiveFEIndexEqualTo(1)))
+    for (int j = offset[i]; j < offset[i + 1]; ++j)
     {
-      bounding_boxes.push_back(cell->bounding_box());
-      cell_iterators.push_back(cell);
+      elements_to_activate[i].push_back(cell_iterators[indices[j]]);
     }
-
-    // Perform the search
-    dealii::ArborXWrappers::BVH bvh(bounding_boxes);
-    dealii::ArborXWrappers::BoundingBoxIntersectPredicate bb_intersect(
-        material_deposition_boxes);
-    auto [indices, offset] = bvh.query(bb_intersect);
-
-    unsigned int const n_queries = material_deposition_boxes.size();
-    std::vector<
-        std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>
-        elements_to_activate(n_queries);
-    for (unsigned int i = 0; i < n_queries; ++i)
-    {
-      for (int j = offset[i]; j < offset[i + 1]; ++j)
-      {
-        elements_to_activate[i].push_back(cell_iterators[indices[j]]);
-      }
-    }
-
-    return elements_to_activate;
   }
+
+  return elements_to_activate;
+}
 } // namespace adamantine
 
 //-------------------- Explicit Instantiations --------------------//
@@ -354,11 +362,11 @@ namespace adamantine
 template std::pair<std::vector<dealii::BoundingBox<2>>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    std::vector<std::unique_ptr<adamantine::HeatSource<2>>> &heat_sources);
+    std::vector<std::unique_ptr<HeatSource<2>>> &heat_sources);
 template std::pair<std::vector<dealii::BoundingBox<3>>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    std::vector<std::unique_ptr<adamantine::HeatSource<3>>> &heat_sources);
+    std::vector<std::unique_ptr<HeatSource<3>>> &heat_sources);
 
 template std::pair<std::vector<dealii::BoundingBox<2>>, std::vector<double>>
 read_material_deposition(boost::property_tree::ptree const &geometry_database);

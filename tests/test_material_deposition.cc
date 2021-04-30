@@ -318,3 +318,179 @@ BOOST_AUTO_TEST_CASE(material_deposition)
                 n_cells_ref[i]);
   }
 }
+
+BOOST_AUTO_TEST_CASE(deposition_from_scan_path_2d)
+{
+  adamantine::ScanPath scan_path("scan_path.txt", "segment");
+
+  boost::property_tree::ptree database;
+  database.put("deposition_chunk_length", 0.0005);
+  database.put("deposition_height", 0.1);
+  database.put("deposition_width", 0.1);
+  database.put("material_deposition_lead_time", 0.0);
+
+  std::pair<std::vector<dealii::BoundingBox<2>>, std::vector<double>>
+      boxes_and_times =
+          adamantine::deposition_along_scan_path<2>(database, scan_path);
+
+  double const tolerance = 1e-13;
+
+  // Check the times
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(0), 1.0e-6, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(1), 6.26e-4, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(2), 1.251e-3, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(3), 1.876e-3, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(4), 2.501e-3, tolerance);
+
+  // Check the first and last boxes
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().first(0),
+                    -0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().first(1),
+                    0.0, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().second(0),
+                    0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().second(1),
+                    0.1, tolerance);
+
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().first(0),
+                    0.002 - 0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().first(1),
+                    0.0, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().second(0),
+                    0.002 + 0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().second(1),
+                    0.1, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(deposition_from_scan_path_3d)
+{
+  adamantine::ScanPath scan_path("scan_path.txt", "segment");
+
+  boost::property_tree::ptree database;
+  database.put("deposition_chunk_length", 0.0005);
+  database.put("deposition_height", 0.1);
+  database.put("deposition_width", 0.1);
+  database.put("material_deposition_lead_time", 0.0);
+
+  std::pair<std::vector<dealii::BoundingBox<3>>, std::vector<double>>
+      boxes_and_times =
+          adamantine::deposition_along_scan_path<3>(database, scan_path);
+
+  double const tolerance = 1e-13;
+
+  // Check the times
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(0), 1.0e-6, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(1), 6.26e-4, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(2), 1.251e-3, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(3), 1.876e-3, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(4), 2.501e-3, tolerance);
+
+  // Check the first and last boxes
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().first(0),
+                    -0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().first(1),
+                    -0.05, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().first(2),
+                    0.0, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().second(0),
+                    0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().second(1),
+                    0.05, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().second(2),
+                    0.1, tolerance);
+
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().first(0),
+                    0.002 - 0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().first(1),
+                    -0.05, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().first(2),
+                    0.0, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().second(0),
+                    0.002 + 0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().second(1),
+                    0.05, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().second(2),
+                    0.1, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(deposition_from_L_scan_path_3d)
+{
+  adamantine::ScanPath scan_path("scan_path_L.txt", "segment");
+
+  boost::property_tree::ptree database;
+  database.put("deposition_chunk_length", 0.0005);
+  database.put("deposition_height", 0.1);
+  database.put("deposition_width", 0.1);
+  database.put("material_deposition_lead_time", 0.0);
+
+  std::pair<std::vector<dealii::BoundingBox<3>>, std::vector<double>>
+      boxes_and_times =
+          adamantine::deposition_along_scan_path<3>(database, scan_path);
+
+  double const tolerance = 1e-13;
+
+  // Check the times
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(0), 1.0e-6, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(1), 6.26e-4, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(2), 1.251e-3, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(3), 1.876e-3, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(4), 2.501e-3, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(5), 2.501e-3, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(6), 3.126e-3, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(7), 3.751e-3, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(8), 4.376e-3, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.second.at(9), 4.876e-3, tolerance);
+
+  // Check the first and last boxes for each segment
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().first(0),
+                    -0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().first(1),
+                    -0.05, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().first(2),
+                    0.0, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().second(0),
+                    0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().second(1),
+                    0.05, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(0).get_boundary_points().second(2),
+                    0.1, tolerance);
+
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().first(0),
+                    0.002 - 0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().first(1),
+                    -0.05, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().first(2),
+                    0.0, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().second(0),
+                    0.002 + 0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().second(1),
+                    0.05, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(4).get_boundary_points().second(2),
+                    0.1, tolerance);
+
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(5).get_boundary_points().first(0),
+                    0.002 - 0.05, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(5).get_boundary_points().first(1),
+                    -0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(5).get_boundary_points().first(2),
+                    0.0, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(5).get_boundary_points().second(0),
+                    0.002 + 0.05, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(5).get_boundary_points().second(1),
+                    0.00025, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(5).get_boundary_points().second(2),
+                    0.1, tolerance);
+
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(9).get_boundary_points().first(0),
+                    0.002 - 0.05, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(9).get_boundary_points().first(1),
+                    0.00175, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(9).get_boundary_points().first(2),
+                    0.0, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(9).get_boundary_points().second(0),
+                    0.002 + 0.05, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(9).get_boundary_points().second(1),
+                    0.00205, tolerance);
+  BOOST_CHECK_CLOSE(boxes_and_times.first.at(9).get_boundary_points().second(2),
+                    0.1, tolerance);
+}

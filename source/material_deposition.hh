@@ -24,7 +24,7 @@ template <int dim>
 std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources);
+    std::vector<std::unique_ptr<HeatSource<dim>>> &heat_sources);
 /**
  * Read the material deposition file and return a vector of bounding boxes
  * and a vector of deposition times.
