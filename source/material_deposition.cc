@@ -27,39 +27,34 @@ create_material_deposition_boxes(
   // PropertyTreeInput geometry.material_deposition
   bool material_deposition =
       geometry_database.get("material_deposition", false);
+
   if (!material_deposition)
-  {
     return {{}, {}};
+
+  std::string method =
+      geometry_database.get<std::string>("material_deposition_method");
+
+  ASSERT_THROW(method == "file" || method == "scan_paths"),
+               "Error: Method type for material deposition, '" + method +
+                   "', is not recognized. Valid options are: 'file' "
+                   "and 'scan_paths'");
+  if (method == "file")
+  {
+    return read_material_deposition<dim>(geometry_database);
   }
   else
   {
-    std::string method =
-        geometry_database.get<std::string>("material_deposition_method");
-
-    ASSERT_THROW(method.compare("file") == 0 ||
-                     method.compare("scan_paths") == 0,
-                 "Error: Method type for material deposition, '" + method +
-                     "', is not recognized. Valid options are: 'file' "
-                     "and 'scan_paths'");
-    if (method.compare("file") == 0)
+    std::vector<
+        std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>>
+        box_and_time_list;
+    for (auto const &source : heat_sources)
     {
-      return read_material_deposition<dim>(geometry_database);
+      auto temp_boxes_and_times = deposition_along_scan_path<dim>(
+          geometry_database, source->get_scan_path());
+      box_and_time_list.push_back(temp_boxes_and_times);
     }
-    else
-    {
-      std::vector<
-          std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>>
-          box_and_time_list;
-      for (auto const &source : heat_sources)
-      {
-        std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
-            temp_boxes_and_times = deposition_along_scan_path<dim>(
-                geometry_database, source->get_scan_path());
-        box_and_time_list.push_back(temp_boxes_and_times);
-      }
 
-      return merge_bounding_box_lists(box_and_time_list);
-    }
+    return merge_bounding_box_lists(box_and_time_list);
   }
 }
 
@@ -146,12 +141,17 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
       boxes_and_times;
 
   // Load the box size information and lead time
+
+  // PropertyTreeInput geometry.deposition_chunk_length
   double deposition_chunk_length =
       geometry_database.get<double>("deposition_chunk_length");
+  // PropertyTreeInput geometry.deposition_height
   double deposition_height = geometry_database.get<double>("deposition_height");
+  // PropertyTreeInput geometry.deposition_width
   double deposition_width =
       geometry_database.get<double>("deposition_width", 0.0);
 
+  // PropertyTreeInput geometry.deposition_lead_time
   double lead_time = geometry_database.get<double>("deposition_lead_time");
 
   // Loop through the scan path segements, adding boxes inside each one
@@ -172,7 +172,7 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
       double segment_velocity =
           segment_length / (segment.end_time - segment_start_time);
 
-      // Set the segment orienation
+      // Set the segment orientation
       bool segment_along_x;
       if constexpr (dim == 2)
         segment_along_x = true;
@@ -272,7 +272,6 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
     }
     segment_start_point = segment.end_point;
     segment_start_time = segment.end_time;
-    ;
   }
   return boxes_and_times;
 }
