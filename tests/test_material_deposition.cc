@@ -327,7 +327,7 @@ BOOST_AUTO_TEST_CASE(deposition_from_scan_path_2d)
   database.put("deposition_chunk_length", 0.0005);
   database.put("deposition_height", 0.1);
   database.put("deposition_width", 0.1);
-  database.put("material_deposition_lead_time", 0.0);
+  database.put("deposition_lead_time", 0.0);
 
   std::pair<std::vector<dealii::BoundingBox<2>>, std::vector<double>>
       boxes_and_times =
@@ -370,7 +370,7 @@ BOOST_AUTO_TEST_CASE(deposition_from_scan_path_3d)
   database.put("deposition_chunk_length", 0.0005);
   database.put("deposition_height", 0.1);
   database.put("deposition_width", 0.1);
-  database.put("material_deposition_lead_time", 0.0);
+  database.put("deposition_lead_time", 0.0);
 
   std::pair<std::vector<dealii::BoundingBox<3>>, std::vector<double>>
       boxes_and_times =
@@ -421,7 +421,7 @@ BOOST_AUTO_TEST_CASE(deposition_from_L_scan_path_3d)
   database.put("deposition_chunk_length", 0.0005);
   database.put("deposition_height", 0.1);
   database.put("deposition_width", 0.1);
-  database.put("material_deposition_lead_time", 0.0);
+  database.put("deposition_lead_time", 0.0);
 
   std::pair<std::vector<dealii::BoundingBox<3>>, std::vector<double>>
       boxes_and_times =

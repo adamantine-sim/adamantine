@@ -152,8 +152,7 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
   double deposition_width =
       geometry_database.get<double>("deposition_width", 0.0);
 
-  double lead_time =
-      geometry_database.get<double>("material_deposition_lead_time");
+  double lead_time = geometry_database.get<double>("deposition_lead_time");
 
   // Loop through the scan path segements, adding boxes inside each one
   std::vector<ScanPathSegment> segment_list = scan_path.get_segment_list();
@@ -162,7 +161,8 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
   for (ScanPathSegment segment : segment_list)
   {
     // Only add material if the power is on
-    double eps = 1.0e-12; // std::numeric_limits<double>::epsilon();
+    double const eps = 1.0e-12;
+    double const eps_time = 1.0e-12;
     if (segment.power_modifier > eps)
     {
       dealii::Point<3> segment_end_point = segment.end_point;
@@ -171,10 +171,6 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
       dealii::Point<3> center = segment_start_point;
       double segment_velocity =
           segment_length / (segment.end_time - segment_start_time);
-
-      std::cout << "segment velocity: " << segment_velocity << " "
-                << segment_length << " " << segment.end_time << " "
-                << segment_start_time << std::endl;
 
       // Set the segment orienation
       bool segment_along_x;
@@ -198,13 +194,8 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
 
       while (in_segment)
       {
-        std::cout << "center: " << center(0) << " " << center(1) << " "
-                  << segment.power_modifier << std::endl;
         double distance_to_box_center = center.distance(segment_start_point);
         double time_to_box_center = distance_to_box_center / segment_velocity;
-
-        std::cout << "dist to box center: " << distance_to_box_center
-                  << std::endl;
 
         std::vector<double> box_size(3);
 
@@ -219,8 +210,9 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
                                  center[1] + box_size[1])));
 
           boxes_and_times.first.push_back(box);
-          boxes_and_times.second.push_back(segment_start_time +
-                                           time_to_box_center + lead_time);
+
+          boxes_and_times.second.push_back(std::max(
+              segment_start_time + time_to_box_center - lead_time, eps_time));
         }
         else
         {
@@ -245,8 +237,8 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
                                  center[2] + box_size[2])));
 
           boxes_and_times.first.push_back(box);
-          boxes_and_times.second.push_back(segment_start_time +
-                                           time_to_box_center + lead_time);
+          boxes_and_times.second.push_back(std::max(
+              segment_start_time + time_to_box_center - lead_time, eps_time));
         }
 
         // Get the next box center
@@ -266,7 +258,6 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
                                (segment_length - distance_to_box_center) / 2.0;
             next_box_length = segment_length - distance_to_box_center;
           }
-          std::cout << "center increment: " << center_increment << std::endl;
 
           if (segment_along_x)
           {
@@ -287,14 +278,6 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
 }
 
 template <int dim>
-void remove_duplicate_boxes(
-    std::vector<std::pair<std::vector<dealii::BoundingBox<dim>>,
-                          std::vector<double>>> &bounding_box_lists)
-{
-  // TODO
-}
-
-template <int dim>
 std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
 merge_bounding_box_lists(
     std::vector<
@@ -305,6 +288,7 @@ merge_bounding_box_lists(
       merged_list;
 
   // TODO
+  merged_list = bounding_box_lists.at(0);
 
   return merged_list;
 }
