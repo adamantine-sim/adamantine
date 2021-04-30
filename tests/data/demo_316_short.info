@@ -96,7 +96,7 @@ time_stepping
 
 post_processor
 {
-  file_name output
+  filename_prefix output
   time_steps_between_output 10
 }
 
