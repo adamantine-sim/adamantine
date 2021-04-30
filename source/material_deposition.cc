@@ -20,16 +20,48 @@ namespace adamantine
 {
 template <int dim>
 std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
-read_material_deposition(boost::property_tree::ptree const &geometry_database)
+create_material_deposition_boxes(
+    boost::property_tree::ptree const &geometry_database,
+    std::vector<std::unique_ptr<HeatSource<dim>>> &heat_sources)
 {
   // PropertyTreeInput geometry.material_deposition
   bool material_deposition =
       geometry_database.get("material_deposition", false);
-  if (!material_deposition)
-  {
-    return {{}, {}};
-  }
 
+  if (!material_deposition)
+    return {{}, {}};
+
+  std::string method =
+      geometry_database.get<std::string>("material_deposition_method");
+
+  ASSERT_THROW((method == "file" || method == "scan_paths"),
+               "Error: Method type for material deposition, '" + method +
+                   "', is not recognized. Valid options are: 'file' "
+                   "and 'scan_paths'");
+  if (method == "file")
+  {
+    return read_material_deposition<dim>(geometry_database);
+  }
+  else
+  {
+    std::vector<
+        std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>>
+        box_and_time_list;
+    for (auto const &source : heat_sources)
+    {
+      auto temp_boxes_and_times = deposition_along_scan_path<dim>(
+          geometry_database, source->get_scan_path());
+      box_and_time_list.push_back(temp_boxes_and_times);
+    }
+
+    return merge_bounding_box_lists(box_and_time_list);
+  }
+}
+
+template <int dim>
+std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
+read_material_deposition(boost::property_tree::ptree const &geometry_database)
+{
   // PropertyTreeInput geometry.material_deposition_file
   std::string material_deposition_filename =
       geometry_database.get<std::string>("material_deposition_file");
@@ -98,6 +130,168 @@ read_material_deposition(boost::property_tree::ptree const &geometry_database)
 }
 
 template <int dim>
+std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
+deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
+                           ScanPath const &scan_path)
+{
+  // NOTE: Currently this assumes that scan path segments are aligned with the
+  // coordinate system.
+
+  std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
+      boxes_and_times;
+
+  // Load the box size information and lead time
+
+  // PropertyTreeInput geometry.deposition_length
+  double deposition_length = geometry_database.get<double>("deposition_length");
+  // PropertyTreeInput geometry.deposition_height
+  double deposition_height = geometry_database.get<double>("deposition_height");
+  // PropertyTreeInput geometry.deposition_width
+  double deposition_width =
+      geometry_database.get<double>("deposition_width", 0.0);
+
+  // PropertyTreeInput geometry.deposition_lead_time
+  double lead_time = geometry_database.get<double>("deposition_lead_time");
+
+  // Loop through the scan path segements, adding boxes inside each one
+  std::vector<ScanPathSegment> segment_list = scan_path.get_segment_list();
+  double segment_start_time = 0.0;
+  dealii::Point<3> segment_start_point = segment_list.at(0).end_point;
+  for (ScanPathSegment segment : segment_list)
+  {
+    // Only add material if the power is on
+    double const eps = 1.0e-12;
+    double const eps_time = 1.0e-12;
+    if (segment.power_modifier > eps)
+    {
+      dealii::Point<3> segment_end_point = segment.end_point;
+      double segment_length = segment_end_point.distance(segment_start_point);
+      bool in_segment = true;
+      dealii::Point<3> center = segment_start_point;
+      double segment_velocity =
+          segment_length / (segment.end_time - segment_start_time);
+
+      // Set the segment orientation
+      bool segment_along_x;
+      if constexpr (dim == 2)
+        segment_along_x = true;
+      else
+      {
+        double distance_x = segment_end_point(0) - segment_start_point(0);
+        double distance_y = segment_end_point(1) - segment_start_point(1);
+        ASSERT_THROW(!((distance_x > eps) && (distance_y > eps)),
+                     "Error: For automated material deposition, scan path "
+                     "segments must align with the coordinate system.");
+
+        if (distance_x > eps)
+          segment_along_x = true;
+        else
+          segment_along_x = false;
+      }
+
+      double next_box_length = deposition_length;
+
+      while (in_segment)
+      {
+        double distance_to_box_center = center.distance(segment_start_point);
+        double time_to_box_center = distance_to_box_center / segment_velocity;
+
+        std::vector<double> box_size(3);
+
+        if constexpr (dim == 2)
+        {
+          box_size.at(1) = deposition_height;
+          box_size.at(0) = next_box_length;
+
+          dealii::BoundingBox<dim> box(std::make_pair(
+              dealii::Point<dim>(center[0] - 0.5 * box_size[0], center[1]),
+              dealii::Point<dim>(center[0] + 0.5 * box_size[0],
+                                 center[1] + box_size[1])));
+
+          boxes_and_times.first.push_back(box);
+
+          boxes_and_times.second.push_back(std::max(
+              segment_start_time + time_to_box_center - lead_time, eps_time));
+        }
+        else
+        {
+          box_size.at(2) = deposition_height;
+
+          if (segment_along_x)
+          {
+            box_size.at(1) = deposition_width;
+            box_size.at(0) = next_box_length;
+          }
+          else
+          {
+            box_size.at(1) = next_box_length;
+            box_size.at(0) = deposition_width;
+          }
+
+          dealii::BoundingBox<dim> box(std::make_pair(
+              dealii::Point<dim>(center[0] - 0.5 * box_size[0],
+                                 center[1] - 0.5 * box_size[1], center[2]),
+              dealii::Point<dim>(center[0] + 0.5 * box_size[0],
+                                 center[1] + 0.5 * box_size[1],
+                                 center[2] + box_size[2])));
+
+          boxes_and_times.first.push_back(box);
+          boxes_and_times.second.push_back(std::max(
+              segment_start_time + time_to_box_center - lead_time, eps_time));
+        }
+
+        // Get the next box center
+        if (distance_to_box_center + eps > segment_length)
+        {
+          in_segment = false;
+        }
+        else
+        {
+          // Check to see if the next box is at the end of the segment and needs
+          // to have a modified length
+          double center_increment = deposition_length;
+          next_box_length = deposition_length;
+          if (distance_to_box_center + deposition_length > segment_length)
+          {
+            center_increment = deposition_length / 2.0 +
+                               (segment_length - distance_to_box_center) / 2.0;
+            next_box_length = segment_length - distance_to_box_center;
+          }
+
+          if (segment_along_x)
+          {
+            center(0) = center(0) + center_increment;
+          }
+          else
+          {
+            center(1) = center(1) + center_increment;
+          }
+        }
+      }
+    }
+    segment_start_point = segment.end_point;
+    segment_start_time = segment.end_time;
+  }
+  return boxes_and_times;
+}
+
+template <int dim>
+std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
+merge_bounding_box_lists(
+    std::vector<
+        std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>>
+        bounding_box_lists)
+{
+  std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
+      merged_list;
+
+  // TODO
+  merged_list = bounding_box_lists.at(0);
+
+  return merged_list;
+}
+
+template <int dim>
 std::vector<std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>
 get_elements_to_activate(
     dealii::DoFHandler<dim> const &dof_handler,
@@ -147,6 +341,15 @@ get_elements_to_activate(
 //-------------------- Explicit Instantiations --------------------//
 namespace adamantine
 {
+template std::pair<std::vector<dealii::BoundingBox<2>>, std::vector<double>>
+create_material_deposition_boxes(
+    boost::property_tree::ptree const &geometry_database,
+    std::vector<std::unique_ptr<HeatSource<2>>> &heat_sources);
+template std::pair<std::vector<dealii::BoundingBox<3>>, std::vector<double>>
+create_material_deposition_boxes(
+    boost::property_tree::ptree const &geometry_database,
+    std::vector<std::unique_ptr<HeatSource<3>>> &heat_sources);
+
 template std::pair<std::vector<dealii::BoundingBox<2>>, std::vector<double>>
 read_material_deposition(boost::property_tree::ptree const &geometry_database);
 template std::pair<std::vector<dealii::BoundingBox<3>>, std::vector<double>>

@@ -69,6 +69,10 @@ public:
    */
   virtual double value(dealii::Point<dim> const &point, double const time,
                        double const height) const = 0;
+  /**
+   * Return the scan path for the heat source.
+   */
+  virtual ScanPath const &get_scan_path() const;
 
   /**
    * Compute the current height of the where the heat source meets the material
@@ -87,6 +91,12 @@ protected:
    */
   ScanPath _scan_path;
 };
+
+template <int dim>
+inline ScanPath const &HeatSource<dim>::get_scan_path() const
+{
+  return _scan_path;
+}
 
 template <int dim>
 inline double HeatSource<dim>::get_current_height(double const time) const

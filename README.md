@@ -61,7 +61,14 @@ The following options are available:
   * material\_deposition: material is deposed during the simulation: true or
   false (default value: false)
   * if material\_deposition is true:
-    * material\_deposition\_file: material deposition filename
+    * material\_deposition\_method: file, scan_paths
+    * if material\_deposition\_method is file:
+        * material\_deposition\_file: material deposition filename
+    * if material\_deposition\_method is scan_paths:
+        * deposition\_length: length of material deposition boxes along the scan direction
+        * deposition\_width: width of material deposition boxes (in the plane of the material, normal to the scan direction, 3D only)
+        * deposition\_height: height of material deposition boxes (out of the plane of the material)
+        * deposition\_lead\_time: amount of time before the scan path reaches a point that the material is added
   * import\_mesh: true of false
   * if import\_mesh is true:
     * mesh\_format: abaqus, assimp, unv, ucd, dbmesh, gmsh, tecplot, xda, vtk,
@@ -143,7 +150,7 @@ The following options are available:
     * newton\_tolerance: tolerance of the Newton solver (default value: 1e-6)
     * jfnk: use Jacobian-Free Newton Krylov method (default value: false)
 * experiment: (optional)
-  * file: format of the file names. The format is pretty arbitrary, the keywords \#frame 
+  * file: format of the file names. The format is pretty arbitrary, the keywords \#frame
   and \#camera are replaced by the frame and the camera number. The format of
   the file itself should be csv.
   * first\_frame: number associated to the first frame (default value: 0)
@@ -183,7 +190,7 @@ position of the line.
 0 or 1, but sometimes intermediate values are used when turning a corner.
 
 ### Material deposition
-The first entry of the file is the dimension the problem: 2 or 3. 
+The first entry of the file is the dimension the problem: 2 or 3.
 * For 2D problems, the column descriptions are:
   * Column 1 to 2: (x,y) coordinates of the center of the deposition box in m.
   * Column 3 to 4: (x,y) length of deposition box in m.
