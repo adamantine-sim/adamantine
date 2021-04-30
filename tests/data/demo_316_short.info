@@ -10,7 +10,7 @@ geometry
   width_divisions  50
   material_deposition true
   material_deposition_method scan_paths
-  deposition_chunk_length 0.0003
+  deposition_length 0.0003
   deposition_height 0.0002
   deposition_width 0.0003
   deposition_lead_time 0.0005

@@ -65,7 +65,7 @@ The following options are available:
     * if material\_deposition\_method is file:
         * material\_deposition\_file: material deposition filename
     * if material\_deposition\_method is scan_paths:
-        * deposition\_chunk\_length: length of material deposition boxes along the scan direction
+        * deposition\_length: length of material deposition boxes along the scan direction
         * deposition\_width: width of material deposition boxes (in the plane of the material, normal to the scan direction, 3D only)
         * deposition\_height: height of material deposition boxes (out of the plane of the material)
         * deposition\_lead\_time: amount of time before the scan path reaches a point that the material is added

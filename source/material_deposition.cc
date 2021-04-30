@@ -142,9 +142,8 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
 
   // Load the box size information and lead time
 
-  // PropertyTreeInput geometry.deposition_chunk_length
-  double deposition_chunk_length =
-      geometry_database.get<double>("deposition_chunk_length");
+  // PropertyTreeInput geometry.deposition_length
+  double deposition_length = geometry_database.get<double>("deposition_length");
   // PropertyTreeInput geometry.deposition_height
   double deposition_height = geometry_database.get<double>("deposition_height");
   // PropertyTreeInput geometry.deposition_width
@@ -190,7 +189,7 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
           segment_along_x = false;
       }
 
-      double next_box_length = deposition_chunk_length;
+      double next_box_length = deposition_length;
 
       while (in_segment)
       {
@@ -250,11 +249,11 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
         {
           // Check to see if the next box is at the end of the segment and needs
           // to have a modified length
-          double center_increment = deposition_chunk_length;
-          next_box_length = deposition_chunk_length;
-          if (distance_to_box_center + deposition_chunk_length > segment_length)
+          double center_increment = deposition_length;
+          next_box_length = deposition_length;
+          if (distance_to_box_center + deposition_length > segment_length)
           {
-            center_increment = deposition_chunk_length / 2.0 +
+            center_increment = deposition_length / 2.0 +
                                (segment_length - distance_to_box_center) / 2.0;
             next_box_length = segment_length - distance_to_box_center;
           }

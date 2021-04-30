@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE(deposition_from_scan_path_2d)
   adamantine::ScanPath scan_path("scan_path.txt", "segment");
 
   boost::property_tree::ptree database;
-  database.put("deposition_chunk_length", 0.0005);
+  database.put("deposition_length", 0.0005);
   database.put("deposition_height", 0.1);
   database.put("deposition_width", 0.1);
   database.put("deposition_lead_time", 0.0);
@@ -367,7 +367,7 @@ BOOST_AUTO_TEST_CASE(deposition_from_scan_path_3d)
   adamantine::ScanPath scan_path("scan_path.txt", "segment");
 
   boost::property_tree::ptree database;
-  database.put("deposition_chunk_length", 0.0005);
+  database.put("deposition_length", 0.0005);
   database.put("deposition_height", 0.1);
   database.put("deposition_width", 0.1);
   database.put("deposition_lead_time", 0.0);
@@ -418,7 +418,7 @@ BOOST_AUTO_TEST_CASE(deposition_from_L_scan_path_3d)
   adamantine::ScanPath scan_path("scan_path_L.txt", "segment");
 
   boost::property_tree::ptree database;
-  database.put("deposition_chunk_length", 0.0005);
+  database.put("deposition_length", 0.0005);
   database.put("deposition_height", 0.1);
   database.put("deposition_width", 0.1);
   database.put("deposition_lead_time", 0.0);
