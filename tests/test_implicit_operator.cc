@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   std::shared_ptr<adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>>
       thermal_operator = std::make_shared<
           adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>>(
-          communicator, mat_properties);
+          communicator, mat_properties, adamantine::BoundaryType::adiabatic);
   thermal_operator->reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator->compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                 fe_collection);
