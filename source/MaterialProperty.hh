@@ -36,17 +36,6 @@ class MaterialProperty
 public:
   /**
    * Constructor.
-   * \param[in] database requires the following entries:
-   *   - <B>n_materials</B>: unsigned int in \f$(0,\infty)\f$
-   *   - <B>material_X</B>: property tree associated with material_X
-   *   where X is a number
-   *   - <B>material_X.Y</B>: property_tree where Y is either liquid, powder, or
-   *   solid [optional]
-   *   - <B>material_X.Y.Z</B>: string where Z is either density, specific_heat,
-   *   or thermal_conductivity, describe the behavior of the property as a
-   *   function of the temperatur (e.g. "2.*T") [optional]
-   *   - <B>material.X.A</B>: A is either solidus, liquidus, or latent heat
-   * [optional]
    */
   MaterialProperty(
       MPI_Comm const &communicator,

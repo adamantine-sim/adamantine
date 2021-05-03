@@ -254,7 +254,8 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
   BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
 
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>
-      thermal_operator_host(communicator, mat_properties);
+      thermal_operator_host(communicator, mat_properties,
+                            adamantine::BoundaryType::adiabatic);
   thermal_operator_host.compute_inverse_mass_matrix(
       dof_handler, affine_constraints, fe_collection);
   thermal_operator_host.reinit(dof_handler, affine_constraints, q_collection);

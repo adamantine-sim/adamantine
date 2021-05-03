@@ -21,8 +21,10 @@ namespace adamantine
 template <int dim, int fe_degree, typename MemorySpaceType>
 ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
     MPI_Comm const &communicator,
-    std::shared_ptr<MaterialProperty<dim>> material_properties)
+    std::shared_ptr<MaterialProperty<dim>> material_properties,
+    BoundaryType boundary_type)
     : _communicator(communicator), _material_properties(material_properties),
+      _boundary_type(boundary_type),
       _inverse_mass_matrix(
           new dealii::LA::distributed::Vector<double, MemorySpaceType>())
 {
@@ -41,6 +43,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::reinit(
 {
   _matrix_free.reinit(dealii::StaticMappingQ1<dim>::mapping, dof_handler,
                       affine_constraints, q_collection, _matrix_free_data);
+  _affine_constraints = &affine_constraints;
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -138,7 +141,95 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::vmult_add(
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
   // Execute the matrix-free matrix-vector multiplication
-  _matrix_free.cell_loop(&ThermalOperator::local_apply, this, dst, src);
+  _matrix_free.cell_loop(&ThermalOperator::cell_local_apply, this, dst, src);
+  // We compute the boundary conditions by hand. We would like to use
+  // dealii::MatrixFree::loop() but there are two problems: 1. the function does
+  // not work with FE_Nothing 2. even if it did we could only use it for the
+  // domain boundary, we would still need to deal with the interface with
+  // FE_Nothing ourselves.
+  if (!(_boundary_type & BoundaryType::adiabatic))
+  {
+    unsigned int const dofs_per_cell = _matrix_free.get_dofs_per_cell();
+    dealii::Vector<double> cell_src(dofs_per_cell);
+    dealii::Vector<double> cell_dst(dofs_per_cell);
+    auto &dof_handler = _matrix_free.get_dof_handler();
+    std::vector<dealii::types::global_dof_index> local_dof_indices(
+        dofs_per_cell);
+    dealii::QGauss<dim - 1> face_quadrature(fe_degree + 1);
+    dealii::FEFaceValues<dim> fe_face_values(
+        dof_handler.get_fe(), face_quadrature,
+        dealii::update_values | dealii::update_quadrature_points |
+            dealii::update_JxW_values);
+    unsigned int const n_face_q_points = face_quadrature.size();
+    // Loop over the locally owned cells with an active FE index of zero
+    for (auto const &cell : dealii::filter_iterators(
+             dof_handler.active_cell_iterators(),
+             dealii::IteratorFilters::LocallyOwnedCell(),
+             dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+    {
+      cell_dst = 0.;
+      cell->get_dof_indices(local_dof_indices);
+      for (unsigned int i = 0; i < dofs_per_cell; ++i)
+        cell_src[i] = src[local_dof_indices[i]];
+      double const inv_rho_cp = get_inv_rho_cp(cell);
+
+      bool is_on_domain_boundary = false;
+      for (unsigned int f = 0; f < dealii::GeometryInfo<dim>::faces_per_cell;
+           ++f)
+      {
+        // We need to add the boundary conditions on the faces on the boundary
+        // but also on the faces at the interface with FE_Nothing
+        auto const &face = cell->face(f);
+        if ((face->at_boundary()) ||
+            ((!face->at_boundary()) &&
+             (cell->neighbor(f)->active_fe_index() != 0)))
+        {
+          double conv_temperature_infty = 0.;
+          double conv_heat_transfer_coef = 0.;
+          double rad_temperature_infty = 0.;
+          double rad_heat_transfer_coef = 0.;
+          if (_boundary_type & BoundaryType::convective)
+          {
+            conv_temperature_infty = _material_properties->get(
+                cell, Property::convection_temperature_infty);
+            conv_heat_transfer_coef = _material_properties->get(
+                cell, StateProperty::convection_heat_transfer_coef);
+          }
+          if (_boundary_type & BoundaryType::radiative)
+          {
+            rad_temperature_infty = _material_properties->get(
+                cell, Property::radiation_temperature_infty);
+            rad_heat_transfer_coef = _material_properties->get(
+                cell, StateProperty::radiation_heat_transfer_coef);
+          }
+
+          fe_face_values.reinit(cell, face);
+          for (unsigned int j = 0; j < dofs_per_cell; ++j)
+          {
+            for (unsigned int i = 0; i < dofs_per_cell; ++i)
+            {
+              for (unsigned int q = 0; q < n_face_q_points; ++q)
+              {
+                cell_dst[i] -=
+                    inv_rho_cp *
+                    (conv_heat_transfer_coef + rad_heat_transfer_coef) *
+                    fe_face_values.shape_value(i, q) *
+                    fe_face_values.shape_value(j, q) * cell_src[j] *
+                    fe_face_values.JxW(q);
+              }
+            }
+          }
+          is_on_domain_boundary = true;
+        }
+      }
+
+      if (is_on_domain_boundary)
+      {
+        _affine_constraints->distribute_local_to_global(cell_dst,
+                                                        local_dof_indices, dst);
+      }
+    }
+  }
 
   // Because cell_loop resolves the constraints, the constrained dofs are not
   // called they stay at zero. Thus, we need to force the value on the
@@ -162,7 +253,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::Tvmult_add(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::local_apply(
+void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
     dealii::MatrixFree<dim, double> const &data,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
@@ -210,13 +301,15 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
   // Update the state of the materials
   _material_properties->update(_matrix_free.get_dof_handler(), temperature);
 
+  // Store the volumetric material properties
   unsigned int const n_cells = _matrix_free.n_cell_batches();
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
       _matrix_free);
-  _inv_rho_cp.reinit(n_cells, fe_eval.n_q_points);
-  _thermal_conductivity.reinit(n_cells, fe_eval.n_q_points);
+  unsigned int const fe_eval_n_q_points = fe_eval.n_q_points;
+  _inv_rho_cp.reinit(n_cells, fe_eval_n_q_points);
+  _thermal_conductivity.reinit(n_cells, fe_eval_n_q_points);
   for (unsigned int cell = 0; cell < n_cells; ++cell)
-    for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
+    for (unsigned int q = 0; q < fe_eval_n_q_points; ++q)
       for (unsigned int i = 0;
            i < _matrix_free.n_active_entries_per_cell_batch(cell); ++i)
       {

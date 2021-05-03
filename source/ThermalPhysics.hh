@@ -166,6 +166,10 @@ private:
    */
   double _current_source_height = 0.;
   /**
+   * Type of boundary.
+   */
+  BoundaryType _boundary_type;
+  /**
    * Associated geometry.
    */
   Geometry<dim> &_geometry;

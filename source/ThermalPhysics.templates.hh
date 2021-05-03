@@ -17,6 +17,7 @@
 #include <GoldakHeatSource.hh>
 #include <ThermalPhysics.hh>
 
+#include <deal.II/base/geometry_info.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_nothing.h>
@@ -118,7 +119,8 @@ template <int dim, int fe_degree, typename MemorySpaceType,
 ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     Geometry<dim> &geometry)
-    : _geometry(geometry), _dof_handler(_geometry.get_triangulation())
+    : _geometry(geometry), _boundary_type(BoundaryType::invalid),
+      _dof_handler(_geometry.get_triangulation())
 {
   // Create the FECollection
   _fe_collection.push_back(dealii::FE_Q<dim>(fe_degree));
@@ -167,11 +169,52 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     }
   }
 
+  // Create the boundary condition type
+  // PropertyTreeInput boundary.type
+  std::string boundary_type_str = database.get<std::string>("boundary.type");
+  // Parse the string
+  size_t pos_str = 0;
+  std::string boundary;
+  std::string delimiter = ",";
+  auto parse_boundary_type = [&](std::string const &boundary) {
+    if (boundary == "adiabatic")
+    {
+      ASSERT_THROW(_boundary_type == BoundaryType::invalid,
+                   "Adiabatic condition cannot be combined with another type.");
+      _boundary_type = BoundaryType::adiabatic;
+    }
+    else
+    {
+      ASSERT_THROW(_boundary_type != BoundaryType::adiabatic,
+                   "Adiabatic condition cannot be combined with another type.");
+
+      if (boundary == "radiative")
+      {
+        _boundary_type |= BoundaryType::radiative;
+      }
+      else if (boundary == "convective")
+      {
+        _boundary_type |= BoundaryType::convective;
+      }
+      else
+      {
+        ASSERT_THROW(false, "Unknown boundary type.");
+      }
+    }
+  };
+  while ((pos_str = boundary_type_str.find(delimiter)) != std::string::npos)
+  {
+    boundary = boundary_type_str.substr(0, pos_str);
+    parse_boundary_type(boundary);
+    boundary_type_str.erase(0, pos_str + delimiter.length());
+  }
+  parse_boundary_type(boundary_type_str);
+
   // Create the thermal operator
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
     _thermal_operator =
         std::make_shared<ThermalOperator<dim, fe_degree, MemorySpaceType>>(
-            communicator, _material_properties);
+            communicator, _material_properties, _boundary_type);
 #if defined(ADAMANTINE_HAVE_CUDA) && defined(__CUDACC__)
   else
     _thermal_operator = std::make_shared<
@@ -573,6 +616,12 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   unsigned int const dofs_per_cell = _fe_collection.max_dofs_per_cell();
   unsigned int const n_q_points = source_q_collection.max_n_quadrature_points();
   std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
+  dealii::QGauss<dim - 1> face_quadrature(fe_degree + 1);
+  dealii::FEFaceValues<dim> fe_face_values(
+      _fe_collection[0], face_quadrature,
+      dealii::update_values | dealii::update_quadrature_points |
+          dealii::update_JxW_values);
+  unsigned int const n_face_q_points = face_quadrature.size();
   dealii::Vector<double> cell_source(dofs_per_cell);
 
   // Loop over the locally owned cells with an active FE index of zero
@@ -600,10 +649,60 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
                           fe_values.shape_value(i, q) * fe_values.JxW(q);
       }
     }
+
+    // If we don't have a adiabatic boundary conditions, we need to add boundary
+    // conditions
+    if (!(_boundary_type & BoundaryType::adiabatic))
+    {
+      for (unsigned int f = 0; f < dealii::GeometryInfo<dim>::faces_per_cell;
+           ++f)
+      {
+        // We need to add the boundary conditions on the faces on the boundary
+        // but also on the faces at the interface with FE_Nothing
+        auto const &face = cell->face(f);
+        if ((face->at_boundary()) &&
+            ((!face->at_boundary()) &&
+             (cell->neighbor(f)->active_fe_index() != 0)))
+        {
+          double conv_temperature_infty = 0.;
+          double conv_heat_transfer_coef = 0.;
+          double rad_temperature_infty = 0.;
+          double rad_heat_transfer_coef = 0.;
+          if (_boundary_type & BoundaryType::convective)
+          {
+            conv_temperature_infty = _material_properties->get(
+                cell, Property::convection_temperature_infty);
+            conv_heat_transfer_coef = _material_properties->get(
+                cell, StateProperty::convection_heat_transfer_coef);
+          }
+          if (_boundary_type & BoundaryType::radiative)
+          {
+            rad_temperature_infty = _material_properties->get(
+                cell, Property::radiation_temperature_infty);
+            rad_heat_transfer_coef = _material_properties->get(
+                cell, StateProperty::radiation_heat_transfer_coef);
+          }
+
+          fe_face_values.reinit(cell, face);
+          for (unsigned int i = 0; i < dofs_per_cell; ++i)
+          {
+            for (unsigned int q = 0; q < n_face_q_points; ++q)
+            {
+              cell_source[i] +=
+                  inv_rho_cp *
+                  (conv_heat_transfer_coef * conv_temperature_infty +
+                   rad_heat_transfer_coef * rad_temperature_infty) *
+                  fe_face_values.shape_value(i, q) * fe_face_values.JxW(q);
+            }
+          }
+        }
+      }
+    }
     cell->get_dof_indices(local_dof_indices);
     _affine_constraints.distribute_local_to_global(cell_source,
                                                    local_dof_indices, source);
   }
+
   source.compress(dealii::VectorOperation::add);
 
   return vmult_and_scale<dim, fe_degree, MemorySpaceType>(_thermal_operator, y,
