@@ -47,6 +47,9 @@ valid as `input.info`.
 
 ### Input file
 The following options are available:
+* boundary:
+  * type: type of boundary: adiabatic, radiative, or convective. Multiple types
+  can be chosen simultaneously by separating them by comma
 * discretization:
   * fe\_degree: degree of the finite element used
   * quadrature: quadrature used: gauss or lobatto (default value: gauss)
@@ -61,10 +64,10 @@ The following options are available:
   * material\_deposition: material is deposed during the simulation: true or
   false (default value: false)
   * if material\_deposition is true:
-    * material\_deposition\_method: file, scan_paths
+    * material\_deposition\_method: file, scan\_paths
     * if material\_deposition\_method is file:
         * material\_deposition\_file: material deposition filename
-    * if material\_deposition\_method is scan_paths:
+    * if material\_deposition\_method is scan\_paths:
         * deposition\_length: length of material deposition boxes along the scan direction
         * deposition\_width: width of material deposition boxes (in the plane of the material, normal to the scan direction, 3D only)
         * deposition\_height: height of material deposition boxes (out of the plane of the material)
@@ -88,10 +91,12 @@ The following options are available:
   * material\_X: property tree for the material with number X
   * material\_X.Y: property tree where Y is either liquid, powder, or solid
   (optional)
-  * material\_X.Y.Z: Z is either density in kg/m^3, specific\_heat in J/(K\*kg), or
-  thermal\_conductivity in W/(m\*K) (optional)
-  * material\_X.A: A is either solidus in kelvin, liquidus in kelvin, or latent\_heat
-  in J/kg (optional)
+  * material\_X.Y.Z: Z is either density in kg/m^3, specific\_heat in J/(K\*kg),
+  thermal\_conductivity in W/(m\*K), emissivity, or convection\_heat\_transfer\_coef
+  in W/(m^2\*K) (optional)
+  * material\_X.A: A is either solidus in kelvin, liquidus in kelvin, latent\_heat
+  in J/kg, radiation\_temperature\_infty in kelvin, or convection\_temperature\_infty
+  in kelvin (optional)
 * memory\_space: device (use GPU) or host (use CPU) (default value: host)
 * post\_processor:
   * filename\_prefix: prefix of output files
