@@ -24,7 +24,8 @@ class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
   ThermalOperator(MPI_Comm const &communicator,
-                  std::shared_ptr<MaterialProperty<dim>> material_properties);
+                  std::shared_ptr<MaterialProperty<dim>> material_properties,
+                  BoundaryType boundary_type);
 
   /**
    * Associate the AffineConstraints<double> and the MatrixFree objects to the
@@ -105,7 +106,7 @@ private:
   /**
    * Apply the operator on a given set of quadrature points.
    */
-  void local_apply(
+  void cell_local_apply(
       dealii::MatrixFree<dim, double> const &data,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
       dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
@@ -132,13 +133,21 @@ private:
    */
   std::shared_ptr<MaterialProperty<dim>> _material_properties;
   /**
+   * Type of boundary.
+   */
+  BoundaryType _boundary_type;
+  /**
    * Underlying MatrixFree object.
    */
   dealii::MatrixFree<dim, double> _matrix_free;
   /**
-   * The inverse of the mass matrix is computed using an inexact Gauss-Lobatto
-   * quadrature. This inexact quadrature makes the mass matrix and therefore
-   * also its inverse, a diagonal matrix.
+   * Non-owning pointer to the AffineConstraints from ThermalPhysics.
+   */
+  dealii::AffineConstraints<double> const *_affine_constraints;
+  /**
+   * The inverse of the mass matrix is computed using an inexact
+   * Gauss-Lobatto quadrature. This inexact quadrature makes the mass matrix
+   * and therefore also its inverse, a diagonal matrix.
    */
   std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
       _inverse_mass_matrix;

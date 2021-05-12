@@ -91,3 +91,8 @@ discretization
   fe_degree 3
   quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
 }
+
+boundary
+{
+  type adiabatic
+}

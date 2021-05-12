@@ -8,6 +8,11 @@ geometry
   height_divisions 10 ; Number of cell layers in the height direction
 }
 
+boundary
+{
+  type adiabatic
+}
+
 refinement
 {
   n_heat_refinements 0 ; Number of coarsening/refinement executed (uses Kelly's

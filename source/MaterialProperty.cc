@@ -167,9 +167,9 @@ void MaterialProperty<dim>::update(
     // modify the rho C_p to take into account the latent heat.
     if ((liquid_ratio > 0.) && (liquid_ratio < 1.))
     {
-      unsigned int specific_heat_prop =
+      unsigned int const specific_heat_prop =
           static_cast<unsigned int>(StateProperty::specific_heat);
-      unsigned int latent_heat_prop =
+      unsigned int const latent_heat_prop =
           static_cast<unsigned int>(Property::latent_heat);
       for (unsigned int material_state = 0; material_state < _n_material_states;
            ++material_state)
@@ -179,6 +179,24 @@ void MaterialProperty<dim>::update(
             _properties[material_id][latent_heat_prop] / (liquidus - solidus);
       }
     }
+
+    // The radiation heat transfer coefficient is not a real material property
+    // but it is derived from other material properties:
+    // h_rad = emissitivity * stefan-boltzmann constant * (T + T_infty) (T^2 +
+    // T^2_infty).
+    unsigned int const emissivity_prop =
+        static_cast<unsigned int>(StateProperty::emissivity);
+    unsigned int const radiation_heat_transfer_coef_prop =
+        static_cast<unsigned int>(StateProperty::radiation_heat_transfer_coef);
+    unsigned int const radiation_temperature_infty_prop =
+        static_cast<unsigned int>(Property::radiation_temperature_infty);
+    double const T = temperature_average[dof];
+    double const T_infty =
+        _properties[material_id][radiation_temperature_infty_prop];
+    double const emissivity = _property_values[emissivity_prop][dof];
+    _property_values[radiation_heat_transfer_coef_prop][dof] =
+        emissivity * Constant::stefan_boltzmann * (T + T_infty) *
+        (T * T + T_infty * T_infty);
   }
 }
 
@@ -203,9 +221,11 @@ void MaterialProperty<dim>::fill_properties(
   std::array<std::string, _n_material_states> material_state = {
       {"powder", "solid", "liquid"}};
   std::array<std::string, _n_properties> properties = {
-      {"liquidus", "solidus", "latent_heat"}};
+      {"liquidus", "solidus", "latent_heat", "radiation_temperature_infty",
+       "convection_temperature_infty"}};
   std::array<std::string, _n_state_properties> state_properties = {
-      {"density", "specific_heat", "thermal_conductivity"}};
+      {"density", "specific_heat", "thermal_conductivity", "emissivity",
+       "radiation_heat_transfer_coef", "convection_heat_transfer_coef"}};
 
   // PropertyTreeInput materials.property_format
   std::string property_format = database.get<std::string>("property_format");

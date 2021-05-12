@@ -46,6 +46,8 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   database.put("sources.beam_0.scan_path_file",
                "scan_path_test_thermal_physics.txt");
   database.put("sources.beam_0.scan_path_file_format", "segment");
+  // Boundary database
+  database.put("boundary.type", "adiabatic");
 
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
@@ -107,6 +109,8 @@ void thermal_2d_manufactured_solution()
                "scan_path_test_thermal_physics.txt");
   database.put("sources.beam_0.type", "electron_beam");
   database.put("sources.beam_0.scan_path_file_format", "segment");
+  // Boundary database
+  database.put("boundary.type", "adiabatic");
 
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
@@ -181,6 +185,8 @@ void initial_temperature()
   database.put("sources.beam_0.scan_path_file",
                "scan_path_test_thermal_physics.txt");
   database.put("sources.beam_0.scan_path_file_format", "segment");
+  // Boundary database
+  database.put("boundary.type", "adiabatic");
 
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
@@ -234,6 +240,8 @@ void energy_conservation()
   database.put("sources.beam_0.max_y", 6);
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
+  // Boundary database
+  database.put("boundary.type", "adiabatic");
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
       physics(communicator, database, geometry);
