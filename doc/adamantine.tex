@@ -40,7 +40,7 @@
 \maketitle
 
 \section{Introduction}
-Adamantine is software design to simulate additive manufacturing. It is based on
+Adamantine is a software tool for simulating additive manufacturing. It is based on
 deal.II and p4est. The first goal is to accurately represent the heat transfer
 and the phase transition between the powder, the solid, and the liquid.
 
@@ -48,11 +48,9 @@ and the phase transition between the powder, the solid, and the liquid.
 \subsection{Assumptions}
 \begin{itemize}
   \item No movement in the liquid (Marangoni effect).
-  \item No the evaporation of the material.
+  \item No evaporation of the material.
   \item No change of volume when the material changes phase.
-  \item No loss of heat by radiative transfer.
-  \item Material properties are constant per cell.
-  \item We assume that the there is always a mushy zone (no isothermal change
+  \item We assume that there is always a mushy zone (no isothermal change
     of phase).
 \end{itemize}
 \subsection{Heat equation}
@@ -160,10 +158,8 @@ physical meaning of this term, we will write it as:
   \label{boundary}
 \end{equation}
 If \Cref{boundary} is equal to zero, this means that $\bn T=0$. Physically this
-condition correspond to a reflective boundary condition. In practise, we are
-interested in two kind of boundary conditions: radiative loss and convection. In
-practise, we are interested in two kind of boundary conditions: radiative loss
-and convection.
+condition corresponds to a reflective boundary condition. In practice, we are
+interested in two kind of boundary conditions: radiative loss and convection.
 \paragraph{Radiative Loss}
 The Stefan-Boltzmann law describes the heat flux due to radiation as:
 \begin{equation}
@@ -204,6 +200,21 @@ Thus, we have:
     \int_{\partial} \alpha h_{\text{rad}} T_{\infty} b_i.
   \end{split}
 \end{equation}
+\paragraph{Convection}
+The convective heat transfer has the same form as the linearized radiative loss:
+\begin{equation}
+  -\boldsymbol{n} \cdot \(k\bn T\) = h_{\text{conv}}\(T-T_{\infty}\).
+\end{equation}
+Thus, we have:
+\begin{equation}
+  \begin{split}
+    \int_{\partial} \alpha b_i \boldsymbol{n} \cdot \(k \bn T\) &= 
+    -\int_{\partial} \alpha b_i h_{\text{conv}} \(T-T_{\infty}\),\\
+    &=-\int_{\partial} \alpha h_{\text{conv}} \sum_j T_j b_i b_j +
+    \int_{\partial} \alpha h_{\text{conv}} T_{\infty} b_i.
+  \end{split}
+\end{equation}
+
 
 
 \section{Algorithmic choice}
