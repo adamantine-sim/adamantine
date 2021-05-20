@@ -289,3 +289,65 @@ void energy_conservation()
   BOOST_CHECK_CLOSE(solution.mean_value(), final_temperature, tolerance);
   BOOST_CHECK_CLOSE(min, max, tolerance);
 }
+
+template <typename MemorySpaceType>
+void internal_dirichlet()
+{
+  int constexpr dim = 3;
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  boost::property_tree::ptree database;
+  // Geometry database
+  database.put("geometry.import_mesh", false);
+  database.put("geometry.length", 10);
+  database.put("geometry.length_divisions", 5);
+  database.put("geometry.width", 10);
+  database.put("geometry.width_divisions", 5);
+  database.put("geometry.height", 10);
+  database.put("geometry.height_divisions", 5);
+  database.put("geometry.material_height", 6.);
+  database.put("geometry.material_deposition", true);
+  database.put("geometry.material_deposition_file",
+               "material_path_test_material_deposition.txt");
+  // Build Geometry
+  boost::property_tree::ptree geometry_database =
+      database.get_child("geometry");
+  adamantine::Geometry<dim> geometry(communicator, geometry_database);
+
+  // Material property
+  database.put("materials.property_format", "polynomial");
+  database.put("materials.n_materials", 1);
+  database.put("materials.material_0.solid.density", 1.);
+  database.put("materials.material_0.liquid.density", 1.);
+  database.put("materials.material_0.solid.specific_heat", 1.);
+  database.put("materials.material_0.liquid.specific_heat", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity", 1.);
+  // Source database
+  database.put("sources.n_beams", 0);
+  // Time-stepping database
+  database.put("time_stepping.method", "forward_euler");
+  // Boundary database
+  database.put("boundary.type", "adiabatic");
+
+  // Build ThermalPhysics
+  adamantine::ThermalPhysics<dim, 2, MemorySpaceType, dealii::QGauss<1>>
+      physics(communicator, database, geometry);
+  physics.setup_dofs();
+  physics.compute_inverse_mass_matrix();
+
+  dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
+  physics.initialize_dof_vector(1000., solution);
+  BOOST_CHECK(solution.l1_norm() == 1000. * solution.size());
+
+  dealii::LA::distributed::Vector<double, MemorySpaceType> imposed_solution;
+  physics.initialize_dof_vector(1., imposed_solution);
+  physics.set_internal_dirichlet_bcs(solution, imposed_solution);
+
+  BOOST_CHECK(solution.l1_norm() < 1000. * solution.size());
+
+  // Take one time step
+  std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
+  double time = 0;
+  time = physics.evolve_one_time_step(time, 0.05, solution, timers);
+}

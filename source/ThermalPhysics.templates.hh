@@ -740,6 +740,45 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 
   return solution;
 }
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+    set_internal_dirichlet_bcs(
+        dealii::LinearAlgebra::distributed::Vector<double> &solution,
+        dealii::LinearAlgebra::distributed::Vector<double> &imposed_temperature)
+{
+  // Loop over the faces looking for the interface between the two FE
+  // types
+  for (auto const &cell : dealii::filter_iterators(
+           _dof_handler.active_cell_iterators(),
+           dealii::IteratorFilters::LocallyOwnedCell(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+  {
+    for (const unsigned int face_no : cell->face_indices())
+    {
+      if (cell->face(face_no)->n_active_fe_indices() > 1)
+      {
+        std::vector<dealii::types::global_dof_index> indices;
+        auto dofs_per_face =
+            _dof_handler.get_fe_collection().max_dofs_per_face();
+        indices.resize(dofs_per_face);
+        cell->face(face_no)->get_dof_indices(indices, 0);
+
+        // Loop over the DoF on the face
+        for (auto dof : indices)
+        {
+          _affine_constraints.add_line(dof);
+          _affine_constraints.set_inhomogeneity(dof, imposed_temperature[dof]);
+          solution[dof] = imposed_temperature[dof];
+        }
+      }
+    }
+  }
+
+  _thermal_operator->reinit(_dof_handler, _affine_constraints, _q_collection);
+}
+
 } // namespace adamantine
 
 #endif

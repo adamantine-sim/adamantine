@@ -56,3 +56,8 @@ BOOST_AUTO_TEST_CASE(energy_conservation_host)
 {
   energy_conservation<dealii::MemorySpace::Host>();
 }
+
+BOOST_AUTO_TEST_CASE(internal_dirichlet_host)
+{
+  internal_dirichlet<dealii::MemorySpace::Host>();
+}

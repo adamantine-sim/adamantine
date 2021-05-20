@@ -115,6 +115,13 @@ public:
    */
   double get_current_source_height() const;
 
+  /**
+   * Sets constraints for fixed temperature values
+   */
+  void set_internal_dirichlet_bcs(
+      dealii::LinearAlgebra::distributed::Vector<double> &solution,
+      dealii::LinearAlgebra::distributed::Vector<double> &imposed_temperature);
+
 private:
   using LA_Vector =
       typename dealii::LA::distributed::Vector<double, MemorySpaceType>;
