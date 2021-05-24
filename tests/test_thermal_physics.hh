@@ -6,6 +6,7 @@
  */
 
 #include <Geometry.hh>
+#include <PostProcessor.hh>
 #include <ThermalPhysics.hh>
 
 #include <deal.II/base/quadrature_lib.h>
@@ -346,8 +347,25 @@ void internal_dirichlet()
 
   BOOST_CHECK(solution.l1_norm() < 1000. * solution.size());
 
+  // Output the solution for visualization purposes
+  boost::property_tree::ptree post_processor_database;
+  post_processor_database.put("filename_prefix", "constraint_test");
+  adamantine::PostProcessor<dim> post_processor(
+      communicator, post_processor_database, physics.get_dof_handler(),
+      physics.get_material_property());
+
+  dealii::AffineConstraints<double> &affine_constraints =
+      physics.get_affine_constraints();
+
+  affine_constraints.distribute(solution);
+  post_processor.output_pvtu(0, 0, 0.0, solution);
+
   // Take one time step
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
-  time = physics.evolve_one_time_step(time, 0.05, solution, timers);
+  for (unsigned int iter = 0; iter < 10000; ++iter)
+    time = physics.evolve_one_time_step(time, 1e-5, solution, timers);
+
+  affine_constraints.distribute(solution);
+  post_processor.output_pvtu(0, 1, 0.0, solution);
 }
