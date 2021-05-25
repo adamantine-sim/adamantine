@@ -175,6 +175,7 @@ void initial_temperature()
   database.put("materials.material_0.solid.thermal_conductivity", 1.);
   database.put("materials.material_0.powder.thermal_conductivity", 1.);
   database.put("materials.material_0.liquid.thermal_conductivity", 1.);
+
   // Source database
   database.put("sources.n_beams", 1);
   database.put("sources.beam_0.depth", 1e100);
@@ -319,11 +320,16 @@ void internal_dirichlet()
   database.put("materials.property_format", "polynomial");
   database.put("materials.n_materials", 1);
   database.put("materials.material_0.solid.density", 1.);
+  database.put("materials.material_0.powder.density", 1.);
   database.put("materials.material_0.liquid.density", 1.);
   database.put("materials.material_0.solid.specific_heat", 1.);
+  database.put("materials.material_0.powder.specific_heat", 1.);
   database.put("materials.material_0.liquid.specific_heat", 1.);
   database.put("materials.material_0.solid.thermal_conductivity", 1.);
+  database.put("materials.material_0.powder.thermal_conductivity", 1.);
   database.put("materials.material_0.liquid.thermal_conductivity", 1.);
+  database.put("materials.material_0.solidus", 5000.);
+  database.put("materials.material_0.liquidus", 6000.);
   // Source database
   database.put("sources.n_beams", 0);
   // Time-stepping database
@@ -345,7 +351,28 @@ void internal_dirichlet()
   physics.initialize_dof_vector(1., imposed_solution);
   physics.set_internal_dirichlet_bcs(solution, imposed_solution);
 
+  // Necessary but not sufficient check
   BOOST_CHECK(solution.l1_norm() < 1000. * solution.size());
+
+  // More detailed check
+  for (const auto &cell : physics.get_dof_handler().active_cell_iterators())
+    for (unsigned int v = 0; v < dealii::GeometryInfo<dim>::vertices_per_cell;
+         ++v)
+    {
+      if (std::abs(cell->vertex(v)[2] - 6.) < 1.e-12)
+      {
+        auto dofs_per_vertex =
+            physics.get_dof_handler().get_fe_collection().max_dofs_per_vertex();
+        for (unsigned int dof = 0; dof < dofs_per_vertex; ++dof)
+        {
+
+          const unsigned int dof_index = cell->vertex_dof_index(v, dof);
+          std::cout << cell->vertex(v) << " " << solution[dof_index]
+                    << std::endl;
+          BOOST_CHECK_CLOSE(solution[dof_index], 1., 1.e-12);
+        }
+      }
+    }
 
   // Output the solution for visualization purposes
   boost::property_tree::ptree post_processor_database;

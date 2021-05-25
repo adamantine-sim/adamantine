@@ -749,7 +749,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         dealii::LinearAlgebra::distributed::Vector<double> &imposed_temperature)
 {
   // Loop over the faces looking for the interface between the two FE
-  // types
+  // types or the top of the domain
   for (auto const &cell : dealii::filter_iterators(
            _dof_handler.active_cell_iterators(),
            dealii::IteratorFilters::LocallyOwnedCell(),
@@ -757,7 +757,9 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   {
     for (const unsigned int face_no : cell->face_indices())
     {
-      if (cell->face(face_no)->n_active_fe_indices() > 1)
+      dealii::types::boundary_id top_boundary_id = dim * 2 - 1;
+      if ((cell->face(face_no)->n_active_fe_indices() > 1) ||
+          (cell->face(face_no)->boundary_id() == top_boundary_id))
       {
         std::vector<dealii::types::global_dof_index> indices;
         auto dofs_per_face =
@@ -775,6 +777,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
       }
     }
   }
+
+  _affine_constraints.close();
 
   _thermal_operator->reinit(_dof_handler, _affine_constraints, _q_collection);
 }
