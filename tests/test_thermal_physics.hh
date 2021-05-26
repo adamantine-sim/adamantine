@@ -293,7 +293,9 @@ void energy_conservation()
 }
 
 template <typename MemorySpaceType>
-void internal_dirichlet()
+void internal_dirichlet(const double interface_height,
+                        const double initial_bulk_temperature,
+                        const double imposed_interface_temperature)
 {
   int constexpr dim = 3;
   MPI_Comm communicator = MPI_COMM_WORLD;
@@ -307,7 +309,7 @@ void internal_dirichlet()
   database.put("geometry.width_divisions", 5);
   database.put("geometry.height", 10);
   database.put("geometry.height_divisions", 5);
-  database.put("geometry.material_height", 6.);
+  database.put("geometry.material_height", interface_height);
   database.put("geometry.material_deposition", true);
   database.put("geometry.material_deposition_file",
                "material_path_test_material_deposition.txt");
@@ -344,35 +346,46 @@ void internal_dirichlet()
   physics.compute_inverse_mass_matrix();
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
-  physics.initialize_dof_vector(1000., solution);
-  BOOST_CHECK(solution.l1_norm() == 1000. * solution.size());
+  physics.initialize_dof_vector(initial_bulk_temperature, solution);
+  BOOST_CHECK(solution.l1_norm() == initial_bulk_temperature * solution.size());
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> imposed_solution;
-  physics.initialize_dof_vector(1., imposed_solution);
+  physics.initialize_dof_vector(imposed_interface_temperature,
+                                imposed_solution);
   physics.set_internal_dirichlet_bcs(solution, imposed_solution);
 
-  // Necessary but not sufficient check
-  BOOST_CHECK(solution.l1_norm() < 1000. * solution.size());
-
   // More detailed check
-  for (const auto &cell : physics.get_dof_handler().active_cell_iterators())
-    for (unsigned int v = 0; v < dealii::GeometryInfo<dim>::vertices_per_cell;
-         ++v)
+  for (auto const &cell : dealii::filter_iterators(
+           physics.get_dof_handler().active_cell_iterators(),
+           dealii::IteratorFilters::LocallyOwnedCell(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+  {
+    for (const unsigned int vertex_no : cell->vertex_indices())
     {
-      if (std::abs(cell->vertex(v)[2] - 6.) < 1.e-12)
+      double target_value;
+      if (std::abs(cell->vertex(vertex_no)[2] - 6.) < 1.e-12)
       {
-        auto dofs_per_vertex =
-            physics.get_dof_handler().get_fe_collection().max_dofs_per_vertex();
-        for (unsigned int dof = 0; dof < dofs_per_vertex; ++dof)
-        {
+        target_value = imposed_interface_temperature;
+      }
+      else
+      {
+        target_value = initial_bulk_temperature;
+      }
+      std::cout << cell->vertex(vertex_no) << std::endl;
 
-          const unsigned int dof_index = cell->vertex_dof_index(v, dof);
-          std::cout << cell->vertex(v) << " " << solution[dof_index]
-                    << std::endl;
-          BOOST_CHECK_CLOSE(solution[dof_index], 1., 1.e-12);
-        }
+      auto dofs_per_vertex =
+          physics.get_dof_handler().get_fe_collection().max_dofs_per_vertex();
+
+      for (unsigned int dof = 0; dof < dofs_per_vertex; ++dof)
+      {
+        auto dof_index = cell->vertex_dof_index(vertex_no, dof, 0);
+
+        std::cout << cell->vertex(vertex_no) << " " << dof_index << std::endl;
+        std::cout << solution[dof_index] << std::endl;
+        BOOST_CHECK_CLOSE(solution[dof_index], target_value, 1.e-12);
       }
     }
+  }
 
   // Output the solution for visualization purposes
   boost::property_tree::ptree post_processor_database;
@@ -387,12 +400,47 @@ void internal_dirichlet()
   affine_constraints.distribute(solution);
   post_processor.output_pvtu(0, 0, 0.0, solution);
 
-  // Take one time step
+  // Take a few time steps
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
-  for (unsigned int iter = 0; iter < 10000; ++iter)
-    time = physics.evolve_one_time_step(time, 1e-5, solution, timers);
+  for (unsigned int iter = 0; iter < 2; ++iter)
+  {
+    time = physics.evolve_one_time_step(time, 1e-1, solution, timers);
+    affine_constraints.distribute(solution);
+    solution.update_ghost_values();
+  }
 
-  affine_constraints.distribute(solution);
+  // Ensure the interface DoFs still have the constrained value and that all
+  // other points are between the original value and the constrained value
+  for (auto const &cell : dealii::filter_iterators(
+           physics.get_dof_handler().active_cell_iterators(),
+           dealii::IteratorFilters::LocallyOwnedCell(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+  {
+    for (const unsigned int vertex_no : cell->vertex_indices())
+    {
+      auto dofs_per_vertex =
+          physics.get_dof_handler().get_fe_collection().max_dofs_per_vertex();
+      for (unsigned int dof = 0; dof < dofs_per_vertex; ++dof)
+      {
+        auto dof_index = cell->vertex_dof_index(vertex_no, dof, 0);
+
+        std::cout << cell->vertex(vertex_no) << " " << dof_index << std::endl;
+        std::cout << solution[dof_index] << std::endl;
+        if (std::abs(cell->vertex(vertex_no)[2] - 6.) < 1.e-12)
+        {
+          BOOST_CHECK_CLOSE(solution[dof_index], imposed_interface_temperature,
+                            1.e-12);
+        }
+        else
+        {
+          BOOST_CHECK(solution[dof_index] - initial_bulk_temperature < 1e-12);
+          BOOST_CHECK(imposed_interface_temperature - solution[dof_index] <
+                      1e-12);
+        }
+      }
+    }
+  }
+
   post_processor.output_pvtu(0, 1, 0.0, solution);
 }

@@ -750,6 +750,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 {
   // Loop over the faces looking for the interface between the two FE
   // types or the top of the domain
+  _affine_constraints.clear();
+
   for (auto const &cell : dealii::filter_iterators(
            _dof_handler.active_cell_iterators(),
            dealii::IteratorFilters::LocallyOwnedCell(),
@@ -778,8 +780,9 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     }
   }
 
-  _affine_constraints.close();
+  solution.update_ghost_values();
 
+  _affine_constraints.close();
   _thermal_operator->reinit(_dof_handler, _affine_constraints, _q_collection);
 }
 

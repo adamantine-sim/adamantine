@@ -59,5 +59,15 @@ BOOST_AUTO_TEST_CASE(energy_conservation_host)
 
 BOOST_AUTO_TEST_CASE(internal_dirichlet_host)
 {
-  internal_dirichlet<dealii::MemorySpace::Host>();
+  double interface_height = 6.;
+  double initial_bulk_temperature = 1000.;
+  double imposed_interface_temperature = 1.;
+  internal_dirichlet<dealii::MemorySpace::Host>(interface_height,
+                                                initial_bulk_temperature,
+                                                imposed_interface_temperature);
+
+  imposed_interface_temperature = 1000.;
+  internal_dirichlet<dealii::MemorySpace::Host>(interface_height,
+                                                initial_bulk_temperature,
+                                                imposed_interface_temperature);
 }
