@@ -70,8 +70,8 @@ enum Timing
 {
   main,
   refine,
-  add_material,
-  activate_added_material,
+  add_material_search,
+  add_material_activate,
   evol_time,
   evol_time_eval_th_ph,
   evol_time_J_inv,
