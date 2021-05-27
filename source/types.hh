@@ -71,6 +71,7 @@ enum Timing
   main,
   refine,
   add_material,
+  activate_added_material,
   evol_time,
   evol_time_eval_th_ph,
   evol_time_J_inv,

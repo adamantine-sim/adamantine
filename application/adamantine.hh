@@ -127,6 +127,7 @@ inline void initialize_timers(MPI_Comm const &communicator,
   timers.push_back(adamantine::Timer(communicator, "Main"));
   timers.push_back(adamantine::Timer(communicator, "Refinement"));
   timers.push_back(adamantine::Timer(communicator, "Add Material"));
+  timers.push_back(adamantine::Timer(communicator, "Activate Added Material"));
   timers.push_back(adamantine::Timer(communicator, "Evolve One Time Step"));
   timers.push_back(adamantine::Timer(
       communicator, "Evolve One Time Step: evaluate_thermal_physics"));
@@ -744,7 +745,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // We use an epsilon to get the "expected" behavior when the deposition time
     // and the time match should match exactly but don't because of floating
     // point accuracy.
-    timers[adamantine::add_material].start();
+    timers[adamantine::activate_added_material].start();
     double const eps = time_step / 1e12;
     auto activation_start =
         std::lower_bound(deposition_times.begin(), deposition_times.end(),
@@ -767,7 +768,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                                elements_to_activate.begin() + activation_end);
     deposition_times.erase(deposition_times.begin() + activation_start,
                            deposition_times.begin() + activation_end);
-    timers[adamantine::add_material].stop();
+    timers[adamantine::activate_added_material].stop();
 
     // Time can be different than time + time_step if an embedded scheme is
     // used. Note that this is a problem when adding material because it means
