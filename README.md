@@ -108,6 +108,8 @@ The following options are available:
   refinement (default value: 1)
   * n\_beam\_refinements: number of times the cells on the paths of the beams
   are refined (default value: 2)
+  * beam\_cutoff: the cutoff value of the heat source terms above which beam-based refinement occurs (default value: 1e-15)
+  * coarsen\_after\_beam: whether to coarsen cells where the beam has already passed (may conflict with heat refinement, default value: false)
   * max\_level: maximum number of times a cell can be refined
   * time\_steps\_between\_refinement: number of time steps after which the
   refinement process is performed (default value: 2)

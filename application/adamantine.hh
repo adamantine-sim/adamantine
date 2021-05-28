@@ -406,14 +406,14 @@ compute_cells_to_refine(
     double const time, double const next_refinement_time,
     unsigned int const n_time_steps,
     std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources,
-    double const current_source_height)
+    double const current_source_height, double const refinement_beam_cutoff)
 {
 
   // Compute the position of the beams between time and next_refinement_time and
-  // refine the mesh where the source is greater than 1e-15. This cut-off is due
-  // to the fact that the source is gaussian and thus never strictly zero. If
-  // the beams intersect, some cells will appear twice in the vector. This is
-  // not a problem.
+  // refine the mesh where the source is greater than refinement_beam_cutoff.
+  // This cut-off is due to the fact that the source is gaussian and thus never
+  // strictly zero. If the beams intersect, some cells will appear twice in the
+  // vector. This is not a problem.
   std::vector<typename dealii::parallel::distributed::Triangulation<
       dim>::active_cell_iterator>
       cells_to_refine;
@@ -429,7 +429,7 @@ compute_cells_to_refine(
                dealii::IteratorFilters::LocallyOwnedCell()))
       {
         if (beam->value(cell->center(), current_time, current_source_height) >
-            1e-15)
+            refinement_beam_cutoff)
         {
           cells_to_refine.push_back(cell);
         }
@@ -470,6 +470,11 @@ void refine_mesh(
       refinement_database.get("n_beam_refinements", 2);
   // PropertyTreeInput refinement.max_level
   int max_level = refinement_database.get<int>("max_level");
+
+  // PropertyTreeInput refinement.beam_cutoff
+  const double refinement_beam_cutoff =
+      refinement_database.get<double>("beam_cutoff", 1.0e-15);
+
   for (unsigned int i = 0; i < n_kelly_refinements; ++i)
   {
     // Estimate the error. For simplicity, always use dealii::QGauss
@@ -511,18 +516,39 @@ void refine_mesh(
 
   for (unsigned int i = 0; i < n_beam_refinements; ++i)
   {
+
     // Compute the cells to be refined.
     std::vector<typename dealii::parallel::distributed::Triangulation<
         dim>::active_cell_iterator>
-        cells_to_refine =
-            compute_cells_to_refine(triangulation, time, next_refinement_time,
-                                    time_steps_refinement, heat_sources,
-                                    current_source_height);
+        cells_to_refine = compute_cells_to_refine(
+            triangulation, time, next_refinement_time, time_steps_refinement,
+            heat_sources, current_source_height, refinement_beam_cutoff);
+
+    // PropertyTreeInput refinement.coarsen_after_beam
+    const bool coarsen_after_beam =
+        refinement_database.get<bool>("coarsen_after_beam", false);
 
     // Flag the cells for refinement.
     for (auto &cell : cells_to_refine)
-      if (cell->level() < max_level)
+    {
+      if (coarsen_after_beam || cell->level() < max_level)
         cell->set_refine_flag();
+    }
+
+    // Flag the cells for coarsening.
+    if (coarsen_after_beam)
+    {
+      for (auto cell : dealii::filter_iterators(
+               triangulation.active_cell_iterators(),
+               dealii::IteratorFilters::LocallyOwnedCell()))
+      {
+        if (!cell->refine_flag_set())
+          cell->set_coarsen_flag();
+
+        if (cell->level() >= max_level)
+          cell->clear_refine_flag();
+      }
+    }
 
     // Execute the refinement and transfer the solution onto the new mesh.
     refine_and_transfer(thermal_physics, dof_handler, solution);
@@ -698,6 +724,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   auto [material_deposition_boxes, deposition_times] =
       adamantine::create_material_deposition_boxes<dim>(geometry_database,
                                                         heat_sources);
+
   // Unless we use an embedded method, we know in advance the time step.
   // Thus we can get for each time step, the list of elements that we will need
   // to activate. This list will be invalidated every time we refine the mesh.
@@ -767,6 +794,11 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                                elements_to_activate.begin() + activation_end);
     deposition_times.erase(deposition_times.begin() + activation_start,
                            deposition_times.begin() + activation_end);
+
+    material_deposition_boxes.erase(
+        material_deposition_boxes.begin() + activation_start,
+        material_deposition_boxes.begin() + activation_end);
+
     timers[adamantine::add_material].stop();
 
     // Time can be different than time + time_step if an embedded scheme is
