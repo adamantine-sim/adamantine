@@ -407,14 +407,14 @@ compute_cells_to_refine(
     double const time, double const next_refinement_time,
     unsigned int const n_time_steps,
     std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources,
-    double const current_source_height)
+    double const current_source_height, double const refinement_beam_cutoff)
 {
 
   // Compute the position of the beams between time and next_refinement_time and
-  // refine the mesh where the source is greater than 1e-15. This cut-off is due
-  // to the fact that the source is gaussian and thus never strictly zero. If
-  // the beams intersect, some cells will appear twice in the vector. This is
-  // not a problem.
+  // refine the mesh where the source is greater than refinement_beam_cutoff.
+  // This cut-off is due to the fact that the source is gaussian and thus never
+  // strictly zero. If the beams intersect, some cells will appear twice in the
+  // vector. This is not a problem.
   std::vector<typename dealii::parallel::distributed::Triangulation<
       dim>::active_cell_iterator>
       cells_to_refine;
@@ -430,7 +430,7 @@ compute_cells_to_refine(
                dealii::IteratorFilters::LocallyOwnedCell()))
       {
         if (beam->value(cell->center(), current_time, current_source_height) >
-            1e-15)
+            refinement_beam_cutoff)
         {
           cells_to_refine.push_back(cell);
         }
@@ -471,6 +471,11 @@ void refine_mesh(
       refinement_database.get("n_beam_refinements", 2);
   // PropertyTreeInput refinement.max_level
   int max_level = refinement_database.get<int>("max_level");
+
+  // PropertyTreeInput refinement.beam_cutoff
+  const double refinement_beam_cutoff =
+      refinement_database.get<double>("beam_cutoff", 1.0e-15);
+
   for (unsigned int i = 0; i < n_kelly_refinements; ++i)
   {
     // Estimate the error. For simplicity, always use dealii::QGauss
@@ -515,15 +520,34 @@ void refine_mesh(
     // Compute the cells to be refined.
     std::vector<typename dealii::parallel::distributed::Triangulation<
         dim>::active_cell_iterator>
-        cells_to_refine =
-            compute_cells_to_refine(triangulation, time, next_refinement_time,
-                                    time_steps_refinement, heat_sources,
-                                    current_source_height);
+        cells_to_refine = compute_cells_to_refine(
+            triangulation, time, next_refinement_time, time_steps_refinement,
+            heat_sources, current_source_height, refinement_beam_cutoff);
+
+    // PropertyTreeInput refinement.coarsen_after_beam
+    const bool coarsen_after_beam =
+        refinement_database.get<bool>("coarsen_after_beam", false);
+
+    // If coarsening is allowed, set the coarsening flag everywhere
+    if (coarsen_after_beam)
+    {
+      for (auto cell : dealii::filter_iterators(
+               triangulation.active_cell_iterators(),
+               dealii::IteratorFilters::LocallyOwnedCell()))
+      {
+        if (cell->level() > 0)
+          cell->set_coarsen_flag();
+      }
+    }
 
     // Flag the cells for refinement.
     for (auto &cell : cells_to_refine)
+    {
+      if (coarsen_after_beam)
+        cell->clear_coarsen_flag();
       if (cell->level() < max_level)
         cell->set_refine_flag();
+    }
 
     // Execute the refinement and transfer the solution onto the new mesh.
     refine_and_transfer(thermal_physics, dof_handler, solution);
@@ -699,10 +723,13 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   auto [material_deposition_boxes, deposition_times] =
       adamantine::create_material_deposition_boxes<dim>(geometry_database,
                                                         heat_sources);
+
   // Unless we use an embedded method, we know in advance the time step.
+
   // Thus we can get for each time step, the list of elements that we will need
   // to activate. This list will be invalidated every time we refine the mesh.
   timers[adamantine::add_material_search].start();
+
   auto elements_to_activate = adamantine::get_elements_to_activate(
       thermal_physics->get_dof_handler(), material_deposition_boxes);
   timers[adamantine::add_material_search].stop();
@@ -719,9 +746,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       time_step = duration - time;
     unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
-    // Refine the mesh after time_steps_refinement time steps or when time is
-    // greater or equal than the next predicted time for refinement. This is
-    // necessary when using an embedded method.
+    // Refine the mesh after time_steps_refinement time steps or when time
+    // is greater or equal than the next predicted time for refinement. This
+    // is necessary when using an embedded method.
     if (((n_time_step % time_steps_refinement) == 0) ||
         (time >= next_refinement_time))
     {
@@ -742,10 +769,12 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     }
 
     // Add material if necessary.
+
     // We use an epsilon to get the "expected" behavior when the deposition time
     // and the time match should match exactly but don't because of floating
     // point accuracy.
     timers[adamantine::add_material_activate].start();
+
     double const eps = time_step / 1e12;
     auto activation_start =
         std::lower_bound(deposition_times.begin(), deposition_times.end(),
@@ -768,11 +797,17 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                                elements_to_activate.begin() + activation_end);
     deposition_times.erase(deposition_times.begin() + activation_start,
                            deposition_times.begin() + activation_end);
+
+    material_deposition_boxes.erase(
+        material_deposition_boxes.begin() + activation_start,
+        material_deposition_boxes.begin() + activation_end);
+
     timers[adamantine::add_material_activate].stop();
 
     // Time can be different than time + time_step if an embedded scheme is
-    // used. Note that this is a problem when adding material because it means
-    // that the amount of material that needs to be added is not known.
+    // used. Note that this is a problem when adding material because it
+    // means that the amount of material that needs to be added is not
+    // known.
 #if ADAMANTINE_DEBUG
     double const old_time = time;
     bool const adding_material =

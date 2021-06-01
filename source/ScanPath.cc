@@ -142,9 +142,8 @@ void ScanPath::update_current_segment_info(
     double time, dealii::Point<3> &segment_start_point,
     double &segment_start_time) const
 {
-  // Get to the correct segment (assumes that the current time is never
-  // before the current segment starts)
-
+  // Get to the correct segment
+  _current_segment = 0;
   while (time > _segment_list[_current_segment].end_time)
   {
     ++_current_segment;
@@ -174,8 +173,7 @@ dealii::Point<3> ScanPath::value(double const &time) const
     return out_of_domain_point;
   }
 
-  // Get to the correct segment (assumes that the current time is never
-  // before the current segment starts)
+  // Get to the correct segment
   dealii::Point<3> segment_start_point;
   double segment_start_time = 0.0;
   update_current_segment_info(time, segment_start_point, segment_start_time);
@@ -197,8 +195,7 @@ double ScanPath::get_power_modifier(double const &time) const
   if (time > _segment_list.back().end_time)
     return 0.0;
 
-  // Get to the correct segment (assumes that the current time is never
-  // before the current segment starts)
+  // Get to the correct segment
   dealii::Point<3> segment_start_point;
   double segment_start_time = 0.0;
   update_current_segment_info(time, segment_start_point, segment_start_time);
