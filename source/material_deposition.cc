@@ -177,11 +177,20 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
         segment_along_x = true;
       else
       {
-        double distance_x = segment_end_point(0) - segment_start_point(0);
-        double distance_y = segment_end_point(1) - segment_start_point(1);
+        double distance_x =
+            std::abs(segment_end_point(0) - segment_start_point(0));
+        double distance_y =
+            std::abs(segment_end_point(1) - segment_start_point(1));
+
         ASSERT_THROW(!((distance_x > eps) && (distance_y > eps)),
                      "Error: For automated material deposition, scan path "
-                     "segments must align with the coordinate system.");
+                     "segments must align with the coordinate system. Starting "
+                     "point: (" +
+                         std::to_string(segment_start_point(0)) + ", " +
+                         std::to_string(segment_start_point(1)) +
+                         "), Ending point: (" +
+                         std::to_string(segment_end_point(0)) + ", " +
+                         std::to_string(segment_end_point(1)) + ")");
 
         if (distance_x > eps)
           segment_along_x = true;
@@ -260,11 +269,19 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
 
           if (segment_along_x)
           {
-            center(0) = center(0) + center_increment;
+            double increment_sign = 1.;
+            if (segment_end_point[0] < segment_start_point[0])
+              increment_sign = -1.;
+
+            center(0) = center(0) + increment_sign * center_increment;
           }
           else
           {
-            center(1) = center(1) + center_increment;
+            double increment_sign = 1.;
+            if (segment_end_point[1] < segment_start_point[1])
+              increment_sign = -1.;
+
+            center(1) = center(1) + increment_sign * center_increment;
           }
         }
       }
