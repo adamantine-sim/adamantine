@@ -126,7 +126,8 @@ inline void initialize_timers(MPI_Comm const &communicator,
 {
   timers.push_back(adamantine::Timer(communicator, "Main"));
   timers.push_back(adamantine::Timer(communicator, "Refinement"));
-  timers.push_back(adamantine::Timer(communicator, "Add Material"));
+  timers.push_back(adamantine::Timer(communicator, "Add Material, Search"));
+  timers.push_back(adamantine::Timer(communicator, "Add Material, Activate"));
   timers.push_back(adamantine::Timer(communicator, "Evolve One Time Step"));
   timers.push_back(adamantine::Timer(
       communicator, "Evolve One Time Step: evaluate_thermal_physics"));
@@ -701,10 +702,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // Unless we use an embedded method, we know in advance the time step.
   // Thus we can get for each time step, the list of elements that we will need
   // to activate. This list will be invalidated every time we refine the mesh.
-  timers[adamantine::add_material].start();
+  timers[adamantine::add_material_search].start();
   auto elements_to_activate = adamantine::get_elements_to_activate(
       thermal_physics->get_dof_handler(), material_deposition_boxes);
-  timers[adamantine::add_material].stop();
+  timers[adamantine::add_material_search].stop();
 
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_LOOP_BEGIN(main_loop_id, "main_loop");
@@ -734,17 +735,17 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
                   << std::endl;
 
-      timers[adamantine::add_material].start();
+      timers[adamantine::add_material_search].start();
       elements_to_activate = adamantine::get_elements_to_activate(
           thermal_physics->get_dof_handler(), material_deposition_boxes);
-      timers[adamantine::add_material].stop();
+      timers[adamantine::add_material_search].stop();
     }
 
     // Add material if necessary.
     // We use an epsilon to get the "expected" behavior when the deposition time
     // and the time match should match exactly but don't because of floating
     // point accuracy.
-    timers[adamantine::add_material].start();
+    timers[adamantine::add_material_activate].start();
     double const eps = time_step / 1e12;
     auto activation_start =
         std::lower_bound(deposition_times.begin(), deposition_times.end(),
@@ -767,7 +768,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                                elements_to_activate.begin() + activation_end);
     deposition_times.erase(deposition_times.begin() + activation_start,
                            deposition_times.begin() + activation_end);
-    timers[adamantine::add_material].stop();
+    timers[adamantine::add_material_activate].stop();
 
     // Time can be different than time + time_step if an embedded scheme is
     // used. Note that this is a problem when adding material because it means
