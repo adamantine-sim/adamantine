@@ -210,12 +210,13 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::vmult_add(
             {
               for (unsigned int q = 0; q < n_face_q_points; ++q)
               {
-                cell_dst[i] -=
-                    inv_rho_cp *
-                    (conv_heat_transfer_coef + rad_heat_transfer_coef) *
-                    fe_face_values.shape_value(i, q) *
-                    fe_face_values.shape_value(j, q) * cell_src[j] *
-                    fe_face_values.JxW(q);
+                cell_dst[i] -= inv_rho_cp * fe_face_values.shape_value(i, q) *
+                               fe_face_values.shape_value(j, q) *
+                               (conv_heat_transfer_coef *
+                                    (cell_src[j] - conv_temperature_infty) +
+                                rad_heat_transfer_coef *
+                                    (cell_src[j] - rad_temperature_infty)) *
+                               fe_face_values.JxW(q);
               }
             }
           }
