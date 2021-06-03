@@ -236,8 +236,8 @@ BOOST_AUTO_TEST_CASE(spmv_rad)
   mat_prop_database.put("material_0.solid.convection_heat_transfer_coef", 1.);
   mat_prop_database.put("material_0.powder.convection_heat_transfer_coef", 1.);
   mat_prop_database.put("material_0.liquid.convection_heat_transfer_coef", 1.);
-  mat_prop_database.put("material_0.radiation_temperature_infty", 0.5);
-  mat_prop_database.put("material_0.convection_temperature_infty", 0.5);
+  mat_prop_database.put("material_0.radiation_temperature_infty", 0.0);
+  mat_prop_database.put("material_0.convection_temperature_infty", 0.0);
   std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
       new adamantine::MaterialProperty<2>(
           communicator, geometry.get_triangulation(), mat_prop_database));
@@ -276,11 +276,12 @@ BOOST_AUTO_TEST_CASE(spmv_rad)
                                              dealii::update_quadrature_points |
                                              dealii::update_JxW_values);
   double const heat_transfer_coeff =
-      1. * adamantine::Constant::stefan_boltzmann * 1.5 * 1.25;
+      1. * adamantine::Constant::stefan_boltzmann * 1. * 1.;
   std::cout << heat_transfer_coeff << std::endl;
   unsigned int const dofs_per_cell = fe.n_dofs_per_cell();
   dealii::FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
   std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
+
   for (auto const &cell : dof_handler.active_cell_iterators())
   {
     if (cell->at_boundary())
