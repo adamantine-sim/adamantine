@@ -8,6 +8,7 @@
 #ifndef THERMAL_OPERATOR_HH
 #define THERMAL_OPERATOR_HH
 
+#include <HeatSource.hh>
 #include <MaterialProperty.hh>
 #include <ThermalOperatorBase.hh>
 
@@ -23,9 +24,9 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
-  ThermalOperator(MPI_Comm const &communicator,
+  ThermalOperator(MPI_Comm const &communicator, BoundaryType boundary_type,
                   std::shared_ptr<MaterialProperty<dim>> material_properties,
-                  BoundaryType boundary_type);
+                  std::vector<std::shared_ptr<HeatSource<dim>>> heat_sources);
 
   /**
    * Associate the AffineConstraints<double> and the MatrixFree objects to the
@@ -89,6 +90,10 @@ public:
       dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
       const override;
 
+  void get_state_from_material_properties() override;
+
+  void set_state_to_material_properties() override;
+
   /**
    * Evaluate the material properties for a given state field.
    */
@@ -99,10 +104,33 @@ public:
   /**
    * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given cell.
    */
-  double get_inv_rho_cp(
-      typename dealii::DoFHandler<dim>::cell_iterator const &) const override;
+  double
+  get_inv_rho_cp(typename dealii::DoFHandler<dim>::cell_iterator const &cell,
+                 unsigned int q) const override;
+
+  void set_time_and_source_height(double t, double height) override;
 
 private:
+  /**
+   * Update the ratios of the material state.
+   */
+  void
+  update_state_ratios(unsigned int cell, unsigned int q,
+                      dealii::VectorizedArray<double> temperature,
+                      std::array<dealii::VectorizedArray<double>,
+                                 static_cast<unsigned int>(MaterialState::SIZE)>
+                          &state_ratios) const;
+  /**
+   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given matrix-free cell
+   * and quadrature point.
+   */
+  dealii::VectorizedArray<double>
+  get_inv_rho_cp(unsigned int cell, unsigned int q,
+                 std::array<dealii::VectorizedArray<double>,
+                            static_cast<unsigned int>(MaterialState::SIZE)>
+                     state_ratios,
+                 dealii::VectorizedArray<double> temperature) const;
+
   /**
    * Apply the operator on a given set of quadrature points.
    */
@@ -117,13 +145,25 @@ private:
    */
   MPI_Comm const &_communicator;
   /**
+   * Type of boundary.
+   */
+  BoundaryType _boundary_type;
+  /**
+   * Current time of the simulation.
+   */
+  double _time = 0.;
+  /**
+   * Current height of the heat sources.
+   */
+  double _current_source_height = 0.;
+  /**
    * Data to configure the MatrixFree object.
    */
   typename dealii::MatrixFree<dim, double>::AdditionalData _matrix_free_data;
   /**
    * Store the \f$ \frac{1}{\rho C_p}\f$ coefficient.
    */
-  dealii::Table<2, dealii::VectorizedArray<double>> _inv_rho_cp;
+  mutable dealii::Table<2, dealii::VectorizedArray<double>> _inv_rho_cp;
   /**
    * Table of thermal conductivity coefficient.
    */
@@ -133,9 +173,9 @@ private:
    */
   std::shared_ptr<MaterialProperty<dim>> _material_properties;
   /**
-   * Type of boundary.
+   * Vector of heat sources.
    */
-  BoundaryType _boundary_type;
+  std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
   /**
    * Underlying MatrixFree object.
    */
@@ -157,7 +197,36 @@ private:
   std::map<typename dealii::DoFHandler<dim>::cell_iterator,
            std::pair<unsigned int, unsigned int>>
       _cell_it_to_mf_cell_map;
+  /**
+   * Table of the powder fraction, mutable so that it can be changed in
+   * local_apply, which is const.
+   */
+  mutable dealii::Table<2, dealii::VectorizedArray<double>> _liquid_ratio;
+  /**
+   * Table of the powder fraction, mutable so that it can be changed in
+   * local_apply, which is const.
+   */
+  mutable dealii::Table<2, dealii::VectorizedArray<double>> _powder_ratio;
+  /**
+   * Table of the material index, mutable so that it can be changed in
+   * local_apply, which is const.
+   */
+  mutable dealii::Table<2, std::array<dealii::types::material_id,
+                                      dealii::VectorizedArray<double>::size()>>
+      _material_id;
 };
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+inline double ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
+    typename dealii::DoFHandler<dim>::cell_iterator const &cell,
+    unsigned int q) const
+{
+  auto cell_comp_pair = _cell_it_to_mf_cell_map.find(cell);
+  ASSERT(cell_comp_pair != _cell_it_to_mf_cell_map.end(), "Internal error");
+
+  return _inv_rho_cp(cell_comp_pair->second.first,
+                     q)[cell_comp_pair->second.second];
+}
 
 template <int dim, int fe_degree, typename MemorySpaceType>
 inline dealii::types::global_dof_index
@@ -205,16 +274,13 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::initialize_dof_vector(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-inline double ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
-    typename dealii::DoFHandler<dim>::cell_iterator const &cell) const
+inline void
+ThermalOperator<dim, fe_degree, MemorySpaceType>::set_time_and_source_height(
+    double t, double height)
 {
-  auto cell_comp_pair = _cell_it_to_mf_cell_map.find(cell);
-  ASSERT(cell_comp_pair != _cell_it_to_mf_cell_map.end(), "Internal error");
-
-  return _inv_rho_cp(cell_comp_pair->second.first,
-                     0)[cell_comp_pair->second.second];
+  _time = t;
+  _current_source_height = height;
 }
-
 } // namespace adamantine
 
 #endif

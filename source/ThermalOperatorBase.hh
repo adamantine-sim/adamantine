@@ -53,8 +53,15 @@ public:
     ASSERT(false, "Internal error");
   }
 
-  virtual double get_inv_rho_cp(
-      typename dealii::DoFHandler<dim>::cell_iterator const &) const = 0;
+  virtual void get_state_from_material_properties() = 0;
+
+  virtual void set_state_to_material_properties() = 0;
+
+  virtual void set_time_and_source_height(double, double) = 0;
+
+  virtual double
+  get_inv_rho_cp(typename dealii::DoFHandler<dim>::cell_iterator const &,
+                 unsigned int) const = 0;
 };
 } // namespace adamantine
 #endif

@@ -57,6 +57,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(solution);
+  physics.get_state_from_material_properties();
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
   while (time < 0.1)
@@ -123,6 +124,7 @@ void thermal_2d_manufactured_solution()
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   physics.initialize_dof_vector(solution);
+  physics.get_state_from_material_properties();
   double time = physics.evolve_one_time_step(0., 0.1, solution, timers);
 
   double const tolerance = 1e-5;
@@ -198,6 +200,7 @@ void initial_temperature()
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(1000., solution);
+  physics.get_state_from_material_properties();
   BOOST_CHECK(solution.l1_norm() == 1000. * solution.size());
 }
 
@@ -252,6 +255,7 @@ void energy_conservation()
   double constexpr initial_temperature = 10;
   double constexpr final_temperature = 10.5;
   physics.initialize_dof_vector(initial_temperature, solution);
+  physics.get_state_from_material_properties();
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
   while (time < 100)
@@ -288,4 +292,186 @@ void energy_conservation()
   double constexpr tolerance = 1e-9;
   BOOST_CHECK_CLOSE(solution.mean_value(), final_temperature, tolerance);
   BOOST_CHECK_CLOSE(min, max, tolerance);
+}
+
+template <typename MemorySpaceType>
+void radiation_bcs()
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  // Geometry database
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 5);
+  geometry_database.put("length_divisions", 5);
+  geometry_database.put("height", 5);
+  geometry_database.put("height_divisions", 5);
+  // Build Geometry
+  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  boost::property_tree::ptree database;
+  // Material property
+  database.put("materials.property_format", "polynomial");
+  database.put("materials.n_materials", 1);
+  database.put("materials.material_0.solid.density", 1.);
+  database.put("materials.material_0.powder.density", 1.);
+  database.put("materials.material_0.liquid.density", 1.);
+  database.put("materials.material_0.solid.specific_heat", 1.);
+  database.put("materials.material_0.powder.specific_heat", 1.);
+  database.put("materials.material_0.liquid.specific_heat", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity", 1.);
+  database.put("materials.material_0.powder.thermal_conductivity", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity", 1.);
+  database.put("materials.material_0.solid.emissivity", 1.);
+  database.put("materials.material_0.powder.emissivity", 1.);
+  database.put("materials.material_0.liquid.emissivity", 1.);
+  database.put("materials.material_0.solid.radiation_heat_transfer_coef", 1.);
+  database.put("materials.material_0.powder.radiation_heat_transfer_coef", 1.);
+  database.put("materials.material_0.liquid.radiation_heat_transfer_coef", 1.);
+  database.put("materials.material_0.solid.convection_heat_transfer_coef", 1.);
+  database.put("materials.material_0.powder.convection_heat_transfer_coef", 1.);
+  database.put("materials.material_0.liquid.convection_heat_transfer_coef", 1.);
+  database.put("materials.material_0.radiation_temperature_infty", 20.0);
+  database.put("materials.material_0.convection_temperature_infty", 0.0);
+  // Source database
+  database.put("sources.n_beams", 0);
+  // Time-stepping database
+  database.put("time_stepping.method", "forward_euler");
+  // Boundary database
+  database.put("boundary.type", "radiative");
+  // Build ThermalPhysics
+  adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
+      physics(communicator, database, geometry);
+  physics.setup_dofs();
+  physics.compute_inverse_mass_matrix();
+
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
+  double constexpr initial_temperature = 10;
+  physics.initialize_dof_vector(initial_temperature, solution);
+  physics.get_state_from_material_properties();
+  std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
+  double time = 0;
+  while (time < 100)
+  {
+    time = physics.evolve_one_time_step(time, 0.05, solution, timers);
+  }
+
+  double max = -1;
+  double min = 1e4;
+  if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
+  {
+    for (auto v : solution)
+    {
+      if (max < v)
+        max = v;
+      if (min > v)
+        min = v;
+    }
+  }
+  else
+  {
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+        solution_host(solution.get_partitioner());
+    solution_host.import(solution, dealii::VectorOperation::insert);
+    for (auto v : solution_host)
+    {
+      if (max < v)
+        max = v;
+      if (min > v)
+        min = v;
+    }
+  }
+
+  BOOST_CHECK(min >= 10. && min <= 20.);
+  BOOST_CHECK(max > 10. && max <= 20.);
+}
+
+template <typename MemorySpaceType>
+void convection_bcs()
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  // Geometry database
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 5);
+  geometry_database.put("length_divisions", 5);
+  geometry_database.put("height", 5);
+  geometry_database.put("height_divisions", 5);
+  // Build Geometry
+  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  boost::property_tree::ptree database;
+  // Material property
+  database.put("materials.property_format", "polynomial");
+  database.put("materials.n_materials", 1);
+  database.put("materials.material_0.solid.density", 1.);
+  database.put("materials.material_0.powder.density", 1.);
+  database.put("materials.material_0.liquid.density", 1.);
+  database.put("materials.material_0.solid.specific_heat", 1.);
+  database.put("materials.material_0.powder.specific_heat", 1.);
+  database.put("materials.material_0.liquid.specific_heat", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity", 1.);
+  database.put("materials.material_0.powder.thermal_conductivity", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity", 1.);
+  database.put("materials.material_0.solid.emissivity", 1.);
+  database.put("materials.material_0.powder.emissivity", 1.);
+  database.put("materials.material_0.liquid.emissivity", 1.);
+  database.put("materials.material_0.solid.radiation_heat_transfer_coef", 1.);
+  database.put("materials.material_0.powder.radiation_heat_transfer_coef", 1.);
+  database.put("materials.material_0.liquid.radiation_heat_transfer_coef", 1.);
+  database.put("materials.material_0.solid.convection_heat_transfer_coef", 1.);
+  database.put("materials.material_0.powder.convection_heat_transfer_coef", 1.);
+  database.put("materials.material_0.liquid.convection_heat_transfer_coef", 1.);
+  database.put("materials.material_0.radiation_temperature_infty", 0.0);
+  database.put("materials.material_0.convection_temperature_infty", 20.0);
+  // Source database
+  database.put("sources.n_beams", 0);
+  // Time-stepping database
+  database.put("time_stepping.method", "forward_euler");
+  // Boundary database
+  database.put("boundary.type", "convective");
+  // Build ThermalPhysics
+  adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
+      physics(communicator, database, geometry);
+  physics.setup_dofs();
+  physics.compute_inverse_mass_matrix();
+
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
+  double constexpr initial_temperature = 10;
+  physics.initialize_dof_vector(initial_temperature, solution);
+  physics.get_state_from_material_properties();
+  std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
+  double time = 0;
+  while (time < 10)
+  {
+    time = physics.evolve_one_time_step(time, 0.05, solution, timers);
+  }
+
+  double max = -1;
+  double min = 1e4;
+  if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
+  {
+    for (auto v : solution)
+    {
+      if (max < v)
+        max = v;
+      if (min > v)
+        min = v;
+    }
+  }
+  else
+  {
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+        solution_host(solution.get_partitioner());
+    solution_host.import(solution, dealii::VectorOperation::insert);
+    for (auto v : solution_host)
+    {
+      if (max < v)
+        max = v;
+      if (min > v)
+        min = v;
+    }
+  }
+
+  BOOST_CHECK(min >= 10. && min <= 20.);
+  BOOST_CHECK(max > 10. && max <= 20.);
 }

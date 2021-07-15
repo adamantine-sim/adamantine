@@ -7,6 +7,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/HeatSource.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.templates.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ArrayMD.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Operator.hh
@@ -46,6 +47,7 @@ if (ADAMANTINE_ENABLE_CUDA)
       )
   set(Adamantine_SOURCES
       ${Adamantine_SOURCES}
+      ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.cu
       ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDevice.cu
       ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.cu
       )

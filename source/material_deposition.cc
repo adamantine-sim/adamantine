@@ -22,7 +22,7 @@ template <int dim>
 std::pair<std::vector<dealii::BoundingBox<dim>>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    std::vector<std::unique_ptr<HeatSource<dim>>> &heat_sources)
+    std::vector<std::shared_ptr<HeatSource<dim>>> &heat_sources)
 {
   // PropertyTreeInput geometry.material_deposition
   bool material_deposition =
@@ -207,7 +207,7 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
 
         std::vector<double> box_size(3);
 
-        if constexpr (dim == 2)
+        if (dim == 2)
         {
           box_size.at(1) = deposition_height;
           box_size.at(0) = next_box_length;
@@ -361,11 +361,11 @@ namespace adamantine
 template std::pair<std::vector<dealii::BoundingBox<2>>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    std::vector<std::unique_ptr<HeatSource<2>>> &heat_sources);
+    std::vector<std::shared_ptr<HeatSource<2>>> &heat_sources);
 template std::pair<std::vector<dealii::BoundingBox<3>>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    std::vector<std::unique_ptr<HeatSource<3>>> &heat_sources);
+    std::vector<std::shared_ptr<HeatSource<3>>> &heat_sources);
 
 template std::pair<std::vector<dealii::BoundingBox<2>>, std::vector<double>>
 read_material_deposition(boost::property_tree::ptree const &geometry_database);

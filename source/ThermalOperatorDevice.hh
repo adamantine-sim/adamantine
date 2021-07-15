@@ -74,11 +74,27 @@ public:
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &state) override;
 
+  void get_state_from_material_properties() override
+  {
+    // TODO
+  }
+
+  virtual void set_state_to_material_properties()
+  {
+    // TODO
+  }
+
+  virtual void set_time_and_source_height(double, double)
+  {
+    // TODO
+  }
+
   /**
-   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given cell.
+   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given cell and
+   * quadrature point.
    */
-  double get_inv_rho_cp(
-      typename dealii::DoFHandler<dim>::cell_iterator const &) const override;
+  double get_inv_rho_cp(typename dealii::DoFHandler<dim>::cell_iterator const &,
+                        unsigned int) const override;
 
 private:
   MPI_Comm const &_communicator;
@@ -138,7 +154,8 @@ ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::jacobian_vmult(
 template <int dim, int fe_degree, typename MemorySpaceType>
 inline double
 ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
-    typename dealii::DoFHandler<dim>::cell_iterator const &cell) const
+    typename dealii::DoFHandler<dim>::cell_iterator const &cell,
+    unsigned int) const
 {
   auto inv_rho_cp = _inv_rho_cp_cells.find(cell);
   ASSERT(inv_rho_cp != _inv_rho_cp_cells.end(), "Internal error");

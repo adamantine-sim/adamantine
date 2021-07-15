@@ -39,12 +39,23 @@ template <int dim, int fe_degree, typename MemorySpaceType,
           std::enable_if_t<
               std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value,
               int> = 0>
-dealii::LA::distributed::Vector<double, MemorySpaceType> vmult_and_scale(
+dealii::LA::distributed::Vector<double, MemorySpaceType>
+evaluate_thermal_physics_impl(
     std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> thermal_operator,
+    double const t, double const current_source_height,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &value,
     std::vector<Timer> &timers)
 {
+  timers[evol_time_eval_mat_prop].start();
+  thermal_operator->evaluate_material_properties(y);
+  timers[evol_time_eval_mat_prop].stop();
+
+  timers[evol_time_eval_th_ph].start();
+  thermal_operator->set_time_and_source_height(t, current_source_height);
+
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> value(
+      y.get_partitioner());
+  value = 0.;
   // Apply the Thermal Operator.
   thermal_operator->vmult_add(value, y);
 
@@ -75,7 +86,8 @@ template <int dim, int fe_degree, typename MemorySpaceType,
               std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
               int> = 0>
 dealii::LA::distributed::Vector<double, MemorySpaceType> vmult_and_scale(
-    std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> thermal_operator,
+    std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> const
+        &thermal_operator,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &value,
     std::vector<Timer> &timers)
@@ -93,6 +105,142 @@ dealii::LA::distributed::Vector<double, MemorySpaceType> vmult_and_scale(
   timers[evol_time_eval_th_ph].stop();
 
   return value_dev;
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          std::enable_if_t<
+              std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
+              int> = 0>
+dealii::LA::distributed::Vector<double, MemorySpaceType>
+evaluate_thermal_physics_impl(
+    std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> const
+        &thermal_operator,
+    dealii::hp::FECollection<dim> const &fe_collection, double const t,
+    dealii::DoFHandler<dim> const &dof_handler,
+    std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources,
+    double current_source_height, BoundaryType boundary_type,
+    std::shared_ptr<MaterialProperty<dim>> const &material_properties,
+    dealii::AffineConstraints<double> const &affine_constraints,
+    dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
+    std::vector<Timer> &timers)
+{
+  timers[evol_time_eval_mat_prop].start();
+  // TODO do this on the GPU
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> y_host(
+      y.get_partitioner());
+  y_host.import(y, dealii::VectorOperation::insert);
+  thermal_operator->evaluate_material_properties(y_host);
+  timers[evol_time_eval_mat_prop].stop();
+
+  timers[evol_time_eval_th_ph].start();
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> source(
+      y.get_partitioner());
+  source = 0.;
+
+  // Compute the source term.
+  dealii::hp::QCollection<dim> source_q_collection;
+  source_q_collection.push_back(dealii::QGauss<dim>(fe_degree + 1));
+  source_q_collection.push_back(dealii::QGauss<dim>(1));
+  dealii::hp::FEValues<dim> hp_fe_values(fe_collection, source_q_collection,
+                                         dealii::update_quadrature_points |
+                                             dealii::update_values |
+                                             dealii::update_JxW_values);
+  unsigned int const dofs_per_cell = fe_collection.max_dofs_per_cell();
+  unsigned int const n_q_points = source_q_collection.max_n_quadrature_points();
+  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
+  dealii::QGauss<dim - 1> face_quadrature(fe_degree + 1);
+  dealii::FEFaceValues<dim> fe_face_values(
+      fe_collection[0], face_quadrature,
+      dealii::update_values | dealii::update_quadrature_points |
+          dealii::update_JxW_values);
+  unsigned int const n_face_q_points = face_quadrature.size();
+  dealii::Vector<double> cell_source(dofs_per_cell);
+
+  // Loop over the locally owned cells with an active FE index of zero
+  for (auto const &cell : dealii::filter_iterators(
+           dof_handler.active_cell_iterators(),
+           dealii::IteratorFilters::LocallyOwnedCell(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+  {
+    cell_source = 0.;
+    hp_fe_values.reinit(cell);
+    dealii::FEValues<dim> const &fe_values =
+        hp_fe_values.get_present_fe_values();
+
+    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+    {
+      for (unsigned int q = 0; q < n_q_points; ++q)
+      {
+        double const inv_rho_cp = thermal_operator->get_inv_rho_cp(cell, q);
+        double quad_pt_source = 0.;
+        dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
+        for (auto &beam : heat_sources)
+          quad_pt_source += beam->value(q_point, t, current_source_height);
+
+        cell_source[i] += inv_rho_cp * quad_pt_source *
+                          fe_values.shape_value(i, q) * fe_values.JxW(q);
+      }
+    }
+
+    // If we don't have a adiabatic boundary conditions, we need to add boundary
+    // conditions
+    if (!(boundary_type & BoundaryType::adiabatic))
+    {
+      for (unsigned int f = 0; f < dealii::GeometryInfo<dim>::faces_per_cell;
+           ++f)
+      {
+        // We need to add the boundary conditions on the faces on the boundary
+        // but also on the faces at the interface with FE_Nothing
+        auto const &face = cell->face(f);
+        if ((face->at_boundary()) &&
+            ((!face->at_boundary()) &&
+             (cell->neighbor(f)->active_fe_index() != 0)))
+        {
+          double conv_temperature_infty = 0.;
+          double conv_heat_transfer_coef = 0.;
+          double rad_temperature_infty = 0.;
+          double rad_heat_transfer_coef = 0.;
+          if (boundary_type & BoundaryType::convective)
+          {
+            conv_temperature_infty = material_properties->get(
+                cell, Property::convection_temperature_infty);
+            conv_heat_transfer_coef = material_properties->get(
+                cell, StateProperty::convection_heat_transfer_coef);
+          }
+          if (boundary_type & BoundaryType::radiative)
+          {
+            rad_temperature_infty = material_properties->get(
+                cell, Property::radiation_temperature_infty);
+            rad_heat_transfer_coef = material_properties->get(
+                cell, StateProperty::radiation_heat_transfer_coef);
+          }
+
+          fe_face_values.reinit(cell, face);
+          for (unsigned int i = 0; i < dofs_per_cell; ++i)
+          {
+            for (unsigned int q = 0; q < n_face_q_points; ++q)
+            {
+              double const inv_rho_cp =
+                  thermal_operator->get_inv_rho_cp(cell, q);
+              cell_source[i] +=
+                  inv_rho_cp *
+                  (conv_heat_transfer_coef * conv_temperature_infty +
+                   rad_heat_transfer_coef * rad_temperature_infty) *
+                  fe_face_values.shape_value(i, q) * fe_face_values.JxW(q);
+            }
+          }
+        }
+      }
+    }
+    cell->get_dof_indices(local_dof_indices);
+    affine_constraints.distribute_local_to_global(cell_source,
+                                                  local_dof_indices, source);
+  }
+
+  source.compress(dealii::VectorOperation::add);
+
+  return vmult_and_scale<dim, fe_degree, MemorySpaceType>(thermal_operator, y,
+                                                          source, timers);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -150,16 +298,16 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     std::string type = beam_database.get<std::string>("type");
     if (type == "goldak")
     {
-      _heat_sources[i] = std::make_unique<GoldakHeatSource<dim>>(beam_database);
+      _heat_sources[i] = std::make_shared<GoldakHeatSource<dim>>(beam_database);
     }
     else if (type == "electron_beam")
     {
       _heat_sources[i] =
-          std::make_unique<ElectronBeamHeatSource<dim>>(beam_database);
+          std::make_shared<ElectronBeamHeatSource<dim>>(beam_database);
     }
     else if (type == "cube")
     {
-      _heat_sources[i] = std::make_unique<CubeHeatSource<dim>>(beam_database);
+      _heat_sources[i] = std::make_shared<CubeHeatSource<dim>>(beam_database);
     }
     else
     {
@@ -214,7 +362,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
     _thermal_operator =
         std::make_shared<ThermalOperator<dim, fe_degree, MemorySpaceType>>(
-            communicator, _material_properties, _boundary_type);
+            communicator, _boundary_type, _material_properties, _heat_sources);
 #if defined(ADAMANTINE_HAVE_CUDA) && defined(__CUDACC__)
   else
     _thermal_operator = std::make_shared<
@@ -580,6 +728,22 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, MemorySpaceType,
+                    QuadratureType>::get_state_from_material_properties()
+{
+  _thermal_operator->get_state_from_material_properties();
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, MemorySpaceType,
+                    QuadratureType>::set_state_to_material_properties()
+{
+  _thermal_operator->set_state_to_material_properties();
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
 dealii::LA::distributed::Vector<double, MemorySpaceType>
 ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     evaluate_thermal_physics(
@@ -587,9 +751,12 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
         std::vector<Timer> &timers) const
 {
-  timers[evol_time_eval_mat_prop].start();
-  if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
+  if constexpr (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
+  {
     _thermal_operator->evaluate_material_properties(y);
+    return evaluate_thermal_physics_impl<dim, fe_degree, MemorySpaceType>(
+        _thermal_operator, t, _current_source_height, y, timers);
+  }
   else
   {
     // TODO do this on the GPU
@@ -597,116 +764,14 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         y.get_partitioner());
     y_host.import(y, dealii::VectorOperation::insert);
     _thermal_operator->evaluate_material_properties(y_host);
-  }
-  timers[evol_time_eval_mat_prop].stop();
-
-  timers[evol_time_eval_th_ph].start();
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> source(
-      y.get_partitioner());
-  source = 0.;
-
-  // Compute the source term.
-  dealii::hp::QCollection<dim> source_q_collection;
-  source_q_collection.push_back(dealii::QGauss<dim>(fe_degree + 1));
-  source_q_collection.push_back(dealii::QGauss<dim>(1));
-  dealii::hp::FEValues<dim> hp_fe_values(_fe_collection, source_q_collection,
-                                         dealii::update_quadrature_points |
-                                             dealii::update_values |
-                                             dealii::update_JxW_values);
-  unsigned int const dofs_per_cell = _fe_collection.max_dofs_per_cell();
-  unsigned int const n_q_points = source_q_collection.max_n_quadrature_points();
-  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
-  dealii::QGauss<dim - 1> face_quadrature(fe_degree + 1);
-  dealii::FEFaceValues<dim> fe_face_values(
-      _fe_collection[0], face_quadrature,
-      dealii::update_values | dealii::update_quadrature_points |
-          dealii::update_JxW_values);
-  unsigned int const n_face_q_points = face_quadrature.size();
-  dealii::Vector<double> cell_source(dofs_per_cell);
-
-  // Loop over the locally owned cells with an active FE index of zero
-  for (auto const &cell : dealii::filter_iterators(
-           _dof_handler.active_cell_iterators(),
-           dealii::IteratorFilters::LocallyOwnedCell(),
-           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
-  {
-    cell_source = 0.;
-    hp_fe_values.reinit(cell);
-    dealii::FEValues<dim> const &fe_values =
-        hp_fe_values.get_present_fe_values();
-    double const inv_rho_cp = _thermal_operator->get_inv_rho_cp(cell);
-
-    for (unsigned int i = 0; i < dofs_per_cell; ++i)
-    {
-      for (unsigned int q = 0; q < n_q_points; ++q)
-      {
-        double quad_pt_source = 0.;
-        dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
-        for (auto &beam : _heat_sources)
-          quad_pt_source += beam->value(q_point, t, _current_source_height);
-
-        cell_source[i] += inv_rho_cp * quad_pt_source *
-                          fe_values.shape_value(i, q) * fe_values.JxW(q);
-      }
-    }
-
-    // If we don't have a adiabatic boundary conditions, we need to add boundary
-    // conditions
-    if (!(_boundary_type & BoundaryType::adiabatic))
-    {
-      for (unsigned int f = 0; f < dealii::GeometryInfo<dim>::faces_per_cell;
-           ++f)
-      {
-        // We need to add the boundary conditions on the faces on the boundary
-        // but also on the faces at the interface with FE_Nothing
-        auto const &face = cell->face(f);
-        if ((face->at_boundary()) &&
-            ((!face->at_boundary()) &&
-             (cell->neighbor(f)->active_fe_index() != 0)))
-        {
-          double conv_temperature_infty = 0.;
-          double conv_heat_transfer_coef = 0.;
-          double rad_temperature_infty = 0.;
-          double rad_heat_transfer_coef = 0.;
-          if (_boundary_type & BoundaryType::convective)
-          {
-            conv_temperature_infty = _material_properties->get(
-                cell, Property::convection_temperature_infty);
-            conv_heat_transfer_coef = _material_properties->get(
-                cell, StateProperty::convection_heat_transfer_coef);
-          }
-          if (_boundary_type & BoundaryType::radiative)
-          {
-            rad_temperature_infty = _material_properties->get(
-                cell, Property::radiation_temperature_infty);
-            rad_heat_transfer_coef = _material_properties->get(
-                cell, StateProperty::radiation_heat_transfer_coef);
-          }
-
-          fe_face_values.reinit(cell, face);
-          for (unsigned int i = 0; i < dofs_per_cell; ++i)
-          {
-            for (unsigned int q = 0; q < n_face_q_points; ++q)
-            {
-              cell_source[i] +=
-                  inv_rho_cp *
-                  (conv_heat_transfer_coef * conv_temperature_infty +
-                   rad_heat_transfer_coef * rad_temperature_infty) *
-                  fe_face_values.shape_value(i, q) * fe_face_values.JxW(q);
-            }
-          }
-        }
-      }
-    }
-    cell->get_dof_indices(local_dof_indices);
-    _affine_constraints.distribute_local_to_global(cell_source,
-                                                   local_dof_indices, source);
+    return evaluate_thermal_physics_impl<dim, fe_degree, MemorySpaceType>(
+        _thermal_operator, _fe_collection, t, _dof_handler, _heat_sources,
+        _current_source_height, _boundary_type, _material_properties,
+        _affine_constraints, y, timers);
   }
 
-  source.compress(dealii::VectorOperation::add);
-
-  return vmult_and_scale<dim, fe_degree, MemorySpaceType>(_thermal_operator, y,
-                                                          source, timers);
+  // Dummy to silence warning
+  return dealii::LA::distributed::Vector<double, MemorySpaceType>();
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
