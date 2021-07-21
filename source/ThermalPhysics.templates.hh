@@ -28,6 +28,10 @@
 #include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_gmres.h>
 
+#ifdef ADAMANTINE_WITH_CALIPER
+#include <caliper/cali.h>
+#endif
+
 #include <algorithm>
 #include <execution>
 
@@ -575,6 +579,9 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         double initial_temperature,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_CXX_MARK_FUNCTION;
+#endif
   std::vector<dealii::Vector<double>> data_to_transfer;
   unsigned int const dofs_per_cell = _dof_handler.get_fe().n_dofs_per_cell();
   dealii::Vector<double> cell_solution(dofs_per_cell);
@@ -751,6 +758,9 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
         std::vector<Timer> &timers) const
 {
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_CXX_MARK_FUNCTION;
+#endif
   if constexpr (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
   {
     _thermal_operator->evaluate_material_properties(y);
