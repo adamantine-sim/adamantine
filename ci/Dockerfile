@@ -19,6 +19,9 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
       lcov \
       zlib1g-dev \
       libopenblas-dev \
+      libdw-dev \
+      libpfm4-dev \
+      libunwind-dev \
       && \
       apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -35,10 +38,9 @@ RUN mkdir -p ${PREFIX} && \
     mkdir build
 
 # Install CMake
-RUN export CMAKE_VERSION=3.18.3 && \
-    export CMAKE_VERSION_SHORT=3.18 && \
-    export CMAKE_SHA256=eb23bac95873cc0bc3946eed5d1aea6876ac03f7c0dcc6ad3a05462354b08228 && \
-    export CMAKE_URL=https://cmake.org/files/v${CMAKE_VERSION_SHORT}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz && \
+RUN export CMAKE_VERSION=3.21.0 && \
+    export CMAKE_SHA256=d54ef6909f519740bc85cec07ff54574cd1e061f9f17357d9ace69f61c6291ce && \
+    export CMAKE_URL=https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz && \
     export CMAKE_ARCHIVE=${ARCHIVE_DIR}/cmake.tar.gz && \
     export CMAKE_BUILD_DIR=${BUILD_DIR}/cmake && \
     wget --quiet ${CMAKE_URL} --output-document=${CMAKE_ARCHIVE} && \
@@ -51,9 +53,9 @@ RUN export CMAKE_VERSION=3.18.3 && \
 ENV PATH=${INSTALL_DIR}/cmake/bin:$PATH
 
 # Install OpenMPI
-RUN export OPENMPI_VERSION=4.0.5 && \
-    export OPENMPI_VERSION_SHORT=4.0 && \
-    export OPENMPI_SHA256=c58f3863b61d944231077f344fe6b4b8fbb83f3d1bc93ab74640bf3e5acac009 && \
+RUN export OPENMPI_VERSION=4.1.1 && \
+    export OPENMPI_VERSION_SHORT=4.1 && \
+    export OPENMPI_SHA256=e24f7a778bd11a71ad0c14587a7f5b00e68a71aa5623e2157bafee3d44c07cda && \
     export OPENMPI_URL=https://www.open-mpi.org/software/ompi/v${OPENMPI_VERSION_SHORT}/downloads/openmpi-${OPENMPI_VERSION}.tar.bz2 && \
     export OPENMPI_ARCHIVE=${ARCHIVE_DIR}/openmpi-${OPENMPI_VERSION}.tar.bz2 && \
     export OPENMPI_SOURCE_DIR=${SOURCE_DIR}/openmpi && \
@@ -77,10 +79,10 @@ ENV OMPI_MCA_btl_base_warn_component_unused='0'
 ENV PATH=${INSTALL_DIR}/openmpi/bin:$PATH
 
 # Install Boost
-RUN export BOOST_VERSION=1.73.0 && \
-    export BOOST_VERSION_U=1_73_0 && \
-    export BOOST_URL=https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_U}.tar.bz2 && \
-    export BOOST_SHA256=4eb3b8d442b426dc35346235c8733b5ae35ba431690e38c6a8263dce9fcbb402 && \
+RUN export BOOST_VERSION=1.76.0 && \
+    export BOOST_VERSION_U=1_76_0 && \
+    export BOOST_URL=https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_U}.tar.bz2 && \
+    export BOOST_SHA256=f0397ba6e982c4450f27bf32a2a83292aba035b827a5623a14636ea583318c41 && \
     export BOOST_ARCHIVE=${ARCHIVE_DIR}/boost_${BOOST_VERSION_U}.tar.bz2 && \
     export BOOST_SOURCE_DIR=${SOURCE_DIR}/boost && \
     export BOOST_BUILD_DIR=${BUILD_DIR}/boost && \
@@ -107,7 +109,7 @@ RUN export BOOST_VERSION=1.73.0 && \
 ENV BOOST_ROOT=${INSTALL_DIR}/boost
 
 # Install p4est
-RUN export P4EST_VERSION=2.2 && \
+RUN export P4EST_VERSION=2.3.2 && \
     export P4EST_URL=http://p4est.github.io/release/p4est-${P4EST_VERSION}.tar.gz && \
     export P4EST_ARCHIVE=${ARCHIVE_DIR}/p4est-${P4EST_VERSION}.tar.gz && \
     export P4EST_SOURCE_DIR=${SOURCE_DIR}/p4est && \
@@ -116,7 +118,7 @@ RUN export P4EST_VERSION=2.2 && \
     wget --quiet ${P4EST_URL} --output-document=${P4EST_ARCHIVE} && \
     mkdir -p ${P4EST_SOURCE_DIR} && \
     cd ${P4EST_SOURCE_DIR} && \
-    wget --quiet https://www.dealii.org/9.0.0/external-libs/p4est-setup.sh && \
+    wget --quiet https://raw.githubusercontent.com/dealii/dealii/master/doc/external-libs/p4est-setup.sh && \
     bash ./p4est-setup.sh ${P4EST_ARCHIVE} ${P4EST_INSTALL_DIR} && \
     rm -rf ${P4EST_ARCHIVE} && \
     rm -rf ${P4EST_BUILD_DIR} && \
@@ -233,8 +235,58 @@ ENV P4EST_DIR=${INSTALL_DIR}/p4est
 #    rm -rf ${TRILINOS_SOURCE_DIR}
 #ENV TRILINOS_DIR=${INSTALL_DIR}/trilinos
 
+# Install Adiak
+RUN export ADIAK_VERSION=0.2.1 && \
+    export ADIAK_URL=https://github.com/LLNL/Adiak/releases/download/v${ADIAK_VERSION}/adiak-${ADIAK_VERSION}.tar.gz && \
+    export ADIAK_ARCHIVE=${ARCHIVE_DIR}/adiak-${ADIAK_VERSION}.tar.gz && \
+    export ADIAK_SOURCE_DIR=${SOURCE_DIR}/adiak && \
+    export ADIAK_BUILD_DIR=${BUILD_DIR}/adiak && \
+    export ADIAK_INSTALL_DIR=${INSTALL_DIR}/adiak && \
+    wget --quiet ${ADIAK_URL} --output-document=${ADIAK_ARCHIVE} && \
+    mkdir -p ${ADIAK_SOURCE_DIR} && \
+    tar -xf ${ADIAK_ARCHIVE} -C ${ADIAK_SOURCE_DIR} --strip-components=1 && \
+    mkdir -p ${ADIAK_BUILD_DIR} && \
+    cd ${ADIAK_BUILD_DIR} && \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=ON \
+        -DCMAKE_INSTALL_PREFIX=${ADIAK_INSTALL_DIR} \
+        ${ADIAK_SOURCE_DIR} && \
+    make -j${N_PROCS} install && \
+    rm -rf ${ADIAK_ARCHIVE} && \
+    rm -rf ${ADIAK_BUILD_DIR} && \
+    rm -rf ${ADIAK_SOURCE_DIR}
+ENV ADIAK_DIR=${INSTALL_DIR}/adiak
+
+# Install Caliper
+RUN export CALIPER_HASH=69c5456afed8d02668e3eebbf056714bb1c6d422 && \
+    export CALIPER_URL=https://github.com/LLNL/caliper/archive/${CALIPER_HASH}.tar.gz && \
+    export CALIPER_ARCHIVE=${CALIPER_DIR}/caliper-${CALIPER_VERSION}.tar.gz && \
+    export CALIPER_SOURCE_DIR=${SOURCE_DIR}/caliper && \
+    export CALIPER_BUILD_DIR=${BUILD_DIR}/caliper && \
+    export CALIPER_INSTALL_DIR=${INSTALL_DIR}/caliper && \
+    wget --quiet ${CALIPER_URL} --output-document=${CALIPER_ARCHIVE} && \
+    mkdir -p ${CALIPER_SOURCE_DIR} && \
+    tar -xf ${CALIPER_ARCHIVE} -C ${CALIPER_SOURCE_DIR} --strip-components=1 && \
+    mkdir -p ${CALIPER_BUILD_DIR} && \
+    cd ${CALIPER_BUILD_DIR} && \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=ON \
+        -DWITH_ADIAK=ON \
+        -DWITH_LIBDW=ON \
+        -DWITH_LIBPFM=ON \
+        -DWITH_LIBUNWIND=ON \
+        -DWITH_MPI=ON \
+        -DWITH_SAMPLER=ON \
+        -DCMAKE_INSTALL_PREFIX=${CALIPER_INSTALL_DIR} \
+        ${CALIPER_SOURCE_DIR} && \
+    make -j${N_PROCS} install && \
+    rm -rf ${CALIPER_ARCHIVE} && \
+    rm -rf ${CALIPER_BUILD_DIR} && \
+    rm -rf ${CALIPER_SOURCE_DIR}
+ENV CALIPER_DIR=${INSTALL_DIR}/caliper
+
 # Install Kokkos
-RUN export KOKKOS_VERSION=3.3.01 && \
+RUN export KOKKOS_VERSION=3.4.01 && \
     export KOKKOS_URL=https://github.com/kokkos/kokkos/archive/${KOKKOS_VERSION}.tar.gz && \
     export KOKKOS_ARCHIVE=${ARCHIVE_DIR}/kokkos-${KOKKOS_VERSION}.tar.gz && \
     export KOKKOS_SOURCE_DIR=${SOURCE_DIR}/kokkos && \
@@ -279,8 +331,8 @@ RUN export ARBORX_HASH=731d3cb9c942158089cbd8c6e3ce64098bb46fb7 && \
 ENV ARBORX_DIR=${INSTALL_DIR}/arborx
 
 # Install deal.II 
-RUN export DEAL_II_HASH=9b598a48765e61f0419c42497aad1eeb03c1e4bb && \
-    export DEAL_II_URL=https://github.com/Rombur/dealii/archive/${DEAL_II_HASH}.tar.gz && \
+RUN export DEAL_II_HASH=7f0732c52157f6c373020b7b38e26d2e467be5d0 && \
+    export DEAL_II_URL=https://github.com/dealii/dealii/archive/${DEAL_II_HASH}.tar.gz && \
     export DEAL_II_ARCHIVE=${ARCHIVE_DIR}/dealii.tar.gz && \
     export DEAL_II_SOURCE_DIR=${SOURCE_DIR}/dealii && \
     export DEAL_II_BUILD_DIR=${BUILD_DIR}/dealii && \
@@ -304,6 +356,7 @@ RUN export DEAL_II_HASH=9b598a48765e61f0419c42497aad1eeb03c1e4bb && \
         -DARBORX_DIR=${ARBORX_DIR} \
         -DDEAL_II_WITH_TRILINOS=OFF \
         -DDEAL_II_TRILINOS_WITH_SEACAS=OFF \
+        -DDEAL_II_COMPONENT_EXAMPLES=OFF \
         -DCMAKE_INSTALL_PREFIX=${DEAL_II_INSTALL_DIR} \
         ${DEAL_II_SOURCE_DIR}  && \
     make -j${N_PROCS} install && \
