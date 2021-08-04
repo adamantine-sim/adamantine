@@ -5,7 +5,7 @@
  * for the text and further information on this license.
  */
 
-#define BOOST_TEST_MODULE ThermalOperator
+#define BOOST_TEST_MODULE ThermalOperatorDevice
 
 #include <Geometry.hh>
 #include <ThermalOperator.hh>

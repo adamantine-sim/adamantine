@@ -119,7 +119,7 @@ template <int dim, int fe_degree, typename MemorySpaceType,
 ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     Geometry<dim> &geometry)
-    : _geometry(geometry), _boundary_type(BoundaryType::invalid),
+    : _boundary_type(BoundaryType::invalid), _geometry(geometry),
       _dof_handler(_geometry.get_triangulation())
 {
   // Create the FECollection
