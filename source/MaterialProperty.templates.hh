@@ -212,6 +212,10 @@ void MaterialProperty<dim>::update_boundary_material_properties(
     val.reinit(temperature_average.get_partitioner());
 
   std::vector<dealii::types::global_dof_index> mp_dof(1);
+  // We don't need to loop over all the active cells. We only need to loop over
+  // the cells at the boundary and at the interface with FE_Nothing. However, to
+  // do this we need to use the temperature_dof_handler instead of the
+  // _mp_dof_handler.
   for (auto cell :
        dealii::filter_iterators(_mp_dof_handler.active_cell_iterators(),
                                 dealii::IteratorFilters::LocallyOwnedCell()))
@@ -223,7 +227,7 @@ void MaterialProperty<dim>::update_boundary_material_properties(
     if (_use_table)
     {
       // We only care about properties that are used to compute the boundary
-      // condition. So we start at  3.
+      // condition. So we start at 3.
       for (unsigned int property = 3; property < _n_state_properties;
            ++property)
       {

@@ -201,13 +201,13 @@ private:
    */
   bool _use_table;
   /**
-   * Array that stores the matrial properties which have been set using tables.
+   * Array that stores the material properties which have been set using tables.
    */
   Array5D<-1, _n_material_states, _n_state_properties, -1, 2,
           dealii::MemorySpace::Host>
       _state_property_tables;
   /**
-   * Array that stores the matrial properties which have been set using
+   * Array that stores the material properties which have been set using
    * polynomials.
    */
   Array4D<-1, _n_material_states, _n_state_properties, -1,
