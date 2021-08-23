@@ -56,3 +56,13 @@ BOOST_AUTO_TEST_CASE(energy_conservation_host)
 {
   energy_conservation<dealii::MemorySpace::Host>();
 }
+
+BOOST_AUTO_TEST_CASE(radiation_bcs_host)
+{
+  radiation_bcs<dealii::MemorySpace::Host>();
+}
+
+BOOST_AUTO_TEST_CASE(convection_bcs_host)
+{
+  convection_bcs<dealii::MemorySpace::Host>();
+}

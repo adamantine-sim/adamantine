@@ -81,6 +81,18 @@ public:
                             &vector) const = 0;
 
   /**
+   * Populate the state of the materials in the Physics object from the
+   * MaterialProperty object.
+   */
+  virtual void get_state_from_material_properties() = 0;
+
+  /**
+   * Populate the state of the materials in the MaterialProperty object from the
+   * Physics object.
+   */
+  virtual void set_state_to_material_properties() = 0;
+
+  /**
    * Return the DoFHandler.
    */
   virtual dealii::DoFHandler<dim> &get_dof_handler() = 0;

@@ -99,6 +99,10 @@ public:
                         dealii::LA::distributed::Vector<double, MemorySpaceType>
                             &vector) const override;
 
+  void get_state_from_material_properties() override;
+
+  void set_state_to_material_properties() override;
+
   dealii::DoFHandler<dim> &get_dof_handler() override;
 
   dealii::AffineConstraints<double> &get_affine_constraints() override;
@@ -108,7 +112,7 @@ public:
   /**
    * Return the heat sources.
    */
-  std::vector<std::unique_ptr<HeatSource<dim>>> &get_heat_sources();
+  std::vector<std::shared_ptr<HeatSource<dim>>> &get_heat_sources();
 
   /**
    * Return the current height of the heat source.
@@ -196,9 +200,7 @@ private:
   /**
    * Vector of heat sources.
    */
-  // Use unique_ptr due to a strange bug involving TBB, std::vector, and
-  // dealii::FunctionParser.
-  std::vector<std::unique_ptr<HeatSource<dim>>> _heat_sources;
+  std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
   /**
    * Shared pointer to the underlying ThermalOperator.
    */
@@ -250,7 +252,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType,
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-inline std::vector<std::unique_ptr<HeatSource<dim>>> &
+inline std::vector<std::shared_ptr<HeatSource<dim>>> &
 ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_heat_sources()
 {

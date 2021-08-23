@@ -8,6 +8,7 @@
 #define BOOST_TEST_MODULE ThermalOperatorDevice
 
 #include <Geometry.hh>
+#include <GoldakHeatSource.hh>
 #include <ThermalOperator.hh>
 #include <ThermalOperatorDevice.hh>
 
@@ -241,6 +242,19 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
       new adamantine::MaterialProperty<2>(
           communicator, geometry.get_triangulation(), mat_prop_database));
 
+  // Create the heat souces
+  boost::property_tree::ptree beam_database;
+  beam_database.put("depth", 0.1);
+  beam_database.put("absorption_efficiency", 0.1);
+  beam_database.put("diameter", 1.0);
+  beam_database.put("max_power", 10.);
+  beam_database.put("scan_path_file", "scan_path.txt");
+  beam_database.put("scan_path_file_format", "segment");
+  std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
+  heat_sources.resize(1);
+  heat_sources[0] =
+      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
+
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
       thermal_operator_dev(communicator, mat_properties);
@@ -250,16 +264,15 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator_dev.m());
   thermal_operator_dev.evaluate_material_properties(dummy);
-  // BOOST_CHECK(thermal_operator_dev.m() == 99);
   BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
 
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>
-      thermal_operator_host(communicator, mat_properties,
-                            adamantine::BoundaryType::adiabatic);
+      thermal_operator_host(communicator, adamantine::BoundaryType::adiabatic,
+                            mat_properties, heat_sources);
   thermal_operator_host.compute_inverse_mass_matrix(
       dof_handler, affine_constraints, fe_collection);
   thermal_operator_host.reinit(dof_handler, affine_constraints, q_collection);
-  thermal_operator_host.evaluate_material_properties(dummy);
+  thermal_operator_host.get_state_from_material_properties();
 
   // Compare vmult using matrix free and building the matrix
   double const tolerance = 1e-12;

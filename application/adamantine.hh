@@ -140,7 +140,7 @@ inline void initialize_timers(MPI_Comm const &communicator,
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &initialize(
+std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &initialize(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
     std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
@@ -156,7 +156,7 @@ std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &initialize(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
-std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &
+std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &
 initialize_quadrature(
     std::string const &quadrature_type, MPI_Comm const &communicator,
     boost::property_tree::ptree const &database,
@@ -177,7 +177,7 @@ initialize_quadrature(
 }
 
 template <int dim, typename MemorySpaceType>
-std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &
+std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &
 initialize_thermal_physics(
     unsigned int fe_degree, std::string const &quadrature_type,
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
@@ -331,6 +331,10 @@ void refine_and_transfer(
           const_cast<dealii::Triangulation<dim> &>(
               dof_handler.get_triangulation()));
 
+  // Update the material state from the ThermalOperator to MaterialProperty
+  // because, for now, we need to use state from MaterialProperty to perform the
+  // transfer to the refined mesh.
+  thermal_physics->set_state_to_material_properties();
   std::shared_ptr<adamantine::MaterialProperty<dim>> material_property =
       thermal_physics->get_material_property();
 
@@ -378,6 +382,8 @@ void refine_and_transfer(
   for (unsigned int i = 0;
        i < static_cast<unsigned int>(adamantine::MaterialState::SIZE); ++i)
     material_state[i].interpolate(material_property->get_state()[i]);
+  // Update the material states in the ThermalOperator
+  thermal_physics->get_state_from_material_properties();
 
 #if ADAMANTINE_DEBUG
   // Check that we are not losing material
@@ -406,7 +412,7 @@ compute_cells_to_refine(
     dealii::parallel::distributed::Triangulation<dim> &triangulation,
     double const time, double const next_refinement_time,
     unsigned int const n_time_steps,
-    std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
     double const current_source_height, double const refinement_beam_cutoff)
 {
 
@@ -445,7 +451,7 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void refine_mesh(
     std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
@@ -561,7 +567,7 @@ template <int dim, typename MemorySpaceType>
 void refine_mesh(
     std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database,
@@ -683,7 +689,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   adamantine::Geometry<dim> geometry(communicator, geometry_database);
 
   std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> thermal_physics;
-  std::vector<std::unique_ptr<adamantine::HeatSource<dim>>> &heat_sources =
+  std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources =
       initialize_thermal_physics<dim>(fe_degree, quadrature_type, communicator,
                                       database, geometry, thermal_physics);
 
@@ -695,6 +701,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   thermal_physics->compute_inverse_mass_matrix();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   thermal_physics->initialize_dof_vector(initial_temperature, solution);
+  thermal_physics->get_state_from_material_properties();
+
   unsigned int progress = 0;
   unsigned int cycle = 0;
   unsigned int n_time_step = 0;
@@ -842,6 +850,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // Output the solution
     if (n_time_step % time_steps_output == 0)
     {
+      thermal_physics->set_state_to_material_properties();
       output_pvtu(post_processor, cycle, n_time_step, time, affine_constraints,
                   solution, timers);
     }

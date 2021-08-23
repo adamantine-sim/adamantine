@@ -8,6 +8,7 @@
 #define BOOST_TEST_MODULE ThermalOperator
 
 #include <Geometry.hh>
+#include <GoldakHeatSource.hh>
 #include <ThermalOperator.hh>
 
 #include <deal.II/dofs/dof_tools.h>
@@ -63,15 +64,30 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
       new adamantine::MaterialProperty<2>(
           communicator, geometry.get_triangulation(), mat_prop_database));
 
+  // Create the heat souces
+  boost::property_tree::ptree beam_database;
+  beam_database.put("depth", 0.1);
+  beam_database.put("absorption_efficiency", 0.1);
+  beam_database.put("diameter", 1.0);
+  beam_database.put("max_power", 10.);
+  beam_database.put("scan_path_file", "scan_path.txt");
+  beam_database.put("scan_path_file_format", "segment");
+  std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
+  heat_sources.resize(1);
+  heat_sources[0] =
+      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
+
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
-      communicator, mat_properties, adamantine::BoundaryType::adiabatic);
+      communicator, adamantine::BoundaryType::adiabatic, mat_properties,
+      heat_sources);
   thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator.m());
-  thermal_operator.evaluate_material_properties(dummy);
+  thermal_operator.get_state_from_material_properties();
+
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
 
@@ -146,15 +162,29 @@ BOOST_AUTO_TEST_CASE(spmv)
       new adamantine::MaterialProperty<2>(
           communicator, geometry.get_triangulation(), mat_prop_database));
 
+  // Create the heat souces
+  boost::property_tree::ptree beam_database;
+  beam_database.put("depth", 0.1);
+  beam_database.put("absorption_efficiency", 0.1);
+  beam_database.put("diameter", 1.0);
+  beam_database.put("max_power", 10.);
+  beam_database.put("scan_path_file", "scan_path.txt");
+  beam_database.put("scan_path_file_format", "segment");
+  std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
+  heat_sources.resize(1);
+  heat_sources[0] =
+      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
+
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
-      communicator, mat_properties, adamantine::BoundaryType::adiabatic);
+      communicator, adamantine::BoundaryType::adiabatic, mat_properties,
+      heat_sources);
   thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
       thermal_operator.m());
-  thermal_operator.evaluate_material_properties(dummy);
+  thermal_operator.get_state_from_material_properties();
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
 
@@ -236,15 +266,29 @@ BOOST_AUTO_TEST_CASE(spmv_rad)
   mat_prop_database.put("material_0.solid.convection_heat_transfer_coef", 1.);
   mat_prop_database.put("material_0.powder.convection_heat_transfer_coef", 1.);
   mat_prop_database.put("material_0.liquid.convection_heat_transfer_coef", 1.);
-  mat_prop_database.put("material_0.radiation_temperature_infty", 0.5);
-  mat_prop_database.put("material_0.convection_temperature_infty", 0.5);
+  mat_prop_database.put("material_0.radiation_temperature_infty", 0.0);
+  mat_prop_database.put("material_0.convection_temperature_infty", 0.0);
   std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
       new adamantine::MaterialProperty<2>(
           communicator, geometry.get_triangulation(), mat_prop_database));
 
+  // Create the heat souces
+  boost::property_tree::ptree beam_database;
+  beam_database.put("depth", 0.1);
+  beam_database.put("absorption_efficiency", 0.1);
+  beam_database.put("diameter", 1.0);
+  beam_database.put("max_power", 10.);
+  beam_database.put("scan_path_file", "scan_path.txt");
+  beam_database.put("scan_path_file_format", "segment");
+  std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
+  heat_sources.resize(1);
+  heat_sources[0] =
+      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
+
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
-      communicator, mat_properties, adamantine::BoundaryType::radiative);
+      communicator, adamantine::BoundaryType::radiative, mat_properties,
+      heat_sources);
   thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
@@ -255,6 +299,7 @@ BOOST_AUTO_TEST_CASE(spmv_rad)
     temperature.local_element(i) = 1.;
   }
   thermal_operator.evaluate_material_properties(temperature);
+  thermal_operator.get_state_from_material_properties();
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
 
@@ -276,8 +321,7 @@ BOOST_AUTO_TEST_CASE(spmv_rad)
                                              dealii::update_quadrature_points |
                                              dealii::update_JxW_values);
   double const heat_transfer_coeff =
-      1. * adamantine::Constant::stefan_boltzmann * 1.5 * 1.25;
-  std::cout << heat_transfer_coeff << std::endl;
+      1. * adamantine::Constant::stefan_boltzmann * 1. * 1.;
   unsigned int const dofs_per_cell = fe.n_dofs_per_cell();
   dealii::FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
   std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);

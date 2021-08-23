@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2021, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -6,6 +6,9 @@
  */
 
 #include <MaterialProperty.templates.hh>
-#include <instantiation.hh>
 
-INSTANTIATE_DIM(MaterialProperty)
+namespace adamantine
+{
+template class MaterialProperty<2>;
+template class MaterialProperty<3>;
+} // namespace adamantine

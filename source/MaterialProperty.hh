@@ -8,9 +8,11 @@
 #ifndef MATERIAL_PROPERTY_HH
 #define MATERIAL_PROPERTY_HH
 
+#include <ArrayMD.hh>
 #include <types.hh>
 #include <utils.hh>
 
+#include <deal.II/base/memory_space.h>
 #include <deal.II/distributed/tria.h>
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_handler.h>
@@ -58,6 +60,11 @@ public:
       Property prop) const;
 
   /**
+   * Return the value of a given Property for a given material id.
+   */
+  double get(dealii::types::material_id material_id, Property prop) const;
+
+  /**
    * Reinitialize the DoFHandler associated with MaterialProperty and resize the
    * state vectors.
    */
@@ -69,6 +76,24 @@ public:
    */
   void update(dealii::DoFHandler<dim> const &temperature_dof_handler,
               dealii::LA::distributed::Vector<double> const &temperature);
+
+  /**
+   * Update the material properties necessary to compute the radiative and
+   * convective boundary conditions given the field of temperature.
+   */
+  void update_boundary_material_properties(
+      dealii::DoFHandler<dim> const &temperature_dof_handler,
+      dealii::LA::distributed::Vector<double> const &temperature);
+
+  /**
+   * Compute a material property at a quadrature point for a mix of states.
+   */
+  ADAMANTINE_HOST_DEV
+  dealii::VectorizedArray<double>
+  compute_material_property(StateProperty state_property,
+                            dealii::types::material_id const *material_id,
+                            dealii::VectorizedArray<double> const *state_ratios,
+                            dealii::VectorizedArray<double> temperature) const;
 
   /**
    * Get the array of material state vectors. The order of the different state
@@ -87,6 +112,16 @@ public:
   double get_state_ratio(
       typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
       MaterialState material_state) const;
+
+  /**
+   * Set the ratio of the material states from ThermalOperator.
+   */
+  void set_state(
+      dealii::Table<2, dealii::VectorizedArray<double>> const &liquid_ratio,
+      dealii::Table<2, dealii::VectorizedArray<double>> const &powder_ratio,
+      std::map<typename dealii::DoFHandler<dim>::cell_iterator,
+               std::pair<unsigned int, unsigned int>> &cell_it_to_mf_cell_map,
+      dealii::DoFHandler<dim> const &dof_handler);
 
   /**
    * Return the underlying the DoFHandler.
@@ -113,10 +148,21 @@ private:
       static_cast<unsigned int>(Property::SIZE);
 
   /**
+   * Order of the polynomial used to describe the material properties.
+   */
+  unsigned int _polynomial_order = 0;
+
+  /**
+   * Size of the table, i.e. number of temperature/property pairs, used to
+   * describe the material properties.
+   */
+  unsigned int _table_size = 0;
+
+  /**
    * Set the values in _state from the values of the user index of the
    * Triangulation.
    */
-  void set_state();
+  void set_initial_state();
 
   /**
    * Fill the _properties map.
@@ -140,15 +186,10 @@ private:
   /**
    * Compute a property from a table given the temperature.
    */
-  double compute_property_from_table(
-      std::vector<std::pair<double, double>> const &table,
-      double const temperature) const;
-
-  /**
-   * Compute a property using a polynomial representation given the temperature.
-   */
-  double compute_property_from_polynomial(std::vector<double> const &coef,
-                                          double const temperature) const;
+  double compute_property_from_table(unsigned int const material_id,
+                                     unsigned int const material_state,
+                                     unsigned int const property,
+                                     double const temperature) const;
 
   /**
    * MPI communicator.
@@ -160,29 +201,23 @@ private:
    */
   bool _use_table;
   /**
-   * Map that stores tables describing the properties of the material.
+   * Array that stores the material properties which have been set using tables.
    */
-  std::unordered_map<
-      dealii::types::material_id,
-      std::array<std::array<std::vector<std::pair<double, double>>,
-                            _n_state_properties>,
-                 _n_material_states>>
+  Array5D<-1, _n_material_states, _n_state_properties, -1, 2,
+          dealii::MemorySpace::Host>
       _state_property_tables;
   /**
-   * Map that stores polynomials describing the properties of the material.
+   * Array that stores the material properties which have been set using
+   * polynomials.
    */
-  std::unordered_map<
-      dealii::types::material_id,
-      std::array<std::array<std::vector<double>, _n_state_properties>,
-                 _n_material_states>>
+  Array4D<-1, _n_material_states, _n_state_properties, -1,
+          dealii::MemorySpace::Host>
       _state_property_polynomials;
   /**
-   * Map that stores the properties of the material that are independent of the
-   * state of the material.
+   * Array that stores the properties of the material that are independent of
+   * the state of the material.
    */
-  std::unordered_map<dealii::types::material_id,
-                     std::array<double, _n_properties>>
-      _properties;
+  Array2D<-1, _n_properties, dealii::MemorySpace::Host> _properties;
   /**
    * Array of vector describing the ratio of each state in each cell. Each
    * vector corresponds to a state defined in the MaterialState enum.
@@ -204,6 +239,13 @@ private:
    */
   dealii::DoFHandler<dim> _mp_dof_handler;
 };
+
+template <int dim>
+inline double MaterialProperty<dim>::get(dealii::types::material_id material_id,
+                                         Property property) const
+{
+  return _properties(material_id, static_cast<unsigned int>(property));
+}
 
 template <int dim>
 inline std::array<dealii::LA::distributed::Vector<double>,

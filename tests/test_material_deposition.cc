@@ -275,6 +275,7 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   thermal_physics.initialize_dof_vector(solution);
+  thermal_physics.get_state_from_material_properties();
   std::vector<unsigned int> n_cells_ref = {610, 620, 630, 650, 650,
                                            660, 670, 680, 720, 720};
   double const time_step = 0.1;
