@@ -294,11 +294,13 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
     {
       auto cell = graph[color][cell_id];
       double const cell_inv_rho_cp =
-          1. / (_material_properties->get(cell, StateProperty::density) *
-                _material_properties->get(cell, StateProperty::specific_heat));
+          1. /
+          (_material_properties->get_cell_value(cell, StateProperty::density) *
+           _material_properties->get_cell_value(cell,
+                                                StateProperty::specific_heat));
       _inv_rho_cp_cells[cell] = cell_inv_rho_cp;
-      double const cell_th_conductivity =
-          _material_properties->get(cell, StateProperty::thermal_conductivity);
+      double const cell_th_conductivity = _material_properties->get_cell_value(
+          cell, StateProperty::thermal_conductivity);
       for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
       {
         unsigned int const pos =

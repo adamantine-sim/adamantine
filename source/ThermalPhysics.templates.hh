@@ -206,16 +206,16 @@ evaluate_thermal_physics_impl(
           double rad_heat_transfer_coef = 0.;
           if (boundary_type & BoundaryType::convective)
           {
-            conv_temperature_infty = material_properties->get(
+            conv_temperature_infty = material_properties->get_cell_value(
                 cell, Property::convection_temperature_infty);
-            conv_heat_transfer_coef = material_properties->get(
+            conv_heat_transfer_coef = material_properties->get_cell_value(
                 cell, StateProperty::convection_heat_transfer_coef);
           }
           if (boundary_type & BoundaryType::radiative)
           {
-            rad_temperature_infty = material_properties->get(
+            rad_temperature_infty = material_properties->get_cell_value(
                 cell, Property::radiation_temperature_infty);
-            rad_heat_transfer_coef = material_properties->get(
+            rad_heat_transfer_coef = material_properties->get_cell_value(
                 cell, StateProperty::radiation_heat_transfer_coef);
           }
 

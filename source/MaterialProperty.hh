@@ -47,16 +47,16 @@ public:
   /**
    * Return the value of the given StateProperty for a given cell.
    */
-  double
-  get(typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
+  double get_cell_value(
+      typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
       StateProperty prop) const;
 
   // TODO add a function to get tensor material properties
   /**
    * Return the value of the given Property for a given cell.
    */
-  double
-  get(typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
+  double get_cell_value(
+      typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
       Property prop) const;
 
   /**
