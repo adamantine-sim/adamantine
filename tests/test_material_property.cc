@@ -275,7 +275,7 @@ BOOST_AUTO_TEST_CASE(material_property_table)
   dof_handler.distribute_dofs(fe);
   dealii::LinearAlgebra::distributed::Vector<double, dealii::MemorySpace::Host>
       temperature(dof_handler.locally_owned_dofs(), communicator);
-  for (unsigned int i = 0; i < temperature.local_size(); ++i)
+  for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
     temperature.local_element(i) = 15;
   mat_prop.update(dof_handler, temperature);
 
@@ -365,7 +365,7 @@ BOOST_AUTO_TEST_CASE(material_property_polynomials)
   dof_handler.distribute_dofs(fe);
   dealii::LinearAlgebra::distributed::Vector<double, dealii::MemorySpace::Host>
       temperature(dof_handler.locally_owned_dofs(), communicator);
-  for (unsigned int i = 0; i < temperature.local_size(); ++i)
+  for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
     temperature.local_element(i) = 15;
   mat_prop.update(dof_handler, temperature);
 

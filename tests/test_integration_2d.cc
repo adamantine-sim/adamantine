@@ -32,7 +32,7 @@ BOOST_AUTO_TEST_CASE(intregation_2D)
 
   std::ifstream gold_file("integration_2d_gold.txt");
   double const tolerance = 0.1;
-  for (unsigned int i = 0; i < result.local_size(); ++i)
+  for (unsigned int i = 0; i < result.locally_owned_size(); ++i)
   {
     double gold_value = -1.;
     gold_file >> gold_value;

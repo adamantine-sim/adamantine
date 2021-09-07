@@ -136,7 +136,7 @@ void thermal_2d_manufactured_solution()
 
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
   {
-    for (unsigned int i = 0; i < solution.local_size(); ++i)
+    for (unsigned int i = 0; i < solution.locally_owned_size(); ++i)
       BOOST_CHECK_CLOSE(solution.local_element(i), 0.1, tolerance);
   }
   else

@@ -99,7 +99,7 @@ BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data)
       1.2, 1.5, 1.3, 1.6, 1.2, 1.5, 1.3, 1.6, 1.8, 1.9, 1.8, 1.9, 1.4, 1.7,
       1.4, 1.7, 2.,  2.,  1.2, 1.5, 1.3, 1.6, 1.8, 1.9, 1.4, 1.7, 2.};
 
-  for (unsigned int i = 0; i < temperature.local_size(); ++i)
+  for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
   {
     BOOST_CHECK(temperature.local_element(i) ==
                 temperature_ref[locally_owned_dofs.nth_index_in_set(i)]);
