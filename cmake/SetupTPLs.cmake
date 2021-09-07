@@ -14,6 +14,13 @@ set(Boost_COMPONENTS
 )
 find_package(Boost 1.70.0 REQUIRED COMPONENTS ${Boost_COMPONENTS})
 
+#### Adiak ###################################################################
+if (ADAMANTINE_ENABLE_ADIAK)
+  find_package(adiak REQUIRED PATHS ${ADIAK_DIR})
+  add_compile_definitions(ADAMANTINE_WITH_ADIAK)
+  message(STATUS "Found Adiak: ${PACKAGE_PREFIX_DIR}")
+endif()
+
 #### Caliper #################################################################
 if (ADAMANTINE_ENABLE_CALIPER)
   find_package(caliper REQUIRED PATHS ${CALIPER_DIR})

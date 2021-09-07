@@ -17,6 +17,11 @@ geometry
   material_height 0.75e-3
 }
 
+boundary
+{
+  type convective,radiative
+}
+
 refinement
 {
   n_heat_refinements 0 ; Number of coarsening/refinement executed (uses Kelly's
@@ -108,7 +113,8 @@ discretization
 
 profiling
 {
-  timer true
+  timer false
+  caliper "spot(profile.mpi),loop-report,runtime-report"
 }
 
-memory_space host ; If compiled with CUDA support, run on the device
+memory_space host ; Always run on the host

@@ -44,6 +44,9 @@ void output_pvtu(
         &solution,
     std::vector<adamantine::Timer> &timers)
 {
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_CXX_MARK_FUNCTION;
+#endif
   timers[adamantine::output].start();
   affine_constraints.distribute(solution);
   post_processor.output_pvtu(cycle, n_time_step, time, solution);
@@ -63,6 +66,9 @@ void output_pvtu(
         &solution,
     std::vector<adamantine::Timer> &timers)
 {
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_CXX_MARK_FUNCTION;
+#endif
   timers[adamantine::output].start();
   dealii::LinearAlgebra::distributed::Vector<double, dealii::MemorySpace::Host>
       solution_host(solution.get_partitioner());
@@ -456,6 +462,9 @@ void refine_mesh(
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
 {
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_CXX_MARK_FUNCTION;
+#endif
   dealii::DoFHandler<dim> &dof_handler = thermal_physics->get_dof_handler();
   // Use the Kelly error estimator to refine the mesh. This is done so that the
   // part of the domain that were heated stay refined.

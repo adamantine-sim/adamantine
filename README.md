@@ -28,7 +28,8 @@ in a newly created `bin` subdirectory. You will find in this subdirectory the
 executable and an example of input files.
 
 The list of configuration options is:
-* ADAMNATINE\_ENABLE\_CALIPER=ON/OFF
+* ADAMANTINE\_ENABLE\_ADIAK=ON/OFF
+* ADAMANTINE\_ENABLE\_CALIPER=ON/OFF
 * ADAMANTINE\_ENABLE\_COVERAGE=ON/OFF
 * ADAMANTINE\_ENABLE\_CUDA=ON/OFF
 * ADAMANTINE\_ENABLE\_TESTS=ON/OFF
