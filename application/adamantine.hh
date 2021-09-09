@@ -308,7 +308,7 @@ void refine_and_transfer(
   std::array<dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>,
              static_cast<unsigned int>(adamantine::MaterialState::SIZE)>
       state = material_property->get_state();
-  unsigned int const local_size = state[0].local_size();
+  unsigned int const local_size = state[0].locally_owned_size();
   unsigned int constexpr n_material_states =
       static_cast<unsigned int>(adamantine::MaterialState::SIZE);
   for (unsigned int i = 0; i < local_size; ++i)
@@ -396,7 +396,7 @@ void refine_and_transfer(
   std::array<dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>,
              static_cast<unsigned int>(adamantine::MaterialState::SIZE)>
       state = material_property->get_state();
-  unsigned int const local_size = state[0].local_size();
+  unsigned int const local_size = state[0].locally_owned_size();
   unsigned int constexpr n_material_states =
       static_cast<unsigned int>(adamantine::MaterialState::SIZE);
   for (unsigned int i = 0; i < local_size; ++i)

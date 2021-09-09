@@ -79,7 +79,7 @@ void init_dof_vector(
     double const value,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType> &vector)
 {
-  unsigned int const local_size = vector.local_size();
+  unsigned int const local_size = vector.locally_owned_size();
   for (unsigned int i = 0; i < local_size; ++i)
     vector.local_element(i) = value;
 }

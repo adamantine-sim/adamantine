@@ -100,7 +100,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
   }
   _inverse_mass_matrix->compress(dealii::VectorOperation::add);
 
-  unsigned int const local_size = _inverse_mass_matrix->local_size();
+  unsigned int const local_size = _inverse_mass_matrix->locally_owned_size();
   for (unsigned int k = 0; k < local_size; ++k)
   {
     if (_inverse_mass_matrix->local_element(k) > 1e-15)
