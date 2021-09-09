@@ -15,7 +15,7 @@
 
 #include "main.cc"
 
-BOOST_AUTO_TEST_CASE(read_experimental_data_from_file)
+BOOST_AUTO_TEST_CASE(read_experimental_data_point_cloud_from_file)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -27,7 +27,7 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_from_file)
   database.put("data_columns", "1,2,3,5");
 
   auto points_values =
-      adamantine::read_experimental_data<3>(communicator, database);
+      adamantine::read_experimental_data_point_cloud<3>(communicator, database);
 
   std::vector<double> values_ref = {1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.};
   std::vector<dealii::Point<3>> points_ref;
@@ -51,7 +51,7 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_from_file)
   }
 }
 
-BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data)
+BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data_point_cloud)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -96,8 +96,8 @@ BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data)
                                          temperature);
 
   std::vector<double> temperature_ref = {
-      1.2, 1.5, 1.3, 1.6, 1.2, 1.5, 1.3, 1.6, 1.8, 1.9, 1.8, 1.9, 1.4, 1.7,
-      1.4, 1.7, 2.,  2.,  1.2, 1.5, 1.3, 1.6, 1.8, 1.9, 1.4, 1.7, 2.};
+      0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0, 0,
+      0, 0, 0, 0, 1.2, 1.5, 1.3, 1.6, 1.8, 1.9, 1.4, 1.7, 2};
 
   for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
   {

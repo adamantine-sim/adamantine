@@ -21,9 +21,9 @@
 namespace adamantine
 {
 template <int dim>
-std::vector<PointsValues<dim>>
-read_experimental_data(MPI_Comm const &communicator,
-                       boost::property_tree::ptree const &experiment_database)
+std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
+    MPI_Comm const &communicator,
+    boost::property_tree::ptree const &experiment_database)
 {
   // Format of the file names: the format is pretty arbitrary, #frame and
   // #camera are replaced by the frame and the camera number.
@@ -92,7 +92,7 @@ read_experimental_data(MPI_Comm const &communicator,
         while (last_pos < line_length + 1)
         {
           pos = line.find_first_of(",", last_pos);
-          // If no comma was found that we read untill the end of the file
+          // If no comma was found that we read until the end of the file
           if (pos == std::string::npos)
           {
             pos = line_length;
@@ -136,12 +136,13 @@ read_experimental_data(MPI_Comm const &communicator,
 }
 
 template <int dim>
-void set_with_experimental_data(
+std::pair<std::vector<int>, std::vector<int>> set_with_experimental_data(
     PointsValues<dim> const &points_values,
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::LinearAlgebra::distributed::Vector<double> &temperature)
 {
-  // First we need to get all the supports points and the associated dof indices
+  // First we need to get all the supports points and the associated dof
+  // indices
   std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
   dealii::DoFTools::map_dofs_to_support_points(
       dealii::StaticMappingQ1<dim>::mapping, dof_handler, indices_points);
@@ -158,39 +159,44 @@ void set_with_experimental_data(
   }
 
   // Perform the search
-  dealii::ArborXWrappers::BVH bvh(points_values.points);
-  dealii::ArborXWrappers::PointNearestPredicate pt_nearest(support_points, 1);
+  dealii::ArborXWrappers::BVH bvh(support_points);
+  dealii::ArborXWrappers::PointNearestPredicate pt_nearest(points_values.points,
+                                                           1);
   auto [indices, offset] = bvh.query(pt_nearest);
 
-  // Fill in temperature
-  unsigned int const n_queries = support_points.size();
+  // Fill in the temperature
+  unsigned int const n_queries = points_values.points.size();
   for (unsigned int i = 0; i < n_queries; ++i)
   {
     for (int j = offset[i]; j < offset[i + 1]; ++j)
     {
-      temperature[dof_indices[i]] = points_values.values[indices[j]];
+      temperature[dof_indices[indices[j]]] = points_values.values[i];
     }
   }
 
   temperature.compress(dealii::VectorOperation::insert);
+
+  return {indices, offset};
 }
 } // namespace adamantine
 
 //-------------------- Explicit Instantiations --------------------//
 namespace adamantine
 {
-template std::vector<PointsValues<2>>
-read_experimental_data(MPI_Comm const &communicator,
-                       boost::property_tree::ptree const &experiment_database);
-template std::vector<PointsValues<3>>
-read_experimental_data(MPI_Comm const &communicator,
-                       boost::property_tree::ptree const &experiment_database);
+template std::vector<PointsValues<2>> read_experimental_data_point_cloud(
+    MPI_Comm const &communicator,
+    boost::property_tree::ptree const &experiment_database);
+template std::vector<PointsValues<3>> read_experimental_data_point_cloud(
+    MPI_Comm const &communicator,
+    boost::property_tree::ptree const &experiment_database);
 
-template void set_with_experimental_data(
+template std::pair<std::vector<int>, std::vector<int>>
+set_with_experimental_data(
     PointsValues<2> const &points_values,
     dealii::DoFHandler<2> const &dof_handler,
     dealii::LinearAlgebra::distributed::Vector<double> &temperature);
-template void set_with_experimental_data(
+template std::pair<std::vector<int>, std::vector<int>>
+set_with_experimental_data(
     PointsValues<3> const &points_values,
     dealii::DoFHandler<3> const &dof_handler,
     dealii::LinearAlgebra::distributed::Vector<double> &temperature);

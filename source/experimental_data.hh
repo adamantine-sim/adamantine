@@ -32,15 +32,15 @@ struct PointsValues
  * PointsValues. The size of the vector is equal to the number of frames.
  */
 template <int dim>
-std::vector<PointsValues<dim>>
-read_experimental_data(MPI_Comm const &communicator,
-                       boost::property_tree::ptree const &experiment_database);
+std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
+    MPI_Comm const &communicator,
+    boost::property_tree::ptree const &experiment_database);
 
 /**
  * Fill the @p temperature Vector given @p points_values.
  */
 template <int dim>
-void set_with_experimental_data(
+std::pair<std::vector<int>, std::vector<int>> set_with_experimental_data(
     PointsValues<dim> const &points_values,
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::LinearAlgebra::distributed::Vector<double> &temperature);
