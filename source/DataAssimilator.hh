@@ -10,18 +10,38 @@
 
 #include <types.hh>
 
-#include <deal.II/lac/la_parallel_vector.h>
+#include <deal.II/lac/la_vector.h>
+#include <deal.II/lac/sparse_matrix.h>
+
+#include <map>
 
 namespace adamantine
 {
-template <typename MemorySpaceType>
+/**
+ * Forward declaration of the tester friend class to DataAssimilator.
+ */
+class DataAssimilatorTester;
+
+template <typename SimVectorType>
 class DataAssimilator
 {
+  friend class DataAssimilatorTester;
+
 public:
-  void updateEnsemble(
-      std::vector<dealii::LA::distributed::Vector<double, MemorySpaceType>>
-          &sim_data,
-      dealii::LA::distributed::Vector<double, MemorySpaceType> &expt_data);
+  void
+  updateEnsemble(std::vector<SimVectorType> &sim_data,
+                 std::map<dealii::types::global_dof_index, double> &expt_data);
+
+  dealii::LA::Vector<double>
+  calcHx(const SimVectorType &sim_ensemble_member,
+         const std::map<dealii::types::global_dof_index,
+                        dealii::types::global_dof_index> &expt_to_sim_mapping)
+      const;
+
+private:
+  dealii::SparseMatrix<double>
+  calcKalmanGain(std::vector<SimVectorType> &sim_data,
+                 std::map<dealii::types::global_dof_index, double> &expt_data);
 };
 } // namespace adamantine
 
