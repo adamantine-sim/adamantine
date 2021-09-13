@@ -294,7 +294,7 @@ BOOST_AUTO_TEST_CASE(spmv_rad)
                                                fe_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       temperature(thermal_operator.m());
-  for (unsigned int i = 0; i < temperature.local_size(); ++i)
+  for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
   {
     temperature.local_element(i) = 1.;
   }

@@ -43,7 +43,7 @@ MaterialProperty<dim>::MaterialProperty(
 }
 
 template <int dim>
-double MaterialProperty<dim>::get(
+double MaterialProperty<dim>::get_cell_value(
     typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
     StateProperty prop) const
 {
@@ -54,7 +54,7 @@ double MaterialProperty<dim>::get(
 }
 
 template <int dim>
-double MaterialProperty<dim>::get(
+double MaterialProperty<dim>::get_cell_value(
     typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
     Property prop) const
 {

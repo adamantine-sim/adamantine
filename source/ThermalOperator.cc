@@ -100,7 +100,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
   }
   _inverse_mass_matrix->compress(dealii::VectorOperation::add);
 
-  unsigned int const local_size = _inverse_mass_matrix->local_size();
+  unsigned int const local_size = _inverse_mass_matrix->locally_owned_size();
   for (unsigned int k = 0; k < local_size; ++k)
   {
     if (_inverse_mass_matrix->local_element(k) > 1e-15)
@@ -189,16 +189,16 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::vmult_add(
           double rad_heat_transfer_coef = 0.;
           if (_boundary_type & BoundaryType::convective)
           {
-            conv_temperature_infty = _material_properties->get(
+            conv_temperature_infty = _material_properties->get_cell_value(
                 cell, Property::convection_temperature_infty);
-            conv_heat_transfer_coef = _material_properties->get(
+            conv_heat_transfer_coef = _material_properties->get_cell_value(
                 cell, StateProperty::convection_heat_transfer_coef);
           }
           if (_boundary_type & BoundaryType::radiative)
           {
-            rad_temperature_infty = _material_properties->get(
+            rad_temperature_infty = _material_properties->get_cell_value(
                 cell, Property::radiation_temperature_infty);
-            rad_heat_transfer_coef = _material_properties->get(
+            rad_heat_transfer_coef = _material_properties->get_cell_value(
                 cell, StateProperty::radiation_heat_transfer_coef);
           }
 

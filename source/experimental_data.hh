@@ -32,18 +32,69 @@ struct PointsValues
  * PointsValues. The size of the vector is equal to the number of frames.
  */
 template <int dim>
-std::vector<PointsValues<dim>>
-read_experimental_data(MPI_Comm const &communicator,
-                       boost::property_tree::ptree const &experiment_database);
+std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
+    MPI_Comm const &communicator,
+    boost::property_tree::ptree const &experiment_database);
 
 /**
  * Fill the @p temperature Vector given @p points_values.
  */
 template <int dim>
-void set_with_experimental_data(
+std::pair<std::vector<int>, std::vector<int>> set_with_experimental_data(
     PointsValues<dim> const &points_values,
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::LinearAlgebra::distributed::Vector<double> &temperature);
+
+/**
+ * Data structure representing a ray.
+ */
+template <int dim>
+struct Ray
+{
+  /**
+   * Origin of the ray.
+   */
+  dealii::Point<dim> origin;
+  /**
+   * Direction of propagation of the ray.
+   */
+  dealii::Tensor<1, dim> direction;
+};
+
+/**
+ * This class performs ray tracing
+ */
+class RayTracing
+{
+public:
+  /**
+   * This class assumes the geometry is 3D.
+   */
+  static int constexpr dim = 3;
+
+  /**
+   * Constructor. Read all the rays and the values from all the frames.
+   */
+  RayTracing(boost::property_tree::ptree const &experiment_database);
+
+  /**
+   * Perform the ray tracing given a DoFHandler @p dof_handler. @p frame is the
+   * relative frame the number, i.e., current frame id - first frame id
+   */
+  PointsValues<dim> get_intersection(dealii::DoFHandler<dim> const &dof_handler,
+                                     unsigned int frame);
+
+private:
+  /**
+   * Rays associated to each frame.
+   */
+  std::vector<std::vector<Ray<dim>>> _rays_all_frames;
+  /**
+   * Values associated to the rays of each frame.
+   */
+  std::vector<std::vector<double>> _values_all_frames;
+};
+
 } // namespace adamantine
 
 #endif

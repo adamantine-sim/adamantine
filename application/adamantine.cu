@@ -7,6 +7,10 @@
 
 #include "adamantine.hh"
 
+#ifdef ADAMANTINE_WITH_ADIAK
+#include <adiak.hpp>
+#endif
+
 #ifdef ADAMANTINE_WITH_CALIPER
 #include <caliper/cali-manager.h>
 #endif
@@ -24,6 +28,17 @@ int main(int argc, char *argv[])
   MPI_Comm communicator = MPI_COMM_WORLD;
 
   Kokkos::ScopeGuard guard(argc, argv);
+
+#ifdef ADAMANTINE_WITH_ADIAK
+  adiak_init(&communicator);
+  adiak::user();
+  adiak::launchdate();
+  adiak::executablepath();
+  adiak::libraries();
+  adiak::cmdline();
+  adiak::clustername();
+  adiak::jobsize();
+#endif
 
   std::vector<adamantine::Timer> timers;
   initialize_timers(communicator, timers);
@@ -95,6 +110,13 @@ int main(int argc, char *argv[])
     std::string memory_space =
         database.get<std::string>("memory_space", "host");
 
+#ifdef ADAMANTINE_WITH_ADIAK
+    if (memory_space == "device")
+      adiak::value("MemorySpace", "Device");
+    else
+      adiak::value("MemorySpace", "Host");
+#endif
+
     if (dim == 2)
     {
       if (memory_space == "device")
@@ -161,6 +183,10 @@ int main(int argc, char *argv[])
   if (profiling == true)
     for (auto &timer : timers)
       timer.print();
+
+#ifdef ADAMANTINE_WITH_ADIAK
+  adiak::fini();
+#endif
 
   return 0;
 }

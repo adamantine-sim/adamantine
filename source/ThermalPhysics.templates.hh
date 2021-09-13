@@ -28,6 +28,10 @@
 #include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_gmres.h>
 
+#ifdef ADAMANTINE_WITH_CALIPER
+#include <caliper/cali.h>
+#endif
+
 #include <algorithm>
 #include <execution>
 
@@ -75,7 +79,7 @@ void init_dof_vector(
     double const value,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType> &vector)
 {
-  unsigned int const local_size = vector.local_size();
+  unsigned int const local_size = vector.locally_owned_size();
   for (unsigned int i = 0; i < local_size; ++i)
     vector.local_element(i) = value;
 }
@@ -202,16 +206,16 @@ evaluate_thermal_physics_impl(
           double rad_heat_transfer_coef = 0.;
           if (boundary_type & BoundaryType::convective)
           {
-            conv_temperature_infty = material_properties->get(
+            conv_temperature_infty = material_properties->get_cell_value(
                 cell, Property::convection_temperature_infty);
-            conv_heat_transfer_coef = material_properties->get(
+            conv_heat_transfer_coef = material_properties->get_cell_value(
                 cell, StateProperty::convection_heat_transfer_coef);
           }
           if (boundary_type & BoundaryType::radiative)
           {
-            rad_temperature_infty = material_properties->get(
+            rad_temperature_infty = material_properties->get_cell_value(
                 cell, Property::radiation_temperature_infty);
-            rad_heat_transfer_coef = material_properties->get(
+            rad_heat_transfer_coef = material_properties->get_cell_value(
                 cell, StateProperty::radiation_heat_transfer_coef);
           }
 
@@ -575,6 +579,9 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         double initial_temperature,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_CXX_MARK_FUNCTION;
+#endif
   std::vector<dealii::Vector<double>> data_to_transfer;
   unsigned int const dofs_per_cell = _dof_handler.get_fe().n_dofs_per_cell();
   dealii::Vector<double> cell_solution(dofs_per_cell);
@@ -751,6 +758,9 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
         std::vector<Timer> &timers) const
 {
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_CXX_MARK_FUNCTION;
+#endif
   if constexpr (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
   {
     _thermal_operator->evaluate_material_properties(y);

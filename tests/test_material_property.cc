@@ -62,12 +62,13 @@ BOOST_AUTO_TEST_CASE(material_property)
   for (auto cell : triangulation.active_cell_iterators())
   {
     double const density =
-        mat_prop.get(cell, adamantine::StateProperty::density);
+        mat_prop.get_cell_value(cell, adamantine::StateProperty::density);
     BOOST_CHECK(density == 1.);
-    double const th_conduc =
-        mat_prop.get(cell, adamantine::StateProperty::thermal_conductivity);
+    double const th_conduc = mat_prop.get_cell_value(
+        cell, adamantine::StateProperty::thermal_conductivity);
     BOOST_CHECK(th_conduc == 10.);
-    double const liquidus = mat_prop.get(cell, adamantine::Property::liquidus);
+    double const liquidus =
+        mat_prop.get_cell_value(cell, adamantine::Property::liquidus);
     BOOST_CHECK(liquidus == 100.);
   }
 }
@@ -131,20 +132,22 @@ BOOST_AUTO_TEST_CASE(ratios)
     BOOST_CHECK(liquid_ratio == 0.);
 
     double const density =
-        mat_prop.get(cell, adamantine::StateProperty::density);
+        mat_prop.get_cell_value(cell, adamantine::StateProperty::density);
     BOOST_CHECK(density == 1.);
-    double const th_conduc =
-        mat_prop.get(cell, adamantine::StateProperty::thermal_conductivity);
+    double const th_conduc = mat_prop.get_cell_value(
+        cell, adamantine::StateProperty::thermal_conductivity);
     BOOST_CHECK(th_conduc == 1.);
-    double const liquidus = mat_prop.get(cell, adamantine::Property::liquidus);
+    double const liquidus =
+        mat_prop.get_cell_value(cell, adamantine::Property::liquidus);
     BOOST_CHECK(liquidus == 100.);
-    double const solidus = mat_prop.get(cell, adamantine::Property::solidus);
+    double const solidus =
+        mat_prop.get_cell_value(cell, adamantine::Property::solidus);
     BOOST_CHECK(solidus == 50.);
     double const latent_heat =
-        mat_prop.get(cell, adamantine::Property::latent_heat);
+        mat_prop.get_cell_value(cell, adamantine::Property::latent_heat);
     BOOST_CHECK(latent_heat == 1000.);
     double const specific_heat =
-        mat_prop.get(cell, adamantine::StateProperty::specific_heat);
+        mat_prop.get_cell_value(cell, adamantine::StateProperty::specific_heat);
     BOOST_CHECK(specific_heat == 1.);
   }
 
@@ -167,20 +170,22 @@ BOOST_AUTO_TEST_CASE(ratios)
     BOOST_CHECK(liquid_ratio == 1.);
 
     double const density =
-        mat_prop.get(cell, adamantine::StateProperty::density);
+        mat_prop.get_cell_value(cell, adamantine::StateProperty::density);
     BOOST_CHECK(density == 1.);
-    double const th_conduc =
-        mat_prop.get(cell, adamantine::StateProperty::thermal_conductivity);
+    double const th_conduc = mat_prop.get_cell_value(
+        cell, adamantine::StateProperty::thermal_conductivity);
     BOOST_CHECK(th_conduc == 20.);
-    double const liquidus = mat_prop.get(cell, adamantine::Property::liquidus);
+    double const liquidus =
+        mat_prop.get_cell_value(cell, adamantine::Property::liquidus);
     BOOST_CHECK(liquidus == 100.);
-    double const solidus = mat_prop.get(cell, adamantine::Property::solidus);
+    double const solidus =
+        mat_prop.get_cell_value(cell, adamantine::Property::solidus);
     BOOST_CHECK(solidus == 50.);
     double const latent_heat =
-        mat_prop.get(cell, adamantine::Property::latent_heat);
+        mat_prop.get_cell_value(cell, adamantine::Property::latent_heat);
     BOOST_CHECK(latent_heat == 1000.);
     double const specific_heat =
-        mat_prop.get(cell, adamantine::StateProperty::specific_heat);
+        mat_prop.get_cell_value(cell, adamantine::StateProperty::specific_heat);
     BOOST_CHECK(specific_heat == 20.);
   }
 
@@ -200,20 +205,22 @@ BOOST_AUTO_TEST_CASE(ratios)
     BOOST_CHECK(liquid_ratio == 0.);
 
     double const density =
-        mat_prop.get(cell, adamantine::StateProperty::density);
+        mat_prop.get_cell_value(cell, adamantine::StateProperty::density);
     BOOST_CHECK(density == 10.);
-    double const th_conduc =
-        mat_prop.get(cell, adamantine::StateProperty::thermal_conductivity);
+    double const th_conduc = mat_prop.get_cell_value(
+        cell, adamantine::StateProperty::thermal_conductivity);
     BOOST_CHECK(th_conduc == 10.);
-    double const liquidus = mat_prop.get(cell, adamantine::Property::liquidus);
+    double const liquidus =
+        mat_prop.get_cell_value(cell, adamantine::Property::liquidus);
     BOOST_CHECK(liquidus == 100.);
-    double const solidus = mat_prop.get(cell, adamantine::Property::solidus);
+    double const solidus =
+        mat_prop.get_cell_value(cell, adamantine::Property::solidus);
     BOOST_CHECK(solidus == 50.);
     double const latent_heat =
-        mat_prop.get(cell, adamantine::Property::latent_heat);
+        mat_prop.get_cell_value(cell, adamantine::Property::latent_heat);
     BOOST_CHECK(latent_heat == 1000.);
     double const specific_heat =
-        mat_prop.get(cell, adamantine::StateProperty::specific_heat);
+        mat_prop.get_cell_value(cell, adamantine::StateProperty::specific_heat);
     BOOST_CHECK(specific_heat == 10.);
   }
 }
@@ -268,7 +275,7 @@ BOOST_AUTO_TEST_CASE(material_property_table)
   dof_handler.distribute_dofs(fe);
   dealii::LinearAlgebra::distributed::Vector<double, dealii::MemorySpace::Host>
       temperature(dof_handler.locally_owned_dofs(), communicator);
-  for (unsigned int i = 0; i < temperature.local_size(); ++i)
+  for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
     temperature.local_element(i) = 15;
   mat_prop.update(dof_handler, temperature);
 
@@ -278,26 +285,32 @@ BOOST_AUTO_TEST_CASE(material_property_table)
   {
     if (n < 10)
     {
-      BOOST_CHECK_CLOSE(mat_prop.get(cell, adamantine::StateProperty::density),
-                        1., tolerance);
       BOOST_CHECK_CLOSE(
-          mat_prop.get(cell, adamantine::StateProperty::thermal_conductivity),
+          mat_prop.get_cell_value(cell, adamantine::StateProperty::density), 1.,
+          tolerance);
+      BOOST_CHECK_CLOSE(
+          mat_prop.get_cell_value(
+              cell, adamantine::StateProperty::thermal_conductivity),
           100., tolerance);
     }
     else if (n < 15)
     {
-      BOOST_CHECK_CLOSE(mat_prop.get(cell, adamantine::StateProperty::density),
-                        1.75, tolerance);
       BOOST_CHECK_CLOSE(
-          mat_prop.get(cell, adamantine::StateProperty::thermal_conductivity),
+          mat_prop.get_cell_value(cell, adamantine::StateProperty::density),
+          1.75, tolerance);
+      BOOST_CHECK_CLOSE(
+          mat_prop.get_cell_value(
+              cell, adamantine::StateProperty::thermal_conductivity),
           150., tolerance);
     }
     else
     {
-      BOOST_CHECK_CLOSE(mat_prop.get(cell, adamantine::StateProperty::density),
-                        2., tolerance);
       BOOST_CHECK_CLOSE(
-          mat_prop.get(cell, adamantine::StateProperty::thermal_conductivity),
+          mat_prop.get_cell_value(cell, adamantine::StateProperty::density), 2.,
+          tolerance);
+      BOOST_CHECK_CLOSE(
+          mat_prop.get_cell_value(
+              cell, adamantine::StateProperty::thermal_conductivity),
           162.5, tolerance);
     }
     ++n;
@@ -352,7 +365,7 @@ BOOST_AUTO_TEST_CASE(material_property_polynomials)
   dof_handler.distribute_dofs(fe);
   dealii::LinearAlgebra::distributed::Vector<double, dealii::MemorySpace::Host>
       temperature(dof_handler.locally_owned_dofs(), communicator);
-  for (unsigned int i = 0; i < temperature.local_size(); ++i)
+  for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
     temperature.local_element(i) = 15;
   mat_prop.update(dof_handler, temperature);
 
@@ -362,26 +375,32 @@ BOOST_AUTO_TEST_CASE(material_property_polynomials)
   {
     if (n < 10)
     {
-      BOOST_CHECK_CLOSE(mat_prop.get(cell, adamantine::StateProperty::density),
-                        15., tolerance);
       BOOST_CHECK_CLOSE(
-          mat_prop.get(cell, adamantine::StateProperty::thermal_conductivity),
+          mat_prop.get_cell_value(cell, adamantine::StateProperty::density),
+          15., tolerance);
+      BOOST_CHECK_CLOSE(
+          mat_prop.get_cell_value(
+              cell, adamantine::StateProperty::thermal_conductivity),
           465., tolerance);
     }
     else if (n < 15)
     {
-      BOOST_CHECK_CLOSE(mat_prop.get(cell, adamantine::StateProperty::density),
-                        706., tolerance);
       BOOST_CHECK_CLOSE(
-          mat_prop.get(cell, adamantine::StateProperty::thermal_conductivity),
+          mat_prop.get_cell_value(cell, adamantine::StateProperty::density),
+          706., tolerance);
+      BOOST_CHECK_CLOSE(
+          mat_prop.get_cell_value(
+              cell, adamantine::StateProperty::thermal_conductivity),
           681001., tolerance);
     }
     else
     {
-      BOOST_CHECK_CLOSE(mat_prop.get(cell, adamantine::StateProperty::density),
-                        720., tolerance);
       BOOST_CHECK_CLOSE(
-          mat_prop.get(cell, adamantine::StateProperty::thermal_conductivity),
+          mat_prop.get_cell_value(cell, adamantine::StateProperty::density),
+          720., tolerance);
+      BOOST_CHECK_CLOSE(
+          mat_prop.get_cell_value(
+              cell, adamantine::StateProperty::thermal_conductivity),
           45280., tolerance);
     }
     ++n;

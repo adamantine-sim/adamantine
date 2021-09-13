@@ -28,14 +28,15 @@ in a newly created `bin` subdirectory. You will find in this subdirectory the
 executable and an example of input files.
 
 The list of configuration options is:
-* ADAMNATINE\_ENABLE\_CALIPER=ON/OFF
+* ADAMANTINE\_ENABLE\_ADIAK=ON/OFF
+* ADAMANTINE\_ENABLE\_CALIPER=ON/OFF
 * ADAMANTINE\_ENABLE\_COVERAGE=ON/OFF
 * ADAMANTINE\_ENABLE\_CUDA=ON/OFF
 * ADAMANTINE\_ENABLE\_TESTS=ON/OFF
 * BOOST\_DIR=/path/to/boost
-* CMAKE\_BUILD\_TYPE: Debug/Release
+* CMAKE\_BUILD\_TYPE=Debug/Release
 * CALIPER\_DIR=/path/to/caliper (optional)
-* DEAL\_II\_DIR:/path/to/dealii
+* DEAL\_II\_DIR=/path/to/dealii
 
 ## Run
 After compiling `adamantine`, you can run a simulation using
@@ -191,7 +192,7 @@ and instead choose some small positive number.
 For an event series the first segment is a point, then the rest are lines.
 The column descriptions are:
 * Column 1: segment endtime
-* Columns 2 to 4: (x,y,x) coordinates in units of mm. This is the ending
+* Columns 2 to 4: (x,y,z) coordinates in units of mm. This is the ending
 position of the line.
 * Column 5: the coefficient for the nominal power. Usually this is either
 0 or 1, but sometimes intermediate values are used when turning a corner.

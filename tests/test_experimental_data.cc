@@ -5,6 +5,7 @@
  * for the text and further information on this license.
  */
 
+#include <deal.II/base/mpi.h>
 #define BOOST_TEST_MODULE ExperimentaData
 
 #include <Geometry.hh>
@@ -15,7 +16,7 @@
 
 #include "main.cc"
 
-BOOST_AUTO_TEST_CASE(read_experimental_data_from_file)
+BOOST_AUTO_TEST_CASE(read_experimental_data_point_cloud_from_file)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -27,7 +28,7 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_from_file)
   database.put("data_columns", "1,2,3,5");
 
   auto points_values =
-      adamantine::read_experimental_data<3>(communicator, database);
+      adamantine::read_experimental_data_point_cloud<3>(communicator, database);
 
   std::vector<double> values_ref = {1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.};
   std::vector<dealii::Point<3>> points_ref;
@@ -51,7 +52,7 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_from_file)
   }
 }
 
-BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data)
+BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data_point_cloud)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -96,12 +97,61 @@ BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data)
                                          temperature);
 
   std::vector<double> temperature_ref = {
-      1.2, 1.5, 1.3, 1.6, 1.2, 1.5, 1.3, 1.6, 1.8, 1.9, 1.8, 1.9, 1.4, 1.7,
-      1.4, 1.7, 2.,  2.,  1.2, 1.5, 1.3, 1.6, 1.8, 1.9, 1.4, 1.7, 2.};
+      0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0, 0,
+      0, 0, 0, 0, 1.2, 1.5, 1.3, 1.6, 1.8, 1.9, 1.4, 1.7, 2};
 
-  for (unsigned int i = 0; i < temperature.local_size(); ++i)
+  for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
   {
     BOOST_CHECK(temperature.local_element(i) ==
                 temperature_ref[locally_owned_dofs.nth_index_in_set(i)]);
   }
+}
+
+BOOST_AUTO_TEST_CASE(read_experimental_data_ray_tracing_from_file)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  boost::property_tree::ptree database;
+  database.put("import_mesh", false);
+  database.put("length", 1);
+  database.put("length_divisions", 2);
+  database.put("height", 1);
+  database.put("height_divisions", 2);
+  database.put("width", 1);
+  database.put("width_divisions", 2);
+  adamantine::Geometry<3> geometry(communicator, database);
+  dealii::parallel::distributed::Triangulation<3> const &tria =
+      geometry.get_triangulation();
+
+  dealii::FE_Q<3> fe(1);
+  dealii::DoFHandler<3> dof_handler(tria);
+  dof_handler.distribute_dofs(fe);
+
+  // Read the rays from file
+  boost::property_tree::ptree experiment_database;
+  experiment_database.put("file",
+                          "raytracing_experimental_data_#camera_#frame.csv");
+  experiment_database.put("last_frame", 0);
+  experiment_database.put("first_camera_id", 0);
+  experiment_database.put("last_camera_id", 0);
+  adamantine::RayTracing ray_tracing(experiment_database);
+
+  // Compute the intersection points
+  unsigned int frame = 0;
+  auto points_values = ray_tracing.get_intersection(dof_handler, frame);
+
+  // Reference solution
+  std::vector<double> values_ref = {1, 2, 3, 5};
+  std::vector<dealii::Point<3>> points_ref;
+  points_ref.emplace_back(0., 0., 0.);
+  points_ref.emplace_back(1., 0., 0.);
+  points_ref.emplace_back(1., 0.5, 0.);
+  points_ref.emplace_back(1., 0.5, 0.5);
+
+  if (dealii::Utilities::MPI::this_mpi_process(communicator) == 0)
+    for (unsigned int i = 0; i < values_ref.size(); ++i)
+    {
+      BOOST_CHECK(points_values.values[i] == values_ref[i]);
+      BOOST_CHECK(points_values.points[i] == points_ref[i]);
+    }
 }
