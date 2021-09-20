@@ -8,7 +8,9 @@
 #define BOOST_TEST_MODULE DataAssimilator
 
 #include <DataAssimilator.hh>
+#include <Geometry.hh>
 
+#include <deal.II/fe/fe_q.h>
 #include <deal.II/lac/la_parallel_vector.h>
 
 #include "main.cc"
@@ -19,49 +21,191 @@ class DataAssimilatorTester
 {
 public:
   bool testCalcKalmanGain() { return true; };
+
+  bool testUpdateDofMapping()
+  {
+    bool pass = true;
+
+    MPI_Comm communicator = MPI_COMM_WORLD;
+
+    boost::property_tree::ptree database;
+    database.put("import_mesh", false);
+    database.put("length", 1);
+    database.put("length_divisions", 2);
+    database.put("height", 1);
+    database.put("height_divisions", 2);
+    adamantine::Geometry<2> geometry(communicator, database);
+    dealii::parallel::distributed::Triangulation<2> const &tria =
+        geometry.get_triangulation();
+
+    dealii::FE_Q<2> fe(1);
+    dealii::DoFHandler<2> dof_handler(tria);
+    dof_handler.distribute_dofs(fe);
+
+    int sim_size = 4;
+    int expt_size = 3;
+
+    std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
+    indices_and_offsets.first.resize(3);
+    indices_and_offsets.second.resize(4); // offset vector is one longer
+    indices_and_offsets.first[0] = 0;
+    indices_and_offsets.first[1] = 1;
+    indices_and_offsets.first[2] = 3;
+    indices_and_offsets.second[0] = 0;
+    indices_and_offsets.second[1] = 1;
+    indices_and_offsets.second[2] = 2;
+    indices_and_offsets.second[3] = 3;
+
+    DataAssimilator<2, dealii::Vector<double>> da;
+    da.updateDofMapping(dof_handler, expt_size, indices_and_offsets);
+
+    BOOST_CHECK(da._expt_to_dof_mapping.first[0] == 0);
+    BOOST_CHECK(da._expt_to_dof_mapping.first[1] == 1);
+    BOOST_CHECK(da._expt_to_dof_mapping.first[2] == 2);
+    BOOST_CHECK(da._expt_to_dof_mapping.second[0] == 0);
+    BOOST_CHECK(da._expt_to_dof_mapping.second[1] == 1);
+    BOOST_CHECK(da._expt_to_dof_mapping.second[2] == 3);
+  };
+
+  bool testCalcH()
+  {
+    bool pass = true;
+
+    MPI_Comm communicator = MPI_COMM_WORLD;
+
+    boost::property_tree::ptree database;
+    database.put("import_mesh", false);
+    database.put("length", 1);
+    database.put("length_divisions", 2);
+    database.put("height", 1);
+    database.put("height_divisions", 2);
+    adamantine::Geometry<2> geometry(communicator, database);
+    dealii::parallel::distributed::Triangulation<2> const &tria =
+        geometry.get_triangulation();
+
+    dealii::FE_Q<2> fe(1);
+    dealii::DoFHandler<2> dof_handler(tria);
+    dof_handler.distribute_dofs(fe);
+
+    int sim_size = 4;
+    int expt_size = 3;
+
+    std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
+    indices_and_offsets.first.resize(3);
+    indices_and_offsets.second.resize(4); // offset vector is one longer
+    indices_and_offsets.first[0] = 0;
+    indices_and_offsets.first[1] = 1;
+    indices_and_offsets.first[2] = 3;
+    indices_and_offsets.second[0] = 0;
+    indices_and_offsets.second[1] = 1;
+    indices_and_offsets.second[2] = 2;
+    indices_and_offsets.second[3] = 3;
+
+    DataAssimilator<2, dealii::Vector<double>> da;
+    da.updateDofMapping(dof_handler, expt_size, indices_and_offsets);
+
+    dealii::SparsityPattern pattern(expt_size, sim_size, expt_size);
+
+    dealii::SparseMatrix<double> H = da.calcH(pattern);
+
+    double tol = 1e-12;
+    for (int i = 0; i < expt_size; ++i)
+    {
+      for (int j = 0; j < sim_size; ++j)
+      {
+        if (i == 0 && j == 0)
+        {
+          std::cout << "1" << std::endl;
+          if (std::abs(H(i, j) - 1.0) > tol)
+          {
+            pass = false;
+          }
+        }
+        else if (i == 1 && j == 1)
+        {
+          std::cout << "2" << std::endl;
+          if (std::abs(H(i, j) - 1.0) > tol)
+          {
+            pass = false;
+          }
+        }
+        else if (i == 2 && j == 3)
+        {
+          std::cout << "3" << std::endl;
+          if (std::abs(H(i, j) - 1.0) > tol)
+          {
+            pass = false;
+          }
+        }
+        else
+        {
+          std::cout << "4" << std::endl;
+          if (std::abs(H.el(i, j)) > tol)
+          {
+            pass = false;
+          }
+        }
+      }
+    }
+
+    return pass;
+  };
   bool testCalcHx()
   {
-    /*
-   bool pass = false;
 
-   int sim_size = 5;
-   int expt_size = 3;
+    bool pass = false;
 
-   dealii::Vector<double> sim_vec(sim_size);
-   sim_vec(0) = 2.0;
-   sim_vec(1) = 4.0;
-   sim_vec(2) = 5.0;
-   sim_vec(3) = 7.0;
-   sim_vec(4) = 8.0;
+    MPI_Comm communicator = MPI_COMM_WORLD;
 
-   dealii::Vector<double> expt_vec(expt_size);
-   expt_vec(0) = 2.5;
-   expt_vec(1) = 4.5;
-   expt_vec(2) = 8.5;
+    boost::property_tree::ptree database;
+    database.put("import_mesh", false);
+    database.put("length", 1);
+    database.put("length_divisions", 2);
+    database.put("height", 1);
+    database.put("height_divisions", 2);
+    adamantine::Geometry<2> geometry(communicator, database);
+    dealii::parallel::distributed::Triangulation<2> const &tria =
+        geometry.get_triangulation();
 
-   std::pair<std::vector<int>, std::vector<int>> expt_to_sim_mapping;
-   expt_to_sim_mapping.first.resize(3);
-   expt_to_sim_mapping.second.resize(3);
-   expt_to_sim_mapping.first[0] = 0;
-   expt_to_sim_mapping.first[1] = 1;
-   expt_to_sim_mapping.first[2] = 3;
-   expt_to_sim_mapping.second[0] = 0;
-   expt_to_sim_mapping.second[1] = 1;
-   expt_to_sim_mapping.second[2] = 4;
+    dealii::FE_Q<2> fe(1);
+    dealii::DoFHandler<2> dof_handler(tria);
+    dof_handler.distribute_dofs(fe);
 
-   DataAssimilator<2, dealii::Vector<double>> da;
+    int sim_size = 4;
+    int expt_size = 3;
 
-   dealii::Vector<double> Hx = da.calcHx(sim_vec, expt_to_sim_mapping);
+    dealii::Vector<double> sim_vec(dof_handler.n_dofs());
+    sim_vec(0) = 2.0;
+    sim_vec(1) = 4.0;
+    sim_vec(2) = 5.0;
+    sim_vec(3) = 7.0;
 
-   double tol = 1e-12;
-   if (std::abs(Hx(0) - 2.0) < tol && std::abs(Hx(1) - 4.0) < tol &&
-       std::abs(Hx(2) - 8.0) < tol)
-   {
-     pass = true;
-   }
+    dealii::Vector<double> expt_vec(3);
+    expt_vec(0) = 2.5;
+    expt_vec(1) = 4.5;
+    expt_vec(2) = 8.5;
 
-   */
-    bool pass = true;
+    std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
+    indices_and_offsets.first.resize(3);
+    indices_and_offsets.second.resize(4); // Offset vector is one longer
+    indices_and_offsets.first[0] = 0;
+    indices_and_offsets.first[1] = 1;
+    indices_and_offsets.first[2] = 3;
+    indices_and_offsets.second[0] = 0;
+    indices_and_offsets.second[1] = 1;
+    indices_and_offsets.second[2] = 2;
+    indices_and_offsets.second[3] = 3;
+
+    DataAssimilator<2, dealii::Vector<double>> da;
+    da.updateDofMapping(dof_handler, expt_vec.size(), indices_and_offsets);
+    dealii::Vector<double> Hx = da.calcHx(sim_size, sim_vec);
+
+    double tol = 1e-12;
+    if (std::abs(Hx(0) - 2.0) < tol && std::abs(Hx(1) - 4.0) < tol &&
+        std::abs(Hx(2) - 7.0) < tol)
+    {
+      pass = true;
+    }
 
     return pass;
   };
@@ -82,8 +226,6 @@ public:
 
     DataAssimilator<2, dealii::Vector<double>> da;
     da.calcSampleCovarianceDense(data1, cov);
-
-    // cov.print(std::cout);
 
     // Check results
     for (unsigned int i = 0; i < 4; ++i)
@@ -217,6 +359,9 @@ BOOST_AUTO_TEST_CASE(data_assimilator)
   bool passKalmanGain = dat.testCalcKalmanGain();
   BOOST_CHECK(passKalmanGain);
 
+  bool passUpdateDofMapping = dat.testUpdateDofMapping();
+  BOOST_CHECK(passUpdateDofMapping);
+
   bool passHx = dat.testCalcHx();
   BOOST_CHECK(passHx);
 
@@ -225,5 +370,8 @@ BOOST_AUTO_TEST_CASE(data_assimilator)
 
   bool passFillNoiseVector = dat.testFillNoiseVector();
   BOOST_CHECK(passFillNoiseVector);
+
+  bool passCalcH = dat.testCalcH();
+  BOOST_CHECK(passCalcH);
 }
 } // namespace adamantine

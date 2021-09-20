@@ -6,6 +6,11 @@
  */
 
 #include <DataAssimilator.hh>
+
+#include <deal.II/dofs/dof_tools.h>
+#include <deal.II/lac/linear_operator_tools.h>
+#include <deal.II/lac/sparse_direct.h>
+
 namespace adamantine
 {
 
@@ -16,8 +21,8 @@ DataAssimilator<dim, SimVectorType>::DataAssimilator()
 template <int dim, typename SimVectorType>
 void DataAssimilator<dim, SimVectorType>::updateEnsemble(
     std::vector<SimVectorType> &sim_data, PointsValues<dim> const &expt_data,
-    const std::pair<std::vector<int>, std::vector<int>> &expt_to_sim_mapping,
-    dealii::SparseMatrix<double> &R)
+    const std::pair<std::vector<int>, std::vector<int>> &indices_and_offsets,
+    dealii::SparseMatrix<double> &R) const
 {
   // Get the perturbed y
 
@@ -29,34 +34,126 @@ void DataAssimilator<dim, SimVectorType>::updateEnsemble(
 }
 
 template <int dim, typename SimVectorType>
-dealii::SparseMatrix<double>
-DataAssimilator<dim, SimVectorType>::calcKalmanGain(
-    std::vector<SimVectorType> &sim_data,
-    std::map<dealii::types::global_dof_index, double> &expt_data)
+std::vector<dealii::Vector<double>>
+DataAssimilator<dim, SimVectorType>::applyKalmanGain(
+    std::vector<SimVectorType> &vec_ensemble, int expt_size,
+    dealii::SparseMatrix<double> &R,
+    dealii::Vector<double> &perturbed_innovation) const
 {
+  int num_samples = vec_ensemble.size();
+  int sim_size = vec_ensemble[0].size();
+
+  dealii::SparsityPattern patternH(expt_size, sim_size, expt_size);
+  dealii::SparseMatrix<double> H = calcH(patternH);
+
+  dealii::FullMatrix<double> P(sim_size);
+  calcSampleCovarianceDense(vec_ensemble, P);
+
+  const auto op_H = dealii::linear_operator(H);
+  const auto op_P = dealii::linear_operator(P);
+  const auto op_R = dealii::linear_operator(R);
+
+  const auto op_HPH_plus_R =
+      op_H * op_P * dealii::transpose_operator(op_H) + op_R;
+
+  dealii::SparseDirectUMFPACK HPH_plus_R_inv;
+  const auto op_HPH_plus_R_inv =
+      dealii::linear_operator(op_HPH_plus_R, HPH_plus_R_inv);
+
+  const auto op_K = op_P * dealii::transpose_operator(op_H) * op_HPH_plus_R_inv;
+
+  std::vector<dealii::Vector<double>> output;
+  for (int sample = 0; sample < vec_ensemble.size(); ++sample)
+  {
+    dealii::Vector<double> temp = op_K * perturbed_innovation;
+    output.push_back(temp);
+  }
+
+  return output;
+}
+
+template <int dim, typename SimVectorType>
+dealii::SparseMatrix<double> DataAssimilator<dim, SimVectorType>::calcH(
+    dealii::SparsityPattern &pattern) const
+{
+  int num_expt_dof_map_entries = _expt_to_dof_mapping.first.size();
+
+  for (auto i = 0; i < num_expt_dof_map_entries; ++i)
+  {
+    auto sim_index = _expt_to_dof_mapping.second[i];
+    auto expt_index = _expt_to_dof_mapping.first[i];
+    std::cout << "adding: " << sim_index << " and " << expt_index << std::endl;
+    pattern.add(expt_index, sim_index);
+  }
+
+  pattern.compress();
+
+  dealii::SparseMatrix<double> H(pattern);
+
+  for (auto i = 0; i < num_expt_dof_map_entries; ++i)
+  {
+    auto sim_index = _expt_to_dof_mapping.second[i];
+    auto expt_index = _expt_to_dof_mapping.first[i];
+    H.add(expt_index, sim_index, 1.0);
+  }
+
+  return H;
+}
+
+template <int dim, typename SimVectorType>
+void DataAssimilator<dim, SimVectorType>::updateDofMapping(
+    dealii::DoFHandler<dim> const &dof_handler, int num_expt_points,
+    std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets)
+{
+  std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
+  dealii::DoFTools::map_dofs_to_support_points(
+      dealii::StaticMappingQ1<dim>::mapping, dof_handler, indices_points);
+  // Change the format to used by ArborX
+  std::vector<dealii::types::global_dof_index> dof_indices(
+      indices_points.size());
+  unsigned int pos = 0;
+  for (auto map_it = indices_points.begin(); map_it != indices_points.end();
+       ++map_it, ++pos)
+  {
+    dof_indices[pos] = map_it->first;
+  }
+
+  _expt_to_dof_mapping.first.resize(indices_and_offsets.first.size());
+  _expt_to_dof_mapping.second.resize(indices_and_offsets.first.size());
+
+  for (unsigned int i = 0; i < num_expt_points; ++i)
+  {
+    std::cout << "here i: " << i << std::endl;
+    for (int j = indices_and_offsets.second[i];
+         j < indices_and_offsets.second[i + 1]; ++j)
+    {
+      std::cout << "here j:  " << j << std::endl;
+      _expt_to_dof_mapping.first[j] = i;
+      _expt_to_dof_mapping.second[j] =
+          dof_indices[indices_and_offsets.first[j]];
+
+      std::cout << "updateDofMapping: " << _expt_to_dof_mapping.first[j] << " "
+                << _expt_to_dof_mapping.second[j] << std::endl;
+    }
+  }
 }
 
 template <int dim, typename SimVectorType>
 dealii::Vector<double> DataAssimilator<dim, SimVectorType>::calcHx(
-    const SimVectorType &sim_ensemble_member,
-    const std::pair<std::vector<int>, std::vector<int>> &expt_to_sim_mapping)
-    const
+    const int expt_size, const SimVectorType &sim_ensemble_member) const
 {
-  auto num_observations = expt_to_sim_mapping.first.size();
+  int num_expt_dof_map_entries = _expt_to_dof_mapping.first.size();
 
-  dealii::Vector<double> out_vec(num_observations);
+  dealii::Vector<double> out_vec(expt_size);
 
-  /*
   // Loop through the observation map to get the observation indices
-  for (auto i = 0; i < num_observations; ++i)
+  for (auto i = 0; i < num_expt_dof_map_entries; ++i)
   {
-    out_vec()
+    auto sim_index = _expt_to_dof_mapping.second[i];
+    auto expt_index = _expt_to_dof_mapping.first[i];
+    out_vec(expt_index) = sim_ensemble_member(sim_index);
   }
-  for (auto const &x : expt_to_sim_mapping)
-  {
-    out_vec(x.first) = sim_ensemble_member(x.second);
-  }
-  */
+
   return out_vec;
 }
 
@@ -86,7 +183,7 @@ void DataAssimilator<dim, SimVectorType>::fillNoiseVector(
 template <int dim, typename SimVectorType>
 void DataAssimilator<dim, SimVectorType>::calcSampleCovarianceDense(
     std::vector<dealii::Vector<double>> vec_ensemble,
-    dealii::FullMatrix<double> &cov)
+    dealii::FullMatrix<double> &cov) const
 {
   auto size_per_sample = vec_ensemble[0].size();
   // Calculate the mean

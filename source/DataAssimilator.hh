@@ -38,28 +38,35 @@ public:
 
   void updateEnsemble(
       std::vector<SimVectorType> &sim_data, PointsValues<dim> const &expt_data,
-      const std::pair<std::vector<int>, std::vector<int>> &expt_to_sim_mapping,
-      dealii::SparseMatrix<double> &R);
+      const std::pair<std::vector<int>, std::vector<int>> &indices_and_offsets,
+      dealii::SparseMatrix<double> &R) const;
 
 private:
-  dealii::SparseMatrix<double>
-  calcKalmanGain(std::vector<SimVectorType> &sim_data,
-                 std::map<dealii::types::global_dof_index, double> &expt_data);
+  std::vector<dealii::Vector<double>>
+  applyKalmanGain(std::vector<SimVectorType> &vec_ensemble, int expt_size,
+                  dealii::SparseMatrix<double> &R,
+                  dealii::Vector<double> &perturbed_innovation) const;
 
-  dealii::Vector<double>
-  calcHx(const SimVectorType &sim_ensemble_member,
-         const std::pair<std::vector<int>, std::vector<int>>
-             &expt_to_sim_mapping) const;
+  void updateDofMapping(
+      dealii::DoFHandler<dim> const &dof_handler, int num_expt_points,
+      std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
+
+  dealii::SparseMatrix<double> calcH(dealii::SparsityPattern &pattern) const;
+
+  dealii::Vector<double> calcHx(const int sim_size,
+                                const SimVectorType &sim_ensemble_member) const;
 
   void fillNoiseVector(dealii::Vector<double> &vec,
                        dealii::SparseMatrix<double> &R);
 
   void
   calcSampleCovarianceDense(std::vector<dealii::Vector<double>> vec_ensemble,
-                            dealii::FullMatrix<double> &cov);
+                            dealii::FullMatrix<double> &cov) const;
 
   boost::mt19937 _igen;
   boost::variate_generator<boost::mt19937, boost::normal_distribution<>> _gen;
+
+  std::pair<std::vector<int>, std::vector<int>> _expt_to_dof_mapping;
 };
 } // namespace adamantine
 
