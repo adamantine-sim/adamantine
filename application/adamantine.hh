@@ -45,6 +45,10 @@ void output_pvtu(
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
         &solution,
+    std::array<dealii::LA::distributed::Vector<double>,
+               static_cast<unsigned int>(adamantine::MaterialState::SIZE)> const
+        &state,
+    dealii::DoFHandler<dim> const &material_dof_handler,
     std::vector<adamantine::Timer> &timers)
 {
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -52,7 +56,8 @@ void output_pvtu(
 #endif
   timers[adamantine::output].start();
   affine_constraints.distribute(solution);
-  post_processor.output_pvtu(cycle, n_time_step, time, solution);
+  post_processor.output_pvtu(cycle, n_time_step, time, solution, state,
+                             material_dof_handler);
   timers[adamantine::output].stop();
 }
 
@@ -67,6 +72,10 @@ void output_pvtu(
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
         &solution,
+    std::array<dealii::LA::distributed::Vector<double>,
+               static_cast<unsigned int>(adamantine::MaterialState::SIZE)> const
+        &state,
+    dealii::DoFHandler<dim> const &material_dof_handler,
     std::vector<adamantine::Timer> &timers)
 {
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -77,7 +86,8 @@ void output_pvtu(
       solution_host(solution.get_partitioner());
   solution_host.import(solution, dealii::VectorOperation::insert);
   affine_constraints.distribute(solution_host);
-  post_processor.output_pvtu(cycle, n_time_step, time, solution_host);
+  post_processor.output_pvtu(cycle, n_time_step, time, solution_host, state,
+                             material_dof_handler);
   timers[adamantine::output].stop();
 }
 #endif
@@ -264,8 +274,8 @@ void refine_and_transfer(
           const_cast<dealii::Triangulation<dim> &>(
               dof_handler.get_triangulation()));
 
-  std::shared_ptr<adamantine::MaterialProperty<dim>> material_property =
-      thermal_physics->get_material_property();
+  std::shared_ptr<adamantine::MaterialProperty<dim, MemorySpaceType>>
+      material_property = thermal_physics->get_material_property();
 
   dealii::parallel::distributed::SolutionTransfer<
       dim, dealii::LA::distributed::Vector<double, MemorySpaceType>>
@@ -344,8 +354,8 @@ void refine_and_transfer(
   // because, for now, we need to use state from MaterialProperty to perform the
   // transfer to the refined mesh.
   thermal_physics->set_state_to_material_properties();
-  std::shared_ptr<adamantine::MaterialProperty<dim>> material_property =
-      thermal_physics->get_material_property();
+  std::shared_ptr<adamantine::MaterialProperty<dim, MemorySpaceType>>
+      material_property = thermal_physics->get_material_property();
 
   dealii::parallel::distributed::SolutionTransfer<
       dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
@@ -708,8 +718,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                                       database, geometry, thermal_physics);
 
   adamantine::PostProcessor<dim> post_processor(
-      communicator, post_processor_database, thermal_physics->get_dof_handler(),
-      thermal_physics->get_material_property());
+      communicator, post_processor_database,
+      thermal_physics->get_dof_handler());
 
   thermal_physics->setup_dofs();
   thermal_physics->compute_inverse_mass_matrix();
@@ -725,7 +735,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   dealii::AffineConstraints<double> &affine_constraints =
       thermal_physics->get_affine_constraints();
   output_pvtu(post_processor, cycle, n_time_step, time, affine_constraints,
-              solution, timers);
+              solution, thermal_physics->get_material_property()->get_state(),
+              thermal_physics->get_material_property()->get_dof_handler(),
+              timers);
   ++n_time_step;
 
   // PropertyTreeInput refinement.verbose
@@ -865,8 +877,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     if (n_time_step % time_steps_output == 0)
     {
       thermal_physics->set_state_to_material_properties();
-      output_pvtu(post_processor, cycle, n_time_step, time, affine_constraints,
-                  solution, timers);
+      output_pvtu(
+          post_processor, cycle, n_time_step, time, affine_constraints,
+          solution, thermal_physics->get_material_property()->get_state(),
+          thermal_physics->get_material_property()->get_dof_handler(), timers);
     }
     ++n_time_step;
   }

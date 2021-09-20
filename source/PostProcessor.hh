@@ -31,33 +31,32 @@ public:
    * \param database requires the following entries:
    *   - <B>database</B>: boost::property_tree::ptree
    *   - <B>dof_handler</B>: dealii::DoFHandler<dim>
-   *   - <B>material_properties</B>: std::shared_ptr<MaterialProperty<dim>>
    * material_properties
    */
   PostProcessor(MPI_Comm const &communicator,
                 boost::property_tree::ptree const &database,
-                dealii::DoFHandler<dim> &dof_handler,
-                std::shared_ptr<MaterialProperty<dim>> material_properties);
+                dealii::DoFHandler<dim> &dof_handler);
   /**
    * Constructor for ensemble simulations.
    * \param database requires the following entries:
    *   - <B>database</B>: boost::property_tree::ptree
    *   - <B>dof_handler</B>: dealii::DoFHandler<dim>
-   *   - <B>material_properties</B>: std::shared_ptr<MaterialProperty<dim>>
-   * material_properties
    *   - <B>ensemble_member_index</B>: int
    */
   PostProcessor(MPI_Comm const &communicator,
                 boost::property_tree::ptree const &database,
                 dealii::DoFHandler<dim> &dof_handler,
-                std::shared_ptr<MaterialProperty<dim>> material_properties,
                 int ensemble_member_index);
 
   /**
    * Output the different vtu and pvtu files.
    */
-  void output_pvtu(unsigned int cycle, unsigned int n_time_step, double time,
-                   dealii::LA::distributed::Vector<double> const &solution);
+  void output_pvtu(
+      unsigned int cycle, unsigned int n_time_step, double time,
+      dealii::LA::distributed::Vector<double> const &solution,
+      std::array<dealii::LA::distributed::Vector<double>,
+                 static_cast<unsigned int>(MaterialState::SIZE)> const &state,
+      dealii::DoFHandler<dim> const &material_dof_handler);
 
   /**
    * Output the pvd file for Paraview.
@@ -85,10 +84,6 @@ private:
    * DoFHandler associated with the simulation.
    */
   dealii::DoFHandler<dim> &_dof_handler;
-  /**
-   * Material properties associated with the simulation.
-   */
-  std::shared_ptr<MaterialProperty<dim>> _material_properties;
 };
 } // namespace adamantine
 #endif
