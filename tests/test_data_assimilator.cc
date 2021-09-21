@@ -20,7 +20,135 @@ namespace adamantine
 class DataAssimilatorTester
 {
 public:
-  bool testCalcKalmanGain() { return true; };
+  bool testCalcKalmanGain()
+  {
+    bool pass = true;
+
+    // Create the DoF mapping
+    MPI_Comm communicator = MPI_COMM_WORLD;
+
+    boost::property_tree::ptree database;
+    database.put("import_mesh", false);
+    database.put("length", 1);
+    database.put("length_divisions", 2);
+    database.put("height", 1);
+    database.put("height_divisions", 2);
+    adamantine::Geometry<2> geometry(communicator, database);
+    dealii::parallel::distributed::Triangulation<2> const &tria =
+        geometry.get_triangulation();
+
+    dealii::FE_Q<2> fe(1);
+    dealii::DoFHandler<2> dof_handler(tria);
+    dof_handler.distribute_dofs(fe);
+
+    int sim_size = 5;
+    int expt_size = 2;
+
+    dealii::Vector<double> expt_vec(2);
+    expt_vec(0) = 2.5;
+    expt_vec(1) = 9.5;
+
+    std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
+    indices_and_offsets.first.resize(2);
+    indices_and_offsets.second.resize(3); // Offset vector is one longer
+    indices_and_offsets.first[0] = 1;
+    indices_and_offsets.first[1] = 3;
+    indices_and_offsets.second[0] = 0;
+    indices_and_offsets.second[1] = 1;
+    indices_and_offsets.second[2] = 2;
+
+    DataAssimilator<2, dealii::Vector<double>> da;
+    da.updateDofMapping(dof_handler, expt_vec.size(), indices_and_offsets);
+
+    // Create the simulation data
+    std::vector<dealii::Vector<double>> data;
+    dealii::Vector<double> sample1({1., 3., 6., 9., 11.});
+    data.push_back(sample1);
+    dealii::Vector<double> sample2({1.5, 3.2, 6.3, 9.7, 11.9});
+    data.push_back(sample2);
+    dealii::Vector<double> sample3({1.1, 3.1, 6.1, 9.1, 11.1});
+    data.push_back(sample3);
+
+    // Build the sparse experimental covariance matrix
+    dealii::SparsityPattern pattern(expt_size, expt_size, 1);
+    pattern.add(0, 0);
+    pattern.add(1, 1);
+    pattern.compress();
+
+    dealii::SparseMatrix<double> R(pattern);
+    R.add(0, 0, 0.002);
+    R.add(1, 1, 0.001);
+
+    // Create the (perturbed) innovation
+    std::vector<dealii::Vector<double>> perturbed_innovation(3);
+    for (int sample = 0; sample < perturbed_innovation.size(); ++sample)
+    {
+      perturbed_innovation[sample].reinit(expt_size);
+      dealii::Vector<double> temp = da.calcHx(sim_size, data[sample]);
+      for (int i = 0; i < expt_size; ++i)
+      {
+        perturbed_innovation[sample][i] = expt_vec[i] - temp[i];
+      }
+    }
+
+    perturbed_innovation[0][0] = perturbed_innovation[0][0] + 0.0008;
+    perturbed_innovation[0][1] = perturbed_innovation[0][1] - 0.0005;
+    perturbed_innovation[1][0] = perturbed_innovation[1][0] - 0.001;
+    perturbed_innovation[1][1] = perturbed_innovation[1][1] + 0.0002;
+    perturbed_innovation[2][0] = perturbed_innovation[2][0] + 0.0002;
+    perturbed_innovation[2][1] = perturbed_innovation[2][1] - 0.0009;
+
+    // Apply the Kalman gain
+    std::vector<dealii::Vector<double>> forcast_shift =
+        da.applyKalmanGain(data, expt_size, R, perturbed_innovation);
+
+    // Check output
+    std::cout << "After applying the Kalman Gain:" << std::endl;
+    for (int sample = 0; sample < forcast_shift.size(); ++sample)
+    {
+      for (int i = 0; i < sim_size; ++i)
+      {
+        std::cout << forcast_shift[sample][i] << " ";
+      }
+      std::cout << std::endl;
+    }
+
+    double tol = 1.0e-8;
+
+    // Reference solution calculated using Python
+    if (std::abs(forcast_shift[0][0] - 0.21352564) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[0][1] + 0.14600986) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[0][2] + 0.02616469) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[0][3] - 0.45321598) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[0][4] - 0.69290631) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[1][0] + 0.27786325) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[1][1] + 0.32946285) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[1][2] + 0.31226298) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[1][3] + 0.24346351) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[1][4] + 0.20906377) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[2][0] - 0.12767094) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[2][1] + 0.20319395) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[2][2] + 0.09290565) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[2][3] - 0.34824753) > tol)
+      pass = false;
+    if (std::abs(forcast_shift[2][4] - 0.56882413) > tol)
+      pass = false;
+
+    return pass;
+  };
 
   bool testUpdateDofMapping()
   {
@@ -350,6 +478,106 @@ public:
 
     return pass;
   };
+
+  bool testUpdateEnsemble()
+  {
+    bool pass = true;
+
+    // Create the DoF mapping
+    MPI_Comm communicator = MPI_COMM_WORLD;
+
+    boost::property_tree::ptree database;
+    database.put("import_mesh", false);
+    database.put("length", 1);
+    database.put("length_divisions", 2);
+    database.put("height", 1);
+    database.put("height_divisions", 2);
+    adamantine::Geometry<2> geometry(communicator, database);
+    dealii::parallel::distributed::Triangulation<2> const &tria =
+        geometry.get_triangulation();
+
+    dealii::FE_Q<2> fe(1);
+    dealii::DoFHandler<2> dof_handler(tria);
+    dof_handler.distribute_dofs(fe);
+
+    int sim_size = 5;
+    int expt_size = 2;
+
+    std::vector<double> expt_vec(2);
+    expt_vec[0] = 2.5;
+    expt_vec[1] = 9.5;
+
+    std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
+    indices_and_offsets.first.resize(2);
+    indices_and_offsets.second.resize(3); // Offset vector is one longer
+    indices_and_offsets.first[0] = 1;
+    indices_and_offsets.first[1] = 3;
+    indices_and_offsets.second[0] = 0;
+    indices_and_offsets.second[1] = 1;
+    indices_and_offsets.second[2] = 2;
+
+    DataAssimilator<2, dealii::Vector<double>> da;
+    da.updateDofMapping(dof_handler, expt_vec.size(), indices_and_offsets);
+
+    // Create the simulation data
+    std::vector<dealii::Vector<double>> data;
+    dealii::Vector<double> sample1({1., 3., 6., 9., 11.});
+    data.push_back(sample1);
+    dealii::Vector<double> sample2({1.5, 3.2, 6.3, 9.7, 11.9});
+    data.push_back(sample2);
+    dealii::Vector<double> sample3({1.1, 3.1, 6.1, 9.1, 11.1});
+    data.push_back(sample3);
+
+    // Build the sparse experimental covariance matrix
+    dealii::SparsityPattern pattern(expt_size, expt_size, 1);
+    pattern.add(0, 0);
+    pattern.add(1, 1);
+    pattern.compress();
+
+    dealii::SparseMatrix<double> R(pattern);
+    R.add(0, 0, 0.002);
+    R.add(1, 1, 0.001);
+
+    // Save the data at the observation points before assimilation
+    std::vector<double> sim_at_expt_pt_1_before(3);
+    sim_at_expt_pt_1_before.push_back(data[0][1]);
+    sim_at_expt_pt_1_before.push_back(data[1][1]);
+    sim_at_expt_pt_1_before.push_back(data[2][1]);
+
+    std::vector<double> sim_at_expt_pt_2_before(3);
+    sim_at_expt_pt_2_before.push_back(data[0][3]);
+    sim_at_expt_pt_2_before.push_back(data[1][3]);
+    sim_at_expt_pt_2_before.push_back(data[2][3]);
+
+    // Update the simulation data
+    da.updateEnsemble(data, expt_vec, indices_and_offsets, R);
+
+    // Save the data at the observation points after assimilation
+    std::vector<double> sim_at_expt_pt_1_after(3);
+    sim_at_expt_pt_1_after.push_back(data[0][1]);
+    sim_at_expt_pt_1_after.push_back(data[1][1]);
+    sim_at_expt_pt_1_after.push_back(data[2][1]);
+
+    std::vector<double> sim_at_expt_pt_2_after(3);
+    sim_at_expt_pt_2_after.push_back(data[0][3]);
+    sim_at_expt_pt_2_after.push_back(data[1][3]);
+    sim_at_expt_pt_2_after.push_back(data[2][3]);
+
+    // Check the solution
+    // The observed points should get closer to the experimental values
+    // Large entries in R could make these fail spuriously
+    for (int member = 0; member < 3; ++member)
+    {
+      if (std::abs(expt_vec[0] - sim_at_expt_pt_1_after[member]) >
+          std::abs(expt_vec[0] - sim_at_expt_pt_1_before[member]))
+        pass = false;
+      if (std::abs(expt_vec[1] - sim_at_expt_pt_2_after[member]) >
+          std::abs(expt_vec[1] - sim_at_expt_pt_2_before[member]))
+        pass = false;
+    }
+
+    return pass;
+  };
 };
 
 BOOST_AUTO_TEST_CASE(data_assimilator)
@@ -373,5 +601,8 @@ BOOST_AUTO_TEST_CASE(data_assimilator)
 
   bool passCalcH = dat.testCalcH();
   BOOST_CHECK(passCalcH);
+
+  bool passUpdateEnsemble = dat.testUpdateEnsemble();
+  BOOST_CHECK(passUpdateEnsemble);
 }
 } // namespace adamantine

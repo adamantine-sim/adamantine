@@ -37,15 +37,16 @@ public:
   DataAssimilator();
 
   void updateEnsemble(
-      std::vector<SimVectorType> &sim_data, PointsValues<dim> const &expt_data,
+      std::vector<SimVectorType> &sim_data,
+      std::vector<double> const &expt_data,
       const std::pair<std::vector<int>, std::vector<int>> &indices_and_offsets,
-      dealii::SparseMatrix<double> &R) const;
+      dealii::SparseMatrix<double> &R);
 
 private:
-  std::vector<dealii::Vector<double>>
-  applyKalmanGain(std::vector<SimVectorType> &vec_ensemble, int expt_size,
-                  dealii::SparseMatrix<double> &R,
-                  dealii::Vector<double> &perturbed_innovation) const;
+  std::vector<dealii::Vector<double>> applyKalmanGain(
+      std::vector<SimVectorType> &vec_ensemble, int expt_size,
+      dealii::SparseMatrix<double> &R,
+      std::vector<dealii::Vector<double>> &perturbed_innovation) const;
 
   void updateDofMapping(
       dealii::DoFHandler<dim> const &dof_handler, int num_expt_points,
@@ -62,6 +63,10 @@ private:
   void
   calcSampleCovarianceDense(std::vector<dealii::Vector<double>> vec_ensemble,
                             dealii::FullMatrix<double> &cov) const;
+
+  int _num_ensemble_members;
+  int _sim_size;
+  int _expt_size;
 
   boost::mt19937 _igen;
   boost::variate_generator<boost::mt19937, boost::normal_distribution<>> _gen;

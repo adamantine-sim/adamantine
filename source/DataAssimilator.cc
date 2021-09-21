@@ -9,6 +9,7 @@
 
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/lac/linear_operator_tools.h>
+#include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/sparse_direct.h>
 
 namespace adamantine
@@ -20,17 +21,45 @@ DataAssimilator<dim, SimVectorType>::DataAssimilator()
 
 template <int dim, typename SimVectorType>
 void DataAssimilator<dim, SimVectorType>::updateEnsemble(
-    std::vector<SimVectorType> &sim_data, PointsValues<dim> const &expt_data,
+    std::vector<SimVectorType> &sim_data, std::vector<double> const &expt_data,
     const std::pair<std::vector<int>, std::vector<int>> &indices_and_offsets,
-    dealii::SparseMatrix<double> &R) const
+    dealii::SparseMatrix<double> &R)
 {
-  // Get the perturbed y
+  // Set some constants
+  _num_ensemble_members = sim_data.size();
+  if (sim_data.size() > 0)
+  {
+    _sim_size = sim_data[0].size();
+  }
+  else
+  {
+    _sim_size = 0;
+  }
+  _expt_size = expt_data.size();
 
-  // Get H
+  // Get the perturbed innovation ( y+u - Hx )
+  std::vector<dealii::Vector<double>> perturbed_innovation(
+      _num_ensemble_members);
+  for (int member = 0; member < _num_ensemble_members; ++member)
+  {
+    perturbed_innovation[member].reinit(_expt_size);
+    fillNoiseVector(perturbed_innovation[member], R);
+    dealii::Vector<double> temp = calcHx(_sim_size, sim_data[member]);
+    for (int i = 0; i < _expt_size; ++i)
+    {
+      perturbed_innovation[member][i] += expt_data[i] - temp[i];
+    }
+  }
 
-  // Get K
+  // Apply the Kalman filter to the perturbed innovation
+  std::vector<dealii::Vector<double>> forcast_shift =
+      applyKalmanGain(sim_data, _expt_size, R, perturbed_innovation);
 
   // Update the ensemble
+  for (int member = 0; member < _num_ensemble_members; ++member)
+  {
+    sim_data[member] += forcast_shift[member];
+  }
 }
 
 template <int dim, typename SimVectorType>
@@ -38,7 +67,7 @@ std::vector<dealii::Vector<double>>
 DataAssimilator<dim, SimVectorType>::applyKalmanGain(
     std::vector<SimVectorType> &vec_ensemble, int expt_size,
     dealii::SparseMatrix<double> &R,
-    dealii::Vector<double> &perturbed_innovation) const
+    std::vector<dealii::Vector<double>> &perturbed_innovation) const
 {
   int num_samples = vec_ensemble.size();
   int sim_size = vec_ensemble[0].size();
@@ -56,16 +85,23 @@ DataAssimilator<dim, SimVectorType>::applyKalmanGain(
   const auto op_HPH_plus_R =
       op_H * op_P * dealii::transpose_operator(op_H) + op_R;
 
-  dealii::SparseDirectUMFPACK HPH_plus_R_inv;
-  const auto op_HPH_plus_R_inv =
-      dealii::linear_operator(op_HPH_plus_R, HPH_plus_R_inv);
+  dealii::SolverGMRES<dealii::Vector<double>>::AdditionalData additional_data;
+  dealii::SolverControl solver_control;
+  dealii::SolverGMRES<dealii::Vector<double>> R_inv_solver(solver_control,
+                                                           additional_data);
+
+  auto op_HPH_plus_R_inv =
+      dealii::inverse_operator(op_HPH_plus_R, R_inv_solver);
 
   const auto op_K = op_P * dealii::transpose_operator(op_H) * op_HPH_plus_R_inv;
 
+  // Apply the Kalman gain to each innovation vector
+  // (Unclear if this is really inefficient because op_K is calculated fresh
+  // for each application)
   std::vector<dealii::Vector<double>> output;
   for (int sample = 0; sample < vec_ensemble.size(); ++sample)
   {
-    dealii::Vector<double> temp = op_K * perturbed_innovation;
+    dealii::Vector<double> temp = op_K * perturbed_innovation[sample];
     output.push_back(temp);
   }
 
@@ -82,7 +118,6 @@ dealii::SparseMatrix<double> DataAssimilator<dim, SimVectorType>::calcH(
   {
     auto sim_index = _expt_to_dof_mapping.second[i];
     auto expt_index = _expt_to_dof_mapping.first[i];
-    std::cout << "adding: " << sim_index << " and " << expt_index << std::endl;
     pattern.add(expt_index, sim_index);
   }
 
@@ -123,17 +158,12 @@ void DataAssimilator<dim, SimVectorType>::updateDofMapping(
 
   for (unsigned int i = 0; i < num_expt_points; ++i)
   {
-    std::cout << "here i: " << i << std::endl;
     for (int j = indices_and_offsets.second[i];
          j < indices_and_offsets.second[i + 1]; ++j)
     {
-      std::cout << "here j:  " << j << std::endl;
       _expt_to_dof_mapping.first[j] = i;
       _expt_to_dof_mapping.second[j] =
           dof_indices[indices_and_offsets.first[j]];
-
-      std::cout << "updateDofMapping: " << _expt_to_dof_mapping.first[j] << " "
-                << _expt_to_dof_mapping.second[j] << std::endl;
     }
   }
 }
