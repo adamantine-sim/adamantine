@@ -41,8 +41,8 @@ public:
     dealii::DoFHandler<2> dof_handler(tria);
     dof_handler.distribute_dofs(fe);
 
-    int sim_size = 5;
-    int expt_size = 2;
+    unsigned int sim_size = 5;
+    unsigned int expt_size = 2;
 
     dealii::Vector<double> expt_vec(2);
     expt_vec(0) = 2.5;
@@ -58,7 +58,10 @@ public:
     indices_and_offsets.second[2] = 2;
 
     DataAssimilator<2, dealii::Vector<double>> da;
-    da.updateDofMapping(dof_handler, expt_vec.size(), indices_and_offsets);
+    da._sim_size = sim_size;
+    da._expt_size = expt_size;
+    da._num_ensemble_members = 3;
+    da.updateDofMapping(dof_handler, indices_and_offsets);
 
     // Create the simulation data
     std::vector<dealii::Vector<double>> data;
@@ -81,11 +84,12 @@ public:
 
     // Create the (perturbed) innovation
     std::vector<dealii::Vector<double>> perturbed_innovation(3);
-    for (int sample = 0; sample < perturbed_innovation.size(); ++sample)
+    for (unsigned int sample = 0; sample < perturbed_innovation.size();
+         ++sample)
     {
       perturbed_innovation[sample].reinit(expt_size);
-      dealii::Vector<double> temp = da.calcHx(sim_size, data[sample]);
-      for (int i = 0; i < expt_size; ++i)
+      dealii::Vector<double> temp = da.calcHx(data[sample]);
+      for (unsigned int i = 0; i < expt_size; ++i)
       {
         perturbed_innovation[sample][i] = expt_vec[i] - temp[i];
       }
@@ -100,13 +104,13 @@ public:
 
     // Apply the Kalman gain
     std::vector<dealii::Vector<double>> forcast_shift =
-        da.applyKalmanGain(data, expt_size, R, perturbed_innovation);
+        da.applyKalmanGain(data, R, perturbed_innovation);
 
     // Check output
     std::cout << "After applying the Kalman Gain:" << std::endl;
-    for (int sample = 0; sample < forcast_shift.size(); ++sample)
+    for (unsigned int sample = 0; sample < forcast_shift.size(); ++sample)
     {
-      for (int i = 0; i < sim_size; ++i)
+      for (unsigned int i = 0; i < sim_size; ++i)
       {
         std::cout << forcast_shift[sample][i] << " ";
       }
@@ -150,10 +154,8 @@ public:
     return pass;
   };
 
-  bool testUpdateDofMapping()
+  void testUpdateDofMapping()
   {
-    bool pass = true;
-
     MPI_Comm communicator = MPI_COMM_WORLD;
 
     boost::property_tree::ptree database;
@@ -170,8 +172,8 @@ public:
     dealii::DoFHandler<2> dof_handler(tria);
     dof_handler.distribute_dofs(fe);
 
-    int sim_size = 4;
-    int expt_size = 3;
+    unsigned int sim_size = 4;
+    unsigned int expt_size = 3;
 
     std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
     indices_and_offsets.first.resize(3);
@@ -185,7 +187,9 @@ public:
     indices_and_offsets.second[3] = 3;
 
     DataAssimilator<2, dealii::Vector<double>> da;
-    da.updateDofMapping(dof_handler, expt_size, indices_and_offsets);
+    da._sim_size = sim_size;
+    da._expt_size = expt_size;
+    da.updateDofMapping(dof_handler, indices_and_offsets);
 
     BOOST_CHECK(da._expt_to_dof_mapping.first[0] == 0);
     BOOST_CHECK(da._expt_to_dof_mapping.first[1] == 1);
@@ -215,8 +219,8 @@ public:
     dealii::DoFHandler<2> dof_handler(tria);
     dof_handler.distribute_dofs(fe);
 
-    int sim_size = 4;
-    int expt_size = 3;
+    unsigned int sim_size = 4;
+    unsigned int expt_size = 3;
 
     std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
     indices_and_offsets.first.resize(3);
@@ -230,16 +234,18 @@ public:
     indices_and_offsets.second[3] = 3;
 
     DataAssimilator<2, dealii::Vector<double>> da;
-    da.updateDofMapping(dof_handler, expt_size, indices_and_offsets);
+    da._sim_size = sim_size;
+    da._expt_size = expt_size;
+    da.updateDofMapping(dof_handler, indices_and_offsets);
 
     dealii::SparsityPattern pattern(expt_size, sim_size, expt_size);
 
     dealii::SparseMatrix<double> H = da.calcH(pattern);
 
     double tol = 1e-12;
-    for (int i = 0; i < expt_size; ++i)
+    for (unsigned int i = 0; i < expt_size; ++i)
     {
-      for (int j = 0; j < sim_size; ++j)
+      for (unsigned int j = 0; j < sim_size; ++j)
       {
         if (i == 0 && j == 0)
         {
@@ -325,8 +331,10 @@ public:
     indices_and_offsets.second[3] = 3;
 
     DataAssimilator<2, dealii::Vector<double>> da;
-    da.updateDofMapping(dof_handler, expt_vec.size(), indices_and_offsets);
-    dealii::Vector<double> Hx = da.calcHx(sim_size, sim_vec);
+    da._sim_size = sim_size;
+    da._expt_size = expt_size;
+    da.updateDofMapping(dof_handler, indices_and_offsets);
+    dealii::Vector<double> Hx = da.calcHx(sim_vec);
 
     double tol = 1e-12;
     if (std::abs(Hx(0) - 2.0) < tol && std::abs(Hx(1) - 4.0) < tol &&
@@ -353,6 +361,8 @@ public:
     dealii::FullMatrix<double> cov(4);
 
     DataAssimilator<2, dealii::Vector<double>> da;
+    da._sim_size = 4;
+    da._num_ensemble_members = 3;
     da.calcSampleCovarianceDense(data1, cov);
 
     // Check results
@@ -378,6 +388,7 @@ public:
     data2.push_back(sample23);
 
     dealii::FullMatrix<double> cov2(5);
+    da._sim_size = 5;
     da.calcSampleCovarianceDense(data2, cov2);
 
     if (std::abs(cov2(0, 0) - 0.07) > tol)
@@ -517,7 +528,11 @@ public:
     indices_and_offsets.second[2] = 2;
 
     DataAssimilator<2, dealii::Vector<double>> da;
-    da.updateDofMapping(dof_handler, expt_vec.size(), indices_and_offsets);
+    da._sim_size = sim_size;
+    da._expt_size = expt_size;
+    da._num_ensemble_members = 3;
+
+    da.updateDofMapping(dof_handler, indices_and_offsets);
 
     // Create the simulation data
     std::vector<dealii::Vector<double>> data;
@@ -587,8 +602,7 @@ BOOST_AUTO_TEST_CASE(data_assimilator)
   bool passKalmanGain = dat.testCalcKalmanGain();
   BOOST_CHECK(passKalmanGain);
 
-  bool passUpdateDofMapping = dat.testUpdateDofMapping();
-  BOOST_CHECK(passUpdateDofMapping);
+  dat.testUpdateDofMapping();
 
   bool passHx = dat.testCalcHx();
   BOOST_CHECK(passHx);

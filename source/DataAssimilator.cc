@@ -44,7 +44,7 @@ void DataAssimilator<dim, SimVectorType>::updateEnsemble(
   {
     perturbed_innovation[member].reinit(_expt_size);
     fillNoiseVector(perturbed_innovation[member], R);
-    dealii::Vector<double> temp = calcHx(_sim_size, sim_data[member]);
+    dealii::Vector<double> temp = calcHx(sim_data[member]);
     for (int i = 0; i < _expt_size; ++i)
     {
       perturbed_innovation[member][i] += expt_data[i] - temp[i];
@@ -53,7 +53,7 @@ void DataAssimilator<dim, SimVectorType>::updateEnsemble(
 
   // Apply the Kalman filter to the perturbed innovation
   std::vector<dealii::Vector<double>> forcast_shift =
-      applyKalmanGain(sim_data, _expt_size, R, perturbed_innovation);
+      applyKalmanGain(sim_data, R, perturbed_innovation);
 
   // Update the ensemble
   for (int member = 0; member < _num_ensemble_members; ++member)
@@ -65,17 +65,13 @@ void DataAssimilator<dim, SimVectorType>::updateEnsemble(
 template <int dim, typename SimVectorType>
 std::vector<dealii::Vector<double>>
 DataAssimilator<dim, SimVectorType>::applyKalmanGain(
-    std::vector<SimVectorType> &vec_ensemble, int expt_size,
-    dealii::SparseMatrix<double> &R,
+    std::vector<SimVectorType> &vec_ensemble, dealii::SparseMatrix<double> &R,
     std::vector<dealii::Vector<double>> &perturbed_innovation) const
 {
-  int num_samples = vec_ensemble.size();
-  int sim_size = vec_ensemble[0].size();
-
-  dealii::SparsityPattern patternH(expt_size, sim_size, expt_size);
+  dealii::SparsityPattern patternH(_expt_size, _sim_size, _expt_size);
   dealii::SparseMatrix<double> H = calcH(patternH);
 
-  dealii::FullMatrix<double> P(sim_size);
+  dealii::FullMatrix<double> P(_sim_size);
   calcSampleCovarianceDense(vec_ensemble, P);
 
   const auto op_H = dealii::linear_operator(H);
@@ -99,9 +95,9 @@ DataAssimilator<dim, SimVectorType>::applyKalmanGain(
   // (Unclear if this is really inefficient because op_K is calculated fresh
   // for each application)
   std::vector<dealii::Vector<double>> output;
-  for (int sample = 0; sample < vec_ensemble.size(); ++sample)
+  for (int member = 0; member < _num_ensemble_members; ++member)
   {
-    dealii::Vector<double> temp = op_K * perturbed_innovation[sample];
+    dealii::Vector<double> temp = op_K * perturbed_innovation[member];
     output.push_back(temp);
   }
 
@@ -137,7 +133,7 @@ dealii::SparseMatrix<double> DataAssimilator<dim, SimVectorType>::calcH(
 
 template <int dim, typename SimVectorType>
 void DataAssimilator<dim, SimVectorType>::updateDofMapping(
-    dealii::DoFHandler<dim> const &dof_handler, int num_expt_points,
+    dealii::DoFHandler<dim> const &dof_handler,
     std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets)
 {
   std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
@@ -156,7 +152,7 @@ void DataAssimilator<dim, SimVectorType>::updateDofMapping(
   _expt_to_dof_mapping.first.resize(indices_and_offsets.first.size());
   _expt_to_dof_mapping.second.resize(indices_and_offsets.first.size());
 
-  for (unsigned int i = 0; i < num_expt_points; ++i)
+  for (unsigned int i = 0; i < _expt_size; ++i)
   {
     for (int j = indices_and_offsets.second[i];
          j < indices_and_offsets.second[i + 1]; ++j)
@@ -170,11 +166,11 @@ void DataAssimilator<dim, SimVectorType>::updateDofMapping(
 
 template <int dim, typename SimVectorType>
 dealii::Vector<double> DataAssimilator<dim, SimVectorType>::calcHx(
-    const int expt_size, const SimVectorType &sim_ensemble_member) const
+    const SimVectorType &sim_ensemble_member) const
 {
   int num_expt_dof_map_entries = _expt_to_dof_mapping.first.size();
 
-  dealii::Vector<double> out_vec(expt_size);
+  dealii::Vector<double> out_vec(_expt_size);
 
   // Loop through the observation map to get the observation indices
   for (auto i = 0; i < num_expt_dof_map_entries; ++i)
@@ -215,29 +211,36 @@ void DataAssimilator<dim, SimVectorType>::calcSampleCovarianceDense(
     std::vector<dealii::Vector<double>> vec_ensemble,
     dealii::FullMatrix<double> &cov) const
 {
-  auto size_per_sample = vec_ensemble[0].size();
+  unsigned int num_ensemble_members = vec_ensemble.size();
+  unsigned int vec_size = 0;
+  if (vec_ensemble.size() > 0)
+  {
+    vec_size = vec_ensemble[0].size();
+  }
+
   // Calculate the mean
-  dealii::Vector<double> mean(size_per_sample);
-  for (unsigned int i = 0; i < size_per_sample; ++i)
+  dealii::Vector<double> mean(vec_size);
+  for (unsigned int i = 0; i < vec_size; ++i)
   {
     double sum = 0.0;
-    for (unsigned int sample = 0; sample < vec_ensemble.size(); ++sample)
+    for (unsigned int sample = 0; sample < num_ensemble_members; ++sample)
     {
       sum += vec_ensemble[sample][i];
     }
-    mean[i] = sum / vec_ensemble.size();
+    mean[i] = sum / num_ensemble_members;
   }
 
   // Calculate the anomaly
-  dealii::FullMatrix<double> anomaly(size_per_sample, vec_ensemble.size());
-  for (unsigned int sample = 0; sample < vec_ensemble.size(); ++sample)
+  dealii::FullMatrix<double> anomaly(vec_size, num_ensemble_members);
+  for (unsigned int member = 0; member < num_ensemble_members; ++member)
   {
-    for (unsigned int i = 0; i < size_per_sample; ++i)
+    for (unsigned int i = 0; i < vec_size; ++i)
     {
-      anomaly(i, sample) = (vec_ensemble[sample][i] - mean[i]) /
-                           std::sqrt(vec_ensemble.size() - 1.0);
+      anomaly(i, member) = (vec_ensemble[member][i] - mean[i]) /
+                           std::sqrt(num_ensemble_members - 1.0);
     }
   }
+
   anomaly.mTmult(cov, anomaly);
 }
 
