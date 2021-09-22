@@ -28,7 +28,7 @@ namespace adamantine
  */
 class DataAssimilatorTester;
 
-template <int dim, typename SimVectorType>
+template <typename SimVectorType>
 class DataAssimilator
 {
   friend class DataAssimilatorTester;
@@ -45,6 +45,7 @@ private:
       std::vector<SimVectorType> &vec_ensemble, dealii::SparseMatrix<double> &R,
       std::vector<dealii::Vector<double>> &perturbed_innovation) const;
 
+  template <int dim>
   void updateDofMapping(
       dealii::DoFHandler<dim> const &dof_handler,
       std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);

@@ -15,12 +15,12 @@
 namespace adamantine
 {
 
-template <int dim, typename SimVectorType>
-DataAssimilator<dim, SimVectorType>::DataAssimilator()
+template <typename SimVectorType>
+DataAssimilator<SimVectorType>::DataAssimilator()
     : _gen(_igen, boost::normal_distribution<>()){};
 
-template <int dim, typename SimVectorType>
-void DataAssimilator<dim, SimVectorType>::updateEnsemble(
+template <typename SimVectorType>
+void DataAssimilator<SimVectorType>::updateEnsemble(
     std::vector<SimVectorType> &sim_data, std::vector<double> const &expt_data,
     dealii::SparseMatrix<double> &R)
 {
@@ -61,9 +61,9 @@ void DataAssimilator<dim, SimVectorType>::updateEnsemble(
   }
 }
 
-template <int dim, typename SimVectorType>
+template <typename SimVectorType>
 std::vector<dealii::Vector<double>>
-DataAssimilator<dim, SimVectorType>::applyKalmanGain(
+DataAssimilator<SimVectorType>::applyKalmanGain(
     std::vector<SimVectorType> &vec_ensemble, dealii::SparseMatrix<double> &R,
     std::vector<dealii::Vector<double>> &perturbed_innovation) const
 {
@@ -102,9 +102,9 @@ DataAssimilator<dim, SimVectorType>::applyKalmanGain(
   return output;
 }
 
-template <int dim, typename SimVectorType>
-dealii::SparseMatrix<double> DataAssimilator<dim, SimVectorType>::calcH(
-    dealii::SparsityPattern &pattern) const
+template <typename SimVectorType>
+dealii::SparseMatrix<double>
+DataAssimilator<SimVectorType>::calcH(dealii::SparsityPattern &pattern) const
 {
   int num_expt_dof_map_entries = _expt_to_dof_mapping.first.size();
 
@@ -129,8 +129,9 @@ dealii::SparseMatrix<double> DataAssimilator<dim, SimVectorType>::calcH(
   return H;
 }
 
-template <int dim, typename SimVectorType>
-void DataAssimilator<dim, SimVectorType>::updateDofMapping(
+template <typename SimVectorType>
+template <int dim>
+void DataAssimilator<SimVectorType>::updateDofMapping(
     dealii::DoFHandler<dim> const &dof_handler,
     std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets)
 {
@@ -162,8 +163,8 @@ void DataAssimilator<dim, SimVectorType>::updateDofMapping(
   }
 }
 
-template <int dim, typename SimVectorType>
-dealii::Vector<double> DataAssimilator<dim, SimVectorType>::calcHx(
+template <typename SimVectorType>
+dealii::Vector<double> DataAssimilator<SimVectorType>::calcHx(
     const SimVectorType &sim_ensemble_member) const
 {
   int num_expt_dof_map_entries = _expt_to_dof_mapping.first.size();
@@ -181,8 +182,8 @@ dealii::Vector<double> DataAssimilator<dim, SimVectorType>::calcHx(
   return out_vec;
 }
 
-template <int dim, typename SimVectorType>
-void DataAssimilator<dim, SimVectorType>::fillNoiseVector(
+template <typename SimVectorType>
+void DataAssimilator<SimVectorType>::fillNoiseVector(
     dealii::Vector<double> &vec, dealii::SparseMatrix<double> &R)
 {
   auto vector_size = vec.size();
@@ -204,9 +205,9 @@ void DataAssimilator<dim, SimVectorType>::fillNoiseVector(
   L.vmult(vec, uncorrelated_noise_vector);
 }
 
-template <int dim, typename SimVectorType>
+template <typename SimVectorType>
 dealii::FullMatrix<double>
-DataAssimilator<dim, SimVectorType>::calcSampleCovarianceDense(
+DataAssimilator<SimVectorType>::calcSampleCovarianceDense(
     std::vector<dealii::Vector<double>> vec_ensemble) const
 {
   unsigned int num_ensemble_members = vec_ensemble.size();
@@ -246,7 +247,12 @@ DataAssimilator<dim, SimVectorType>::calcSampleCovarianceDense(
 }
 
 // Explicit instantiation
-template class DataAssimilator<2, dealii::Vector<double>>;
-template class DataAssimilator<3, dealii::Vector<double>>;
+template class DataAssimilator<dealii::Vector<double>>;
+template void DataAssimilator<dealii::Vector<double>>::updateDofMapping<2>(
+    dealii::DoFHandler<2> const &dof_handler,
+    std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
+template void DataAssimilator<dealii::Vector<double>>::updateDofMapping<3>(
+    dealii::DoFHandler<3> const &dof_handler,
+    std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
 
 } // namespace adamantine

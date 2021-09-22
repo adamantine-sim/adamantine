@@ -55,11 +55,11 @@ public:
     indices_and_offsets.second[1] = 1;
     indices_and_offsets.second[2] = 2;
 
-    DataAssimilator<2, dealii::Vector<double>> da;
+    DataAssimilator<dealii::Vector<double>> da;
     da._sim_size = sim_size;
     da._expt_size = expt_size;
     da._num_ensemble_members = 3;
-    da.updateDofMapping(dof_handler, indices_and_offsets);
+    da.updateDofMapping<2>(dof_handler, indices_and_offsets);
 
     // Create the simulation data
     std::vector<dealii::Vector<double>> data;
@@ -156,10 +156,10 @@ public:
     indices_and_offsets.second[2] = 2;
     indices_and_offsets.second[3] = 3;
 
-    DataAssimilator<2, dealii::Vector<double>> da;
+    DataAssimilator<dealii::Vector<double>> da;
     da._sim_size = sim_size;
     da._expt_size = expt_size;
-    da.updateDofMapping(dof_handler, indices_and_offsets);
+    da.updateDofMapping<2>(dof_handler, indices_and_offsets);
 
     BOOST_CHECK(da._expt_to_dof_mapping.first[0] == 0);
     BOOST_CHECK(da._expt_to_dof_mapping.first[1] == 1);
@@ -201,10 +201,10 @@ public:
     indices_and_offsets.second[2] = 2;
     indices_and_offsets.second[3] = 3;
 
-    DataAssimilator<2, dealii::Vector<double>> da;
+    DataAssimilator<dealii::Vector<double>> da;
     da._sim_size = sim_size;
     da._expt_size = expt_size;
-    da.updateDofMapping(dof_handler, indices_and_offsets);
+    da.updateDofMapping<2>(dof_handler, indices_and_offsets);
 
     dealii::SparsityPattern pattern(expt_size, sim_size, expt_size);
 
@@ -269,10 +269,10 @@ public:
     indices_and_offsets.second[2] = 2;
     indices_and_offsets.second[3] = 3;
 
-    DataAssimilator<2, dealii::Vector<double>> da;
+    DataAssimilator<dealii::Vector<double>> da;
     da._sim_size = sim_size;
     da._expt_size = expt_size;
-    da.updateDofMapping(dof_handler, indices_and_offsets);
+    da.updateDofMapping<2>(dof_handler, indices_and_offsets);
     dealii::Vector<double> Hx = da.calcHx(sim_vec);
 
     double tol = 1e-10;
@@ -292,7 +292,7 @@ public:
     data1.push_back(sample1);
     data1.push_back(sample1);
 
-    DataAssimilator<2, dealii::Vector<double>> da;
+    DataAssimilator<dealii::Vector<double>> da;
     dealii::FullMatrix<double> cov = da.calcSampleCovarianceDense(data1);
 
     // Check results
@@ -345,7 +345,7 @@ public:
 
   void testFillNoiseVector()
   {
-    DataAssimilator<2, dealii::Vector<double>> da;
+    DataAssimilator<dealii::Vector<double>> da;
 
     dealii::SparsityPattern pattern(3, 3, 3);
     pattern.add(0, 0);
@@ -416,12 +416,12 @@ public:
     indices_and_offsets.second[1] = 1;
     indices_and_offsets.second[2] = 2;
 
-    DataAssimilator<2, dealii::Vector<double>> da;
+    DataAssimilator<dealii::Vector<double>> da;
     da._sim_size = sim_size;
     da._expt_size = expt_size;
     da._num_ensemble_members = 3;
 
-    da.updateDofMapping(dof_handler, indices_and_offsets);
+    da.updateDofMapping<2>(dof_handler, indices_and_offsets);
 
     // Create the simulation data
     std::vector<dealii::Vector<double>> data;
