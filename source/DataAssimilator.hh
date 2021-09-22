@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 - 2021, the adamantine authors.
+/* Copyright (c) 2021, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -63,7 +63,7 @@ public:
    * u is a perturbation to the observed solution
    * H is the observation matrix
    */
-  void updateEnsemble(std::vector<SimVectorType> &sim_data,
+  void update_ensemble(std::vector<SimVectorType> &sim_data,
                       std::vector<double> const &expt_data,
                       dealii::SparseMatrix<double> &R);
 
@@ -76,7 +76,7 @@ public:
    * adamantine::set_with_experimental_data.
    */
   template <int dim>
-  void updateDofMapping(
+  void update_dof_mapping(
       dealii::DoFHandler<dim> const &dof_handler,
       std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
 
@@ -85,27 +85,27 @@ private:
    * This calculates the Kalman gain and applies it to the perturbed innovation.
    */
   std::vector<dealii::Vector<double>>
-  applyKalmanGain(std::vector<SimVectorType> &vec_ensemble,
+  apply_kalman_gain(std::vector<SimVectorType> &vec_ensemble,
                   dealii::SparseMatrix<double> &R,
                   std::vector<dealii::Vector<double>> &perturbed_innovation);
 
   /**
    * This calculates the observation matrix.
    */
-  dealii::SparseMatrix<double> calcH(dealii::SparsityPattern &pattern) const;
+  dealii::SparseMatrix<double> calc_H(dealii::SparsityPattern &pattern) const;
 
   /**
    * This calculates the application of the observation matrix on an ensemble
    * member from the simulation (sim_ensemble_member), avoiding explicit
    * construction of a sparse matrix for H.
    */
-  dealii::Vector<double> calcHx(const SimVectorType &sim_ensemble_member) const;
+  dealii::Vector<double> calc_Hx(const SimVectorType &sim_ensemble_member) const;
 
   /**
    * This fills a vector (vec) with noise from a multivariate normal
    * distribution defined by a covariance matrix (R).
    */
-  void fillNoiseVector(dealii::Vector<double> &vec,
+  void fill_noise_vector(dealii::Vector<double> &vec,
                        dealii::SparseMatrix<double> &R);
 
   /**
@@ -114,7 +114,7 @@ private:
    * improved computational performance and reduced spurious correlations a
    * sparse matrix version of this with localization should also be implemented.
    */
-  dealii::FullMatrix<double> calcSampleCovarianceDense(
+  dealii::FullMatrix<double> calc_sample_covariance_dense(
       std::vector<dealii::Vector<double>> vec_ensemble) const;
 
   /**

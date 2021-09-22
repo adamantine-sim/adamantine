@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 - 2021, the adamantine authors.
+/* Copyright (c) 2021, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -34,7 +34,7 @@ DataAssimilator<SimVectorType>::DataAssimilator(
 };
 
 template <typename SimVectorType>
-void DataAssimilator<SimVectorType>::updateEnsemble(
+void DataAssimilator<SimVectorType>::update_ensemble(
     std::vector<SimVectorType> &sim_data, std::vector<double> const &expt_data,
     dealii::SparseMatrix<double> &R)
 {
@@ -150,7 +150,7 @@ void DataAssimilator<SimVectorType>::updateDofMapping(
   std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
   dealii::DoFTools::map_dofs_to_support_points(
       dealii::StaticMappingQ1<dim>::mapping, dof_handler, indices_points);
-  // Change the format to used by ArborX
+  // Change the format to the one used by ArborX
   std::vector<dealii::types::global_dof_index> dof_indices(
       indices_points.size());
   unsigned int pos = 0;
