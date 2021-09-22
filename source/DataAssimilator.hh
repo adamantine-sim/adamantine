@@ -17,10 +17,8 @@
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/sparse_matrix.h>
 
-#include <boost/random.hpp>
-#include <boost/random/mersenne_twister.hpp>
-
 #include <map>
+#include <random>
 
 namespace adamantine
 {
@@ -37,7 +35,7 @@ class DataAssimilatorTester;
  * The EnKF implementation here is largely based on Chapter 6 of Data
  * Assimilation: Method and Applications by Asch, Bocquet, and Nodet.
  */
-template <typename SimVectorType>
+template <typename VectorType>
 class DataAssimilator
 {
   friend class DataAssimilatorTester;
@@ -63,9 +61,9 @@ public:
    * u is a perturbation to the observed solution
    * H is the observation matrix
    */
-  void update_ensemble(std::vector<SimVectorType> &sim_data,
-                      std::vector<double> const &expt_data,
-                      dealii::SparseMatrix<double> &R);
+  void update_ensemble(std::vector<VectorType> &sim_data,
+                       std::vector<double> const &expt_data,
+                       dealii::SparseMatrix<double> &R);
 
   /**
    * This updates the internal mapping between the indices of the entries in
@@ -85,9 +83,9 @@ private:
    * This calculates the Kalman gain and applies it to the perturbed innovation.
    */
   std::vector<dealii::Vector<double>>
-  apply_kalman_gain(std::vector<SimVectorType> &vec_ensemble,
-                  dealii::SparseMatrix<double> &R,
-                  std::vector<dealii::Vector<double>> &perturbed_innovation);
+  apply_kalman_gain(std::vector<VectorType> &vec_ensemble,
+                    dealii::SparseMatrix<double> &R,
+                    std::vector<dealii::Vector<double>> &perturbed_innovation);
 
   /**
    * This calculates the observation matrix.
@@ -99,14 +97,14 @@ private:
    * member from the simulation (sim_ensemble_member), avoiding explicit
    * construction of a sparse matrix for H.
    */
-  dealii::Vector<double> calc_Hx(const SimVectorType &sim_ensemble_member) const;
+  dealii::Vector<double> calc_Hx(const VectorType &sim_ensemble_member) const;
 
   /**
    * This fills a vector (vec) with noise from a multivariate normal
    * distribution defined by a covariance matrix (R).
    */
   void fill_noise_vector(dealii::Vector<double> &vec,
-                       dealii::SparseMatrix<double> &R);
+                         dealii::SparseMatrix<double> &R);
 
   /**
    * This calculates the sample covariance for an input ensemble of vectors
@@ -136,14 +134,15 @@ private:
    * The pseudo-random number generator, used for the perturbations to the
    * innovation vectors.
    */
-  boost::mt19937 _prng;
+  std::mt19937 _prng;
 
   /**
    * Random variate generator for a normal distribution, used for the
    * perturbations to the innovation vectors.
    */
-  boost::variate_generator<boost::mt19937, boost::normal_distribution<>>
-      _normal_dist_generator;
+  // std::variate_generator<std::mt19937, std::normal_distribution<>>
+  //  _normal_dist_generator;
+  std::normal_distribution<> _normal_dist_generator;
 
   /**
    * The mapping between the index in the experimental observation data vector

@@ -245,8 +245,6 @@ std::pair<std::vector<int>, std::vector<int>> set_with_experimental_data(
 
   temperature.compress(dealii::VectorOperation::insert);
 
-  std::cout << "sizes: " << indices.size() << " " << offset.size() << std::endl;
-
   return {indices, offset};
 }
 

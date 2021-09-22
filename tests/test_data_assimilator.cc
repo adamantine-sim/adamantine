@@ -20,7 +20,7 @@ namespace adamantine
 class DataAssimilatorTester
 {
 public:
-  void testConstructor()
+  void test_constructor()
   {
     boost::property_tree::ptree database;
 
@@ -42,7 +42,7 @@ public:
     BOOST_CHECK(da1._additional_data.max_n_tmp_vectors == 4);
   };
 
-  void testCalcKalmanGain()
+  void test_calc_kalman_gain()
   {
     // Create the DoF mapping
     MPI_Comm communicator = MPI_COMM_WORLD;
@@ -82,7 +82,7 @@ public:
     da._sim_size = sim_size;
     da._expt_size = expt_size;
     da._num_ensemble_members = 3;
-    da.updateDofMapping<2>(dof_handler, indices_and_offsets);
+    da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
 
     // Create the simulation data
     std::vector<dealii::Vector<double>> data;
@@ -109,7 +109,7 @@ public:
          ++sample)
     {
       perturbed_innovation[sample].reinit(expt_size);
-      dealii::Vector<double> temp = da.calcHx(data[sample]);
+      dealii::Vector<double> temp = da.calc_Hx(data[sample]);
       for (unsigned int i = 0; i < expt_size; ++i)
       {
         perturbed_innovation[sample][i] = expt_vec[i] - temp[i];
@@ -124,30 +124,30 @@ public:
     perturbed_innovation[2][1] = perturbed_innovation[2][1] - 0.0009;
 
     // Apply the Kalman gain
-    std::vector<dealii::Vector<double>> forcast_shift =
-        da.applyKalmanGain(data, R, perturbed_innovation);
+    std::vector<dealii::Vector<double>> forecast_shift =
+        da.apply_kalman_gain(data, R, perturbed_innovation);
 
     double tol = 1.0e-4;
 
     // Reference solution calculated using Python
-    BOOST_CHECK_CLOSE(forcast_shift[0][0], 0.21352564, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[0][1], -0.14600986, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[0][2], -0.02616469, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[0][3], 0.45321598, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[0][4], 0.69290631, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[1][0], -0.27786325, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[1][1], -0.32946285, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[1][2], -0.31226298, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[1][3], -0.24346351, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[1][4], -0.20906377, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[2][0], 0.12767094, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[2][1], -0.20319395, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[2][2], -0.09290565, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[2][3], 0.34824753, tol);
-    BOOST_CHECK_CLOSE(forcast_shift[2][4], 0.56882413, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[0][0], 0.21352564, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[0][1], -0.14600986, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[0][2], -0.02616469, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[0][3], 0.45321598, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[0][4], 0.69290631, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[1][0], -0.27786325, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[1][1], -0.32946285, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[1][2], -0.31226298, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[1][3], -0.24346351, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[1][4], -0.20906377, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[2][0], 0.12767094, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[2][1], -0.20319395, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[2][2], -0.09290565, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[2][3], 0.34824753, tol);
+    BOOST_CHECK_CLOSE(forecast_shift[2][4], 0.56882413, tol);
   };
 
-  void testUpdateDofMapping()
+  void test_update_dof_mapping()
   {
     MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -183,7 +183,7 @@ public:
     DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
-    da.updateDofMapping<2>(dof_handler, indices_and_offsets);
+    da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
 
     BOOST_CHECK(da._expt_to_dof_mapping.first[0] == 0);
     BOOST_CHECK(da._expt_to_dof_mapping.first[1] == 1);
@@ -193,7 +193,7 @@ public:
     BOOST_CHECK(da._expt_to_dof_mapping.second[2] == 3);
   };
 
-  void testCalcH()
+  void test_calc_H()
   {
     MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -229,11 +229,11 @@ public:
     DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
-    da.updateDofMapping<2>(dof_handler, indices_and_offsets);
+    da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
 
     dealii::SparsityPattern pattern(expt_size, sim_size, expt_size);
 
-    dealii::SparseMatrix<double> H = da.calcH(pattern);
+    dealii::SparseMatrix<double> H = da.calc_H(pattern);
 
     double tol = 1e-12;
     for (unsigned int i = 0; i < expt_size; ++i)
@@ -251,7 +251,7 @@ public:
       }
     }
   };
-  void testCalcHx()
+  void test_calc_Hx()
   {
     MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -298,8 +298,8 @@ public:
     DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
-    da.updateDofMapping<2>(dof_handler, indices_and_offsets);
-    dealii::Vector<double> Hx = da.calcHx(sim_vec);
+    da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
+    dealii::Vector<double> Hx = da.calc_Hx(sim_vec);
 
     double tol = 1e-10;
     BOOST_CHECK_CLOSE(Hx(0), 2.0, tol);
@@ -307,7 +307,7 @@ public:
     BOOST_CHECK_CLOSE(Hx(2), 7.0, tol);
   };
 
-  void testCalcSampleCovarianceDense()
+  void test_calc_sample_covariance_dense()
   {
     double tol = 1e-10;
 
@@ -320,7 +320,7 @@ public:
 
     boost::property_tree::ptree solver_settings_database;
     DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
-    dealii::FullMatrix<double> cov = da.calcSampleCovarianceDense(data1);
+    dealii::FullMatrix<double> cov = da.calc_sample_covariance_dense(data1);
 
     // Check results
     for (unsigned int i = 0; i < 4; ++i)
@@ -341,7 +341,7 @@ public:
     data2.push_back(sample23);
 
     da._sim_size = 5;
-    dealii::FullMatrix<double> cov2 = da.calcSampleCovarianceDense(data2);
+    dealii::FullMatrix<double> cov2 = da.calc_sample_covariance_dense(data2);
 
     BOOST_CHECK_CLOSE(cov2(0, 0), 0.07, tol);
     BOOST_CHECK_CLOSE(cov2(1, 0), 0.025, tol);
@@ -370,7 +370,7 @@ public:
     BOOST_CHECK_CLOSE(cov2(4, 4), 0.24333333333333, tol);
   };
 
-  void testFillNoiseVector()
+  void test_fill_noise_vector()
   {
     boost::property_tree::ptree solver_settings_database;
     DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
@@ -395,11 +395,11 @@ public:
     dealii::Vector<double> ensemble_member(3);
     for (unsigned int i = 0; i < 1000; ++i)
     {
-      da.fillNoiseVector(ensemble_member, R);
+      da.fill_noise_vector(ensemble_member, R);
       data.push_back(ensemble_member);
     }
 
-    dealii::FullMatrix<double> Rtest = da.calcSampleCovarianceDense(data);
+    dealii::FullMatrix<double> Rtest = da.calc_sample_covariance_dense(data);
 
     double tol = 20.; // Loose 20% tolerance because this is a statistical check
     BOOST_CHECK_CLOSE(R(0, 0), Rtest(0, 0), tol);
@@ -409,7 +409,7 @@ public:
     BOOST_CHECK_CLOSE(R(2, 2), Rtest(2, 2), tol);
   };
 
-  void testUpdateEnsemble()
+  void test_update_ensemble()
   {
     // Create the DoF mapping
     MPI_Comm communicator = MPI_COMM_WORLD;
@@ -450,7 +450,7 @@ public:
     da._expt_size = expt_size;
     da._num_ensemble_members = 3;
 
-    da.updateDofMapping<2>(dof_handler, indices_and_offsets);
+    da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
 
     // Create the simulation data
     std::vector<dealii::Vector<double>> data;
@@ -483,7 +483,7 @@ public:
     sim_at_expt_pt_2_before.push_back(data[2][3]);
 
     // Update the simulation data
-    da.updateEnsemble(data, expt_vec, R);
+    da.update_ensemble(data, expt_vec, R);
 
     // Save the data at the observation points after assimilation
     std::vector<double> sim_at_expt_pt_1_after(3);
@@ -513,13 +513,13 @@ BOOST_AUTO_TEST_CASE(data_assimilator)
 {
   DataAssimilatorTester dat;
 
-  dat.testConstructor();
-  dat.testUpdateDofMapping();
-  dat.testCalcSampleCovarianceDense();
-  dat.testFillNoiseVector();
-  dat.testCalcH();
-  dat.testCalcHx();
-  dat.testCalcKalmanGain();
-  dat.testUpdateEnsemble();
+  dat.test_constructor();
+  dat.test_update_dof_mapping();
+  dat.test_calc_sample_covariance_dense();
+  dat.test_fill_noise_vector();
+  dat.test_calc_H();
+  dat.test_calc_Hx();
+  dat.test_calc_kalman_gain();
+  dat.test_update_ensemble();
 }
 } // namespace adamantine
