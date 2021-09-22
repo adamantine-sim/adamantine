@@ -20,6 +20,28 @@ namespace adamantine
 class DataAssimilatorTester
 {
 public:
+  void testConstructor()
+  {
+    boost::property_tree::ptree database;
+
+    // First checking the dealii default values
+    DataAssimilator<dealii::Vector<double>> da0(database);
+
+    double tol = 1.0e-12;
+    BOOST_CHECK_SMALL(da0._solver_control.tolerance() - 1.0e-10, tol);
+    BOOST_CHECK(da0._solver_control.max_steps() == 100);
+    BOOST_CHECK(da0._additional_data.max_n_tmp_vectors == 30);
+
+    // Now explicitly setting them
+    database.put("convergence tolerance", 1.0e-6);
+    database.put("maximum iterations", 25);
+    database.put("maximum number of temp vectors", 4);
+    DataAssimilator<dealii::Vector<double>> da1(database);
+    BOOST_CHECK_SMALL(da1._solver_control.tolerance() - 1.0e-6, tol);
+    BOOST_CHECK(da1._solver_control.max_steps() == 25);
+    BOOST_CHECK(da1._additional_data.max_n_tmp_vectors == 4);
+  };
+
   void testCalcKalmanGain()
   {
     // Create the DoF mapping
@@ -55,7 +77,8 @@ public:
     indices_and_offsets.second[1] = 1;
     indices_and_offsets.second[2] = 2;
 
-    DataAssimilator<dealii::Vector<double>> da;
+    boost::property_tree::ptree solver_settings_database;
+    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
     da._num_ensemble_members = 3;
@@ -156,7 +179,8 @@ public:
     indices_and_offsets.second[2] = 2;
     indices_and_offsets.second[3] = 3;
 
-    DataAssimilator<dealii::Vector<double>> da;
+    boost::property_tree::ptree solver_settings_database;
+    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
     da.updateDofMapping<2>(dof_handler, indices_and_offsets);
@@ -201,7 +225,8 @@ public:
     indices_and_offsets.second[2] = 2;
     indices_and_offsets.second[3] = 3;
 
-    DataAssimilator<dealii::Vector<double>> da;
+    boost::property_tree::ptree solver_settings_database;
+    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
     da.updateDofMapping<2>(dof_handler, indices_and_offsets);
@@ -269,7 +294,8 @@ public:
     indices_and_offsets.second[2] = 2;
     indices_and_offsets.second[3] = 3;
 
-    DataAssimilator<dealii::Vector<double>> da;
+    boost::property_tree::ptree solver_settings_database;
+    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
     da.updateDofMapping<2>(dof_handler, indices_and_offsets);
@@ -292,7 +318,8 @@ public:
     data1.push_back(sample1);
     data1.push_back(sample1);
 
-    DataAssimilator<dealii::Vector<double>> da;
+    boost::property_tree::ptree solver_settings_database;
+    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
     dealii::FullMatrix<double> cov = da.calcSampleCovarianceDense(data1);
 
     // Check results
@@ -345,7 +372,8 @@ public:
 
   void testFillNoiseVector()
   {
-    DataAssimilator<dealii::Vector<double>> da;
+    boost::property_tree::ptree solver_settings_database;
+    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
 
     dealii::SparsityPattern pattern(3, 3, 3);
     pattern.add(0, 0);
@@ -416,7 +444,8 @@ public:
     indices_and_offsets.second[1] = 1;
     indices_and_offsets.second[2] = 2;
 
-    DataAssimilator<dealii::Vector<double>> da;
+    boost::property_tree::ptree solver_settings_database;
+    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
     da._num_ensemble_members = 3;
@@ -484,6 +513,7 @@ BOOST_AUTO_TEST_CASE(data_assimilator)
 {
   DataAssimilatorTester dat;
 
+  dat.testConstructor();
   dat.testUpdateDofMapping();
   dat.testCalcSampleCovarianceDense();
   dat.testFillNoiseVector();

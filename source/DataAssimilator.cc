@@ -9,15 +9,29 @@
 
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/lac/linear_operator_tools.h>
-#include <deal.II/lac/solver_gmres.h>
-#include <deal.II/lac/sparse_direct.h>
 
 namespace adamantine
 {
 
 template <typename SimVectorType>
-DataAssimilator<SimVectorType>::DataAssimilator()
-    : _gen(_igen, boost::normal_distribution<>()){};
+DataAssimilator<SimVectorType>::DataAssimilator(
+    boost::property_tree::ptree const &database)
+    : _normal_dist_generator(_prng, boost::normal_distribution<>())
+{
+
+  // Set the solver parameters from the input database
+  if (boost::optional<unsigned int> max_num_temp_vectors =
+          database.get_optional<unsigned int>("maximum number of temp vectors"))
+    _additional_data.max_n_tmp_vectors = *max_num_temp_vectors;
+
+  if (boost::optional<unsigned int> max_iterations =
+          database.get_optional<unsigned int>("maximum iterations"))
+    _solver_control.set_max_steps(*max_iterations);
+
+  if (boost::optional<double> tolerance =
+          database.get_optional<double>("convergence tolerance"))
+    _solver_control.set_tolerance(*tolerance);
+};
 
 template <typename SimVectorType>
 void DataAssimilator<SimVectorType>::updateEnsemble(
@@ -65,7 +79,7 @@ template <typename SimVectorType>
 std::vector<dealii::Vector<double>>
 DataAssimilator<SimVectorType>::applyKalmanGain(
     std::vector<SimVectorType> &vec_ensemble, dealii::SparseMatrix<double> &R,
-    std::vector<dealii::Vector<double>> &perturbed_innovation) const
+    std::vector<dealii::Vector<double>> &perturbed_innovation)
 {
   dealii::SparsityPattern patternH(_expt_size, _sim_size, _expt_size);
   dealii::SparseMatrix<double> H = calcH(patternH);
@@ -79,10 +93,8 @@ DataAssimilator<SimVectorType>::applyKalmanGain(
   const auto op_HPH_plus_R =
       op_H * op_P * dealii::transpose_operator(op_H) + op_R;
 
-  dealii::SolverGMRES<dealii::Vector<double>>::AdditionalData additional_data;
-  dealii::SolverControl solver_control;
-  dealii::SolverGMRES<dealii::Vector<double>> R_inv_solver(solver_control,
-                                                           additional_data);
+  dealii::SolverGMRES<dealii::Vector<double>> R_inv_solver(_solver_control,
+                                                           _additional_data);
 
   auto op_HPH_plus_R_inv =
       dealii::inverse_operator(op_HPH_plus_R, R_inv_solver);
@@ -199,7 +211,7 @@ void DataAssimilator<SimVectorType>::fillNoiseVector(
 
   for (unsigned int i = 0; i < vector_size; ++i)
   {
-    uncorrelated_noise_vector(i) = _gen();
+    uncorrelated_noise_vector(i) = _normal_dist_generator();
   }
 
   L.vmult(vec, uncorrelated_noise_vector);
