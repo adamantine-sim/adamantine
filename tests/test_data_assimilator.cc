@@ -20,10 +20,8 @@ namespace adamantine
 class DataAssimilatorTester
 {
 public:
-  bool testCalcKalmanGain()
+  void testCalcKalmanGain()
   {
-    bool pass = true;
-
     // Create the DoF mapping
     MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -106,52 +104,24 @@ public:
     std::vector<dealii::Vector<double>> forcast_shift =
         da.applyKalmanGain(data, R, perturbed_innovation);
 
-    // Check output
-    std::cout << "After applying the Kalman Gain:" << std::endl;
-    for (unsigned int sample = 0; sample < forcast_shift.size(); ++sample)
-    {
-      for (unsigned int i = 0; i < sim_size; ++i)
-      {
-        std::cout << forcast_shift[sample][i] << " ";
-      }
-      std::cout << std::endl;
-    }
-
-    double tol = 1.0e-8;
+    double tol = 1.0e-4;
 
     // Reference solution calculated using Python
-    if (std::abs(forcast_shift[0][0] - 0.21352564) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[0][1] + 0.14600986) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[0][2] + 0.02616469) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[0][3] - 0.45321598) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[0][4] - 0.69290631) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[1][0] + 0.27786325) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[1][1] + 0.32946285) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[1][2] + 0.31226298) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[1][3] + 0.24346351) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[1][4] + 0.20906377) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[2][0] - 0.12767094) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[2][1] + 0.20319395) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[2][2] + 0.09290565) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[2][3] - 0.34824753) > tol)
-      pass = false;
-    if (std::abs(forcast_shift[2][4] - 0.56882413) > tol)
-      pass = false;
-
-    return pass;
+    BOOST_CHECK_CLOSE(forcast_shift[0][0], 0.21352564, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[0][1], -0.14600986, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[0][2], -0.02616469, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[0][3], 0.45321598, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[0][4], 0.69290631, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[1][0], -0.27786325, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[1][1], -0.32946285, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[1][2], -0.31226298, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[1][3], -0.24346351, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[1][4], -0.20906377, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[2][0], 0.12767094, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[2][1], -0.20319395, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[2][2], -0.09290565, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[2][3], 0.34824753, tol);
+    BOOST_CHECK_CLOSE(forcast_shift[2][4], 0.56882413, tol);
   };
 
   void testUpdateDofMapping()
@@ -199,10 +169,8 @@ public:
     BOOST_CHECK(da._expt_to_dof_mapping.second[2] == 3);
   };
 
-  bool testCalcH()
+  void testCalcH()
   {
-    bool pass = true;
-
     MPI_Comm communicator = MPI_COMM_WORLD;
 
     boost::property_tree::ptree database;
@@ -248,47 +216,18 @@ public:
       for (unsigned int j = 0; j < sim_size; ++j)
       {
         if (i == 0 && j == 0)
-        {
-          std::cout << "1" << std::endl;
-          if (std::abs(H(i, j) - 1.0) > tol)
-          {
-            pass = false;
-          }
-        }
+          BOOST_CHECK_CLOSE(H(i, j), 1.0, tol);
         else if (i == 1 && j == 1)
-        {
-          std::cout << "2" << std::endl;
-          if (std::abs(H(i, j) - 1.0) > tol)
-          {
-            pass = false;
-          }
-        }
+          BOOST_CHECK_CLOSE(H(i, j), 1.0, tol);
         else if (i == 2 && j == 3)
-        {
-          std::cout << "3" << std::endl;
-          if (std::abs(H(i, j) - 1.0) > tol)
-          {
-            pass = false;
-          }
-        }
+          BOOST_CHECK_CLOSE(H(i, j), 1.0, tol);
         else
-        {
-          std::cout << "4" << std::endl;
-          if (std::abs(H.el(i, j)) > tol)
-          {
-            pass = false;
-          }
-        }
+          BOOST_CHECK_CLOSE(H.el(i, j), 0.0, tol);
       }
     }
-
-    return pass;
   };
-  bool testCalcHx()
+  void testCalcHx()
   {
-
-    bool pass = false;
-
     MPI_Comm communicator = MPI_COMM_WORLD;
 
     boost::property_tree::ptree database;
@@ -336,49 +275,36 @@ public:
     da.updateDofMapping(dof_handler, indices_and_offsets);
     dealii::Vector<double> Hx = da.calcHx(sim_vec);
 
-    double tol = 1e-12;
-    if (std::abs(Hx(0) - 2.0) < tol && std::abs(Hx(1) - 4.0) < tol &&
-        std::abs(Hx(2) - 7.0) < tol)
-    {
-      pass = true;
-    }
-
-    return pass;
+    double tol = 1e-10;
+    BOOST_CHECK_CLOSE(Hx(0), 2.0, tol);
+    BOOST_CHECK_CLOSE(Hx(1), 4.0, tol);
+    BOOST_CHECK_CLOSE(Hx(2), 7.0, tol);
   };
 
-  bool testCalcSampleCovarianceDense()
+  void testCalcSampleCovarianceDense()
   {
-    double tol = 1e-12;
+    double tol = 1e-10;
 
     // Trivial case of identical vectors, covariance should be the zero matrix
-    bool pass1 = true;
     std::vector<dealii::Vector<double>> data1;
-    dealii::Vector<double> sample1({1, 3, 5, 7});
+    dealii::Vector<double> sample1({1., 3., 5., 7.});
     data1.push_back(sample1);
     data1.push_back(sample1);
     data1.push_back(sample1);
-
-    dealii::FullMatrix<double> cov(4);
 
     DataAssimilator<2, dealii::Vector<double>> da;
-    da._sim_size = 4;
-    da._num_ensemble_members = 3;
-    da.calcSampleCovarianceDense(data1, cov);
+    dealii::FullMatrix<double> cov = da.calcSampleCovarianceDense(data1);
 
     // Check results
     for (unsigned int i = 0; i < 4; ++i)
     {
       for (unsigned int j = 0; j < 4; ++j)
       {
-        if (std::abs(cov(i, j)) > tol)
-        {
-          pass1 = false;
-        }
+        BOOST_CHECK_SMALL(std::abs(cov(i, j)), tol);
       }
     }
 
     // Non-trivial case, using NumPy solution as the reference
-    bool pass2 = true;
     std::vector<dealii::Vector<double>> data2;
     dealii::Vector<double> sample21({1., 3., 6., 9., 11.});
     data2.push_back(sample21);
@@ -387,70 +313,38 @@ public:
     dealii::Vector<double> sample23({1.1, 3.1, 6.1, 9.1, 11.1});
     data2.push_back(sample23);
 
-    dealii::FullMatrix<double> cov2(5);
     da._sim_size = 5;
-    da.calcSampleCovarianceDense(data2, cov2);
+    dealii::FullMatrix<double> cov2 = da.calcSampleCovarianceDense(data2);
 
-    if (std::abs(cov2(0, 0) - 0.07) > tol)
-      pass2 = false;
-    if (std::abs(cov2(1, 0) - 0.025) > tol)
-      pass2 = false;
-    if (std::abs(cov2(2, 0) - 0.04) > tol)
-      pass2 = false;
-    if (std::abs(cov2(3, 0) - 0.1) > tol)
-      pass2 = false;
-    if (std::abs(cov2(4, 0) - 0.13) > tol)
-      pass2 = false;
-    if (std::abs(cov2(0, 1) - 0.025) > tol)
-      pass2 = false;
-    if (std::abs(cov2(1, 1) - 0.01) > tol)
-      pass2 = false;
-    if (std::abs(cov2(2, 1) - 0.015) > tol)
-      pass2 = false;
-    if (std::abs(cov2(3, 1) - 0.035) > tol)
-      pass2 = false;
-    if (std::abs(cov2(4, 1) - 0.045) > tol)
-      pass2 = false;
-    if (std::abs(cov2(0, 2) - 0.04) > tol)
-      pass2 = false;
-    if (std::abs(cov2(1, 2) - 0.015) > tol)
-      pass2 = false;
-    if (std::abs(cov2(2, 2) - 0.02333333333333) > tol)
-      pass2 = false;
-    if (std::abs(cov2(3, 2) - 0.05666666666667) > tol)
-      pass2 = false;
-    if (std::abs(cov2(4, 2) - 0.07333333333333) > tol)
-      pass2 = false;
-    if (std::abs(cov2(0, 3) - 0.1) > tol)
-      pass2 = false;
-    if (std::abs(cov2(1, 3) - 0.035) > tol)
-      pass2 = false;
-    if (std::abs(cov2(2, 3) - 0.05666666666667) > tol)
-      pass2 = false;
-    if (std::abs(cov2(3, 3) - 0.14333333333333) > tol)
-      pass2 = false;
-    if (std::abs(cov2(4, 3) - 0.18666666666667) > tol)
-      pass2 = false;
-    if (std::abs(cov2(0, 4) - 0.13) > tol)
-      pass2 = false;
-    if (std::abs(cov2(1, 4) - 0.045) > tol)
-      pass2 = false;
-    if (std::abs(cov2(2, 4) - 0.07333333333333) > tol)
-      pass2 = false;
-    if (std::abs(cov2(3, 4) - 0.18666666666667) > tol)
-      pass2 = false;
-    if (std::abs(cov2(4, 4) - 0.24333333333333) > tol)
-      pass2 = false;
-
-    bool pass = pass1 && pass2;
-
-    return pass;
+    BOOST_CHECK_CLOSE(cov2(0, 0), 0.07, tol);
+    BOOST_CHECK_CLOSE(cov2(1, 0), 0.025, tol);
+    BOOST_CHECK_CLOSE(cov2(2, 0), 0.04, tol);
+    BOOST_CHECK_CLOSE(cov2(3, 0), 0.1, tol);
+    BOOST_CHECK_CLOSE(cov2(4, 0), 0.13, tol);
+    BOOST_CHECK_CLOSE(cov2(0, 1), 0.025, tol);
+    BOOST_CHECK_CLOSE(cov2(1, 1), 0.01, tol);
+    BOOST_CHECK_CLOSE(cov2(2, 1), 0.015, tol);
+    BOOST_CHECK_CLOSE(cov2(3, 1), 0.035, tol);
+    BOOST_CHECK_CLOSE(cov2(4, 1), 0.045, tol);
+    BOOST_CHECK_CLOSE(cov2(0, 2), 0.04, tol);
+    BOOST_CHECK_CLOSE(cov2(1, 2), 0.015, tol);
+    BOOST_CHECK_CLOSE(cov2(2, 2), 0.02333333333333, tol);
+    BOOST_CHECK_CLOSE(cov2(3, 2), 0.05666666666667, tol);
+    BOOST_CHECK_CLOSE(cov2(4, 2), 0.07333333333333, tol);
+    BOOST_CHECK_CLOSE(cov2(0, 3), 0.1, tol);
+    BOOST_CHECK_CLOSE(cov2(1, 3), 0.035, tol);
+    BOOST_CHECK_CLOSE(cov2(2, 3), 0.05666666666667, tol);
+    BOOST_CHECK_CLOSE(cov2(3, 3), 0.14333333333333, tol);
+    BOOST_CHECK_CLOSE(cov2(4, 3), 0.18666666666667, tol);
+    BOOST_CHECK_CLOSE(cov2(0, 4), 0.13, tol);
+    BOOST_CHECK_CLOSE(cov2(1, 4), 0.045, tol);
+    BOOST_CHECK_CLOSE(cov2(2, 4), 0.07333333333333, tol);
+    BOOST_CHECK_CLOSE(cov2(3, 4), 0.18666666666667, tol);
+    BOOST_CHECK_CLOSE(cov2(4, 4), 0.24333333333333, tol);
   };
 
-  bool testFillNoiseVector()
+  void testFillNoiseVector()
   {
-    bool pass = true;
-
     DataAssimilator<2, dealii::Vector<double>> da;
 
     dealii::SparsityPattern pattern(3, 3, 3);
@@ -477,8 +371,7 @@ public:
       data.push_back(ensemble_member);
     }
 
-    dealii::FullMatrix<double> Rtest(3);
-    da.calcSampleCovarianceDense(data, Rtest);
+    dealii::FullMatrix<double> Rtest = da.calcSampleCovarianceDense(data);
 
     double tol = 20.; // Loose 20% tolerance because this is a statistical check
     BOOST_CHECK_CLOSE(R(0, 0), Rtest(0, 0), tol);
@@ -486,14 +379,10 @@ public:
     BOOST_CHECK_CLOSE(R(1, 1), Rtest(1, 1), tol);
     BOOST_CHECK_CLOSE(R(0, 1), Rtest(0, 1), tol);
     BOOST_CHECK_CLOSE(R(2, 2), Rtest(2, 2), tol);
-
-    return pass;
   };
 
-  bool testUpdateEnsemble()
+  void testUpdateEnsemble()
   {
-    bool pass = true;
-
     // Create the DoF mapping
     MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -565,7 +454,7 @@ public:
     sim_at_expt_pt_2_before.push_back(data[2][3]);
 
     // Update the simulation data
-    da.updateEnsemble(data, expt_vec, indices_and_offsets, R);
+    da.updateEnsemble(data, expt_vec, R);
 
     // Save the data at the observation points after assimilation
     std::vector<double> sim_at_expt_pt_1_after(3);
@@ -583,40 +472,24 @@ public:
     // Large entries in R could make these fail spuriously
     for (int member = 0; member < 3; ++member)
     {
-      if (std::abs(expt_vec[0] - sim_at_expt_pt_1_after[member]) >
-          std::abs(expt_vec[0] - sim_at_expt_pt_1_before[member]))
-        pass = false;
-      if (std::abs(expt_vec[1] - sim_at_expt_pt_2_after[member]) >
-          std::abs(expt_vec[1] - sim_at_expt_pt_2_before[member]))
-        pass = false;
+      BOOST_CHECK(std::abs(expt_vec[0] - sim_at_expt_pt_1_after[member]) <=
+                  std::abs(expt_vec[0] - sim_at_expt_pt_1_before[member]));
+      BOOST_CHECK(std::abs(expt_vec[1] - sim_at_expt_pt_2_after[member]) <=
+                  std::abs(expt_vec[1] - sim_at_expt_pt_2_before[member]));
     }
-
-    return pass;
   };
 };
 
 BOOST_AUTO_TEST_CASE(data_assimilator)
 {
-
   DataAssimilatorTester dat;
-  bool passKalmanGain = dat.testCalcKalmanGain();
-  BOOST_CHECK(passKalmanGain);
 
   dat.testUpdateDofMapping();
-
-  bool passHx = dat.testCalcHx();
-  BOOST_CHECK(passHx);
-
-  bool passCovDense = dat.testCalcSampleCovarianceDense();
-  BOOST_CHECK(passCovDense);
-
-  bool passFillNoiseVector = dat.testFillNoiseVector();
-  BOOST_CHECK(passFillNoiseVector);
-
-  bool passCalcH = dat.testCalcH();
-  BOOST_CHECK(passCalcH);
-
-  bool passUpdateEnsemble = dat.testUpdateEnsemble();
-  BOOST_CHECK(passUpdateEnsemble);
+  dat.testCalcSampleCovarianceDense();
+  dat.testFillNoiseVector();
+  dat.testCalcH();
+  dat.testCalcHx();
+  dat.testCalcKalmanGain();
+  dat.testUpdateEnsemble();
 }
 } // namespace adamantine

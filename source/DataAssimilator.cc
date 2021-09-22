@@ -22,7 +22,6 @@ DataAssimilator<dim, SimVectorType>::DataAssimilator()
 template <int dim, typename SimVectorType>
 void DataAssimilator<dim, SimVectorType>::updateEnsemble(
     std::vector<SimVectorType> &sim_data, std::vector<double> const &expt_data,
-    const std::pair<std::vector<int>, std::vector<int>> &indices_and_offsets,
     dealii::SparseMatrix<double> &R)
 {
   // Set some constants
@@ -37,26 +36,26 @@ void DataAssimilator<dim, SimVectorType>::updateEnsemble(
   }
   _expt_size = expt_data.size();
 
-  // Get the perturbed innovation ( y+u - Hx )
+  // Get the perturbed innovation, ( y+u - Hx )
   std::vector<dealii::Vector<double>> perturbed_innovation(
       _num_ensemble_members);
-  for (int member = 0; member < _num_ensemble_members; ++member)
+  for (unsigned int member = 0; member < _num_ensemble_members; ++member)
   {
     perturbed_innovation[member].reinit(_expt_size);
     fillNoiseVector(perturbed_innovation[member], R);
     dealii::Vector<double> temp = calcHx(sim_data[member]);
-    for (int i = 0; i < _expt_size; ++i)
+    for (unsigned int i = 0; i < _expt_size; ++i)
     {
       perturbed_innovation[member][i] += expt_data[i] - temp[i];
     }
   }
 
-  // Apply the Kalman filter to the perturbed innovation
+  // Apply the Kalman filter to the perturbed innovation, K ( y+u - Hxf )
   std::vector<dealii::Vector<double>> forcast_shift =
       applyKalmanGain(sim_data, R, perturbed_innovation);
 
-  // Update the ensemble
-  for (int member = 0; member < _num_ensemble_members; ++member)
+  // Update the ensemble, xa = xf + K ( y+u - Hxf )
+  for (unsigned int member = 0; member < _num_ensemble_members; ++member)
   {
     sim_data[member] += forcast_shift[member];
   }
@@ -71,8 +70,7 @@ DataAssimilator<dim, SimVectorType>::applyKalmanGain(
   dealii::SparsityPattern patternH(_expt_size, _sim_size, _expt_size);
   dealii::SparseMatrix<double> H = calcH(patternH);
 
-  dealii::FullMatrix<double> P(_sim_size);
-  calcSampleCovarianceDense(vec_ensemble, P);
+  dealii::FullMatrix<double> P = calcSampleCovarianceDense(vec_ensemble);
 
   const auto op_H = dealii::linear_operator(H);
   const auto op_P = dealii::linear_operator(P);
@@ -95,7 +93,7 @@ DataAssimilator<dim, SimVectorType>::applyKalmanGain(
   // (Unclear if this is really inefficient because op_K is calculated fresh
   // for each application)
   std::vector<dealii::Vector<double>> output;
-  for (int member = 0; member < _num_ensemble_members; ++member)
+  for (unsigned int member = 0; member < _num_ensemble_members; ++member)
   {
     dealii::Vector<double> temp = op_K * perturbed_innovation[member];
     output.push_back(temp);
@@ -198,7 +196,7 @@ void DataAssimilator<dim, SimVectorType>::fillNoiseVector(
   // Get a vector of normally distributed values
   dealii::Vector<double> uncorrelated_noise_vector(vector_size);
 
-  for (int i = 0; i < vector_size; ++i)
+  for (unsigned int i = 0; i < vector_size; ++i)
   {
     uncorrelated_noise_vector(i) = _gen();
   }
@@ -207,9 +205,9 @@ void DataAssimilator<dim, SimVectorType>::fillNoiseVector(
 }
 
 template <int dim, typename SimVectorType>
-void DataAssimilator<dim, SimVectorType>::calcSampleCovarianceDense(
-    std::vector<dealii::Vector<double>> vec_ensemble,
-    dealii::FullMatrix<double> &cov) const
+dealii::FullMatrix<double>
+DataAssimilator<dim, SimVectorType>::calcSampleCovarianceDense(
+    std::vector<dealii::Vector<double>> vec_ensemble) const
 {
   unsigned int num_ensemble_members = vec_ensemble.size();
   unsigned int vec_size = 0;
@@ -241,7 +239,10 @@ void DataAssimilator<dim, SimVectorType>::calcSampleCovarianceDense(
     }
   }
 
+  dealii::FullMatrix<double> cov(vec_size);
   anomaly.mTmult(cov, anomaly);
+
+  return cov;
 }
 
 // Explicit instantiation

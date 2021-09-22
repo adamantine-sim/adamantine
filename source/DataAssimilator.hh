@@ -36,11 +36,9 @@ class DataAssimilator
 public:
   DataAssimilator();
 
-  void updateEnsemble(
-      std::vector<SimVectorType> &sim_data,
-      std::vector<double> const &expt_data,
-      const std::pair<std::vector<int>, std::vector<int>> &indices_and_offsets,
-      dealii::SparseMatrix<double> &R);
+  void updateEnsemble(std::vector<SimVectorType> &sim_data,
+                      std::vector<double> const &expt_data,
+                      dealii::SparseMatrix<double> &R);
 
 private:
   std::vector<dealii::Vector<double>> applyKalmanGain(
@@ -58,9 +56,8 @@ private:
   void fillNoiseVector(dealii::Vector<double> &vec,
                        dealii::SparseMatrix<double> &R);
 
-  void
-  calcSampleCovarianceDense(std::vector<dealii::Vector<double>> vec_ensemble,
-                            dealii::FullMatrix<double> &cov) const;
+  dealii::FullMatrix<double> calcSampleCovarianceDense(
+      std::vector<dealii::Vector<double>> vec_ensemble) const;
 
   unsigned int _num_ensemble_members;
   unsigned int _sim_size;
