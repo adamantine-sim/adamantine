@@ -10,6 +10,8 @@
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/lac/linear_operator_tools.h>
 
+#include <execution>
+
 namespace adamantine
 {
 
@@ -92,35 +94,49 @@ DataAssimilator::apply_kalman_gain(
   const auto op_HPH_plus_R =
       op_H * op_P * dealii::transpose_operator(op_H) + op_R;
 
-  dealii::SolverGMRES<dealii::Vector<double>> HPH_plus_R_inv_solver(
-      _solver_control, _additional_data);
+  std::vector<dealii::Vector<double>> output(_num_ensemble_members,
+                                             dealii::Vector<double>(_sim_size));
 
-  auto op_HPH_plus_R_inv =
-      dealii::inverse_operator(op_HPH_plus_R, HPH_plus_R_inv_solver);
+  auto solver_control = _solver_control;
+  auto additional_data = _additional_data;
 
-  const auto op_K = op_P * dealii::transpose_operator(op_H) * op_HPH_plus_R_inv;
+  std::transform(
+      std::execution::par, perturbed_innovation.begin(),
+      perturbed_innovation.end(), output.begin(),
+      [&](dealii::Vector<double> entry) {
+        dealii::SolverGMRES<dealii::Vector<double>> HPH_plus_R_inv_solver(
+            solver_control, additional_data);
 
-  // Apply the Kalman gain to each innovation vector
-  // (Unclear if this is really inefficient because op_K is calculated fresh
-  // for each application)
-  std::vector<dealii::LA::distributed::Vector<double>> output;
+        auto op_HPH_plus_R_inv =
+            dealii::inverse_operator(op_HPH_plus_R, HPH_plus_R_inv_solver);
+
+        const auto op_K =
+            op_P * dealii::transpose_operator(op_H) * op_HPH_plus_R_inv;
+
+        // Apply the Kalman gain to each innovation vector
+
+        dealii::Vector<double> temporary = op_K * entry;
+
+        return temporary;
+      });
+
+  // Copy into a distributed vector, this is the only place where the
+  // mismatch matters, using dealii::Vector for the experimental data
+  // and dealii::LA::distributed::Vector for the simulation data.
+  std::vector<dealii::LA::distributed::Vector<double>> output_distributed(
+      _num_ensemble_members,
+      dealii::LA::distributed::Vector<double>(_sim_size));
+
   for (unsigned int member = 0; member < _num_ensemble_members; ++member)
   {
-    dealii::Vector<double> temporary = op_K * perturbed_innovation[member];
-
-    // Copy into a distributed vector, this is the only place where the mismatch
-    // matters, using dealii::Vector for the experimental data and
-    // dealii::LA::distributed::Vector for the simulation data.
-    dealii::LA::distributed::Vector<double> temporary_distributed(
-        temporary.size());
-    for (unsigned int i = 0; i < temporary.size(); ++i)
+    for (unsigned int i = 0; i < _sim_size; ++i)
     {
-      temporary_distributed(i) = temporary(i);
+      output_distributed[member](i) = output[member](i);
     }
-    output.push_back(temporary_distributed);
   }
 
-  return output;
+  // return output;
+  return output_distributed;
 }
 
 dealii::SparseMatrix<double>
