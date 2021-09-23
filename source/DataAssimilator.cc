@@ -13,29 +13,29 @@
 namespace adamantine
 {
 
-template <typename VectorType>
-DataAssimilator<VectorType>::DataAssimilator(
-    boost::property_tree::ptree const &database)
+DataAssimilator::DataAssimilator(boost::property_tree::ptree const &database)
 {
-
   // Set the solver parameters from the input database
+  // PropertyTreeInput data_assimilation.solver.max_number_of_temp_vectors
   if (boost::optional<unsigned int> max_num_temp_vectors =
-          database.get_optional<unsigned int>("maximum number of temp vectors"))
+          database.get_optional<unsigned int>(
+              "solver.max_number_of_temp_vectors"))
     _additional_data.max_n_tmp_vectors = *max_num_temp_vectors;
 
+  // PropertyTreeInput data_assimilation.solver.max_iterations
   if (boost::optional<unsigned int> max_iterations =
-          database.get_optional<unsigned int>("maximum iterations"))
+          database.get_optional<unsigned int>("solver.max_iterations"))
     _solver_control.set_max_steps(*max_iterations);
 
+  // PropertyTreeInput data_assimilation.solver.convergence_tolerance
   if (boost::optional<double> tolerance =
-          database.get_optional<double>("convergence tolerance"))
+          database.get_optional<double>("solver.convergence_tolerance"))
     _solver_control.set_tolerance(*tolerance);
 };
 
-template <typename VectorType>
-void DataAssimilator<VectorType>::update_ensemble(
-    std::vector<VectorType> &sim_data, std::vector<double> const &expt_data,
-    dealii::SparseMatrix<double> &R)
+void DataAssimilator::update_ensemble(
+    std::vector<dealii::LA::distributed::Vector<double>> &sim_data,
+    std::vector<double> const &expt_data, dealii::SparseMatrix<double> &R)
 {
   // Set some constants
   _num_ensemble_members = sim_data.size();
@@ -64,7 +64,7 @@ void DataAssimilator<VectorType>::update_ensemble(
   }
 
   // Apply the Kalman filter to the perturbed innovation, K ( y+u - Hx )
-  std::vector<dealii::Vector<double>> forecast_shift =
+  std::vector<dealii::LA::distributed::Vector<double>> forecast_shift =
       apply_kalman_gain(sim_data, R, perturbed_innovation);
 
   // Update the ensemble, x = x + K ( y+u - Hx )
@@ -74,10 +74,10 @@ void DataAssimilator<VectorType>::update_ensemble(
   }
 }
 
-template <typename VectorType>
-std::vector<dealii::Vector<double>>
-DataAssimilator<VectorType>::apply_kalman_gain(
-    std::vector<VectorType> &vec_ensemble, dealii::SparseMatrix<double> &R,
+std::vector<dealii::LA::distributed::Vector<double>>
+DataAssimilator::apply_kalman_gain(
+    std::vector<dealii::LA::distributed::Vector<double>> &vec_ensemble,
+    dealii::SparseMatrix<double> &R,
     std::vector<dealii::Vector<double>> &perturbed_innovation)
 {
   dealii::SparsityPattern pattern_H(_expt_size, _sim_size, _expt_size);
@@ -92,30 +92,39 @@ DataAssimilator<VectorType>::apply_kalman_gain(
   const auto op_HPH_plus_R =
       op_H * op_P * dealii::transpose_operator(op_H) + op_R;
 
-  dealii::SolverGMRES<dealii::Vector<double>> R_inv_solver(_solver_control,
-                                                           _additional_data);
+  dealii::SolverGMRES<dealii::Vector<double>> HPH_plus_R_inv_solver(
+      _solver_control, _additional_data);
 
   auto op_HPH_plus_R_inv =
-      dealii::inverse_operator(op_HPH_plus_R, R_inv_solver);
+      dealii::inverse_operator(op_HPH_plus_R, HPH_plus_R_inv_solver);
 
   const auto op_K = op_P * dealii::transpose_operator(op_H) * op_HPH_plus_R_inv;
 
   // Apply the Kalman gain to each innovation vector
   // (Unclear if this is really inefficient because op_K is calculated fresh
   // for each application)
-  std::vector<dealii::Vector<double>> output;
+  std::vector<dealii::LA::distributed::Vector<double>> output;
   for (unsigned int member = 0; member < _num_ensemble_members; ++member)
   {
     dealii::Vector<double> temporary = op_K * perturbed_innovation[member];
-    output.push_back(temporary);
+
+    // Copy into a distributed vector, this is the only place where the mismatch
+    // matters, using dealii::Vector for the experimental data and
+    // dealii::LA::distributed::Vector for the simulation data.
+    dealii::LA::distributed::Vector<double> temporary_distributed(
+        temporary.size());
+    for (unsigned int i = 0; i < temporary.size(); ++i)
+    {
+      temporary_distributed(i) = temporary(i);
+    }
+    output.push_back(temporary_distributed);
   }
 
   return output;
 }
 
-template <typename VectorType>
 dealii::SparseMatrix<double>
-DataAssimilator<VectorType>::calc_H(dealii::SparsityPattern &pattern) const
+DataAssimilator::calc_H(dealii::SparsityPattern &pattern) const
 {
   int num_expt_dof_map_entries = _expt_to_dof_mapping.first.size();
 
@@ -140,9 +149,8 @@ DataAssimilator<VectorType>::calc_H(dealii::SparsityPattern &pattern) const
   return H;
 }
 
-template <typename VectorType>
 template <int dim>
-void DataAssimilator<VectorType>::update_dof_mapping(
+void DataAssimilator::update_dof_mapping(
     dealii::DoFHandler<dim> const &dof_handler,
     std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets)
 {
@@ -174,9 +182,8 @@ void DataAssimilator<VectorType>::update_dof_mapping(
   }
 }
 
-template <typename VectorType>
-dealii::Vector<double> DataAssimilator<VectorType>::calc_Hx(
-    const VectorType &sim_ensemble_member) const
+dealii::Vector<double> DataAssimilator::calc_Hx(
+    const dealii::LA::distributed::Vector<double> &sim_ensemble_member) const
 {
   int num_expt_dof_map_entries = _expt_to_dof_mapping.first.size();
 
@@ -193,9 +200,8 @@ dealii::Vector<double> DataAssimilator<VectorType>::calc_Hx(
   return out_vec;
 }
 
-template <typename VectorType>
-void DataAssimilator<VectorType>::fill_noise_vector(
-    dealii::Vector<double> &vec, dealii::SparseMatrix<double> &R)
+void DataAssimilator::fill_noise_vector(dealii::Vector<double> &vec,
+                                        dealii::SparseMatrix<double> &R)
 {
   auto vector_size = vec.size();
 
@@ -217,9 +223,8 @@ void DataAssimilator<VectorType>::fill_noise_vector(
 }
 
 template <typename VectorType>
-dealii::FullMatrix<double>
-DataAssimilator<VectorType>::calc_sample_covariance_dense(
-    std::vector<dealii::Vector<double>> vec_ensemble) const
+dealii::FullMatrix<double> DataAssimilator::calc_sample_covariance_dense(
+    std::vector<VectorType> vec_ensemble) const
 {
   unsigned int num_ensemble_members = vec_ensemble.size();
   unsigned int vec_size = 0;
@@ -258,12 +263,18 @@ DataAssimilator<VectorType>::calc_sample_covariance_dense(
 }
 
 // Explicit instantiation
-template class DataAssimilator<dealii::Vector<double>>;
-template void DataAssimilator<dealii::Vector<double>>::update_dof_mapping<2>(
+template void DataAssimilator::update_dof_mapping<2>(
     dealii::DoFHandler<2> const &dof_handler,
     std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
-template void DataAssimilator<dealii::Vector<double>>::update_dof_mapping<3>(
+template void DataAssimilator::update_dof_mapping<3>(
     dealii::DoFHandler<3> const &dof_handler,
     std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
+template dealii::FullMatrix<double>
+DataAssimilator::calc_sample_covariance_dense<dealii::Vector<double>>(
+    std::vector<dealii::Vector<double>> vec_ensemble) const;
+template dealii::FullMatrix<double>
+DataAssimilator::calc_sample_covariance_dense<
+    dealii::LA::distributed::Vector<double>>(
+    std::vector<dealii::LA::distributed::Vector<double>> vec_ensemble) const;
 
 } // namespace adamantine

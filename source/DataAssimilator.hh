@@ -35,7 +35,6 @@ class DataAssimilatorTester;
  * The EnKF implementation here is largely based on Chapter 6 of Data
  * Assimilation: Method and Applications by Asch, Bocquet, and Nodet.
  */
-template <typename VectorType>
 class DataAssimilator
 {
   friend class DataAssimilatorTester;
@@ -61,9 +60,9 @@ public:
    * u is a perturbation to the observed solution
    * H is the observation matrix
    */
-  void update_ensemble(std::vector<VectorType> &sim_data,
-                       std::vector<double> const &expt_data,
-                       dealii::SparseMatrix<double> &R);
+  void update_ensemble(
+      std::vector<dealii::LA::distributed::Vector<double>> &sim_data,
+      std::vector<double> const &expt_data, dealii::SparseMatrix<double> &R);
 
   /**
    * This updates the internal mapping between the indices of the entries in
@@ -82,10 +81,10 @@ private:
   /**
    * This calculates the Kalman gain and applies it to the perturbed innovation.
    */
-  std::vector<dealii::Vector<double>>
-  apply_kalman_gain(std::vector<VectorType> &vec_ensemble,
-                    dealii::SparseMatrix<double> &R,
-                    std::vector<dealii::Vector<double>> &perturbed_innovation);
+  std::vector<dealii::LA::distributed::Vector<double>> apply_kalman_gain(
+      std::vector<dealii::LA::distributed::Vector<double>> &vec_ensemble,
+      dealii::SparseMatrix<double> &R,
+      std::vector<dealii::Vector<double>> &perturbed_innovation);
 
   /**
    * This calculates the observation matrix.
@@ -97,7 +96,8 @@ private:
    * member from the simulation (sim_ensemble_member), avoiding explicit
    * construction of a sparse matrix for H.
    */
-  dealii::Vector<double> calc_Hx(const VectorType &sim_ensemble_member) const;
+  dealii::Vector<double> calc_Hx(
+      const dealii::LA::distributed::Vector<double> &sim_ensemble_member) const;
 
   /**
    * This fills a vector (vec) with noise from a multivariate normal
@@ -111,9 +111,12 @@ private:
    * (vec_ensemble). Currently this is for a full (i.e. not sparse) matrix. For
    * improved computational performance and reduced spurious correlations a
    * sparse matrix version of this with localization should also be implemented.
+   * This is templated so that it can be called on both simulated and
+   * experimental data.
    */
-  dealii::FullMatrix<double> calc_sample_covariance_dense(
-      std::vector<dealii::Vector<double>> vec_ensemble) const;
+  template <typename VectorType>
+  dealii::FullMatrix<double>
+  calc_sample_covariance_dense(std::vector<VectorType> vec_ensemble) const;
 
   /**
    * The number of ensemble members in the simulation.

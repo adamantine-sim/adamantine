@@ -25,7 +25,7 @@ public:
     boost::property_tree::ptree database;
 
     // First checking the dealii default values
-    DataAssimilator<dealii::Vector<double>> da0(database);
+    DataAssimilator da0(database);
 
     double tol = 1.0e-12;
     BOOST_CHECK_SMALL(da0._solver_control.tolerance() - 1.0e-10, tol);
@@ -33,10 +33,10 @@ public:
     BOOST_CHECK(da0._additional_data.max_n_tmp_vectors == 30);
 
     // Now explicitly setting them
-    database.put("convergence tolerance", 1.0e-6);
-    database.put("maximum iterations", 25);
-    database.put("maximum number of temp vectors", 4);
-    DataAssimilator<dealii::Vector<double>> da1(database);
+    database.put("solver.convergence_tolerance", 1.0e-6);
+    database.put("solver.max_iterations", 25);
+    database.put("solver.max_number_of_temp_vectors", 4);
+    DataAssimilator da1(database);
     BOOST_CHECK_SMALL(da1._solver_control.tolerance() - 1.0e-6, tol);
     BOOST_CHECK(da1._solver_control.max_steps() == 25);
     BOOST_CHECK(da1._additional_data.max_n_tmp_vectors == 4);
@@ -78,20 +78,32 @@ public:
     indices_and_offsets.second[2] = 2;
 
     boost::property_tree::ptree solver_settings_database;
-    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
+    DataAssimilator da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
     da._num_ensemble_members = 3;
     da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
 
     // Create the simulation data
-    std::vector<dealii::Vector<double>> data;
-    dealii::Vector<double> sample1({1., 3., 6., 9., 11.});
-    data.push_back(sample1);
-    dealii::Vector<double> sample2({1.5, 3.2, 6.3, 9.7, 11.9});
-    data.push_back(sample2);
-    dealii::Vector<double> sample3({1.1, 3.1, 6.1, 9.1, 11.1});
-    data.push_back(sample3);
+    std::vector<dealii::LA::distributed::Vector<double>> data(3);
+    data[0].reinit(5);
+    data[0](0) = 1.0;
+    data[0](1) = 3.0;
+    data[0](2) = 6.0;
+    data[0](3) = 9.0;
+    data[0](4) = 11.0;
+    data[1].reinit(5);
+    data[1](0) = 1.5;
+    data[1](1) = 3.2;
+    data[1](2) = 6.3;
+    data[1](3) = 9.7;
+    data[1](4) = 11.9;
+    data[2].reinit(5);
+    data[2](0) = 1.1;
+    data[2](1) = 3.1;
+    data[2](2) = 6.1;
+    data[2](3) = 9.1;
+    data[2](4) = 11.1;
 
     // Build the sparse experimental covariance matrix
     dealii::SparsityPattern pattern(expt_size, expt_size, 1);
@@ -124,7 +136,7 @@ public:
     perturbed_innovation[2][1] = perturbed_innovation[2][1] - 0.0009;
 
     // Apply the Kalman gain
-    std::vector<dealii::Vector<double>> forecast_shift =
+    std::vector<dealii::LA::distributed::Vector<double>> forecast_shift =
         da.apply_kalman_gain(data, R, perturbed_innovation);
 
     double tol = 1.0e-4;
@@ -180,7 +192,7 @@ public:
     indices_and_offsets.second[3] = 3;
 
     boost::property_tree::ptree solver_settings_database;
-    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
+    DataAssimilator da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
     da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
@@ -226,7 +238,7 @@ public:
     indices_and_offsets.second[3] = 3;
 
     boost::property_tree::ptree solver_settings_database;
-    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
+    DataAssimilator da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
     da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
@@ -272,7 +284,7 @@ public:
     int sim_size = 4;
     int expt_size = 3;
 
-    dealii::Vector<double> sim_vec(dof_handler.n_dofs());
+    dealii::LA::distributed::Vector<double> sim_vec(dof_handler.n_dofs());
     sim_vec(0) = 2.0;
     sim_vec(1) = 4.0;
     sim_vec(2) = 5.0;
@@ -295,7 +307,7 @@ public:
     indices_and_offsets.second[3] = 3;
 
     boost::property_tree::ptree solver_settings_database;
-    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
+    DataAssimilator da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
     da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
@@ -312,14 +324,25 @@ public:
     double tol = 1e-10;
 
     // Trivial case of identical vectors, covariance should be the zero matrix
-    std::vector<dealii::Vector<double>> data1;
-    dealii::Vector<double> sample1({1., 3., 5., 7.});
-    data1.push_back(sample1);
-    data1.push_back(sample1);
-    data1.push_back(sample1);
+    std::vector<dealii::LA::distributed::Vector<double>> data1(3);
+    data1[0].reinit(4);
+    data1[0](0) = 1.0;
+    data1[0](1) = 3.0;
+    data1[0](2) = 6.0;
+    data1[0](3) = 9.0;
+    data1[1].reinit(4);
+    data1[1](0) = 1.0;
+    data1[1](1) = 3.0;
+    data1[1](2) = 6.0;
+    data1[1](3) = 9.0;
+    data1[2].reinit(4);
+    data1[2](0) = 1.0;
+    data1[2](1) = 3.0;
+    data1[2](2) = 6.0;
+    data1[2](3) = 9.0;
 
     boost::property_tree::ptree solver_settings_database;
-    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
+    DataAssimilator da(solver_settings_database);
     dealii::FullMatrix<double> cov = da.calc_sample_covariance_dense(data1);
 
     // Check results
@@ -332,13 +355,25 @@ public:
     }
 
     // Non-trivial case, using NumPy solution as the reference
-    std::vector<dealii::Vector<double>> data2;
-    dealii::Vector<double> sample21({1., 3., 6., 9., 11.});
-    data2.push_back(sample21);
-    dealii::Vector<double> sample22({1.5, 3.2, 6.3, 9.7, 11.9});
-    data2.push_back(sample22);
-    dealii::Vector<double> sample23({1.1, 3.1, 6.1, 9.1, 11.1});
-    data2.push_back(sample23);
+    std::vector<dealii::LA::distributed::Vector<double>> data2(3);
+    data2[0].reinit(5);
+    data2[0](0) = 1.0;
+    data2[0](1) = 3.0;
+    data2[0](2) = 6.0;
+    data2[0](3) = 9.0;
+    data2[0](4) = 11.0;
+    data2[1].reinit(5);
+    data2[1](0) = 1.5;
+    data2[1](1) = 3.2;
+    data2[1](2) = 6.3;
+    data2[1](3) = 9.7;
+    data2[1](4) = 11.9;
+    data2[2].reinit(5);
+    data2[2](0) = 1.1;
+    data2[2](1) = 3.1;
+    data2[2](2) = 6.1;
+    data2[2](3) = 9.1;
+    data2[2](4) = 11.1;
 
     da._sim_size = 5;
     dealii::FullMatrix<double> cov2 = da.calc_sample_covariance_dense(data2);
@@ -373,7 +408,7 @@ public:
   void test_fill_noise_vector()
   {
     boost::property_tree::ptree solver_settings_database;
-    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
+    DataAssimilator da(solver_settings_database);
 
     dealii::SparsityPattern pattern(3, 3, 3);
     pattern.add(0, 0);
@@ -445,7 +480,7 @@ public:
     indices_and_offsets.second[2] = 2;
 
     boost::property_tree::ptree solver_settings_database;
-    DataAssimilator<dealii::Vector<double>> da(solver_settings_database);
+    DataAssimilator da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
     da._num_ensemble_members = 3;
@@ -453,13 +488,25 @@ public:
     da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
 
     // Create the simulation data
-    std::vector<dealii::Vector<double>> data;
-    dealii::Vector<double> sample1({1., 3., 6., 9., 11.});
-    data.push_back(sample1);
-    dealii::Vector<double> sample2({1.5, 3.2, 6.3, 9.7, 11.9});
-    data.push_back(sample2);
-    dealii::Vector<double> sample3({1.1, 3.1, 6.1, 9.1, 11.1});
-    data.push_back(sample3);
+    std::vector<dealii::LA::distributed::Vector<double>> data(3);
+    data[0].reinit(5);
+    data[0](0) = 1.0;
+    data[0](1) = 3.0;
+    data[0](2) = 6.0;
+    data[0](3) = 9.0;
+    data[0](4) = 11.0;
+    data[1].reinit(5);
+    data[1](0) = 1.5;
+    data[1](1) = 3.2;
+    data[1](2) = 6.3;
+    data[1](3) = 9.7;
+    data[1](4) = 11.9;
+    data[2].reinit(5);
+    data[2](0) = 1.1;
+    data[2](1) = 3.1;
+    data[2](2) = 6.1;
+    data[2](3) = 9.1;
+    data[2](4) = 11.1;
 
     // Build the sparse experimental covariance matrix
     dealii::SparsityPattern pattern(expt_size, expt_size, 1);
