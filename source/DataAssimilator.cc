@@ -82,6 +82,14 @@ DataAssimilator::apply_kalman_gain(
     dealii::SparseMatrix<double> &R,
     std::vector<dealii::Vector<double>> &perturbed_innovation)
 {
+  /*
+   * Currently this function uses GMRES to apply the inverse of HPH^T+R in the
+   * Kalman gain calculation for each ensemble member individually. Depending on
+   * the size of the datasets, the number of ensembles, and other factors doing
+   * a direct solve of (HPH^T+R)^-1 once and then applying to the perturbed
+   * innovation from each ensemble member might be more efficient.
+   */
+
   dealii::SparsityPattern pattern_H(_expt_size, _sim_size, _expt_size);
   dealii::SparseMatrix<double> H = calc_H(pattern_H);
 
@@ -94,12 +102,17 @@ DataAssimilator::apply_kalman_gain(
   const auto op_HPH_plus_R =
       op_H * op_P * dealii::transpose_operator(op_H) + op_R;
 
-  std::vector<dealii::Vector<double>> output(_num_ensemble_members,
-                                             dealii::Vector<double>(_sim_size));
+  std::vector<dealii::LA::distributed::Vector<double>> output(
+      _num_ensemble_members,
+      dealii::LA::distributed::Vector<double>(_sim_size));
 
+  // Create non-member versions of these for use in the lambda function
   auto solver_control = _solver_control;
   auto additional_data = _additional_data;
+  auto sim_size = _sim_size;
 
+  // Apply the Kalman gain to the perturbed innovation for the ensemble members
+  // in parallel
   std::transform(
       std::execution::par, perturbed_innovation.begin(),
       perturbed_innovation.end(), output.begin(),
@@ -114,29 +127,21 @@ DataAssimilator::apply_kalman_gain(
             op_P * dealii::transpose_operator(op_H) * op_HPH_plus_R_inv;
 
         // Apply the Kalman gain to each innovation vector
-
         dealii::Vector<double> temporary = op_K * entry;
 
-        return temporary;
+        // Copy into a distributed vector, this is the only place where the
+        // mismatch matters, using dealii::Vector for the experimental data
+        // and dealii::LA::distributed::Vector for the simulation data.
+        dealii::LA::distributed::Vector<double> output_member(sim_size);
+        for (unsigned int i = 0; i < sim_size; ++i)
+        {
+          output_member(i) = temporary(i);
+        }
+
+        return output_member;
       });
 
-  // Copy into a distributed vector, this is the only place where the
-  // mismatch matters, using dealii::Vector for the experimental data
-  // and dealii::LA::distributed::Vector for the simulation data.
-  std::vector<dealii::LA::distributed::Vector<double>> output_distributed(
-      _num_ensemble_members,
-      dealii::LA::distributed::Vector<double>(_sim_size));
-
-  for (unsigned int member = 0; member < _num_ensemble_members; ++member)
-  {
-    for (unsigned int i = 0; i < _sim_size; ++i)
-    {
-      output_distributed[member](i) = output[member](i);
-    }
-  }
-
-  // return output;
-  return output_distributed;
+  return output;
 }
 
 dealii::SparseMatrix<double>
