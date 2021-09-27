@@ -143,8 +143,6 @@ private:
    * Random variate generator for a normal distribution, used for the
    * perturbations to the innovation vectors.
    */
-  // std::variate_generator<std::mt19937, std::normal_distribution<>>
-  //  _normal_dist_generator;
   std::normal_distribution<> _normal_dist_generator;
 
   /**
