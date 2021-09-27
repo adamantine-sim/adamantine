@@ -34,6 +34,12 @@ public:
   PostProcessor(MPI_Comm const &communicator,
                 boost::property_tree::ptree const &database,
                 dealii::DoFHandler<dim> &dof_handler,
+                std::shared_ptr<MaterialProperty<dim>> material_properties,
+                int ensemble_member_index);
+
+  PostProcessor(MPI_Comm const &communicator,
+                boost::property_tree::ptree const &database,
+                dealii::DoFHandler<dim> &dof_handler,
                 std::shared_ptr<MaterialProperty<dim>> material_properties);
 
   /**

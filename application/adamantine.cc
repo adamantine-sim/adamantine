@@ -97,6 +97,19 @@ int main(int argc, char *argv[])
     caliper_manager.start();
 #endif
 
+    boost::optional<boost::property_tree::ptree &>
+        data_assimilation_optional_database =
+            database.get_child_optional("data_assimilation");
+    bool run_with_data_assimilation = false;
+    if (data_assimilation_optional_database)
+    {
+      auto data_assimilation_database =
+          data_assimilation_optional_database.get();
+      // PropertyTreeInput data_assimilation.use_data_assimilation
+      run_with_data_assimilation =
+          data_assimilation_database.get<bool>("use_data_assimilation", false);
+    }
+
     boost::property_tree::ptree geometry_database =
         database.get_child("geometry");
     // PropertyTreeInput geometry.dim
@@ -109,11 +122,25 @@ int main(int argc, char *argv[])
 
     if (dim == 2)
     {
-      run<2, dealii::MemorySpace::Host>(communicator, database, timers);
+      if (run_with_data_assimilation)
+      {
+        run_da<2, dealii::MemorySpace::Host>(communicator, database, timers);
+      }
+      else
+      {
+        run<2, dealii::MemorySpace::Host>(communicator, database, timers);
+      }
     }
     else
     {
-      run<3, dealii::MemorySpace::Host>(communicator, database, timers);
+      if (run_with_data_assimilation)
+      {
+        run_da<3, dealii::MemorySpace::Host>(communicator, database, timers);
+      }
+      else
+      {
+        run<3, dealii::MemorySpace::Host>(communicator, database, timers);
+      }
     }
 
     if (rank == 0)

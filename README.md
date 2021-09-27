@@ -167,10 +167,12 @@ The following options are available:
   * last\_camera\_id: number associated to the last camera
   * data\_columns: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D)
 * data_assimilation: (optional)
+  * use_data_assimilation: Turn data assimilation on (default value: false)
+  * ensemble_size: The number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
   * solver:
     * max_number_of_temp_vectors: Maximum number of temporary vectors for the GMRES solve (optional)
     * max_iterations: Maximum number of iterations for the GMRES solve (optional)
-    * convergence_tolerance: Convergence tolerance for the GMRES solve (optional) 
+    * convergence_tolerance: Convergence tolerance for the GMRES solve (optional)
 * profiling (optional):
   * timer: output timing information (default value: false)
   * caliper: configuration string for Caliper (optional)
