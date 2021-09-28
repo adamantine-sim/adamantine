@@ -97,17 +97,14 @@ int main(int argc, char *argv[])
     caliper_manager.start();
 #endif
 
-    boost::optional<boost::property_tree::ptree &>
-        data_assimilation_optional_database =
-            database.get_child_optional("data_assimilation");
-    bool run_with_data_assimilation = false;
-    if (data_assimilation_optional_database)
+    boost::optional<boost::property_tree::ptree &> ensemble_optional_database =
+        database.get_child_optional("ensemble");
+    bool ensemble_calc = false;
+    if (ensemble_optional_database)
     {
-      auto data_assimilation_database =
-          data_assimilation_optional_database.get();
-      // PropertyTreeInput data_assimilation.use_data_assimilation
-      run_with_data_assimilation =
-          data_assimilation_database.get<bool>("use_data_assimilation", false);
+      auto ensemble_database = ensemble_optional_database.get();
+      // PropertyTreeInput ensemble.ensemble_simulation
+      ensemble_calc = ensemble_database.get<bool>("ensemble_simulation", false);
     }
 
     boost::property_tree::ptree geometry_database =
@@ -122,9 +119,10 @@ int main(int argc, char *argv[])
 
     if (dim == 2)
     {
-      if (run_with_data_assimilation)
+      if (ensemble_calc)
       {
-        run_da<2, dealii::MemorySpace::Host>(communicator, database, timers);
+        run_ensemble<2, dealii::MemorySpace::Host>(communicator, database,
+                                                   timers);
       }
       else
       {
@@ -133,9 +131,10 @@ int main(int argc, char *argv[])
     }
     else
     {
-      if (run_with_data_assimilation)
+      if (ensemble_calc)
       {
-        run_da<3, dealii::MemorySpace::Host>(communicator, database, timers);
+        run_ensemble<3, dealii::MemorySpace::Host>(communicator, database,
+                                                   timers);
       }
       else
       {

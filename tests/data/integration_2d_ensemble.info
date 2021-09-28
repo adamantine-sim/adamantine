@@ -1,6 +1,6 @@
-data_assimilation
+ensemble
 {
-  use_data_assimilation true ; Whether to use data assimilation
+  ensemble_simulation true ; Whether to use data assimilation
   ensemble_size 3 ; Size of the ensemble for data assimilation
 }
 

@@ -149,7 +149,7 @@ template <int dim, int fe_degree, typename MemorySpaceType,
 std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &initialize(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
-    std::shared_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
 {
   thermal_physics.reset(
       new adamantine::ThermalPhysics<dim, fe_degree, MemorySpaceType,
@@ -167,7 +167,7 @@ initialize_quadrature(
     std::string const &quadrature_type, MPI_Comm const &communicator,
     boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
-    std::shared_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
 {
   if (quadrature_type.compare("gauss") == 0)
     return initialize<dim, fe_degree, MemorySpaceType, dealii::QGauss<1>>(
@@ -188,7 +188,7 @@ initialize_thermal_physics(
     unsigned int fe_degree, std::string const &quadrature_type,
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
-    std::shared_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
 {
   switch (fe_degree)
   {
@@ -252,7 +252,7 @@ template <int dim, typename MemorySpaceType,
               std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value,
               int> = 0>
 void refine_and_transfer(
-    std::shared_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
     dealii::DoFHandler<dim> &dof_handler,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
@@ -328,7 +328,7 @@ template <int dim, typename MemorySpaceType,
               std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
               int> = 0>
 void refine_and_transfer(
-    std::shared_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
     dealii::DoFHandler<dim> &dof_handler,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
@@ -455,7 +455,7 @@ compute_cells_to_refine(
 
 template <int dim, int fe_degree, typename MemorySpaceType>
 void refine_mesh(
-    std::shared_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
     std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
     double const time, double const next_refinement_time,
@@ -574,7 +574,7 @@ void refine_mesh(
 
 template <int dim, typename MemorySpaceType>
 void refine_mesh(
-    std::shared_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
+    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
     std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
     double const time, double const next_refinement_time,
@@ -697,7 +697,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 
   adamantine::Geometry<dim> geometry(communicator, geometry_database);
 
-  std::shared_ptr<adamantine::Physics<dim, MemorySpaceType>> thermal_physics;
+  std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> thermal_physics;
   std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources =
       initialize_thermal_physics<dim>(fe_degree, quadrature_type, communicator,
                                       database, geometry, thermal_physics);
@@ -878,9 +878,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 
 template <int dim, typename MemorySpaceType>
 std::vector<dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>>
-run_da(MPI_Comm const &communicator,
-       boost::property_tree::ptree const &database,
-       std::vector<adamantine::Timer> &timers)
+run_ensemble(MPI_Comm const &communicator,
+             boost::property_tree::ptree const &database,
+             std::vector<adamantine::Timer> &timers)
 {
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
@@ -897,8 +897,8 @@ run_da(MPI_Comm const &communicator,
       database.get_child("post_processor");
   boost::property_tree::ptree refinement_database =
       database.get_child("refinement");
-  boost::property_tree::ptree data_assimilation_database =
-      database.get_child("data_assimilation");
+  boost::property_tree::ptree ensemble_database =
+      database.get_child("ensemble");
 
   // PropertyTreeInput discretization.fe_degree
   unsigned int const fe_degree =
@@ -919,18 +919,16 @@ run_da(MPI_Comm const &communicator,
   // There might be a more efficient way to share some of these objects between
   // ensemble members. For now, we'll do the simpler approach of duplicating
   // everything.
-  // PropertyTreeInput data_assimilation.ensemble_size
+  // PropertyTreeInput ensemble.ensemble_size
   const unsigned int ensemble_size =
-      database.get("data_assimilation.ensemble_size", 5);
+      ensemble_database.get("ensemble.ensemble_size", 5);
 
-  std::vector<std::shared_ptr<adamantine::Physics<dim, MemorySpaceType>>>
+  std::vector<std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>>>
       thermal_physics_ensemble(ensemble_size);
 
   std::vector<std::vector<std::shared_ptr<adamantine::HeatSource<dim>>>>
       heat_sources_ensemble(ensemble_size);
 
-  // std::vector<adamantine::PostProcessor<dim>> post_processor_ensemble(
-  //      ensemble_size);
   std::vector<adamantine::PostProcessor<dim>> post_processor_ensemble;
 
   std::vector<dealii::LA::distributed::Vector<double, MemorySpaceType>>
@@ -938,23 +936,22 @@ run_da(MPI_Comm const &communicator,
 
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
-    std::shared_ptr<adamantine::Physics<dim, MemorySpaceType>> thermal_physics;
+    // std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>>
+    // thermal_physics;
     heat_sources_ensemble[member] = initialize_thermal_physics<dim>(
         fe_degree, quadrature_type, communicator, database, geometry,
-        thermal_physics);
+        thermal_physics_ensemble.at(member));
 
     post_processor_ensemble.push_back(adamantine::PostProcessor<dim>(
         communicator, post_processor_database,
-        thermal_physics->get_dof_handler(),
-        thermal_physics->get_material_property(), member));
+        thermal_physics_ensemble.at(member)->get_dof_handler(),
+        thermal_physics_ensemble.at(member)->get_material_property(), member));
 
-    thermal_physics->setup_dofs();
-    thermal_physics->compute_inverse_mass_matrix();
-    thermal_physics->initialize_dof_vector(initial_temperature,
-                                           solution_ensemble[member]);
-    thermal_physics->get_state_from_material_properties();
-
-    thermal_physics_ensemble[member] = thermal_physics;
+    thermal_physics_ensemble.at(member)->setup_dofs();
+    thermal_physics_ensemble.at(member)->compute_inverse_mass_matrix();
+    thermal_physics_ensemble.at(member)->initialize_dof_vector(
+        initial_temperature, solution_ensemble[member]);
+    thermal_physics_ensemble.at(member)->get_state_from_material_properties();
   }
 
   unsigned int progress = 0;
@@ -968,7 +965,11 @@ run_da(MPI_Comm const &communicator,
   {
     affine_constraints_ensemble.push_back(
         thermal_physics_ensemble[member]->get_affine_constraints());
-    output_pvtu(post_processor_ensemble[member], cycle, n_time_step, time,
+
+    // Segfaults if I pass post_processor_ensemble[member] directly to
+    // output_pvtu, unclear why
+    auto post_processor_member = post_processor_ensemble.at(member);
+    output_pvtu(post_processor_member, cycle, n_time_step, time,
                 affine_constraints_ensemble[member], solution_ensemble[member],
                 timers);
   }
@@ -1012,6 +1013,7 @@ run_da(MPI_Comm const &communicator,
 #endif
   while (time < duration)
   {
+
 #ifdef ADAMANTINE_WITH_CALIPER
     CALI_CXX_MARK_LOOP_ITERATION(main_loop_id, n_time_step - 1);
 #endif
@@ -1135,11 +1137,13 @@ run_da(MPI_Comm const &communicator,
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
         thermal_physics_ensemble[member]->set_state_to_material_properties();
-        output_pvtu(post_processor_ensemble[member], cycle, n_time_step, time,
+        auto post_processor_member = post_processor_ensemble[member];
+        output_pvtu(post_processor_member, cycle, n_time_step, time,
                     affine_constraints_ensemble[member],
                     solution_ensemble[member], timers);
       }
     }
+
     ++n_time_step;
   }
 
