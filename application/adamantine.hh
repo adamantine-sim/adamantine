@@ -935,22 +935,20 @@ run_ensemble(MPI_Comm const &communicator,
 
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
-    // std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>>
-    // thermal_physics;
     heat_sources_ensemble[member] = initialize_thermal_physics<dim>(
         fe_degree, quadrature_type, communicator, database, geometry,
-        thermal_physics_ensemble.at(member));
+        thermal_physics_ensemble[member]);
 
     post_processor_ensemble.push_back(adamantine::PostProcessor<dim>(
         communicator, post_processor_database,
-        thermal_physics_ensemble.at(member)->get_dof_handler(),
-        thermal_physics_ensemble.at(member)->get_material_property(), member));
+        thermal_physics_ensemble[member]->get_dof_handler(),
+        thermal_physics_ensemble[member]->get_material_property(), member));
 
-    thermal_physics_ensemble.at(member)->setup_dofs();
-    thermal_physics_ensemble.at(member)->compute_inverse_mass_matrix();
-    thermal_physics_ensemble.at(member)->initialize_dof_vector(
+    thermal_physics_ensemble[member]->setup_dofs();
+    thermal_physics_ensemble[member]->compute_inverse_mass_matrix();
+    thermal_physics_ensemble[member]->initialize_dof_vector(
         initial_temperature, solution_ensemble[member]);
-    thermal_physics_ensemble.at(member)->get_state_from_material_properties();
+    thermal_physics_ensemble[member]->get_state_from_material_properties();
   }
 
   unsigned int progress = 0;
