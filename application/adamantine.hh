@@ -920,8 +920,7 @@ run_ensemble(MPI_Comm const &communicator,
   // ensemble members. For now, we'll do the simpler approach of duplicating
   // everything.
   // PropertyTreeInput ensemble.ensemble_size
-  const unsigned int ensemble_size =
-      ensemble_database.get("ensemble.ensemble_size", 5);
+  const unsigned int ensemble_size = ensemble_database.get("ensemble_size", 5);
 
   std::vector<std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>>>
       thermal_physics_ensemble(ensemble_size);
