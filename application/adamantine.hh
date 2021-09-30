@@ -926,12 +926,13 @@ run_ensemble(MPI_Comm const &communicator,
   std::vector<std::vector<std::shared_ptr<adamantine::HeatSource<dim>>>>
       heat_sources_ensemble(ensemble_size);
 
-  std::vector<adamantine::PostProcessor<dim>> post_processor_ensemble;
-
   std::vector<dealii::LA::distributed::Vector<double, MemorySpaceType>>
       solution_ensemble(ensemble_size);
 
   std::vector<std::unique_ptr<adamantine::Geometry<dim>>> geometry_ensemble;
+
+  std::vector<std::unique_ptr<adamantine::PostProcessor<dim>>>
+      post_processor_ensemble;
 
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
@@ -943,16 +944,19 @@ run_ensemble(MPI_Comm const &communicator,
         fe_degree, quadrature_type, communicator, database,
         *geometry_ensemble[member], thermal_physics_ensemble[member]);
 
-    post_processor_ensemble.push_back(adamantine::PostProcessor<dim>(
-        communicator, post_processor_database,
-        thermal_physics_ensemble[member]->get_dof_handler(),
-        thermal_physics_ensemble[member]->get_material_property(), member));
-
     thermal_physics_ensemble[member]->setup_dofs();
     thermal_physics_ensemble[member]->compute_inverse_mass_matrix();
     thermal_physics_ensemble[member]->initialize_dof_vector(
         initial_temperature, solution_ensemble[member]);
     thermal_physics_ensemble[member]->get_state_from_material_properties();
+
+    post_processor_ensemble.push_back(
+        std::unique_ptr<adamantine::PostProcessor<dim>>(
+            new adamantine::PostProcessor<dim>(
+                communicator, post_processor_database,
+                thermal_physics_ensemble[member]->get_dof_handler(),
+                thermal_physics_ensemble[member]->get_material_property(),
+                member)));
   }
 
   unsigned int progress = 0;
@@ -967,8 +971,7 @@ run_ensemble(MPI_Comm const &communicator,
     affine_constraints_ensemble.push_back(
         thermal_physics_ensemble[member]->get_affine_constraints());
 
-    auto post_processor = post_processor_ensemble[member];
-    output_pvtu(post_processor, cycle, n_time_step, time,
+    output_pvtu(*post_processor_ensemble[member], cycle, n_time_step, time,
                 affine_constraints_ensemble[member], solution_ensemble[member],
                 timers);
   }
@@ -1137,8 +1140,7 @@ run_ensemble(MPI_Comm const &communicator,
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
         thermal_physics_ensemble[member]->set_state_to_material_properties();
-        auto post_processor = post_processor_ensemble[member];
-        output_pvtu(post_processor, cycle, n_time_step, time,
+        output_pvtu(*post_processor_ensemble[member], cycle, n_time_step, time,
                     affine_constraints_ensemble[member],
                     solution_ensemble[member], timers);
       }
@@ -1153,7 +1155,7 @@ run_ensemble(MPI_Comm const &communicator,
 
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
-    post_processor_ensemble[member].output_pvd();
+    post_processor_ensemble[member]->output_pvd();
   }
 
   // This is only used for integration test
