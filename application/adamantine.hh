@@ -913,8 +913,6 @@ run_ensemble(MPI_Comm const &communicator,
   double const initial_temperature =
       database.get("materials.initial_temperature", 300.);
 
-  adamantine::Geometry<dim> geometry(communicator, geometry_database);
-
   // Set up the ensemble members
   // There might be a more efficient way to share some of these objects between
   // ensemble members. For now, we'll do the simpler approach of duplicating
@@ -933,11 +931,17 @@ run_ensemble(MPI_Comm const &communicator,
   std::vector<dealii::LA::distributed::Vector<double, MemorySpaceType>>
       solution_ensemble(ensemble_size);
 
+  std::vector<std::unique_ptr<adamantine::Geometry<dim>>> geometry_ensemble;
+
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
+
+    geometry_ensemble.push_back(std::unique_ptr<adamantine::Geometry<dim>>(
+        new adamantine::Geometry<dim>(communicator, geometry_database)));
+
     heat_sources_ensemble[member] = initialize_thermal_physics<dim>(
-        fe_degree, quadrature_type, communicator, database, geometry,
-        thermal_physics_ensemble[member]);
+        fe_degree, quadrature_type, communicator, database,
+        *geometry_ensemble[member], thermal_physics_ensemble[member]);
 
     post_processor_ensemble.push_back(adamantine::PostProcessor<dim>(
         communicator, post_processor_database,
@@ -963,10 +967,8 @@ run_ensemble(MPI_Comm const &communicator,
     affine_constraints_ensemble.push_back(
         thermal_physics_ensemble[member]->get_affine_constraints());
 
-    // Segfaults if I pass post_processor_ensemble[member] directly to
-    // output_pvtu, unclear why
-    auto post_processor_member = post_processor_ensemble.at(member);
-    output_pvtu(post_processor_member, cycle, n_time_step, time,
+    auto post_processor = post_processor_ensemble[member];
+    output_pvtu(post_processor, cycle, n_time_step, time,
                 affine_constraints_ensemble[member], solution_ensemble[member],
                 timers);
   }
@@ -988,8 +990,9 @@ run_ensemble(MPI_Comm const &communicator,
   unsigned int const time_steps_output =
       post_processor_database.get("time_steps_between_output", 1);
 
-  // For now assume that all ensemble members share the same geometry, base new
-  // additions on the 0th ensemble member
+  // For now assume that all ensemble members share the same geometry (they have
+  // independent adamantine::Geometry objects, but all are constructed from
+  // identical parameters), base new additions on the 0th ensemble member
   auto [material_deposition_boxes, deposition_times] =
       adamantine::create_material_deposition_boxes<dim>(
           geometry_database, heat_sources_ensemble[0]);
@@ -1134,8 +1137,8 @@ run_ensemble(MPI_Comm const &communicator,
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
         thermal_physics_ensemble[member]->set_state_to_material_properties();
-        auto post_processor_member = post_processor_ensemble[member];
-        output_pvtu(post_processor_member, cycle, n_time_step, time,
+        auto post_processor = post_processor_ensemble[member];
+        output_pvtu(post_processor, cycle, n_time_step, time,
                     affine_constraints_ensemble[member],
                     solution_ensemble[member], timers);
       }

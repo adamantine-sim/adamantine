@@ -33,7 +33,7 @@ DataAssimilator::DataAssimilator(boost::property_tree::ptree const &database)
   if (boost::optional<double> tolerance =
           database.get_optional<double>("solver.convergence_tolerance"))
     _solver_control.set_tolerance(*tolerance);
-};
+}
 
 void DataAssimilator::update_ensemble(
     std::vector<dealii::LA::distributed::Vector<double>> &sim_data,
