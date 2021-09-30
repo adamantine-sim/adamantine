@@ -937,8 +937,8 @@ run_ensemble(MPI_Comm const &communicator,
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
 
-    geometry_ensemble.push_back(std::unique_ptr<adamantine::Geometry<dim>>(
-        new adamantine::Geometry<dim>(communicator, geometry_database)));
+    geometry_ensemble.push_back(std::make_unique<adamantine::Geometry<dim>>(
+        communicator, geometry_database));
 
     heat_sources_ensemble[member] = initialize_thermal_physics<dim>(
         fe_degree, quadrature_type, communicator, database,
@@ -951,12 +951,10 @@ run_ensemble(MPI_Comm const &communicator,
     thermal_physics_ensemble[member]->get_state_from_material_properties();
 
     post_processor_ensemble.push_back(
-        std::unique_ptr<adamantine::PostProcessor<dim>>(
-            new adamantine::PostProcessor<dim>(
-                communicator, post_processor_database,
-                thermal_physics_ensemble[member]->get_dof_handler(),
-                thermal_physics_ensemble[member]->get_material_property(),
-                member)));
+        std::make_unique<adamantine::PostProcessor<dim>>(
+            communicator, post_processor_database,
+            thermal_physics_ensemble[member]->get_dof_handler(),
+            thermal_physics_ensemble[member]->get_material_property(), member));
   }
 
   unsigned int progress = 0;
