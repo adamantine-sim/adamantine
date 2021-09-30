@@ -13,7 +13,7 @@
 
 #include "main.cc"
 
-BOOST_AUTO_TEST_CASE(intregation_2D)
+BOOST_AUTO_TEST_CASE(integration_2D)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -37,5 +37,35 @@ BOOST_AUTO_TEST_CASE(intregation_2D)
     double gold_value = -1.;
     gold_file >> gold_value;
     BOOST_CHECK_CLOSE(result.local_element(i), gold_value, tolerance);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(integration_2D_ensemble)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  std::vector<adamantine::Timer> timers;
+  initialize_timers(communicator, timers);
+
+  // Read the input.
+  std::string const filename = "integration_2d_ensemble.info";
+  adamantine::ASSERT_THROW(boost::filesystem::exists(filename) == true,
+                           "The file " + filename + " does not exist.");
+  boost::property_tree::ptree database;
+  boost::property_tree::info_parser::read_info(filename, database);
+
+  auto result = run_ensemble<2, dealii::MemorySpace::Host>(communicator,
+                                                           database, timers);
+
+  double const tolerance = 0.1;
+  for (unsigned int member = 0; member < 3; ++member)
+  {
+    std::ifstream gold_file("integration_2d_gold.txt");
+    for (unsigned int i = 0; i < result[member].locally_owned_size(); ++i)
+    {
+      double gold_value = -1.;
+      gold_file >> gold_value;
+      BOOST_CHECK_CLOSE(result[member].local_element(i), gold_value, tolerance);
+    }
   }
 }

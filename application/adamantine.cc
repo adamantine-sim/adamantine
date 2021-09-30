@@ -97,6 +97,16 @@ int main(int argc, char *argv[])
     caliper_manager.start();
 #endif
 
+    boost::optional<boost::property_tree::ptree &> ensemble_optional_database =
+        database.get_child_optional("ensemble");
+    bool ensemble_calc = false;
+    if (ensemble_optional_database)
+    {
+      auto ensemble_database = ensemble_optional_database.get();
+      // PropertyTreeInput ensemble.ensemble_simulation
+      ensemble_calc = ensemble_database.get<bool>("ensemble_simulation", false);
+    }
+
     boost::property_tree::ptree geometry_database =
         database.get_child("geometry");
     // PropertyTreeInput geometry.dim
@@ -109,11 +119,27 @@ int main(int argc, char *argv[])
 
     if (dim == 2)
     {
-      run<2, dealii::MemorySpace::Host>(communicator, database, timers);
+      if (ensemble_calc)
+      {
+        run_ensemble<2, dealii::MemorySpace::Host>(communicator, database,
+                                                   timers);
+      }
+      else
+      {
+        run<2, dealii::MemorySpace::Host>(communicator, database, timers);
+      }
     }
     else
     {
-      run<3, dealii::MemorySpace::Host>(communicator, database, timers);
+      if (ensemble_calc)
+      {
+        run_ensemble<3, dealii::MemorySpace::Host>(communicator, database,
+                                                   timers);
+      }
+      else
+      {
+        run<3, dealii::MemorySpace::Host>(communicator, database, timers);
+      }
     }
 
     if (rank == 0)

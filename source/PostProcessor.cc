@@ -18,6 +18,24 @@ template <int dim>
 PostProcessor<dim>::PostProcessor(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     dealii::DoFHandler<dim> &dof_handler,
+    std::shared_ptr<MaterialProperty<dim>> material_properties,
+    int ensemble_member_index)
+    : _communicator(communicator), _dof_handler(dof_handler),
+      _material_properties(material_properties)
+{
+  // PropertyTreeInput post_processor.file_name
+  _filename_prefix = database.get<std::string>("filename_prefix");
+  if (ensemble_member_index >= 0)
+  {
+    _filename_prefix =
+        _filename_prefix + "_m" + std::to_string(ensemble_member_index);
+  }
+}
+
+template <int dim>
+PostProcessor<dim>::PostProcessor(
+    MPI_Comm const &communicator, boost::property_tree::ptree const &database,
+    dealii::DoFHandler<dim> &dof_handler,
     std::shared_ptr<MaterialProperty<dim>> material_properties)
     : _communicator(communicator), _dof_handler(dof_handler),
       _material_properties(material_properties)
