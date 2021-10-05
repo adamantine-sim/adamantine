@@ -396,7 +396,8 @@ void MaterialProperty<dim>::fill_properties(
       {"liquidus", "solidus", "latent_heat", "radiation_temperature_infty",
        "convection_temperature_infty"}};
   std::array<std::string, _n_state_properties> state_properties = {
-      {"density", "specific_heat", "thermal_conductivity", "emissivity",
+      {"density", "specific_heat", "thermal_conductivity_x",
+       "thermal_conductivity_y", "thermal_conductivity_z", "emissivity",
        "radiation_heat_transfer_coef", "convection_heat_transfer_coef"}};
 
   // PropertyTreeInput materials.property_format

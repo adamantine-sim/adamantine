@@ -33,9 +33,12 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   database.put("materials.material_0.solid.specific_heat", 1.);
   database.put("materials.material_0.powder.specific_heat", 1.);
   database.put("materials.material_0.liquid.specific_heat", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity_z", 1.);
+  database.put("materials.material_0.powder.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.powder.thermal_conductivity_z", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity_z", 1.);
   // Source database
   database.put("sources.n_beams", 1);
   database.put("sources.beam_0.depth", 1e100);
@@ -96,9 +99,12 @@ void thermal_2d_manufactured_solution()
   database.put("materials.material_0.solid.specific_heat", 1.);
   database.put("materials.material_0.powder.specific_heat", 1.);
   database.put("materials.material_0.liquid.specific_heat", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity_z", 1.);
+  database.put("materials.material_0.powder.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.powder.thermal_conductivity_z", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity_z", 1.);
   // Source database
   database.put("sources.n_beams", 1);
   database.put("sources.beam_0.depth", 1e100);
@@ -173,9 +179,12 @@ void initial_temperature()
   database.put("materials.material_0.solid.specific_heat", 1.);
   database.put("materials.material_0.powder.specific_heat", 2.);
   database.put("materials.material_0.liquid.specific_heat", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity_z", 1.);
+  database.put("materials.material_0.powder.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.powder.thermal_conductivity_z", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity_z", 1.);
   // Source database
   database.put("sources.n_beams", 1);
   database.put("sources.beam_0.depth", 1e100);
@@ -228,9 +237,12 @@ void energy_conservation()
   database.put("materials.material_0.solid.specific_heat", 4.);
   database.put("materials.material_0.powder.specific_heat", 4.);
   database.put("materials.material_0.liquid.specific_heat", 4.);
-  database.put("materials.material_0.solid.thermal_conductivity", 2.);
-  database.put("materials.material_0.powder.thermal_conductivity", 2.);
-  database.put("materials.material_0.liquid.thermal_conductivity", 2.);
+  database.put("materials.material_0.solid.thermal_conductivity_x", 2.);
+  database.put("materials.material_0.solid.thermal_conductivity_z", 2.);
+  database.put("materials.material_0.powder.thermal_conductivity_x", 2.);
+  database.put("materials.material_0.powder.thermal_conductivity_z", 2.);
+  database.put("materials.material_0.liquid.thermal_conductivity_x", 2.);
+  database.put("materials.material_0.liquid.thermal_conductivity_z", 2.);
   // Source database
   database.put("sources.n_beams", 1);
   database.put("sources.beam_0.type", "cube");
@@ -318,9 +330,12 @@ void radiation_bcs()
   database.put("materials.material_0.solid.specific_heat", 1.);
   database.put("materials.material_0.powder.specific_heat", 1.);
   database.put("materials.material_0.liquid.specific_heat", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity_z", 1.);
+  database.put("materials.material_0.powder.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.powder.thermal_conductivity_z", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity_z", 1.);
   database.put("materials.material_0.solid.emissivity", 1.);
   database.put("materials.material_0.powder.emissivity", 1.);
   database.put("materials.material_0.liquid.emissivity", 1.);
@@ -409,9 +424,12 @@ void convection_bcs()
   database.put("materials.material_0.solid.specific_heat", 1.);
   database.put("materials.material_0.powder.specific_heat", 1.);
   database.put("materials.material_0.liquid.specific_heat", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity_z", 1.);
+  database.put("materials.material_0.powder.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.powder.thermal_conductivity_z", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity_z", 1.);
   database.put("materials.material_0.solid.emissivity", 1.);
   database.put("materials.material_0.powder.emissivity", 1.);
   database.put("materials.material_0.liquid.emissivity", 1.);

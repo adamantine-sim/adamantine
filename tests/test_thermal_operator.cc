@@ -57,9 +57,12 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
   mat_prop_database.put("material_0.solid.specific_heat", 1.);
   mat_prop_database.put("material_0.powder.specific_heat", 1.);
   mat_prop_database.put("material_0.liquid.specific_heat", 1.);
-  mat_prop_database.put("material_0.solid.thermal_conductivity", 10.);
-  mat_prop_database.put("material_0.powder.thermal_conductivity", 10.);
-  mat_prop_database.put("material_0.liquid.thermal_conductivity", 10.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_x", 10.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_z", 10.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_x", 10.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
   std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
       new adamantine::MaterialProperty<2>(
           communicator, geometry.get_triangulation(), mat_prop_database));
@@ -155,9 +158,12 @@ BOOST_AUTO_TEST_CASE(spmv)
   mat_prop_database.put("material_0.solid.specific_heat", 1.);
   mat_prop_database.put("material_0.powder.specific_heat", 1.);
   mat_prop_database.put("material_0.liquid.specific_heat", 1.);
-  mat_prop_database.put("material_0.solid.thermal_conductivity", 1.);
-  mat_prop_database.put("material_0.powder.thermal_conductivity", 1.);
-  mat_prop_database.put("material_0.liquid.thermal_conductivity", 1.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_x", 1.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_z", 1.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_x", 1.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_z", 1.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 1.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 1.);
   std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
       new adamantine::MaterialProperty<2>(
           communicator, geometry.get_triangulation(), mat_prop_database));
@@ -220,6 +226,140 @@ BOOST_AUTO_TEST_CASE(spmv)
   }
 }
 
+BOOST_AUTO_TEST_CASE(spmv_anisotropic)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  // Create the Geometry
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 12);
+  geometry_database.put("length_divisions", 4);
+  geometry_database.put("height", 6);
+  geometry_database.put("height_divisions", 5);
+  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  // Create the DoFHandler
+  dealii::hp::FECollection<2> fe_collection;
+  fe_collection.push_back(dealii::FE_Q<2>(2));
+  fe_collection.push_back(dealii::FE_Nothing<2>());
+  dealii::DoFHandler<2> dof_handler(geometry.get_triangulation());
+  dof_handler.distribute_dofs(fe_collection);
+  dealii::AffineConstraints<double> affine_constraints;
+  affine_constraints.close();
+  dealii::hp::QCollection<1> q_collection;
+  q_collection.push_back(dealii::QGauss<1>(3));
+  q_collection.push_back(dealii::QGauss<1>(1));
+
+  // Create the MaterialProperty
+  boost::property_tree::ptree mat_prop_database;
+  mat_prop_database.put("property_format", "polynomial");
+  mat_prop_database.put("n_materials", 1);
+  mat_prop_database.put("material_0.solid.density", 1.);
+  mat_prop_database.put("material_0.powder.density", 1.);
+  mat_prop_database.put("material_0.liquid.density", 1.);
+  mat_prop_database.put("material_0.solid.specific_heat", 1.);
+  mat_prop_database.put("material_0.powder.specific_heat", 1.);
+  mat_prop_database.put("material_0.liquid.specific_heat", 1.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_x", 1.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_z", 0.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_x", 1.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_z", 0.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 1.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 0.);
+  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
+      new adamantine::MaterialProperty<2>(
+          communicator, geometry.get_triangulation(), mat_prop_database));
+
+  // Create the heat souces
+  boost::property_tree::ptree beam_database;
+  beam_database.put("depth", 0.1);
+  beam_database.put("absorption_efficiency", 0.1);
+  beam_database.put("diameter", 1.0);
+  beam_database.put("max_power", 10.);
+  beam_database.put("scan_path_file", "scan_path.txt");
+  beam_database.put("scan_path_file_format", "segment");
+  std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
+  heat_sources.resize(1);
+  heat_sources[0] =
+      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
+
+  // Initialize the ThermalOperator
+  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
+      communicator, adamantine::BoundaryType::adiabatic, mat_properties,
+      heat_sources);
+  thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
+  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
+                                               fe_collection);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
+      thermal_operator.m());
+  thermal_operator.get_state_from_material_properties();
+  BOOST_CHECK(thermal_operator.m() == 99);
+  BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
+
+  // Build the matrix. This only works in serial.
+  dealii::DynamicSparsityPattern dsp(dof_handler.n_dofs());
+  dealii::DoFTools::make_sparsity_pattern(dof_handler, dsp, affine_constraints);
+  dealii::SparsityPattern sparsity_pattern;
+  sparsity_pattern.copy_from(dsp);
+  dealii::SparseMatrix<double> sparse_matrix(sparsity_pattern);
+  // Assemble the anisotropic matrix
+  {
+    auto &fe = dof_handler.get_fe();
+    dealii::QGauss<2> quadrature_formula(3);
+    dealii::FEValues<2> fe_values(fe, quadrature_formula,
+                                  dealii::update_gradients |
+                                      dealii::update_quadrature_points |
+                                      dealii::update_JxW_values);
+    const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
+    dealii::FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
+    std::vector<dealii::types::global_dof_index> local_dof_indices(
+        dofs_per_cell);
+    for (auto const &cell : dof_handler.active_cell_iterators())
+    {
+      cell_matrix = 0;
+      fe_values.reinit(cell);
+      for (unsigned int const q_index : fe_values.quadrature_point_indices())
+      {
+        for (unsigned int const i : fe_values.dof_indices())
+        {
+          // Compute (coef_x grad_x, coef_y grad_y) with coef_x = 1 and coef_y =
+          // 0
+          auto coef_grad = fe_values.shape_grad(i, q_index);
+          coef_grad[1] = 0.;
+          for (unsigned int const j : fe_values.dof_indices())
+            cell_matrix(i, j) += coef_grad * fe_values.shape_grad(j, q_index) *
+                                 fe_values.JxW(q_index);
+        }
+      }
+      cell->get_dof_indices(local_dof_indices);
+      affine_constraints.distribute_local_to_global(
+          cell_matrix, local_dof_indices, sparse_matrix);
+    }
+  }
+
+  // Compare vmult using matrix free and building the matrix
+  double const tolerance = 1e-12;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_1;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_2;
+
+  dealii::MatrixFree<2, double> const &matrix_free =
+      thermal_operator.get_matrix_free();
+  matrix_free.initialize_dof_vector(src);
+  matrix_free.initialize_dof_vector(dst_1);
+  matrix_free.initialize_dof_vector(dst_2);
+
+  for (unsigned int i = 0; i < thermal_operator.m(); ++i)
+  {
+    src = 0.;
+    src[i] = 1;
+    thermal_operator.vmult(dst_1, src);
+    sparse_matrix.vmult(dst_2, src);
+    for (unsigned int j = 0; j < thermal_operator.m(); ++j)
+      BOOST_CHECK_CLOSE(dst_1[j], -dst_2[j], tolerance);
+  }
+}
+
 BOOST_AUTO_TEST_CASE(spmv_rad)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
@@ -254,9 +394,12 @@ BOOST_AUTO_TEST_CASE(spmv_rad)
   mat_prop_database.put("material_0.solid.specific_heat", 1.);
   mat_prop_database.put("material_0.powder.specific_heat", 1.);
   mat_prop_database.put("material_0.liquid.specific_heat", 1.);
-  mat_prop_database.put("material_0.solid.thermal_conductivity", 1.);
-  mat_prop_database.put("material_0.powder.thermal_conductivity", 1.);
-  mat_prop_database.put("material_0.liquid.thermal_conductivity", 1.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_x", 1.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_z", 1.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_x", 1.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_z", 1.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 1.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 1.);
   mat_prop_database.put("material_0.solid.emissivity", 1.);
   mat_prop_database.put("material_0.powder.emissivity", 1.);
   mat_prop_database.put("material_0.liquid.emissivity", 1.);

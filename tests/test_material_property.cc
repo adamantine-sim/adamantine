@@ -44,7 +44,8 @@ BOOST_AUTO_TEST_CASE(material_property)
   database.put("property_format", "polynomial");
   database.put("n_materials", 1);
   database.put("material_0.solid.density", 1.);
-  database.put("material_0.solid.thermal_conductivity", 10.);
+  database.put("material_0.solid.thermal_conductivity_x", 10.);
+  database.put("material_0.solid.thermal_conductivity_z", 10.);
   database.put("material_0.powder.conductivity", 10.);
   database.put("material_0.liquid", "");
   database.put("material_0.liquidus", "100");
@@ -64,9 +65,12 @@ BOOST_AUTO_TEST_CASE(material_property)
     double const density =
         mat_prop.get_cell_value(cell, adamantine::StateProperty::density);
     BOOST_CHECK(density == 1.);
-    double const th_conduc = mat_prop.get_cell_value(
-        cell, adamantine::StateProperty::thermal_conductivity);
-    BOOST_CHECK(th_conduc == 10.);
+    double const th_conduc_x = mat_prop.get_cell_value(
+        cell, adamantine::StateProperty::thermal_conductivity_x);
+    BOOST_CHECK(th_conduc_x == 10.);
+    double const th_conduc_z = mat_prop.get_cell_value(
+        cell, adamantine::StateProperty::thermal_conductivity_z);
+    BOOST_CHECK(th_conduc_z == 10.);
     double const liquidus =
         mat_prop.get_cell_value(cell, adamantine::Property::liquidus);
     BOOST_CHECK(liquidus == 100.);
@@ -101,13 +105,17 @@ BOOST_AUTO_TEST_CASE(ratios)
   database.put("property_format", "polynomial");
   database.put("n_materials", 1);
   database.put("material_0.solid.density", 10.);
-  database.put("material_0.solid.thermal_conductivity", 10.);
+  database.put("material_0.solid.thermal_conductivity_x", 10.);
+  database.put("material_0.solid.thermal_conductivity_z", 10.);
   database.put("material_0.solid.specific_heat", 10.);
   database.put("material_0.powder.density", 1.);
-  database.put("material_0.powder.thermal_conductivity", 1.);
+  database.put("material_0.powder.thermal_conductivity_x", 1.);
+  database.put("material_0.powder.thermal_conductivity_z", 1.);
+  database.put("material_0.powder.thermal_conductivity_z", 1.);
   database.put("material_0.powder.specific_heat", 1.);
   database.put("material_0.liquid.density", 1.);
-  database.put("material_0.liquid.thermal_conductivity", 20.);
+  database.put("material_0.liquid.thermal_conductivity_x", 20.);
+  database.put("material_0.liquid.thermal_conductivity_z", 20.);
   database.put("material_0.liquid.specific_heat", 20.);
   database.put("material_0.solidus", "50");
   database.put("material_0.liquidus", "100");
@@ -134,9 +142,12 @@ BOOST_AUTO_TEST_CASE(ratios)
     double const density =
         mat_prop.get_cell_value(cell, adamantine::StateProperty::density);
     BOOST_CHECK(density == 1.);
-    double const th_conduc = mat_prop.get_cell_value(
-        cell, adamantine::StateProperty::thermal_conductivity);
-    BOOST_CHECK(th_conduc == 1.);
+    double const th_conduc_x = mat_prop.get_cell_value(
+        cell, adamantine::StateProperty::thermal_conductivity_x);
+    BOOST_CHECK(th_conduc_x == 1.);
+    double const th_conduc_z = mat_prop.get_cell_value(
+        cell, adamantine::StateProperty::thermal_conductivity_z);
+    BOOST_CHECK(th_conduc_z == 1.);
     double const liquidus =
         mat_prop.get_cell_value(cell, adamantine::Property::liquidus);
     BOOST_CHECK(liquidus == 100.);
@@ -172,9 +183,12 @@ BOOST_AUTO_TEST_CASE(ratios)
     double const density =
         mat_prop.get_cell_value(cell, adamantine::StateProperty::density);
     BOOST_CHECK(density == 1.);
-    double const th_conduc = mat_prop.get_cell_value(
-        cell, adamantine::StateProperty::thermal_conductivity);
-    BOOST_CHECK(th_conduc == 20.);
+    double const th_conduc_x = mat_prop.get_cell_value(
+        cell, adamantine::StateProperty::thermal_conductivity_x);
+    BOOST_CHECK(th_conduc_x == 20.);
+    double const th_conduc_z = mat_prop.get_cell_value(
+        cell, adamantine::StateProperty::thermal_conductivity_z);
+    BOOST_CHECK(th_conduc_z == 20.);
     double const liquidus =
         mat_prop.get_cell_value(cell, adamantine::Property::liquidus);
     BOOST_CHECK(liquidus == 100.);
@@ -207,9 +221,12 @@ BOOST_AUTO_TEST_CASE(ratios)
     double const density =
         mat_prop.get_cell_value(cell, adamantine::StateProperty::density);
     BOOST_CHECK(density == 10.);
-    double const th_conduc = mat_prop.get_cell_value(
-        cell, adamantine::StateProperty::thermal_conductivity);
-    BOOST_CHECK(th_conduc == 10.);
+    double const th_conduc_x = mat_prop.get_cell_value(
+        cell, adamantine::StateProperty::thermal_conductivity_x);
+    BOOST_CHECK(th_conduc_x == 10.);
+    double const th_conduc_z = mat_prop.get_cell_value(
+        cell, adamantine::StateProperty::thermal_conductivity_z);
+    BOOST_CHECK(th_conduc_z == 10.);
     double const liquidus =
         mat_prop.get_cell_value(cell, adamantine::Property::liquidus);
     BOOST_CHECK(liquidus == 100.);
@@ -260,12 +277,17 @@ BOOST_AUTO_TEST_CASE(material_property_table)
   database.put("property_format", "table");
   database.put("n_materials", 2);
   database.put("material_0.solid.density", "0., 1.");
-  database.put("material_0.solid.thermal_conductivity", "0., 10.; 10., 100.");
+  database.put("material_0.solid.thermal_conductivity_x", "0., 10.; 10., 100.");
+  database.put("material_0.solid.thermal_conductivity_z", "0., 10.; 10., 100.");
   database.put("material_1.solid.density", "0., 1.; 20., 2.; 30., 3.");
-  database.put("material_1.solid.thermal_conductivity",
+  database.put("material_1.solid.thermal_conductivity_x",
+               "0., 10.; 10., 100.; 20., 200.");
+  database.put("material_1.solid.thermal_conductivity_z",
                "0., 10.; 10., 100.; 20., 200.");
   database.put("material_1.powder.density", "0., 1.; 15., 2.; 30., 3.");
-  database.put("material_1.powder.thermal_conductivity",
+  database.put("material_1.powder.thermal_conductivity_x",
+               "0., 10.; 10., 100.; 18., 200.");
+  database.put("material_1.powder.thermal_conductivity_z",
                "0., 10.; 10., 100.; 18., 200.");
   adamantine::MaterialProperty<2> mat_prop(communicator, triangulation,
                                            database);
@@ -290,7 +312,11 @@ BOOST_AUTO_TEST_CASE(material_property_table)
           tolerance);
       BOOST_CHECK_CLOSE(
           mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity),
+              cell, adamantine::StateProperty::thermal_conductivity_x),
+          100., tolerance);
+      BOOST_CHECK_CLOSE(
+          mat_prop.get_cell_value(
+              cell, adamantine::StateProperty::thermal_conductivity_z),
           100., tolerance);
     }
     else if (n < 15)
@@ -300,7 +326,11 @@ BOOST_AUTO_TEST_CASE(material_property_table)
           1.75, tolerance);
       BOOST_CHECK_CLOSE(
           mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity),
+              cell, adamantine::StateProperty::thermal_conductivity_x),
+          150., tolerance);
+      BOOST_CHECK_CLOSE(
+          mat_prop.get_cell_value(
+              cell, adamantine::StateProperty::thermal_conductivity_z),
           150., tolerance);
     }
     else
@@ -310,7 +340,11 @@ BOOST_AUTO_TEST_CASE(material_property_table)
           tolerance);
       BOOST_CHECK_CLOSE(
           mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity),
+              cell, adamantine::StateProperty::thermal_conductivity_x),
+          162.5, tolerance);
+      BOOST_CHECK_CLOSE(
+          mat_prop.get_cell_value(
+              cell, adamantine::StateProperty::thermal_conductivity_z),
           162.5, tolerance);
     }
     ++n;
@@ -352,11 +386,17 @@ BOOST_AUTO_TEST_CASE(material_property_polynomials)
   database.put("property_format", "polynomial");
   database.put("n_materials", 2);
   database.put("material_0.solid.density", "0., 1.");
-  database.put("material_0.solid.thermal_conductivity", "0., 1., 2.");
+  database.put("material_0.solid.thermal_conductivity_x", "0., 1., 2.");
+  database.put("material_0.solid.thermal_conductivity_z", "0., 10., 20.");
   database.put("material_1.solid.density", " 1., 2., 3.");
-  database.put("material_1.solid.thermal_conductivity", "1.,  100., 20., 200.");
+  database.put("material_1.solid.thermal_conductivity_x",
+               "1.,  100., 20., 200.");
+  database.put("material_1.solid.thermal_conductivity_z",
+               "10.,  1000., 200., 2000.");
   database.put("material_1.powder.density", "15., 2., 3.");
-  database.put("material_1.powder.thermal_conductivity", " 10., 18., 200.");
+  database.put("material_1.powder.thermal_conductivity_x", " 10., 18., 200.");
+  database.put("material_1.powder.thermal_conductivity_z",
+               " 100., 180., 2000.");
   adamantine::MaterialProperty<2> mat_prop(communicator, triangulation,
                                            database);
   // Evaluate the material property at the given temperature
@@ -380,8 +420,12 @@ BOOST_AUTO_TEST_CASE(material_property_polynomials)
           15., tolerance);
       BOOST_CHECK_CLOSE(
           mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity),
+              cell, adamantine::StateProperty::thermal_conductivity_x),
           465., tolerance);
+      BOOST_CHECK_CLOSE(
+          mat_prop.get_cell_value(
+              cell, adamantine::StateProperty::thermal_conductivity_z),
+          4650., tolerance);
     }
     else if (n < 15)
     {
@@ -390,8 +434,12 @@ BOOST_AUTO_TEST_CASE(material_property_polynomials)
           706., tolerance);
       BOOST_CHECK_CLOSE(
           mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity),
+              cell, adamantine::StateProperty::thermal_conductivity_x),
           681001., tolerance);
+      BOOST_CHECK_CLOSE(
+          mat_prop.get_cell_value(
+              cell, adamantine::StateProperty::thermal_conductivity_z),
+          6810010., tolerance);
     }
     else
     {
@@ -400,8 +448,12 @@ BOOST_AUTO_TEST_CASE(material_property_polynomials)
           720., tolerance);
       BOOST_CHECK_CLOSE(
           mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity),
+              cell, adamantine::StateProperty::thermal_conductivity_x),
           45280., tolerance);
+      BOOST_CHECK_CLOSE(
+          mat_prop.get_cell_value(
+              cell, adamantine::StateProperty::thermal_conductivity_z),
+          452800., tolerance);
     }
     ++n;
   }

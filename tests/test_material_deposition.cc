@@ -252,8 +252,10 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   database.put("materials.material_0.liquid.density", 1.);
   database.put("materials.material_0.solid.specific_heat", 1.);
   database.put("materials.material_0.liquid.specific_heat", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.solid.thermal_conductivity_z", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity_x", 1.);
+  database.put("materials.material_0.liquid.thermal_conductivity_z", 1.);
   // Source database
   database.put("sources.n_beams", 0);
   // Time-stepping database

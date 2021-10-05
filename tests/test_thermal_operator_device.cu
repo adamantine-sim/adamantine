@@ -58,9 +58,12 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev)
   mat_prop_database.put("material_0.solid.specific_heat", 1.);
   mat_prop_database.put("material_0.powder.specific_heat", 1.);
   mat_prop_database.put("material_0.liquid.specific_heat", 1.);
-  mat_prop_database.put("material_0.solid.thermal_conductivity", 10.);
-  mat_prop_database.put("material_0.powder.thermal_conductivity", 10.);
-  mat_prop_database.put("material_0.liquid.thermal_conductivity", 10.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_x", 10.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_z", 10.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_x", 10.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
   std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
       new adamantine::MaterialProperty<2>(
           communicator, geometry.get_triangulation(), mat_prop_database));
@@ -140,9 +143,12 @@ BOOST_AUTO_TEST_CASE(spmv)
   mat_prop_database.put("material_0.solid.specific_heat", 1.);
   mat_prop_database.put("material_0.powder.specific_heat", 1.);
   mat_prop_database.put("material_0.liquid.specific_heat", 1.);
-  mat_prop_database.put("material_0.solid.thermal_conductivity", 1.);
-  mat_prop_database.put("material_0.powder.thermal_conductivity", 1.);
-  mat_prop_database.put("material_0.liquid.thermal_conductivity", 1.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_x", 1.);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_z", 1.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_x", 1.);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_z", 1.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 1.);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 1.);
   std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
       new adamantine::MaterialProperty<2>(
           communicator, geometry.get_triangulation(), mat_prop_database));
@@ -235,9 +241,12 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
   mat_prop_database.put("material_0.solid.specific_heat", 600.);
   mat_prop_database.put("material_0.powder.specific_heat", 600.);
   mat_prop_database.put("material_0.liquid.specific_heat", 600.);
-  mat_prop_database.put("material_0.solid.thermal_conductivity", 0.266);
-  mat_prop_database.put("material_0.powder.thermal_conductivity", 0.266);
-  mat_prop_database.put("material_0.liquid.thermal_conductivity", 0.266);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_x", 0.266);
+  mat_prop_database.put("material_0.solid.thermal_conductivity_z", 0.266);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_x", 0.266);
+  mat_prop_database.put("material_0.powder.thermal_conductivity_z", 0.266);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 0.266);
+  mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 0.266);
   std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
       new adamantine::MaterialProperty<2>(
           communicator, geometry.get_triangulation(), mat_prop_database));
@@ -275,7 +284,7 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
   thermal_operator_host.get_state_from_material_properties();
 
   // Compare vmult using matrix free and building the matrix
-  double const tolerance = 1e-12;
+  double const tolerance = 1.5e-12;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> src_dev;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_dev;
 
