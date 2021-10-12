@@ -155,3 +155,31 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_ray_tracing_from_file)
       BOOST_CHECK(points_values.points[i] == points_ref[i]);
     }
 }
+
+BOOST_AUTO_TEST_CASE(timestamp)
+{
+  boost::property_tree::ptree database;
+  database.put("log_filename", "experiment_log_test.txt");
+  database.put("first_frame_temporal_offset", 0.1);
+  database.put("first_frame", 1);
+  database.put("last_frame", 3);
+  database.put("first_camera_id", 0);
+  database.put("last_camera_id", 1);
+
+  std::vector<std::vector<double>> time_stamps =
+      adamantine::read_frame_timestamps(database);
+
+  double tol = 1.0e-12;
+
+  BOOST_CHECK(time_stamps.size() == 2);
+  BOOST_CHECK(time_stamps[0].size() == 3);
+  BOOST_CHECK(time_stamps[1].size() == 3);
+
+  BOOST_CHECK_CLOSE(time_stamps[0][0], 0.1, tol);
+  BOOST_CHECK_CLOSE(time_stamps[0][1], 0.1135, tol);
+  BOOST_CHECK_CLOSE(time_stamps[0][2], 0.1345, tol);
+
+  BOOST_CHECK_CLOSE(time_stamps[1][0], 0.1, tol);
+  BOOST_CHECK_CLOSE(time_stamps[1][1], 0.1136, tol);
+  BOOST_CHECK_CLOSE(time_stamps[1][2], 0.1348, tol);
+}

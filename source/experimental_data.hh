@@ -46,6 +46,20 @@ std::pair<std::vector<int>, std::vector<int>> set_with_experimental_data(
     dealii::LinearAlgebra::distributed::Vector<double> &temperature);
 
 /**
+ * Parse the log file that maps experimental frames to their times.
+ * The log file has a headerless CSV format with the frame index (int) as the
+ * first entry per line followed by the timestamp for each camera. For now we
+ * assume that the first frame for each camera is synced so that we can
+ * re-reference the times to a fixed offset from the first frame time. The
+ * function returns a vector containing the frame timings for each camera, i.e.
+ * the first index is the camera index and the second is the frame index. The
+ * frame indices in the output are such that the 'first frame' listed in the
+ * input file is index 0.
+ */
+std::vector<std::vector<double>>
+read_frame_timestamps(boost::property_tree::ptree const &experiment_database);
+
+/**
  * Data structure representing a ray.
  */
 template <int dim>
