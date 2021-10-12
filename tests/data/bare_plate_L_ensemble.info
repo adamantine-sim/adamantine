@@ -2,6 +2,7 @@ ensemble
 {
   ensemble_simulation true
   ensemble_size 3
+  initial_temperature_stddev 0.0
 }
 geometry
 {

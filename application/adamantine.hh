@@ -12,6 +12,7 @@
 #include <PostProcessor.hh>
 #include <ThermalPhysics.hh>
 #include <Timer.hh>
+#include <ensemble_management.hh>
 #include <material_deposition.hh>
 #include <utils.hh>
 
@@ -29,8 +30,10 @@
 #include <caliper/cali.h>
 #endif
 
+#include <chrono>
 #include <cmath>
 #include <iostream>
+#include <random>
 
 template <int dim, typename MemorySpaceType,
           std::enable_if_t<
@@ -910,7 +913,7 @@ run_ensemble(MPI_Comm const &communicator,
                  quadrature_type.begin(),
                  [](unsigned char c) { return std::tolower(c); });
   // PropertyTreeInput materials.initial_temperature
-  double const initial_temperature =
+  double const initial_temperature_mean =
       database.get("materials.initial_temperature", 300.);
 
   // Set up the ensemble members
@@ -919,6 +922,14 @@ run_ensemble(MPI_Comm const &communicator,
   // everything.
   // PropertyTreeInput ensemble.ensemble_size
   const unsigned int ensemble_size = ensemble_database.get("ensemble_size", 5);
+
+  // PropertyTreeInput ensemble.initial_temperature_stddev
+  const unsigned int initial_temperature_stddev =
+      ensemble_database.get("initial_temperature_stddev", 0.0);
+
+  std::vector<double> initial_temperature =
+      adamantine::fill_and_sync_random_vector(
+          ensemble_size, initial_temperature_mean, initial_temperature_stddev);
 
   std::vector<std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>>>
       thermal_physics_ensemble(ensemble_size);
@@ -936,7 +947,6 @@ run_ensemble(MPI_Comm const &communicator,
 
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
-
     geometry_ensemble.push_back(std::make_unique<adamantine::Geometry<dim>>(
         communicator, geometry_database));
 
@@ -946,8 +956,9 @@ run_ensemble(MPI_Comm const &communicator,
 
     thermal_physics_ensemble[member]->setup_dofs();
     thermal_physics_ensemble[member]->compute_inverse_mass_matrix();
+
     thermal_physics_ensemble[member]->initialize_dof_vector(
-        initial_temperature, solution_ensemble[member]);
+        initial_temperature[member], solution_ensemble[member]);
     thermal_physics_ensemble[member]->get_state_from_material_properties();
 
     post_processor_ensemble.push_back(
@@ -1071,7 +1082,7 @@ run_ensemble(MPI_Comm const &communicator,
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
         thermal_physics_ensemble[member]->add_material(
-            elements_to_activate[i], initial_temperature,
+            elements_to_activate[i], initial_temperature_mean,
             solution_ensemble[member]);
       }
     }

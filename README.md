@@ -169,6 +169,7 @@ The following options are available:
 * ensemble: (optional)
   * ensemble_simulation: Whether to perform an ensemble of simulations (default value: false)
   * ensemble_size: The number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
+  * initial_temperature_stddev: The standard deviation for the initial temperature of the substrate (default value: 0)
 * data_assimilation: (optional)
   * solver:
     * max_number_of_temp_vectors: Maximum number of temporary vectors for the GMRES solve (optional)
