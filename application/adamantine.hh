@@ -12,6 +12,7 @@
 #include <PostProcessor.hh>
 #include <ThermalPhysics.hh>
 #include <Timer.hh>
+#include <ensemble_management.hh>
 #include <material_deposition.hh>
 #include <utils.hh>
 
@@ -909,9 +910,24 @@ run_ensemble(MPI_Comm const &communicator,
   std::transform(quadrature_type.begin(), quadrature_type.end(),
                  quadrature_type.begin(),
                  [](unsigned char c) { return std::tolower(c); });
+
+  // Get the nominal (mean) values of the ensemble parameters
   // PropertyTreeInput materials.initial_temperature
-  double const initial_temperature =
+  double const initial_temperature_mean =
       database.get("materials.initial_temperature", 300.);
+
+  // PropertyTreeInput sources.n_beams
+  unsigned int const n_beams = database.get<unsigned int>("sources.n_beams");
+  double beam_0_max_power_mean;
+  if (n_beams > 0)
+  {
+    // PropertyTreeInput sources.beam_0.max_power
+    beam_0_max_power_mean = database.get<double>("sources.beam_0.max_power");
+  }
+  else
+  {
+    beam_0_max_power_mean = 0;
+  }
 
   // Set up the ensemble members
   // There might be a more efficient way to share some of these objects between
@@ -919,6 +935,26 @@ run_ensemble(MPI_Comm const &communicator,
   // everything.
   // PropertyTreeInput ensemble.ensemble_size
   const unsigned int ensemble_size = ensemble_database.get("ensemble_size", 5);
+
+  // PropertyTreeInput ensemble.initial_temperature_stddev
+  const unsigned int initial_temperature_stddev =
+      ensemble_database.get("initial_temperature_stddev", 0.0);
+
+  std::vector<double> initial_temperature =
+      adamantine::fill_and_sync_random_vector(
+          ensemble_size, initial_temperature_mean, initial_temperature_stddev);
+
+  // PropertyTreeInput ensemble.beam_0_max_power_stddev
+  const unsigned int beam_0_max_power_stddev =
+      ensemble_database.get("beam_0_max_power_stddev", 0.0);
+
+  std::vector<double> beam_0_max_power =
+      adamantine::fill_and_sync_random_vector(
+          ensemble_size, beam_0_max_power_mean, beam_0_max_power_stddev);
+
+  // Create a new property tree database for each ensemble member
+  std::vector<boost::property_tree::ptree> database_ensemble(ensemble_size,
+                                                             database);
 
   std::vector<std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>>>
       thermal_physics_ensemble(ensemble_size);
@@ -936,18 +972,26 @@ run_ensemble(MPI_Comm const &communicator,
 
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
+    // Edit the database for the ensemble
+    if (n_beams > 0)
+    {
+      // PropertyTreeInput sources.beam_0.max_power
+      database_ensemble[member].put("sources.beam_0.max_power",
+                                    beam_0_max_power[member]);
+    }
 
     geometry_ensemble.push_back(std::make_unique<adamantine::Geometry<dim>>(
         communicator, geometry_database));
 
     heat_sources_ensemble[member] = initialize_thermal_physics<dim>(
-        fe_degree, quadrature_type, communicator, database,
+        fe_degree, quadrature_type, communicator, database_ensemble[member],
         *geometry_ensemble[member], thermal_physics_ensemble[member]);
 
     thermal_physics_ensemble[member]->setup_dofs();
     thermal_physics_ensemble[member]->compute_inverse_mass_matrix();
+
     thermal_physics_ensemble[member]->initialize_dof_vector(
-        initial_temperature, solution_ensemble[member]);
+        initial_temperature[member], solution_ensemble[member]);
     thermal_physics_ensemble[member]->get_state_from_material_properties();
 
     post_processor_ensemble.push_back(
@@ -1071,7 +1115,7 @@ run_ensemble(MPI_Comm const &communicator,
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
         thermal_physics_ensemble[member]->add_material(
-            elements_to_activate[i], initial_temperature,
+            elements_to_activate[i], initial_temperature_mean,
             solution_ensemble[member]);
       }
     }
