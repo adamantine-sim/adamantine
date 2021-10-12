@@ -262,7 +262,7 @@ read_frame_timestamps(boost::property_tree::ptree const &experiment_database)
 
   // PropertyTreeInput experiment.first_frame_temporal_offset
   double first_frame_offset =
-      experiment_database.get<double>("first_frame_temporal_offset");
+      experiment_database.get("first_frame_temporal_offset", 0.0);
 
   // PropertyTreeInput experiment.first_frame
   unsigned int first_frame =

@@ -166,6 +166,8 @@ The following options are available:
   * first\_camera\_id: number associated to the first camera
   * last\_camera\_id: number associated to the last camera
   * data\_columns: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D)
+  * log\_filename: The (full) filename of the log file that lists the timestamp for each frame from each camera.
+  * first\_frame\_temporal\_offset: A uniform shift to the timestamps from all cameras to match the simulation time (default value: 0.0)
 * ensemble: (optional)
   * ensemble_simulation: Whether to perform an ensemble of simulations (default value: false)
   * ensemble_size: The number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
