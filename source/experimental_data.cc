@@ -17,6 +17,7 @@
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/reference_cell.h>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 
 #include <Kokkos_HostSpace.hpp>
@@ -26,6 +27,7 @@
 #include <limits>
 #include <optional>
 #include <regex>
+#include <sstream>
 
 #include <ArborX_Ray.hpp>
 
@@ -248,6 +250,81 @@ std::pair<std::vector<int>, std::vector<int>> set_with_experimental_data(
   return {indices, offset};
 }
 
+std::vector<std::vector<double>>
+read_frame_timestamps(boost::property_tree::ptree const &experiment_database)
+{
+  // PropertyTreeInput experiment.log_filename
+  std::string log_filename =
+      experiment_database.get<std::string>("log_filename");
+
+  ASSERT(boost::filesystem::exists(log_filename),
+         "The file " + log_filename + " does not exist.");
+
+  // PropertyTreeInput experiment.first_frame_temporal_offset
+  double first_frame_offset =
+      experiment_database.get<double>("first_frame_temporal_offset");
+
+  // PropertyTreeInput experiment.first_frame
+  unsigned int first_frame =
+      experiment_database.get<unsigned int>("first_frame", 0);
+  // PropertyTreeInput experiment.last_frame
+  unsigned int last_frame = experiment_database.get<unsigned int>("last_frame");
+
+  // PropertyTreeInput experiment.first_camera_id
+  unsigned int first_camera_id =
+      experiment_database.get<unsigned int>("first_camera_id");
+  // PropertyTreeInput experiment.last_camera_id
+  unsigned int last_camera_id =
+      experiment_database.get<unsigned int>("last_camera_id");
+
+  unsigned int num_cameras = last_camera_id - first_camera_id + 1;
+  std::vector<std::vector<double>> time_stamps(num_cameras);
+
+  std::vector<double> first_frame_value(num_cameras);
+
+  // Read and parse the file
+  std::ifstream file;
+  file.open(log_filename);
+  std::string line;
+  std::getline(file, line);
+  while (std::getline(file, line))
+  {
+    unsigned int entry_index = 0;
+    std::stringstream s_stream(line);
+    bool frame_of_interest = false;
+    unsigned int frame = std::numeric_limits<unsigned int>::max();
+    while (s_stream.good())
+    {
+      std::string substring;
+      std::getline(s_stream, substring, ',');
+      boost::trim(substring);
+
+      if (entry_index == 0)
+      {
+        ASSERT(std::stoi(substring) - frame == 1 ||
+                   frame == std::numeric_limits<unsigned int>::max(),
+               "The file " + log_filename +
+                   " does not have consecutive frame indices.");
+        frame = std::stoi(substring);
+        if (frame >= first_frame && frame <= last_frame)
+          frame_of_interest = true;
+      }
+      else
+      {
+        if (frame == first_frame && substring.size() > 0)
+          first_frame_value[entry_index - 1] = std::stod(substring);
+
+        if (frame_of_interest && substring.size() > 0)
+          time_stamps[entry_index - 1].push_back(
+              std::stod(substring) - first_frame_value[entry_index - 1] +
+              first_frame_offset);
+      }
+      entry_index++;
+    }
+  }
+  return time_stamps;
+}
+
 RayTracing::RayTracing(boost::property_tree::ptree const &experiment_database)
 {
 
@@ -366,8 +443,8 @@ RayTracing::get_intersection(dealii::DoFHandler<3> const &dof_handler,
 
   // Find the exact intersections points
   // See https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
-  // NOTE that we assume that the faces are flat. If the faces are curved, this
-  // is wrong.
+  // NOTE that we assume that the faces are flat. If the faces are curved,
+  // this is wrong.
   unsigned int const n_rays = _rays_all_frames[frame].size();
   unsigned int n_intersections = 0;
   for (unsigned int i = 0; i < n_rays; ++i)
@@ -391,14 +468,14 @@ RayTracing::get_intersection(dealii::DoFHandler<3> const &dof_handler,
     {
       auto const &cell = cell_iterators[indices[j]];
       // We know that the ray intersects the bounding box but we don't know
-      // where it intersects the cells. We need to check the intersection of the
-      // ray with each face of the cell.
+      // where it intersects the cells. We need to check the intersection of
+      // the ray with each face of the cell.
       for (unsigned int f = 0; f < reference_cell.n_faces(); ++f)
       {
         // First we check if the ray is parallel to the face. If this is the
-        // case, either the ray misses the face or the ray hits the edge of the
-        // face. In that last case, the ray is also orthogonal to another face
-        // and it is safe to discard all rays parallel to a face.
+        // case, either the ray misses the face or the ray hits the edge of
+        // the face. In that last case, the ray is also orthogonal to another
+        // face and it is safe to discard all rays parallel to a face.
         auto const point_0 = cell->face(f)->vertex(0);
         auto const point_1 = cell->face(f)->vertex(1);
         auto const point_2 = cell->face(f)->vertex(2);
@@ -414,8 +491,8 @@ RayTracing::get_intersection(dealii::DoFHandler<3> const &dof_handler,
              {edge_01[0], edge_01[1], edge_01[2]},
              {edge_02[0], edge_02[1], edge_02[2]}});
         double det = dealii::determinant(matrix);
-        // If determinant is close to zero, the ray is parallel to the face and
-        // we go to the next face.
+        // If determinant is close to zero, the ray is parallel to the face
+        // and we go to the next face.
         if (std::abs(det) < tolerance)
           continue;
         // Compute the distance along the ray direction between the origin of
@@ -426,11 +503,11 @@ RayTracing::get_intersection(dealii::DoFHandler<3> const &dof_handler,
                                        ray_origin[1] - point_0[1],
                                        ray_origin[2] - point_0[2]});
         double d = cross_product * p0_ray / det;
-        // We can finally compute the intersection point. It is possible that a
-        // ray intersects multiple faces. For instance if the mesh is a cube the
-        // ray will get into the cube from one face and it will get out of the
-        // cube by the opposite face. The correct intersection point is the one
-        // with the smallest distance.
+        // We can finally compute the intersection point. It is possible that
+        // a ray intersects multiple faces. For instance if the mesh is a cube
+        // the ray will get into the cube from one face and it will get out of
+        // the cube by the opposite face. The correct intersection point is
+        // the one with the smallest distance.
         if (d < distances[ii])
         {
           // The point intersects the plane of the face but maybe not the face
@@ -462,7 +539,8 @@ RayTracing::get_intersection(dealii::DoFHandler<3> const &dof_handler,
           {
             // NOTE: We could add a tolerance if the intersection point is on
             // the edge. Currently, we may lose some rays but I don't think it
-            // matters. The mesh does not match exactly the real object anyway.
+            // matters. The mesh does not match exactly the real object
+            // anyway.
             if ((intersection[coord] < min[coord]) ||
                 (intersection[coord] > max[coord]))
             {
