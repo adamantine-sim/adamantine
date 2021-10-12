@@ -30,10 +30,8 @@
 #include <caliper/cali.h>
 #endif
 
-#include <chrono>
 #include <cmath>
 #include <iostream>
-#include <random>
 
 template <int dim, typename MemorySpaceType,
           std::enable_if_t<
