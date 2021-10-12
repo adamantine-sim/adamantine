@@ -116,7 +116,7 @@ The following options are available:
   refinement process is performed (default value: 2)
   * verbose: true or false (default value: false)
 * sources:
-  * n\_beams: number of electron beams
+  * n\_beams: number of heat source beams
   * beam\_X: property tree for the beam with number X
   * beam\_X.type: type of heat source: goldak or electron\_beam
   * beam\_X.scan\_path\_file: scan path filename
@@ -169,7 +169,8 @@ The following options are available:
 * ensemble: (optional)
   * ensemble_simulation: Whether to perform an ensemble of simulations (default value: false)
   * ensemble_size: The number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
-  * initial_temperature_stddev: The standard deviation for the initial temperature of the substrate (default value: 0)
+  * initial_temperature_stddev: The standard deviation for the initial temperature of the substrate (default value: 0.0)
+  * beam_0_max_power_stddev: The standard deviation for the max power for beam 0 (if it exists) (default value: 0.0)
 * data_assimilation: (optional)
   * solver:
     * max_number_of_temp_vectors: Maximum number of temporary vectors for the GMRES solve (optional)
