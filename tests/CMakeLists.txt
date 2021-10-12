@@ -28,6 +28,7 @@ list(APPEND
      test_integration_2d
      test_material_deposition
      test_thermal_physics
+     test_ensemble_management
     )
 
 set(CUDA_UNIT_TESTS "")
