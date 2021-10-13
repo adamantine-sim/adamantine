@@ -246,6 +246,7 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   // Material property
   database.put("materials.property_format", "polynomial");
   database.put("materials.initial_temperature", initial_temperature);
+  database.put("materials.new_material_temperature", initial_temperature);
   database.put("materials.n_materials", 1);
   database.put("materials.material_0.solid.density", 1.);
   database.put("materials.material_0.liquid.density", 1.);

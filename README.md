@@ -89,6 +89,7 @@ The following options are available:
   * n\_materials: number of materials
   * property\_format: format of the material property: table or polynomial
   * initial\_temperature: initial temperature of all the materials (default value: 300)
+  * new\_material\_temperature: temperature of all the material that is being added during the process (default value: 300)
   * material\_X: property tree for the material with number X
   * material\_X.Y: property tree where Y is either liquid, powder, or solid
   (optional)
@@ -169,15 +170,15 @@ The following options are available:
   * log\_filename: The (full) filename of the log file that lists the timestamp for each frame from each camera.
   * first\_frame\_temporal\_offset: A uniform shift to the timestamps from all cameras to match the simulation time (default value: 0.0)
 * ensemble: (optional)
-  * ensemble_simulation: Whether to perform an ensemble of simulations (default value: false)
-  * ensemble_size: The number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
-  * initial_temperature_stddev: The standard deviation for the initial temperature of the substrate (default value: 0.0)
-  * beam_0_max_power_stddev: The standard deviation for the max power for beam 0 (if it exists) (default value: 0.0)
-* data_assimilation: (optional)
+  * ensemble\_simulation: Whether to perform an ensemble of simulations (default value: false)
+  * ensemble\_size: The number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
+  * new\_material\_temperature\_stddev: The standard deviation for the temperature of material added during the process (default value: 0.0)
+  * beam\_0\_max\_power\_stddev: The standard deviation for the max power for beam 0 (if it exists) (default value: 0.0)
+* data\_assimilation: (optional)
   * solver:
-    * max_number_of_temp_vectors: Maximum number of temporary vectors for the GMRES solve (optional)
-    * max_iterations: Maximum number of iterations for the GMRES solve (optional)
-    * convergence_tolerance: Convergence tolerance for the GMRES solve (optional)
+    * max\_number\_of\_temp\_vectors: Maximum number of temporary vectors for the GMRES solve (optional)
+    * max\_iterations: Maximum number of iterations for the GMRES solve (optional)
+    * convergence\_tolerance: Convergence tolerance for the GMRES solve (optional)
 * profiling (optional):
   * timer: output timing information (default value: false)
   * caliper: configuration string for Caliper (optional)

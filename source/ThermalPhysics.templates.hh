@@ -576,7 +576,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         std::vector<
             typename dealii::DoFHandler<dim>::active_cell_iterator> const
             &elements_to_activate,
-        double initial_temperature,
+        double new_material_temperature,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -630,7 +630,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   // Recompute the inverse of the mass matrix
   compute_inverse_mass_matrix();
 
-  initialize_dof_vector(initial_temperature, solution);
+  initialize_dof_vector(new_material_temperature, solution);
   std::vector<dealii::Vector<double>> transferred_data(
       triangulation.n_active_cells(), dealii::Vector<double>(dofs_per_cell));
   cell_data_trans.unpack(transferred_data);
@@ -659,7 +659,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
                 [&](double &val) {
                   if (val == std::numeric_limits<double>::infinity())
                   {
-                    val = initial_temperature;
+                    val = new_material_temperature;
                   }
                 });
 }
