@@ -889,7 +889,7 @@ run_ensemble(MPI_Comm const &communicator,
   CALI_CXX_MARK_FUNCTION;
 #endif
 
-  // Extract property tree children
+  // ------ Extract child property trees -----
   boost::property_tree::ptree geometry_database =
       database.get_child("geometry");
   boost::property_tree::ptree discretization_database =
@@ -903,6 +903,7 @@ run_ensemble(MPI_Comm const &communicator,
   boost::property_tree::ptree ensemble_database =
       database.get_child("ensemble");
 
+  // ------ Get finite element implementation parameters -----
   // PropertyTreeInput discretization.fe_degree
   unsigned int const fe_degree =
       discretization_database.get<unsigned int>("fe_degree");
@@ -913,6 +914,7 @@ run_ensemble(MPI_Comm const &communicator,
                  quadrature_type.begin(),
                  [](unsigned char c) { return std::tolower(c); });
 
+  // ------ Get means of ensemble parameters -----
   // PropertyTreeInput materials.initial_temperature
   double const initial_temperature_mean =
       database.get("materials.initial_temperature", 300.);
@@ -934,7 +936,7 @@ run_ensemble(MPI_Comm const &communicator,
     beam_0_max_power_mean = 0;
   }
 
-  // Set up the ensemble members
+  // ------ Set up the ensemble members -----
   // There might be a more efficient way to share some of these objects between
   // ensemble members. For now, we'll do the simpler approach of duplicating
   // everything.
@@ -1015,12 +1017,13 @@ run_ensemble(MPI_Comm const &communicator,
             thermal_physics_ensemble[member]->get_material_property(), member));
   }
 
+  // ------ Initialize time and time stepping counters -----
   unsigned int progress = 0;
   unsigned int cycle = 0;
   unsigned int n_time_step = 0;
   double time = 0.;
 
-  // Output the initial solution
+  // ----- Output the initial solution -----
   std::vector<dealii::AffineConstraints<double>> affine_constraints_ensemble;
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
@@ -1032,9 +1035,10 @@ run_ensemble(MPI_Comm const &communicator,
                 timers);
   }
 
-  // Increment the time step
+  // ----- Increment the time step -----
   ++n_time_step;
 
+  // ----- Get refinement and time stepping parameters -----
   // PropertyTreeInput refinement.verbose
   bool const verbose_refinement = refinement_database.get("verbose", false);
   // PropertyTreeInput refinement.time_steps_between_refinement
@@ -1049,6 +1053,7 @@ run_ensemble(MPI_Comm const &communicator,
   unsigned int const time_steps_output =
       post_processor_database.get("time_steps_between_output", 1);
 
+  // ----- Deposit material -----
   // For now assume that all ensemble members share the same geometry (they have
   // independent adamantine::Geometry objects, but all are constructed from
   // identical parameters), base new additions on the 0th ensemble member
@@ -1067,6 +1072,7 @@ run_ensemble(MPI_Comm const &communicator,
       material_deposition_boxes);
   timers[adamantine::add_material_search].stop();
 
+  // ----- Main time stepping loop -----
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_LOOP_BEGIN(main_loop_id, "main_loop");
 #endif
@@ -1080,6 +1086,7 @@ run_ensemble(MPI_Comm const &communicator,
       time_step = duration - time;
     unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
+    // ----- Refine the mesh if necessary -----
     // Refine the mesh after time_steps_refinement time steps or when time
     // is greater or equal than the next predicted time for refinement. This
     // is necessary when using an embedded method.
@@ -1101,14 +1108,13 @@ run_ensemble(MPI_Comm const &communicator,
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
 
+      // ----- Add material if necessary -----
       timers[adamantine::add_material_search].start();
       elements_to_activate = adamantine::get_elements_to_activate(
           thermal_physics_ensemble[0]->get_dof_handler(),
           material_deposition_boxes);
       timers[adamantine::add_material_search].stop();
     }
-
-    // Add material if necessary.
 
     // We use an epsilon to get the "expected" behavior when the deposition time
     // and the time match should match exactly but don't because of floating
@@ -1151,6 +1157,7 @@ run_ensemble(MPI_Comm const &communicator,
 
     timers[adamantine::add_material_activate].stop();
 
+    // ----- Evolve the solution by one time step -----
     // Time can be different than time + time_step if an embedded scheme is
     // used. Note that this is a problem when adding material because it
     // means that the amount of material that needs to be added is not
@@ -1173,11 +1180,12 @@ run_ensemble(MPI_Comm const &communicator,
 #endif
     timers[adamantine::evol_time].stop();
 
-    // Get the new time step (needs to be the same for all ensemble members,
-    // obtained from the 0th member)
+    // ----- Get the new time step size -----
+    // Needs to be the same for all ensemble members, obtained from the 0th
+    // member)
     time_step = thermal_physics_ensemble[0]->get_delta_t_guess();
 
-    // Output progress on screen
+    // ----- Output progress on screen -----
     if (rank == 0)
     {
       double adim_time = time / (duration / 10.);
@@ -1190,7 +1198,7 @@ run_ensemble(MPI_Comm const &communicator,
       }
     }
 
-    // Output the solution
+    // ----- Output the solution -----
     if (n_time_step % time_steps_output == 0)
     {
       for (unsigned int member = 0; member < ensemble_size; ++member)
