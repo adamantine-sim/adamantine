@@ -914,7 +914,7 @@ run_ensemble(MPI_Comm const &communicator,
                  [](unsigned char c) { return std::tolower(c); });
 
   // PropertyTreeInput materials.initial_temperature
-  double const initial_temperature =
+  double const initial_temperature_mean =
       database.get("materials.initial_temperature", 300.);
   // Get the nominal (mean) values of the ensemble parameters
   // PropertyTreeInput materials.new_material_temperature
@@ -940,6 +940,14 @@ run_ensemble(MPI_Comm const &communicator,
   // everything.
   // PropertyTreeInput ensemble.ensemble_size
   const unsigned int ensemble_size = ensemble_database.get("ensemble_size", 5);
+
+  // PropertyTreeInput ensemble.initial_temperature_stddev
+  const double initial_temperature_stddev =
+      ensemble_database.get("initial_temperature_stddev", 0.0);
+
+  std::vector<double> initial_temperature =
+      adamantine::fill_and_sync_random_vector(
+          ensemble_size, initial_temperature_mean, initial_temperature_stddev);
 
   // PropertyTreeInput ensemble.new_material_temperature_stddev
   const double new_material_temperature_stddev =
@@ -997,7 +1005,7 @@ run_ensemble(MPI_Comm const &communicator,
     thermal_physics_ensemble[member]->compute_inverse_mass_matrix();
 
     thermal_physics_ensemble[member]->initialize_dof_vector(
-        initial_temperature, solution_ensemble[member]);
+        initial_temperature[member], solution_ensemble[member]);
     thermal_physics_ensemble[member]->get_state_from_material_properties();
 
     post_processor_ensemble.push_back(

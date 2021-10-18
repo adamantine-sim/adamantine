@@ -172,6 +172,7 @@ The following options are available:
 * ensemble: (optional)
   * ensemble\_simulation: Whether to perform an ensemble of simulations (default value: false)
   * ensemble\_size: The number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
+  * initial\_temperature\_stddev: The standard deviation for the initial temperature of the material (default value: 0.0)
   * new\_material\_temperature\_stddev: The standard deviation for the temperature of material added during the process (default value: 0.0)
   * beam\_0\_max\_power\_stddev: The standard deviation for the max power for beam 0 (if it exists) (default value: 0.0)
 * data\_assimilation: (optional)
