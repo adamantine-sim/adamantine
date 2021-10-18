@@ -94,8 +94,8 @@ The following options are available:
   * material\_X.Y: property tree where Y is either liquid, powder, or solid
   (optional)
   * material\_X.Y.Z: Z is either density in kg/m^3, specific\_heat in J/(K\*kg),
-  thermal\_conductivity in W/(m\*K), emissivity, or convection\_heat\_transfer\_coef
-  in W/(m^2\*K) (optional)
+  thermal\_conductivity\_x, resp. y or z, in the direction x, resp. y or z (in 2D only x and z are used), in W/(m\*K), emissivity, 
+  or convection\_heat\_transfer\_coef in W/(m^2\*K) (optional)
   * material\_X.A: A is either solidus in kelvin, liquidus in kelvin, latent\_heat
   in J/kg, radiation\_temperature\_infty in kelvin, or convection\_temperature\_infty
   in kelvin (optional)
