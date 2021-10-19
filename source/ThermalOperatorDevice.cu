@@ -7,6 +7,7 @@
 
 #include <ThermalOperatorDevice.hh>
 #include <instantiation.hh>
+#include <types.hh>
 
 #include <deal.II/base/cuda_size.h>
 #include <deal.II/matrix_free/cuda_fe_evaluation.h>
@@ -66,8 +67,6 @@ __device__ void LocalMassMarixOperator<dim, fe_degree>::operator()(
     dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
     double const * /*src*/, double *dst) const
 {
-  unsigned int const pos = dealii::CUDAWrappers::local_q_point_id<dim, double>(
-      cell, gpu_data, n_dofs_1d, n_q_points);
   dealii::CUDAWrappers::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
       fe_eval(cell, gpu_data, shared_data);
   fe_eval.apply_for_each_quad_point(MassMatrixOperatorQuad<dim, fe_degree>());
@@ -79,8 +78,14 @@ template <int dim, int fe_degree>
 class ThermalOperatorQuad
 {
 public:
-  __device__ ThermalOperatorQuad(double inv_rho_cp, double thermal_conductivity)
-      : _inv_rho_cp(inv_rho_cp), _thermal_conductivity(thermal_conductivity)
+  __device__ ThermalOperatorQuad(double inv_rho_cp,
+                                 double thermal_conductivity_x,
+                                 double thermal_conductivity_y,
+                                 double thermal_conductivity_z)
+      : _inv_rho_cp(inv_rho_cp),
+        _thermal_conductivity_x(thermal_conductivity_x),
+        _thermal_conductivity_y(thermal_conductivity_y),
+        _thermal_conductivity_z(thermal_conductivity_z)
   {
   }
 
@@ -89,24 +94,35 @@ public:
 
 private:
   double _inv_rho_cp;
-  double _thermal_conductivity;
+  double _thermal_conductivity_x;
+  double _thermal_conductivity_y;
+  double _thermal_conductivity_z;
 };
 
 template <int dim, int fe_degree>
 __device__ void ThermalOperatorQuad<dim, fe_degree>::operator()(
     dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const
 {
+  auto th_conductivity_grad = fe_eval->get_gradient();
+  th_conductivity_grad[::adamantine::axis<dim>::x] *= _thermal_conductivity_x;
+  th_conductivity_grad[::adamantine::axis<dim>::z] *= _thermal_conductivity_z;
+  if constexpr (dim == 3)
+    th_conductivity_grad[::adamantine::axis<dim>::y] *= _thermal_conductivity_y;
 
-  fe_eval->submit_gradient(-_inv_rho_cp * _thermal_conductivity *
-                           fe_eval->get_gradient());
+  fe_eval->submit_gradient(-_inv_rho_cp * th_conductivity_grad);
 }
 
 template <int dim, int fe_degree>
 class LocalThermalOperatorDevice
 {
 public:
-  LocalThermalOperatorDevice(double *inv_rho_cp, double *thermal_conductivity)
-      : _inv_rho_cp(inv_rho_cp), _thermal_conductivity(thermal_conductivity)
+  LocalThermalOperatorDevice(double *inv_rho_cp, double *thermal_conductivity_x,
+                             double *thermal_conductivity_y,
+                             double *thermal_conductivity_z)
+      : _inv_rho_cp(inv_rho_cp),
+        _thermal_conductivity_x(thermal_conductivity_x),
+        _thermal_conductivity_y(thermal_conductivity_y),
+        _thermal_conductivity_z(thermal_conductivity_z)
   {
   }
 
@@ -125,7 +141,9 @@ public:
 
 private:
   double *_inv_rho_cp;
-  double *_thermal_conductivity;
+  double *_thermal_conductivity_x;
+  double *_thermal_conductivity_y;
+  double *_thermal_conductivity_z;
 };
 
 template <int dim, int fe_degree>
@@ -143,7 +161,8 @@ __device__ void LocalThermalOperatorDevice<dim, fe_degree>::operator()(
   fe_eval.read_dof_values(src);
   fe_eval.evaluate(false, true);
   fe_eval.apply_for_each_quad_point(ThermalOperatorQuad<dim, fe_degree>(
-      _inv_rho_cp[pos], _thermal_conductivity[pos]));
+      _inv_rho_cp[pos], _thermal_conductivity_x[pos],
+      _thermal_conductivity_y[pos], _thermal_conductivity_z[pos]));
   fe_eval.integrate(false, true);
   fe_eval.distribute_local_to_global(dst);
 }
@@ -247,7 +266,9 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::vmult_add(
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
   LocalThermalOperatorDevice<dim, fe_degree> local_operator(
-      _inv_rho_cp.get_values(), _thermal_conductivity.get_values());
+      _inv_rho_cp.get_values(), _thermal_conductivity_x.get_values(),
+      _thermal_conductivity_y.get_values(),
+      _thermal_conductivity_z.get_values());
   _matrix_free.cell_loop(local_operator, src, dst);
   _matrix_free.copy_constrained_values(src, dst);
 }
@@ -273,9 +294,14 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
   unsigned int const n_coefs =
       dealii::Utilities::pow(fe_degree + 1, dim) * _n_owned_cells;
   _inv_rho_cp.reinit(n_coefs);
-  _thermal_conductivity.reinit(n_coefs);
+  _thermal_conductivity_x.reinit(n_coefs);
+  _thermal_conductivity_z.reinit(n_coefs);
+  _thermal_conductivity_y.reinit(n_coefs);
   dealii::LA::ReadWriteVector<double> inv_rho_cp_host(n_coefs);
-  dealii::LA::ReadWriteVector<double> th_conductivity_host(n_coefs);
+  dealii::LA::ReadWriteVector<double> th_conductivity_host_x(n_coefs);
+  dealii::LA::ReadWriteVector<double> th_conductivity_host_y(dim == 3 ? n_coefs
+                                                                      : 0);
+  dealii::LA::ReadWriteVector<double> th_conductivity_host_z(n_coefs);
 
   unsigned int constexpr n_dofs_1d = fe_degree + 1;
   unsigned int constexpr n_q_points_per_cell =
@@ -299,23 +325,39 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
            _material_properties->get_cell_value(cell,
                                                 StateProperty::specific_heat));
       _inv_rho_cp_cells[cell] = cell_inv_rho_cp;
-      double const cell_th_conductivity = _material_properties->get_cell_value(
-          cell, StateProperty::thermal_conductivity);
+      double const cell_th_conductivity_x =
+          _material_properties->get_cell_value(
+              cell, StateProperty::thermal_conductivity_x);
+      double const cell_th_conductivity_z =
+          _material_properties->get_cell_value(
+              cell, StateProperty::thermal_conductivity_z);
+      [[maybe_unused]] double const cell_th_conductivity_y =
+          dim == 3 ? _material_properties->get_cell_value(
+                         cell, StateProperty::thermal_conductivity_y)
+                   : 0.;
       for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
       {
         unsigned int const pos =
             dealii::CUDAWrappers::local_q_point_id_host<dim, double>(
                 cell_id, gpu_data_host, n_q_points_per_cell, i);
         inv_rho_cp_host[pos] = cell_inv_rho_cp;
-        th_conductivity_host[pos] = cell_th_conductivity;
+        th_conductivity_host_x[pos] = cell_th_conductivity_x;
+        th_conductivity_host_z[pos] = cell_th_conductivity_z;
+        if constexpr (dim == 3)
+          th_conductivity_host_y[pos] = cell_th_conductivity_y;
       }
     }
   }
 
   // Copy the coefficient to the host
   _inv_rho_cp.import(inv_rho_cp_host, dealii::VectorOperation::insert);
-  _thermal_conductivity.import(th_conductivity_host,
-                               dealii::VectorOperation::insert);
+  _thermal_conductivity_x.import(th_conductivity_host_x,
+                                 dealii::VectorOperation::insert);
+  _thermal_conductivity_z.import(th_conductivity_host_z,
+                                 dealii::VectorOperation::insert);
+  if constexpr (dim == 3)
+    _thermal_conductivity_y.import(th_conductivity_host_y,
+                                   dealii::VectorOperation::insert);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>

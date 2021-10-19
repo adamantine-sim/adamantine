@@ -37,12 +37,13 @@ enum class MaterialState
  * Enum on the possible material properties that depend on the state of the
  * material.
  */
-// TODO add AnisotropicStateProperty
 enum class StateProperty
 {
   density,
   specific_heat,
-  thermal_conductivity,
+  thermal_conductivity_x,
+  thermal_conductivity_y,
+  thermal_conductivity_z,
   emissivity,
   radiation_heat_transfer_coef,
   convection_heat_transfer_coef,

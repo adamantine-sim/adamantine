@@ -46,7 +46,9 @@ materials
       density 7904; [kg/m^3] For now all the states needs to have the same
                     ; density.
       specific_heat 714; [J/kg K]
-      thermal_conductivity 31.4 ; [W/m K]
+      thermal_conductivity_x 31.4 ; [W/m K]
+      thermal_conductivity_y 31.4 ; [W/m K]
+      thermal_conductivity_z 31.4 ; [W/m K]
 
     }
 
@@ -54,15 +56,19 @@ materials
     {
       specific_heat 714; [J/kg K]
       density 7904; [kg/m^3]
-      thermal_conductivity 0.314 ; [W/m K]
+      thermal_conductivity_x 0.314 ; [W/m K]
+      thermal_conductivity_y 0.314 ; [W/m K]
+      thermal_conductivity_z 0.314 ; [W/m K]
     }
 
     liquid
     {
       specific_heat 847; [J/kg K]
       density 7904; [kg/m^3]
-      thermal_conductivity 37.3 ; [W/m k] Not all three states need to define
-                                ; the same properties or to exist
+      thermal_conductivity_x 37.3 ; [W/m k] 
+      thermal_conductivity_y 37.3 ; [W/m k] 
+      thermal_conductivity_z 37.3 ; [W/m k] 
+      ; Not all three states need to define the same properties or to exist
     }
 
     solidus 1675; [K]

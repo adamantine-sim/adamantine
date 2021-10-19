@@ -407,13 +407,22 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
       update_state_ratios(cell, q, temperature, state_ratios);
       auto inv_rho_cp = get_inv_rho_cp(cell, q, state_ratios, temperature);
       auto mat_id = _material_id(cell, q);
-      auto thermal_conductivity =
+      auto th_conductivity_grad = fe_eval.get_gradient(q);
+      th_conductivity_grad[axis<dim>::x] *=
           _material_properties->compute_material_property(
-              StateProperty::thermal_conductivity, mat_id.data(),
+              StateProperty::thermal_conductivity_x, mat_id.data(),
               state_ratios.data(), temperature);
-
-      fe_eval.submit_gradient(
-          -inv_rho_cp * thermal_conductivity * fe_eval.get_gradient(q), q);
+      th_conductivity_grad[axis<dim>::z] *=
+          _material_properties->compute_material_property(
+              StateProperty::thermal_conductivity_z, mat_id.data(),
+              state_ratios.data(), temperature);
+      // In 2D we only use x and z
+      if constexpr (dim == 3)
+        th_conductivity_grad[axis<dim>::y] *=
+            _material_properties->compute_material_property(
+                StateProperty::thermal_conductivity_y, mat_id.data(),
+                state_ratios.data(), temperature);
+      fe_eval.submit_gradient(-inv_rho_cp * th_conductivity_grad, q);
 
       // Compute source term
       dealii::Point<dim, dealii::VectorizedArray<double>> const &q_point =

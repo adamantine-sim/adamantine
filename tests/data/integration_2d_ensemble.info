@@ -36,23 +36,26 @@ materials
       density 7541 ; [kg/m^3] For now all the states needs to have the same
                     ; density. The value can be constant or an equation
       specific_heat 600 ; [J/kg K]  The value can be constant or an equation
-      thermal_conductivity 26.6 ; [W/m K] The value can be constant or an
-                                ; equation like 10*exp(T)*sin(2.*T)
+      thermal_conductivity_x 26.6 ; [W/m K]
+      thermal_conductivity_z 26.6 ; [W/m K]
+      ; The value can be constant or an equation like 10*exp(T)*sin(2.*T)
     }
 
     powder
     {
       specific_heat 600 ; [J/kg K]
       density 7541 ; [kg/m^3]
-      thermal_conductivity 0.266 ; [W/m K]
+      thermal_conductivity_x 0.266 ; [W/m K]
+      thermal_conductivity_z 0.266 ; [W/m K]
     }
 
     liquid
     {
       specific_heat 775 ; [J/kg K]
       density 7541 ; [kg/m^3]
-      thermal_conductivity 29.0 ; [W/m k] Not all three states need to define
-                                ; the same properties or to exist
+      thermal_conductivity_x 29.0 ; [W/m k]
+      thermal_conductivity_z 29.0 ; [W/m k]
+      ; Not all three states need to define the same properties or to exist
     }
 
     solidus 1528 ; [K]
