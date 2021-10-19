@@ -10,7 +10,10 @@
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/lac/linear_operator_tools.h>
 
+// libc++ does not support parallel std library
+#ifdef __GLIBCXX__
 #include <execution>
+#endif
 
 namespace adamantine
 {
@@ -114,9 +117,12 @@ DataAssimilator::apply_kalman_gain(
   // Apply the Kalman gain to the perturbed innovation for the ensemble members
   // in parallel
   std::transform(
-      std::execution::par, perturbed_innovation.begin(),
-      perturbed_innovation.end(), output.begin(),
-      [&](dealii::Vector<double> entry) {
+#ifdef __GLIBCXX__
+      std::execution::par,
+#endif
+      perturbed_innovation.begin(), perturbed_innovation.end(), output.begin(),
+      [&](dealii::Vector<double> entry)
+      {
         dealii::SolverGMRES<dealii::Vector<double>> HPH_plus_R_inv_solver(
             solver_control, additional_data);
 
