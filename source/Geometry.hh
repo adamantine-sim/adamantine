@@ -34,7 +34,7 @@ public:
 
 private:
   /**
-   * Shared pointer to the underlying Triangulation.
+   * Triangulation of the domain.
    */
   dealii::parallel::distributed::Triangulation<dim> _triangulation;
 
