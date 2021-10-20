@@ -8,11 +8,13 @@
 #ifndef ADAMANTINE_HH
 #define ADAMANTINE_HH
 
+#include <DataAssimilator.hh>
 #include <Geometry.hh>
 #include <PostProcessor.hh>
 #include <ThermalPhysics.hh>
 #include <Timer.hh>
 #include <ensemble_management.hh>
+#include <experimental_data.hh>
 #include <material_deposition.hh>
 #include <utils.hh>
 
@@ -890,6 +892,7 @@ run_ensemble(MPI_Comm const &communicator,
 #endif
 
   // ------ Extract child property trees -----
+  // Mandatory subtrees
   boost::property_tree::ptree geometry_database =
       database.get_child("geometry");
   boost::property_tree::ptree discretization_database =
@@ -902,6 +905,13 @@ run_ensemble(MPI_Comm const &communicator,
       database.get_child("refinement");
   boost::property_tree::ptree ensemble_database =
       database.get_child("ensemble");
+
+  // Optional subtrees
+  boost::optional<const boost::property_tree::ptree &>
+      experiment_optional_database = database.get_child_optional("experiment");
+  boost::optional<const boost::property_tree::ptree &>
+      data_assimilation_optional_database =
+          database.get_child_optional("data_assimilation");
 
   // ------ Get finite element implementation parameters -----
   // PropertyTreeInput discretization.fe_degree
@@ -1017,7 +1027,54 @@ run_ensemble(MPI_Comm const &communicator,
             thermal_physics_ensemble[member]->get_material_property(), member));
   }
 
-  // ------ Initialize time and time stepping counters -----
+  // ----- Read the experimental data -----
+  unsigned int experimental_frame_index = 0;
+  std::vector<std::vector<double>> frame_time_stamps;
+  std::vector<adamantine::PointsValues<dim>> points_values;
+
+  dealii::LA::distributed::Vector<double, MemorySpaceType> temperature_dummy(
+      solution_ensemble[0]);
+
+  if (experiment_optional_database)
+  {
+    auto experiment_database = experiment_optional_database.get();
+
+    // PropertyTreeInput experiment.read_in_experimental_data
+    bool const read_in_experimental_data =
+        experiment_database.get("read_in_experimental_data", false);
+
+    if (read_in_experimental_data)
+    {
+      frame_time_stamps =
+          adamantine::read_frame_timestamps(experiment_database);
+
+      // Get a vector of experimental data where each element contains all data
+      // from all cameras per frame. For now data from all cameras are
+      // intermixed so the frames needs to be synced.
+      points_values = adamantine::read_experimental_data_point_cloud<dim>(
+          communicator, database);
+
+      // PropertyTreeInput experiment.first_frame
+      experimental_frame_index = experiment_database.get("first_frame", 0);
+    }
+  }
+
+  // ----- Initialize the data assimilation object -----
+  boost::property_tree::ptree data_assimilation_solver_database;
+  bool assimilate_data = false;
+  if (data_assimilation_optional_database)
+  {
+    data_assimilation_solver_database =
+        data_assimilation_optional_database.get().get_child("solver");
+
+    if (data_assimilation_optional_database.get().get("assimilate_data", false))
+      assimilate_data = true;
+  }
+
+  adamantine::DataAssimilator data_assimilator(
+      data_assimilation_solver_database);
+
+  // ----- Initialize time and time stepping counters -----
   unsigned int progress = 0;
   unsigned int cycle = 0;
   unsigned int n_time_step = 0;
@@ -1054,17 +1111,18 @@ run_ensemble(MPI_Comm const &communicator,
       post_processor_database.get("time_steps_between_output", 1);
 
   // ----- Deposit material -----
-  // For now assume that all ensemble members share the same geometry (they have
-  // independent adamantine::Geometry objects, but all are constructed from
-  // identical parameters), base new additions on the 0th ensemble member
+  // For now assume that all ensemble members share the same geometry (they
+  // have independent adamantine::Geometry objects, but all are constructed
+  // from identical parameters), base new additions on the 0th ensemble member
   auto [material_deposition_boxes, deposition_times] =
       adamantine::create_material_deposition_boxes<dim>(
           geometry_database, heat_sources_ensemble[0]);
 
   // Unless we use an embedded method, we know in advance the time step.
 
-  // Thus we can get for each time step, the list of elements that we will need
-  // to activate. This list will be invalidated every time we refine the mesh.
+  // Thus we can get for each time step, the list of elements that we will
+  // need to activate. This list will be invalidated every time we refine the
+  // mesh.
   timers[adamantine::add_material_search].start();
 
   auto elements_to_activate = adamantine::get_elements_to_activate(
@@ -1116,9 +1174,9 @@ run_ensemble(MPI_Comm const &communicator,
       timers[adamantine::add_material_search].stop();
     }
 
-    // We use an epsilon to get the "expected" behavior when the deposition time
-    // and the time match should match exactly but don't because of floating
-    // point accuracy.
+    // We use an epsilon to get the "expected" behavior when the deposition
+    // time and the time match should match exactly but don't because of
+    // floating point accuracy.
     timers[adamantine::add_material_activate].start();
 
     double const eps = time_step / 1e12;
@@ -1162,6 +1220,7 @@ run_ensemble(MPI_Comm const &communicator,
     // used. Note that this is a problem when adding material because it
     // means that the amount of material that needs to be added is not
     // known.
+    double const old_time = time;
 #if ADAMANTINE_DEBUG
     double const old_time = time;
     bool const adding_material =
@@ -1184,6 +1243,56 @@ run_ensemble(MPI_Comm const &communicator,
     // Needs to be the same for all ensemble members, obtained from the 0th
     // member)
     time_step = thermal_physics_ensemble[0]->get_delta_t_guess();
+
+    // ----- Perform data assimilation -----
+    if (assimilate_data)
+    {
+      // Currently assume that all frames are synced so that the 0th camera
+      // frame time is the relevant time
+      double frame_time = frame_time_stamps[0][experimental_frame_index];
+      if (frame_time <= time)
+      {
+        adamantine::ASSERT(frame_time > old_time,
+                           "Unexpectedly missed a data assimilation frame.");
+
+        auto indices_and_offsets = adamantine::set_with_experimental_data(
+            points_values[experimental_frame_index],
+            thermal_physics_ensemble[0]->get_dof_handler(), temperature_dummy);
+
+        data_assimilator.update_dof_mapping<dim>(
+            thermal_physics_ensemble[0]->get_dof_handler(),
+            indices_and_offsets);
+
+        unsigned int experimental_data_size =
+            points_values[experimental_frame_index].values.size();
+
+        // Create the R matrix (the observation covariance matrix)
+        // PropertyTreeInput experiment.estimated_uncertainty
+        double variance_entries =
+            post_processor_database.get("estimated_uncertainty", 0.0);
+        variance_entries = variance_entries * variance_entries;
+
+        dealii::SparsityPattern pattern(experimental_data_size,
+                                        experimental_data_size, 1);
+        for (unsigned int i = 0; i < experimental_data_size; ++i)
+        {
+          pattern.add(i, i);
+        }
+        pattern.compress();
+
+        dealii::SparseMatrix<double> R(pattern);
+        for (unsigned int i = 0; i < experimental_data_size; ++i)
+        {
+          R.add(i, i, variance_entries);
+        }
+
+        data_assimilator.update_ensemble(
+            solution_ensemble, points_values[experimental_frame_index].values,
+            R);
+
+        experimental_frame_index++;
+      }
+    }
 
     // ----- Output progress on screen -----
     if (rank == 0)
