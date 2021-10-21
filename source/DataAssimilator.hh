@@ -61,6 +61,7 @@ public:
    * H is the observation matrix
    */
   void update_ensemble(
+      MPI_Comm const &communicator,
       std::vector<dealii::LA::distributed::Vector<double>> &sim_data,
       std::vector<double> const &expt_data, dealii::SparseMatrix<double> &R);
 

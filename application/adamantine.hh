@@ -891,6 +891,8 @@ run_ensemble(MPI_Comm const &communicator,
   CALI_CXX_MARK_FUNCTION;
 #endif
 
+  unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
+
   // ------ Extract child property trees -----
   // Mandatory subtrees
   boost::property_tree::ptree geometry_database =
@@ -1173,7 +1175,6 @@ run_ensemble(MPI_Comm const &communicator,
 #endif
     if ((time + time_step) > duration)
       time_step = duration - time;
-    unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
     // ----- Refine the mesh if necessary -----
     // Refine the mesh after time_steps_refinement time steps or when time
@@ -1329,8 +1330,8 @@ run_ensemble(MPI_Comm const &communicator,
         }
 
         data_assimilator.update_ensemble(
-            solution_ensemble, points_values[experimental_frame_index].values,
-            R);
+            communicator, solution_ensemble,
+            points_values[experimental_frame_index].values, R);
 
         if (rank == 0)
           std::cout << "Done." << std::endl;

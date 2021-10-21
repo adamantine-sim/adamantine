@@ -40,9 +40,12 @@ DataAssimilator::DataAssimilator(boost::property_tree::ptree const &database)
 }
 
 void DataAssimilator::update_ensemble(
+    MPI_Comm const &communicator,
     std::vector<dealii::LA::distributed::Vector<double>> &sim_data,
     std::vector<double> const &expt_data, dealii::SparseMatrix<double> &R)
 {
+  unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
+
   // Set some constants
   _num_ensemble_members = sim_data.size();
   if (sim_data.size() > 0)
