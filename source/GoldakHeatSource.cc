@@ -9,8 +9,6 @@
 #include <instantiation.hh>
 #include <types.hh>
 
-#include <iostream>
-
 namespace adamantine
 {
 

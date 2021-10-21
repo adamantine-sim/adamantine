@@ -1264,7 +1264,7 @@ run_ensemble(MPI_Comm const &communicator,
 
     // ----- Get the new time step size -----
     // Needs to be the same for all ensemble members, obtained from the 0th
-    // member)
+    // member
     time_step = thermal_physics_ensemble[0]->get_delta_t_guess();
 
     // ----- Perform data assimilation -----
