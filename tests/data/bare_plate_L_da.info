@@ -33,9 +33,9 @@ geometry
   length 5.0e-3 ; [m]
   height 0.5e-3 ; [m] In 3D, the third parameters is width
   width  5.0e-3
-  length_divisions 20 ; Number of cell layers in the length direction
+  length_divisions 10 ; Number of cell layers in the length direction
   height_divisions 1 ; Number of cell layers in the height direction
-  width_divisions  20
+  width_divisions  10
 }
 
 boundary
