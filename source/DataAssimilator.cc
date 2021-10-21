@@ -57,7 +57,9 @@ void DataAssimilator::update_ensemble(
                            "Error: Unexpected experiment vector size.");
 
   // Get the perturbed innovation, ( y+u - Hx )
-  std::cout << "Getting the perturbed innovation..." << std::endl;
+  if (rank == 0)
+    std::cout << "Getting the perturbed innovation..." << std::endl;
+
   std::vector<dealii::Vector<double>> perturbed_innovation(
       _num_ensemble_members);
   for (unsigned int member = 0; member < _num_ensemble_members; ++member)
@@ -71,14 +73,17 @@ void DataAssimilator::update_ensemble(
     }
   }
 
-  std::cout << "Applying the Kalman gain..." << std::endl;
+  if (rank == 0)
+    std::cout << "Applying the Kalman gain..." << std::endl;
 
   // Apply the Kalman filter to the perturbed innovation, K ( y+u - Hx )
   std::vector<dealii::LA::distributed::Vector<double>> forecast_shift =
       apply_kalman_gain(sim_data, R, perturbed_innovation);
 
   // Update the ensemble, x = x + K ( y+u - Hx )
-  std::cout << "Updating the ensemble members..." << std::endl;
+  if (rank == 0)
+    std::cout << "Updating the ensemble members..." << std::endl;
+
   for (unsigned int member = 0; member < _num_ensemble_members; ++member)
   {
     sim_data[member] += forecast_shift[member];
@@ -290,7 +295,7 @@ dealii::FullMatrix<double> DataAssimilator::calc_sample_covariance_dense(
     }
   }
 
-  // This can be a problem for even moderately sized meshes
+  // FIXME This can be a problem for even moderately sized meshes
   dealii::FullMatrix<double> cov(vec_size);
 
   anomaly.mTmult(cov, anomaly);

@@ -1045,7 +1045,9 @@ run_ensemble(MPI_Comm const &communicator,
 
     if (read_in_experimental_data)
     {
-      std::cout << "Reading the experimental log file..." << std::endl;
+      if (rank == 0)
+        std::cout << "Reading the experimental log file..." << std::endl;
+
       frame_time_stamps =
           adamantine::read_frame_timestamps(experiment_database);
 
@@ -1058,14 +1060,17 @@ run_ensemble(MPI_Comm const &communicator,
           "Error: Experimental data parsing is activated, but "
           "the log shows zero data frames.");
 
-      std::cout << "Done. Log entries found for " << frame_time_stamps.size()
-                << " camera(s), with " << frame_time_stamps[0].size()
-                << " frame(s)." << std::endl;
+      if (rank == 0)
+        std::cout << "Done. Log entries found for " << frame_time_stamps.size()
+                  << " camera(s), with " << frame_time_stamps[0].size()
+                  << " frame(s)." << std::endl;
 
-      // Get a vector of experimental data where each element contains all data
-      // from all cameras per frame. For now data from all cameras are
+      // Get a vector of experimental data where each element contains all
+      // data from all cameras per frame. For now data from all cameras are
       // intermixed so the frames needs to be synced.
-      std::cout << "Reading the experimental data..." << std::endl;
+      if (rank == 0)
+        std::cout << "Reading the experimental data..." << std::endl;
+
       points_values = adamantine::read_experimental_data_point_cloud<dim>(
           communicator, experiment_database);
 
@@ -1073,9 +1078,9 @@ run_ensemble(MPI_Comm const &communicator,
                                    points_values.size(),
                                "The number of frames in the log file and the "
                                "data files must match.");
-
-      std::cout << "Done. Data files found for " << points_values.size()
-                << " frame(s)." << std::endl;
+      if (rank == 0)
+        std::cout << "Done. Data files found for " << points_values.size()
+                  << " frame(s)." << std::endl;
 
       // PropertyTreeInput experiment.first_frame
       experimental_frame_index = experiment_database.get("first_frame", 0);
@@ -1154,7 +1159,9 @@ run_ensemble(MPI_Comm const &communicator,
   timers[adamantine::add_material_search].stop();
 
   // ----- Main time stepping loop -----
-  std::cout << "Starting the main time stepping loop..." << std::endl;
+  if (rank == 0)
+    std::cout << "Starting the main time stepping loop..." << std::endl;
+
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_LOOP_BEGIN(main_loop_id, "main_loop");
 #endif
@@ -1286,9 +1293,9 @@ run_ensemble(MPI_Comm const &communicator,
         adamantine::ASSERT_THROW(
             frame_time > old_time || n_time_step == 1,
             "Unexpectedly missed a data assimilation frame.");
-
-        std::cout << "Performing data assimilation at time " << time << "..."
-                  << std::endl;
+        if (rank == 0)
+          std::cout << "Performing data assimilation at time " << time << "..."
+                    << std::endl;
 
         auto indices_and_offsets = adamantine::set_with_experimental_data(
             points_values[experimental_frame_index],
@@ -1325,7 +1332,8 @@ run_ensemble(MPI_Comm const &communicator,
             solution_ensemble, points_values[experimental_frame_index].values,
             R);
 
-        std::cout << "Done." << std::endl;
+        if (rank == 0)
+          std::cout << "Done." << std::endl;
 
         experimental_frame_index++;
       }
