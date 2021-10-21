@@ -170,7 +170,7 @@ The following options are available:
   * data\_columns: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D)
   * log\_filename: The (full) filename of the log file that lists the timestamp for each frame from each camera.
   * first\_frame\_temporal\_offset: A uniform shift to the timestamps from all cameras to match the simulation time (default value: 0.0)
-  * estimated\_uncertainty: The estimate of the uncertainty in the the experimental data points as given by a standard deviation (under the simplifying assumption that the error is normally distributed and independent for each data point) (default value: 0.0).
+  * estimated\_uncertainty: The estimate of the uncertainty in the experimental data points as given by a standard deviation (under the simplifying assumption that the error is normally distributed and independent for each data point) (default value: 0.0).
 * ensemble: (optional)
   * ensemble\_simulation: Whether to perform an ensemble of simulations (default value: false)
   * ensemble\_size: The number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
