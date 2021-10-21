@@ -127,8 +127,7 @@ DataAssimilator::apply_kalman_gain(
       std::execution::par,
 #endif
       perturbed_innovation.begin(), perturbed_innovation.end(), output.begin(),
-      [&](dealii::Vector<double> entry)
-      {
+      [&](dealii::Vector<double> entry) {
         dealii::SolverGMRES<dealii::Vector<double>> HPH_plus_R_inv_solver(
             solver_control, additional_data);
 
