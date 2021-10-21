@@ -1045,14 +1045,37 @@ run_ensemble(MPI_Comm const &communicator,
 
     if (read_in_experimental_data)
     {
+      std::cout << "Reading the experimental log file..." << std::endl;
       frame_time_stamps =
           adamantine::read_frame_timestamps(experiment_database);
+
+      adamantine::ASSERT_THROW(
+          frame_time_stamps.size() > 0,
+          "Error: Experimental data parsing is activated, but "
+          "the log shows zero cameras.");
+      adamantine::ASSERT_THROW(
+          frame_time_stamps[0].size() > 0,
+          "Error: Experimental data parsing is activated, but "
+          "the log shows zero data frames.");
+
+      std::cout << "Done. Log entries found for " << frame_time_stamps.size()
+                << " camera(s), with " << frame_time_stamps[0].size()
+                << " frame(s)." << std::endl;
 
       // Get a vector of experimental data where each element contains all data
       // from all cameras per frame. For now data from all cameras are
       // intermixed so the frames needs to be synced.
+      std::cout << "Reading the experimental data..." << std::endl;
       points_values = adamantine::read_experimental_data_point_cloud<dim>(
-          communicator, database);
+          communicator, experiment_database);
+
+      adamantine::ASSERT_THROW(frame_time_stamps[0].size() ==
+                                   points_values.size(),
+                               "The number of frames in the log file and the "
+                               "data files must match.");
+
+      std::cout << "Done. Data files found for " << points_values.size()
+                << " frame(s)." << std::endl;
 
       // PropertyTreeInput experiment.first_frame
       experimental_frame_index = experiment_database.get("first_frame", 0);
@@ -1131,6 +1154,7 @@ run_ensemble(MPI_Comm const &communicator,
   timers[adamantine::add_material_search].stop();
 
   // ----- Main time stepping loop -----
+  std::cout << "Starting the main time stepping loop..." << std::endl;
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_LOOP_BEGIN(main_loop_id, "main_loop");
 #endif
@@ -1222,7 +1246,6 @@ run_ensemble(MPI_Comm const &communicator,
     // known.
     double const old_time = time;
 #if ADAMANTINE_DEBUG
-    double const old_time = time;
     bool const adding_material =
         (activation_start == activation_end) ? false : true;
 #endif
@@ -1249,11 +1272,23 @@ run_ensemble(MPI_Comm const &communicator,
     {
       // Currently assume that all frames are synced so that the 0th camera
       // frame time is the relevant time
-      double frame_time = frame_time_stamps[0][experimental_frame_index];
+      double frame_time;
+      if (experimental_frame_index < frame_time_stamps[0].size())
+      {
+        frame_time = frame_time_stamps[0][experimental_frame_index];
+      }
+      else
+      {
+        frame_time = std::numeric_limits<double>::max();
+      }
       if (frame_time <= time)
       {
-        adamantine::ASSERT(frame_time > old_time,
-                           "Unexpectedly missed a data assimilation frame.");
+        adamantine::ASSERT_THROW(
+            frame_time > old_time || n_time_step == 1,
+            "Unexpectedly missed a data assimilation frame.");
+
+        std::cout << "Performing data assimilation at time " << time << "..."
+                  << std::endl;
 
         auto indices_and_offsets = adamantine::set_with_experimental_data(
             points_values[experimental_frame_index],
@@ -1268,8 +1303,8 @@ run_ensemble(MPI_Comm const &communicator,
 
         // Create the R matrix (the observation covariance matrix)
         // PropertyTreeInput experiment.estimated_uncertainty
-        double variance_entries =
-            post_processor_database.get("estimated_uncertainty", 0.0);
+        double variance_entries = experiment_optional_database.get().get(
+            "estimated_uncertainty", 0.0);
         variance_entries = variance_entries * variance_entries;
 
         dealii::SparsityPattern pattern(experimental_data_size,
@@ -1289,6 +1324,8 @@ run_ensemble(MPI_Comm const &communicator,
         data_assimilator.update_ensemble(
             solution_ensemble, points_values[experimental_frame_index].values,
             R);
+
+        std::cout << "Done." << std::endl;
 
         experimental_frame_index++;
       }

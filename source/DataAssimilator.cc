@@ -6,6 +6,7 @@
  */
 
 #include <DataAssimilator.hh>
+#include <utils.hh>
 
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/lac/linear_operator_tools.h>
@@ -52,9 +53,11 @@ void DataAssimilator::update_ensemble(
   {
     _sim_size = 0;
   }
-  _expt_size = expt_data.size();
+  adamantine::ASSERT_THROW(_expt_size == expt_data.size(),
+                           "Error: Unexpected experiment vector size.");
 
   // Get the perturbed innovation, ( y+u - Hx )
+  std::cout << "Getting the perturbed innovation..." << std::endl;
   std::vector<dealii::Vector<double>> perturbed_innovation(
       _num_ensemble_members);
   for (unsigned int member = 0; member < _num_ensemble_members; ++member)
@@ -68,11 +71,14 @@ void DataAssimilator::update_ensemble(
     }
   }
 
+  std::cout << "Applying the Kalman gain..." << std::endl;
+
   // Apply the Kalman filter to the perturbed innovation, K ( y+u - Hx )
   std::vector<dealii::LA::distributed::Vector<double>> forecast_shift =
       apply_kalman_gain(sim_data, R, perturbed_innovation);
 
   // Update the ensemble, x = x + K ( y+u - Hx )
+  std::cout << "Updating the ensemble members..." << std::endl;
   for (unsigned int member = 0; member < _num_ensemble_members; ++member)
   {
     sim_data[member] += forecast_shift[member];
@@ -92,8 +98,8 @@ DataAssimilator::apply_kalman_gain(
    * a direct solve of (HPH^T+R)^-1 once and then applying to the perturbed
    * innovation from each ensemble member might be more efficient.
    */
-
   dealii::SparsityPattern pattern_H(_expt_size, _sim_size, _expt_size);
+
   dealii::SparseMatrix<double> H = calc_H(pattern_H);
 
   dealii::FullMatrix<double> P = calc_sample_covariance_dense(vec_ensemble);
@@ -181,6 +187,8 @@ void DataAssimilator::update_dof_mapping(
     dealii::DoFHandler<dim> const &dof_handler,
     std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets)
 {
+  _expt_size = indices_and_offsets.first.size();
+
   std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
   dealii::DoFTools::map_dofs_to_support_points(
       dealii::StaticMappingQ1<dim>::mapping, dof_handler, indices_points);
@@ -283,7 +291,9 @@ dealii::FullMatrix<double> DataAssimilator::calc_sample_covariance_dense(
     }
   }
 
+  // This can be a problem for even moderately sized meshes
   dealii::FullMatrix<double> cov(vec_size);
+
   anomaly.mTmult(cov, anomaly);
 
   return cov;
