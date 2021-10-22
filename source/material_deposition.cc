@@ -107,22 +107,15 @@ read_material_deposition(boost::property_tree::ptree const &geometry_database)
                    "Time stamp not increasing.");
 
     // Build the dealii::BoundingBox
-    if constexpr (dim == 2)
-      material_deposition_boxes.emplace_back(
-          std::make_pair(dealii::Point<dim>(center[0] - 0.5 * box_size[0],
-                                            center[1] - 0.5 * box_size[1]),
-                         dealii::Point<dim>(center[0] + 0.5 * box_size[0],
-                                            center[1] + 0.5 * box_size[1])));
-    else
+    dealii::Point<dim> bounding_pt_a;
+    dealii::Point<dim> bounding_pt_b;
+    for (int d = 0; d < dim; ++d)
     {
-      material_deposition_boxes.emplace_back(
-          std::make_pair(dealii::Point<dim>(center[0] - 0.5 * box_size[0],
-                                            center[1] - 0.5 * box_size[1],
-                                            center[2] - 0.5 * box_size[2]),
-                         dealii::Point<dim>(center[0] + 0.5 * box_size[0],
-                                            center[1] + 0.5 * box_size[1],
-                                            center[2] + 0.5 * box_size[2])));
+      bounding_pt_a[d] = center[d] - 0.5 * box_size[d];
+      bounding_pt_b[d] = center[d] + 0.5 * box_size[d];
     }
+    material_deposition_boxes.emplace_back(
+        std::make_pair(bounding_pt_a, bounding_pt_b));
   }
   file.close();
 
@@ -172,32 +165,11 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
           segment_length / (segment.end_time - segment_start_time);
 
       // Set the segment orientation
-      bool segment_along_x;
-      if constexpr (dim == 2)
-        segment_along_x = true;
-      else
-      {
-        double distance_x =
-            std::abs(segment_end_point(0) - segment_start_point(0));
-        double distance_y =
-            std::abs(segment_end_point(1) - segment_start_point(1));
-
-        ASSERT_THROW(!((distance_x > eps) && (distance_y > eps)),
-                     "Error: For automated material deposition, scan path "
-                     "segments must align with the coordinate system. Starting "
-                     "point: (" +
-                         std::to_string(segment_start_point(0)) + ", " +
-                         std::to_string(segment_start_point(1)) +
-                         "), Ending point: (" +
-                         std::to_string(segment_end_point(0)) + ", " +
-                         std::to_string(segment_end_point(1)) + ")");
-
-        if (distance_x > eps)
-          segment_along_x = true;
-        else
-          segment_along_x = false;
-      }
-
+      double const cos =
+          (segment_end_point[0] - segment_start_point[0]) / segment_length;
+      double const sin =
+          (segment_end_point[1] - segment_start_point[1]) / segment_length;
+      bool segment_along_x = std::abs(cos) > std::abs(sin) ? true : false;
       double next_box_length = deposition_length;
 
       while (in_segment)
@@ -205,49 +177,43 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
         double distance_to_box_center = center.distance(segment_start_point);
         double time_to_box_center = distance_to_box_center / segment_velocity;
 
-        std::vector<double> box_size(3);
+        std::vector<double> box_size(dim);
+        box_size.at(axis<dim>::z) = deposition_height;
 
         if (dim == 2)
         {
-          box_size.at(1) = deposition_height;
-          box_size.at(0) = next_box_length;
-
-          dealii::BoundingBox<dim> box(std::make_pair(
-              dealii::Point<dim>(center[0] - 0.5 * box_size[0], center[1]),
-              dealii::Point<dim>(center[0] + 0.5 * box_size[0],
-                                 center[1] + box_size[1])));
-
-          boxes_and_times.first.push_back(box);
-
-          boxes_and_times.second.push_back(std::max(
-              segment_start_time + time_to_box_center - lead_time, eps_time));
+          box_size.at(axis<dim>::x) = next_box_length;
         }
         else
         {
-          box_size.at(2) = deposition_height;
-
           if (segment_along_x)
           {
-            box_size.at(1) = deposition_width;
-            box_size.at(0) = next_box_length;
+            box_size.at(axis<dim>::x) = std::abs(cos) * next_box_length;
+            box_size.at(axis<dim>::y) =
+                deposition_width + std::abs(sin) * next_box_length;
           }
           else
           {
-            box_size.at(1) = next_box_length;
-            box_size.at(0) = deposition_width;
+            box_size.at(axis<dim>::x) =
+                deposition_width + std::abs(cos) * next_box_length;
+            box_size.at(axis<dim>::y) = std::abs(sin) * next_box_length;
           }
-
-          dealii::BoundingBox<dim> box(std::make_pair(
-              dealii::Point<dim>(center[0] - 0.5 * box_size[0],
-                                 center[1] - 0.5 * box_size[1], center[2]),
-              dealii::Point<dim>(center[0] + 0.5 * box_size[0],
-                                 center[1] + 0.5 * box_size[1],
-                                 center[2] + box_size[2])));
-
-          boxes_and_times.first.push_back(box);
-          boxes_and_times.second.push_back(std::max(
-              segment_start_time + time_to_box_center - lead_time, eps_time));
         }
+
+        dealii::Point<dim> bounding_pt_a;
+        dealii::Point<dim> bounding_pt_b;
+        for (int d = 0; d < dim - 1; ++d)
+        {
+          bounding_pt_a[d] = center[d] - 0.5 * box_size[d];
+          bounding_pt_b[d] = center[d] + 0.5 * box_size[d];
+        }
+        bounding_pt_a[dim - 1] = center[dim - 1];
+        bounding_pt_b[dim - 1] = center[dim - 1] + box_size[dim - 1];
+
+        boxes_and_times.first.emplace_back(
+            std::make_pair(bounding_pt_a, bounding_pt_b));
+        boxes_and_times.second.push_back(std::max(
+            segment_start_time + time_to_box_center - lead_time, eps_time));
 
         // Get the next box center
         if (distance_to_box_center + eps > segment_length)
@@ -256,10 +222,9 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
         }
         else
         {
-          // Check to see if the next box is at the end of the segment and needs
-          // to have a modified length
+          // Check to see if the next box is at the end of the segment and
+          // needs to have a modified length
           double center_increment = deposition_length;
-          next_box_length = deposition_length;
           if (distance_to_box_center + deposition_length > segment_length)
           {
             center_increment = deposition_length / 2.0 +
@@ -267,22 +232,8 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
             next_box_length = segment_length - distance_to_box_center;
           }
 
-          if (segment_along_x)
-          {
-            double increment_sign = 1.;
-            if (segment_end_point[0] < segment_start_point[0])
-              increment_sign = -1.;
-
-            center(0) = center(0) + increment_sign * center_increment;
-          }
-          else
-          {
-            double increment_sign = 1.;
-            if (segment_end_point[1] < segment_start_point[1])
-              increment_sign = -1.;
-
-            center(1) = center(1) + increment_sign * center_increment;
-          }
+          center[0] += cos * center_increment;
+          center[1] += sin * center_increment;
         }
       }
     }
