@@ -63,11 +63,12 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
-      new adamantine::MaterialProperty<2>(
-          communicator, geometry.get_triangulation(), mat_prop_database));
+  std::shared_ptr<adamantine::MaterialProperty<2, dealii::MemorySpace::Host>>
+      mat_properties(
+          new adamantine::MaterialProperty<2, dealii::MemorySpace::Host>(
+              communicator, geometry.get_triangulation(), mat_prop_database));
 
-  // Create the heat souces
+  // Create the heat sources
   boost::property_tree::ptree beam_database;
   beam_database.put("depth", 0.1);
   beam_database.put("absorption_efficiency", 0.1);
@@ -164,11 +165,12 @@ BOOST_AUTO_TEST_CASE(spmv)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 1.);
-  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
-      new adamantine::MaterialProperty<2>(
-          communicator, geometry.get_triangulation(), mat_prop_database));
+  std::shared_ptr<adamantine::MaterialProperty<2, dealii::MemorySpace::Host>>
+      mat_properties(
+          new adamantine::MaterialProperty<2, dealii::MemorySpace::Host>(
+              communicator, geometry.get_triangulation(), mat_prop_database));
 
-  // Create the heat souces
+  // Create the heat sources
   boost::property_tree::ptree beam_database;
   beam_database.put("depth", 0.1);
   beam_database.put("absorption_efficiency", 0.1);
@@ -266,9 +268,10 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 0.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 0.);
-  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
-      new adamantine::MaterialProperty<2>(
-          communicator, geometry.get_triangulation(), mat_prop_database));
+  std::shared_ptr<adamantine::MaterialProperty<2, dealii::MemorySpace::Host>>
+      mat_properties(
+          new adamantine::MaterialProperty<2, dealii::MemorySpace::Host>(
+              communicator, geometry.get_triangulation(), mat_prop_database));
 
   // Create the heat souces
   boost::property_tree::ptree beam_database;
@@ -411,11 +414,12 @@ BOOST_AUTO_TEST_CASE(spmv_rad)
   mat_prop_database.put("material_0.liquid.convection_heat_transfer_coef", 1.);
   mat_prop_database.put("material_0.radiation_temperature_infty", 0.0);
   mat_prop_database.put("material_0.convection_temperature_infty", 0.0);
-  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
-      new adamantine::MaterialProperty<2>(
-          communicator, geometry.get_triangulation(), mat_prop_database));
+  std::shared_ptr<adamantine::MaterialProperty<2, dealii::MemorySpace::Host>>
+      mat_properties(
+          new adamantine::MaterialProperty<2, dealii::MemorySpace::Host>(
+              communicator, geometry.get_triangulation(), mat_prop_database));
 
-  // Create the heat souces
+  // Create the heat sources
   boost::property_tree::ptree beam_database;
   beam_database.put("depth", 0.1);
   beam_database.put("absorption_efficiency", 0.1);

@@ -126,17 +126,14 @@ evaluate_thermal_physics_impl(
     dealii::DoFHandler<dim> const &dof_handler,
     std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources,
     double current_source_height, BoundaryType boundary_type,
-    std::shared_ptr<MaterialProperty<dim>> const &material_properties,
+    std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> const
+        &material_properties,
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
     std::vector<Timer> &timers)
 {
   timers[evol_time_eval_mat_prop].start();
-  // TODO do this on the GPU
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> y_host(
-      y.get_partitioner());
-  y_host.import(y, dealii::VectorOperation::insert);
-  thermal_operator->evaluate_material_properties(y_host);
+  thermal_operator->evaluate_material_properties(y);
   timers[evol_time_eval_mat_prop].stop();
 
   timers[evol_time_eval_th_ph].start();
@@ -145,6 +142,7 @@ evaluate_thermal_physics_impl(
   source = 0.;
 
   // Compute the source term.
+  // TODO do this on the GPU
   dealii::hp::QCollection<dim> source_q_collection;
   source_q_collection.push_back(dealii::QGauss<dim>(fe_degree + 1));
   source_q_collection.push_back(dealii::QGauss<dim>(1));
@@ -288,7 +286,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   // Create the material properties
   boost::property_tree::ptree const &material_database =
       database.get_child("materials");
-  _material_properties.reset(new MaterialProperty<dim>(
+  _material_properties.reset(new MaterialProperty<dim, MemorySpaceType>(
       communicator, _geometry.get_triangulation(), material_database));
 
   // Create the heat sources
@@ -585,6 +583,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
 #endif
+
+  _thermal_operator->clear();
   std::vector<dealii::Vector<double>> data_to_transfer;
   unsigned int const dofs_per_cell = _dof_handler.get_fe().n_dofs_per_cell();
   dealii::Vector<double> cell_solution(dofs_per_cell);
@@ -623,6 +623,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
       dim, dim, std::vector<dealii::Vector<double>>>
       cell_data_trans(triangulation);
   cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
+
   triangulation.execute_coarsening_and_refinement();
 
   setup_dofs();
@@ -775,11 +776,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   }
   else
   {
-    // TODO do this on the GPU
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> y_host(
-        y.get_partitioner());
-    y_host.import(y, dealii::VectorOperation::insert);
-    _thermal_operator->evaluate_material_properties(y_host);
+    _thermal_operator->evaluate_material_properties(y);
     return evaluate_thermal_physics_impl<dim, fe_degree, MemorySpaceType>(
         _thermal_operator, _fe_collection, t, _dof_handler, _heat_sources,
         _current_source_height, _boundary_type, _material_properties,

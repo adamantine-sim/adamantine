@@ -10,6 +10,7 @@
 
 #include <DataAssimilator.hh>
 #include <Geometry.hh>
+#include <MemoryBlock.hh>
 #include <PostProcessor.hh>
 #include <ThermalPhysics.hh>
 #include <Timer.hh>
@@ -19,14 +20,20 @@
 #include <utils.hh>
 
 #include <deal.II/base/mpi.h>
+#include <deal.II/base/types.h>
+#include <deal.II/distributed/cell_data_transfer.templates.h>
 #include <deal.II/distributed/solution_transfer.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/grid_refinement.h>
+#include <deal.II/lac/vector_operation.h>
 #include <deal.II/numerics/error_estimator.h>
 
 #include <boost/program_options.hpp>
 #include <boost/property_tree/info_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+
+#include <type_traits>
+#include <unordered_map>
 
 #ifdef ADAMANTINE_WITH_CALIPER
 #include <caliper/cali.h>
@@ -45,9 +52,9 @@ void output_pvtu(
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
         &solution,
-    std::array<dealii::LA::distributed::Vector<double>,
-               static_cast<unsigned int>(adamantine::MaterialState::SIZE)> const
-        &state,
+    adamantine::MemoryBlockView<double, MemorySpaceType> state,
+    std::unordered_map<dealii::types::global_dof_index, unsigned int> const
+        &dofs_map,
     dealii::DoFHandler<dim> const &material_dof_handler,
     std::vector<adamantine::Timer> &timers)
 {
@@ -57,7 +64,7 @@ void output_pvtu(
   timers[adamantine::output].start();
   affine_constraints.distribute(solution);
   post_processor.output_pvtu(cycle, n_time_step, time, solution, state,
-                             material_dof_handler);
+                             dofs_map, material_dof_handler);
   timers[adamantine::output].stop();
 }
 
@@ -72,9 +79,9 @@ void output_pvtu(
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
         &solution,
-    std::array<dealii::LA::distributed::Vector<double>,
-               static_cast<unsigned int>(adamantine::MaterialState::SIZE)> const
-        &state,
+    adamantine::MemoryBlockView<double, MemorySpaceType> state,
+    std::unordered_map<dealii::types::global_dof_index, unsigned int> const
+        &dofs_map,
     dealii::DoFHandler<dim> const &material_dof_handler,
     std::vector<adamantine::Timer> &timers)
 {
@@ -86,8 +93,13 @@ void output_pvtu(
       solution_host(solution.get_partitioner());
   solution_host.import(solution, dealii::VectorOperation::insert);
   affine_constraints.distribute(solution_host);
-  post_processor.output_pvtu(cycle, n_time_step, time, solution_host, state,
-                             material_dof_handler);
+  adamantine::MemoryBlock<double, dealii::MemorySpace::Host> state_host(
+      state.extent(0), state.extent(1));
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
+      state_host_view(state_host);
+  adamantine::deep_copy(state_host_view, state);
+  post_processor.output_pvtu(cycle, n_time_step, time, solution_host,
+                             state_host_view, dofs_map, material_dof_handler);
   timers[adamantine::output].stop();
 }
 #endif
@@ -260,86 +272,7 @@ initialize_thermal_physics(
   }
 }
 
-template <int dim, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value,
-              int> = 0>
-void refine_and_transfer(
-    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
-    dealii::DoFHandler<dim> &dof_handler,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
-{
-  dealii::parallel::distributed::Triangulation<dim> &triangulation =
-      dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
-          const_cast<dealii::Triangulation<dim> &>(
-              dof_handler.get_triangulation()));
-
-  std::shared_ptr<adamantine::MaterialProperty<dim, MemorySpaceType>>
-      material_property = thermal_physics->get_material_property();
-
-  dealii::parallel::distributed::SolutionTransfer<
-      dim, dealii::LA::distributed::Vector<double, MemorySpaceType>>
-      solution_transfer(dof_handler);
-  std::vector<dealii::parallel::distributed::SolutionTransfer<
-      dim, dealii::LA::distributed::Vector<double, MemorySpaceType>>>
-      material_state(
-          static_cast<unsigned int>(adamantine::MaterialState::SIZE),
-          dealii::parallel::distributed::SolutionTransfer<
-              dim, dealii::LA::distributed::Vector<double, MemorySpaceType>>(
-              material_property->get_dof_handler()));
-
-  // We need to update the ghost values before we can do the interpolation on
-  // the new mesh.
-  solution.update_ghost_values();
-
-  // Prepare the Triangulation and the diffent SolutionTransfers for refinement
-  triangulation.prepare_coarsening_and_refinement();
-  solution_transfer.prepare_for_coarsening_and_refinement(solution);
-  for (unsigned int i = 0;
-       i < static_cast<unsigned int>(adamantine::MaterialState::SIZE); ++i)
-    material_state[i].prepare_for_coarsening_and_refinement(
-        material_property->get_state()[i]);
-
-  // Execute the refinement
-  triangulation.execute_coarsening_and_refinement();
-
-  // Update the AffineConstraints and resize the solution
-  thermal_physics->setup_dofs();
-  thermal_physics->initialize_dof_vector(solution);
-
-  // Update MaterialProperty DoFHandler and resize the state vectors
-  material_property->reinit_dofs();
-
-  // Interpolate the solution and the state onto the new mesh
-  solution_transfer.interpolate(solution);
-  for (unsigned int i = 0;
-       i < static_cast<unsigned int>(adamantine::MaterialState::SIZE); ++i)
-    material_state[i].interpolate(material_property->get_state()[i]);
-
-#if ADAMANTINE_DEBUG
-  // Check that we are not losing material
-  std::array<dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>,
-             static_cast<unsigned int>(adamantine::MaterialState::SIZE)>
-      state = material_property->get_state();
-  unsigned int const local_size = state[0].locally_owned_size();
-  unsigned int constexpr n_material_states =
-      static_cast<unsigned int>(adamantine::MaterialState::SIZE);
-  for (unsigned int i = 0; i < local_size; ++i)
-  {
-    double material_ratio = 0.;
-    for (unsigned int j = 0; j < n_material_states; ++j)
-      material_ratio += state[j].local_element(i);
-    adamantine::ASSERT(std::abs(material_ratio - 1.) < 1e-14,
-                       "Material is lost.");
-  }
-#endif
-}
-
-#ifdef ADAMANTINE_HAVE_CUDA
-template <int dim, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
-              int> = 0>
+template <int dim, typename MemorySpaceType>
 void refine_and_transfer(
     std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
     dealii::DoFHandler<dim> &dof_handler,
@@ -354,75 +287,150 @@ void refine_and_transfer(
   // because, for now, we need to use state from MaterialProperty to perform the
   // transfer to the refined mesh.
   thermal_physics->set_state_to_material_properties();
+
   std::shared_ptr<adamantine::MaterialProperty<dim, MemorySpaceType>>
       material_property = thermal_physics->get_material_property();
 
+  // Transfer of the solution
   dealii::parallel::distributed::SolutionTransfer<
       dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
       solution_transfer(dof_handler);
-  std::vector<dealii::parallel::distributed::SolutionTransfer<
-      dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>>
-      material_state(
-          static_cast<unsigned int>(adamantine::MaterialState::SIZE),
-          dealii::parallel::distributed::SolutionTransfer<
-              dim, dealii::LA::distributed::Vector<double,
-                                                   dealii::MemorySpace::Host>>(
-              material_property->get_dof_handler()));
+
+  // Transfer material state
+  unsigned int constexpr n_material_states =
+      static_cast<unsigned int>(adamantine::MaterialState::SIZE);
+  std::vector<dealii::Vector<double>> material_state_to_transfer;
+  dealii::Vector<double> cell_material_state(n_material_states);
+  dealii::Vector<double> dummy_material_state(n_material_states);
+  for (auto &val : dummy_material_state)
+  {
+    val = -1.;
+  }
+  adamantine::MemoryBlockView<double, MemorySpaceType> material_state_view =
+      material_property->get_state();
+  adamantine::MemoryBlock<double, dealii::MemorySpace::Host>
+      material_state_host(material_state_view.extent(0),
+                          material_state_view.extent(1));
+  typename decltype(material_state_view)::memory_space memspace;
+  adamantine::deep_copy(material_state_host.data(), dealii::MemorySpace::Host{},
+                        material_state_view.data(), memspace,
+                        material_state_view.size());
+
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
+      state_host_view(material_state_host);
+  unsigned int cell_id = 0;
+  for (auto const &cell : dof_handler.active_cell_iterators())
+  {
+    if (cell->is_locally_owned())
+    {
+      for (unsigned int i = 0; i < n_material_states; ++i)
+        cell_material_state[i] = state_host_view(i, cell_id);
+      material_state_to_transfer.push_back(cell_material_state);
+      ++cell_id;
+    }
+    else
+    {
+      material_state_to_transfer.push_back(dummy_material_state);
+    }
+  }
 
   // We need to update the ghost values before we can do the interpolation on
   // the new mesh.
   solution.update_ghost_values();
 
-  // Prepare the Triangulation and the diffent SolutionTransfers for refinement
+  // Prepare the Triangulation and the diffent data transder objects for
+  // refinement
   triangulation.prepare_coarsening_and_refinement();
+  // Prepare for refinement of the solution
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      solution_host(solution.get_partitioner());
-  solution_host.import(solution, dealii::VectorOperation::insert);
-  solution_transfer.prepare_for_coarsening_and_refinement(solution_host);
-  for (unsigned int i = 0;
-       i < static_cast<unsigned int>(adamantine::MaterialState::SIZE); ++i)
-    material_state[i].prepare_for_coarsening_and_refinement(
-        material_property->get_state()[i]);
+      solution_host;
+  if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
+  {
+    solution_transfer.prepare_for_coarsening_and_refinement(solution);
+  }
+  else
+  {
+    solution_host.reinit(solution.get_partitioner());
+    solution_host.import(solution, dealii::VectorOperation::insert);
+    solution_transfer.prepare_for_coarsening_and_refinement(solution_host);
+  }
+
+  dealii::parallel::distributed::CellDataTransfer<
+      dim, dim, std::vector<dealii::Vector<double>>>
+      cell_data_trans(triangulation);
+  cell_data_trans.prepare_for_coarsening_and_refinement(
+      material_state_to_transfer);
 
   // Execute the refinement
   triangulation.execute_coarsening_and_refinement();
 
-  // Update MaterialProperty DoFHandler and resize the state vectors
-  material_property->reinit_dofs();
-
   // Update the AffineConstraints and resize the solution
   thermal_physics->setup_dofs();
   thermal_physics->initialize_dof_vector(solution);
-  solution_host.reinit(solution.get_partitioner());
 
-  // Interpolate the solution and the state onto the new mesh
-  solution_transfer.interpolate(solution_host);
-  solution.import(solution_host, dealii::VectorOperation::insert);
-  for (unsigned int i = 0;
-       i < static_cast<unsigned int>(adamantine::MaterialState::SIZE); ++i)
-    material_state[i].interpolate(material_property->get_state()[i]);
-  // Update the material states in the ThermalOperator
-  thermal_physics->get_state_from_material_properties();
+  // Update MaterialProperty DoFHandler and resize the state vectors
+  material_property->reinit_dofs();
+
+  // Interpolate the solution
+  if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
+  {
+    solution_transfer.interpolate(solution);
+  }
+  else
+  {
+    solution_host.reinit(solution.get_partitioner());
+    solution_transfer.interpolate(solution_host);
+    solution.import(solution_host, dealii::VectorOperation::insert);
+  }
+
+  // Unpack the material state and repopulate the material state
+  std::vector<dealii::Vector<double>> transferred_material_state(
+      triangulation.n_active_cells(),
+      dealii::Vector<double>(n_material_states));
+  cell_data_trans.unpack(transferred_material_state);
+  material_state_view = material_property->get_state();
+  material_state_host.reinit(material_state_view.extent(0),
+                             material_state_view.extent(1));
+  state_host_view.reinit(material_state_host);
+  unsigned int total_cell_id = 0;
+  cell_id = 0;
+  for (auto const &cell : dof_handler.active_cell_iterators())
+  {
+    if (cell->is_locally_owned())
+    {
+      for (unsigned int i = 0; i < n_material_states; ++i)
+      {
+        state_host_view(i, cell_id) =
+            transferred_material_state[total_cell_id][i];
+      }
+      ++cell_id;
+    }
+    ++total_cell_id;
+  }
+
+  // Copy the data back to material_property
+  adamantine::deep_copy(material_state_view.data(), memspace,
+                        material_state_host.data(), dealii::MemorySpace::Host{},
+                        material_state_view.size());
 
 #if ADAMANTINE_DEBUG
   // Check that we are not losing material
-  std::array<dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>,
-             static_cast<unsigned int>(adamantine::MaterialState::SIZE)>
-      state = material_property->get_state();
-  unsigned int const local_size = state[0].locally_owned_size();
-  unsigned int constexpr n_material_states =
-      static_cast<unsigned int>(adamantine::MaterialState::SIZE);
-  for (unsigned int i = 0; i < local_size; ++i)
+  cell_id = 0;
+  for (auto const &cell : dof_handler.active_cell_iterators())
   {
-    double material_ratio = 0.;
-    for (unsigned int j = 0; j < n_material_states; ++j)
-      material_ratio += state[j].local_element(i);
-    adamantine::ASSERT(std::abs(material_ratio - 1.) < 1e-14,
-                       "Material is lost.");
+    if (cell->is_locally_owned())
+    {
+      double material_ratio = 0.;
+      for (unsigned int i = 0; i < n_material_states; ++i)
+      {
+        material_ratio += state_host_view(i, cell_id);
+      }
+      ASSERT(std::abs(material_ratio - 1.) < 1e-14, "Material is lost.");
+      ++cell_id;
+    }
   }
 #endif
 }
-#endif
 
 template <int dim>
 std::vector<typename dealii::parallel::distributed::Triangulation<
@@ -736,6 +744,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       thermal_physics->get_affine_constraints();
   output_pvtu(post_processor, cycle, n_time_step, time, affine_constraints,
               solution, thermal_physics->get_material_property()->get_state(),
+              thermal_physics->get_material_property()->get_dofs_map(),
               thermal_physics->get_material_property()->get_dof_handler(),
               timers);
   ++n_time_step;
@@ -851,9 +860,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     time = thermal_physics->evolve_one_time_step(time, time_step, solution,
                                                  timers);
 #if ADAMANTINE_DEBUG
-    adamantine::ASSERT(!adding_material ||
-                           ((time - old_time) < time_step / 1e-9),
-                       "Unexpected time step while adding material.");
+    ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),
+           "Unexpected time step while adding material.");
 #endif
     timers[adamantine::evol_time].stop();
 
@@ -880,6 +888,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       output_pvtu(
           post_processor, cycle, n_time_step, time, affine_constraints,
           solution, thermal_physics->get_material_property()->get_state(),
+          thermal_physics->get_material_property()->get_dofs_map(),
           thermal_physics->get_material_property()->get_dof_handler(), timers);
     }
     ++n_time_step;
@@ -1039,8 +1048,7 @@ run_ensemble(MPI_Comm const &communicator,
     post_processor_ensemble.push_back(
         std::make_unique<adamantine::PostProcessor<dim>>(
             communicator, post_processor_database,
-            thermal_physics_ensemble[member]->get_dof_handler(),
-            thermal_physics_ensemble[member]->get_material_property(), member));
+            thermal_physics_ensemble[member]->get_dof_handler(), member));
   }
 
   // ----- Read the experimental data -----
@@ -1131,9 +1139,17 @@ run_ensemble(MPI_Comm const &communicator,
     affine_constraints_ensemble.push_back(
         thermal_physics_ensemble[member]->get_affine_constraints());
 
-    output_pvtu(*post_processor_ensemble[member], cycle, n_time_step, time,
-                affine_constraints_ensemble[member], solution_ensemble[member],
-                timers);
+    output_pvtu(
+        *post_processor_ensemble[member], cycle, n_time_step, time,
+        affine_constraints_ensemble[member], solution_ensemble[member],
+        thermal_physics_ensemble[member]->get_material_property()->get_state(),
+        thermal_physics_ensemble[member]
+            ->get_material_property()
+            ->get_dofs_map(),
+        thermal_physics_ensemble[member]
+            ->get_material_property()
+            ->get_dof_handler(),
+        timers);
   }
 
   // ----- Increment the time step -----
@@ -1278,9 +1294,8 @@ run_ensemble(MPI_Comm const &communicator,
           time, time_step, solution_ensemble[member], timers);
     }
 #if ADAMANTINE_DEBUG
-    adamantine::ASSERT(!adding_material ||
-                           ((time - old_time) < time_step / 1e-9),
-                       "Unexpected time step while adding material.");
+    ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),
+           "Unexpected time step while adding material.");
 #endif
     timers[adamantine::evol_time].stop();
 
@@ -1375,7 +1390,17 @@ run_ensemble(MPI_Comm const &communicator,
         thermal_physics_ensemble[member]->set_state_to_material_properties();
         output_pvtu(*post_processor_ensemble[member], cycle, n_time_step, time,
                     affine_constraints_ensemble[member],
-                    solution_ensemble[member], timers);
+                    solution_ensemble[member],
+                    thermal_physics_ensemble[member]
+                        ->get_material_property()
+                        ->get_state(),
+                    thermal_physics_ensemble[member]
+                        ->get_material_property()
+                        ->get_dofs_map(),
+                    thermal_physics_ensemble[member]
+                        ->get_material_property()
+                        ->get_dof_handler(),
+                    timers);
       }
     }
 

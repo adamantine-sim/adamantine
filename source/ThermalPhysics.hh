@@ -107,7 +107,8 @@ public:
 
   dealii::AffineConstraints<double> &get_affine_constraints() override;
 
-  std::shared_ptr<MaterialProperty<dim>> get_material_property() override;
+  std::shared_ptr<MaterialProperty<dim, MemorySpaceType>>
+  get_material_property() override;
 
   /**
    * Return the heat sources.
@@ -196,7 +197,7 @@ private:
   /**
    * Shared pointer to the material properties associated to the domain.
    */
-  std::shared_ptr<MaterialProperty<dim>> _material_properties;
+  std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> _material_properties;
   /**
    * Vector of heat sources.
    */
@@ -243,7 +244,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType,
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-inline std::shared_ptr<MaterialProperty<dim>>
+inline std::shared_ptr<MaterialProperty<dim, MemorySpaceType>>
 ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_material_property()
 {

@@ -64,9 +64,10 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
-      new adamantine::MaterialProperty<2>(
-          communicator, geometry.get_triangulation(), mat_prop_database));
+  std::shared_ptr<adamantine::MaterialProperty<2, dealii::MemorySpace::CUDA>>
+      mat_properties(
+          new adamantine::MaterialProperty<2, dealii::MemorySpace::CUDA>(
+              communicator, geometry.get_triangulation(), mat_prop_database));
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
@@ -74,7 +75,7 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev)
   thermal_operator_dev.compute_inverse_mass_matrix(
       dof_handler, affine_constraints, fe_collection);
   thermal_operator_dev.reinit(dof_handler, affine_constraints, q_collection);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dummy(
       thermal_operator_dev.m());
   thermal_operator_dev.evaluate_material_properties(dummy);
   BOOST_CHECK(thermal_operator_dev.m() == 99);
@@ -149,9 +150,10 @@ BOOST_AUTO_TEST_CASE(spmv)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 1.);
-  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
-      new adamantine::MaterialProperty<2>(
-          communicator, geometry.get_triangulation(), mat_prop_database));
+  std::shared_ptr<adamantine::MaterialProperty<2, dealii::MemorySpace::CUDA>>
+      mat_properties(
+          new adamantine::MaterialProperty<2, dealii::MemorySpace::CUDA>(
+              communicator, geometry.get_triangulation(), mat_prop_database));
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
@@ -159,7 +161,7 @@ BOOST_AUTO_TEST_CASE(spmv)
   thermal_operator_dev.compute_inverse_mass_matrix(
       dof_handler, affine_constraints, fe_collection);
   thermal_operator_dev.reinit(dof_handler, affine_constraints, q_collection);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dummy(
       thermal_operator_dev.m());
   thermal_operator_dev.evaluate_material_properties(dummy);
   BOOST_CHECK(thermal_operator_dev.m() == 99);
@@ -247,9 +249,14 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 0.266);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 0.266);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 0.266);
-  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
-      new adamantine::MaterialProperty<2>(
-          communicator, geometry.get_triangulation(), mat_prop_database));
+  std::shared_ptr<adamantine::MaterialProperty<2, dealii::MemorySpace::Host>>
+      mat_properties_host(
+          new adamantine::MaterialProperty<2, dealii::MemorySpace::Host>(
+              communicator, geometry.get_triangulation(), mat_prop_database));
+  std::shared_ptr<adamantine::MaterialProperty<2, dealii::MemorySpace::CUDA>>
+      mat_properties(
+          new adamantine::MaterialProperty<2, dealii::MemorySpace::CUDA>(
+              communicator, geometry.get_triangulation(), mat_prop_database));
 
   // Create the heat souces
   boost::property_tree::ptree beam_database;
@@ -270,14 +277,14 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
   thermal_operator_dev.compute_inverse_mass_matrix(
       dof_handler, affine_constraints, fe_collection);
   thermal_operator_dev.reinit(dof_handler, affine_constraints, q_collection);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dummy(
       thermal_operator_dev.m());
   thermal_operator_dev.evaluate_material_properties(dummy);
   BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
 
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>
       thermal_operator_host(communicator, adamantine::BoundaryType::adiabatic,
-                            mat_properties, heat_sources);
+                            mat_properties_host, heat_sources);
   thermal_operator_host.compute_inverse_mass_matrix(
       dof_handler, affine_constraints, fe_collection);
   thermal_operator_host.reinit(dof_handler, affine_constraints, q_collection);

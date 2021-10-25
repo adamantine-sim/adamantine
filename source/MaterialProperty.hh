@@ -9,10 +9,13 @@
 #define MATERIAL_PROPERTY_HH
 
 #include <ArrayMD.hh>
+#include <MemoryBlock.hh>
+#include <MemoryBlockView.hh>
 #include <types.hh>
 #include <utils.hh>
 
 #include <deal.II/base/memory_space.h>
+#include <deal.II/base/types.h>
 #include <deal.II/distributed/tria.h>
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_handler.h>
@@ -32,7 +35,7 @@ namespace adamantine
 /**
  * This class stores the material properties for all the materials
  */
-template <int dim>
+template <int dim, typename MemorySpaceType>
 class MaterialProperty
 {
 public:
@@ -74,7 +77,8 @@ public:
    * the material properties given the field of temperature.
    */
   void update(dealii::DoFHandler<dim> const &temperature_dof_handler,
-              dealii::LA::distributed::Vector<double> const &temperature);
+              dealii::LA::distributed::Vector<double, MemorySpaceType> const
+                  &temperature);
 
   /**
    * Update the material properties necessary to compute the radiative and
@@ -82,17 +86,23 @@ public:
    */
   void update_boundary_material_properties(
       dealii::DoFHandler<dim> const &temperature_dof_handler,
-      dealii::LA::distributed::Vector<double> const &temperature);
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const
+          &temperature);
 
   /**
    * Compute a material property at a quadrature point for a mix of states.
    */
-  ADAMANTINE_HOST_DEV
   dealii::VectorizedArray<double>
   compute_material_property(StateProperty state_property,
                             dealii::types::material_id const *material_id,
                             dealii::VectorizedArray<double> const *state_ratios,
                             dealii::VectorizedArray<double> temperature) const;
+
+  ADAMANTINE_HOST_DEV
+  double compute_material_property(StateProperty state_property,
+                                   dealii::types::material_id const material_id,
+                                   double const *state_ratios,
+                                   double temperature) const;
 
   /**
    * Get the array of material state vectors. The order of the different state
@@ -100,9 +110,7 @@ public:
    * correspond to a cell in the mesh and has a value between 0 and 1. The sum
    * of the states for a given cell is equal to 1.
    */
-  std::array<dealii::LA::distributed::Vector<double>,
-             static_cast<unsigned int>(MaterialState::SIZE)> &
-  get_state();
+  MemoryBlockView<double, MemorySpaceType> get_state();
 
   /**
    * Get the ratio of a given MaterialState for a given cell. The sum
@@ -111,6 +119,13 @@ public:
   double get_state_ratio(
       typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
       MaterialState material_state) const;
+
+  /**
+   * Set the values in _state from the values of the user index of the
+   * Triangulation.
+   */
+  // This cannot be private due to limitation of lambda function with CUDA
+  void set_initial_state();
 
   /**
    * Set the ratio of the material states from ThermalOperator.
@@ -126,6 +141,12 @@ public:
    * Return the underlying the DoFHandler.
    */
   dealii::DoFHandler<dim> const &get_dof_handler() const;
+
+  std::unordered_map<dealii::types::global_dof_index, unsigned int>
+  get_dofs_map() const
+  {
+    return _dofs_map;
+  }
 
 private:
   /**
@@ -158,12 +179,6 @@ private:
   unsigned int _table_size = 0;
 
   /**
-   * Set the values in _state from the values of the user index of the
-   * Triangulation.
-   */
-  void set_initial_state();
-
-  /**
    * Fill the _properties map.
    */
   void fill_properties(boost::property_tree::ptree const &database);
@@ -178,17 +193,20 @@ private:
   /**
    * Compute the average of the temperature on every cell.
    */
-  dealii::LA::distributed::Vector<double> compute_average_temperature(
+  dealii::LA::distributed::Vector<double, MemorySpaceType>
+  compute_average_temperature(
       dealii::DoFHandler<dim> const &temperature_dof_handler,
-      dealii::LA::distributed::Vector<double> const &temperature) const;
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const
+          &temperature) const;
 
   /**
    * Compute a property from a table given the temperature.
    */
-  double compute_property_from_table(unsigned int const material_id,
-                                     unsigned int const material_state,
-                                     unsigned int const property,
-                                     double const temperature) const;
+  ADAMANTINE_HOST_DEV double compute_property_from_table(
+      MemoryBlockView<double, MemorySpaceType> const
+          &state_property_tables_view,
+      unsigned int const material_id, unsigned int const material_state,
+      unsigned int const property, double const temperature) const;
 
   /**
    * MPI communicator.
@@ -200,35 +218,29 @@ private:
    */
   bool _use_table;
   /**
-   * Array that stores the material properties which have been set using tables.
+   * MemoryBlock that stores the material properties which have been set using
+   * tables.
    */
-  Array5D<-1, _n_material_states, _n_state_properties, -1, 2,
-          dealii::MemorySpace::Host>
-      _state_property_tables;
+  MemoryBlock<double, MemorySpaceType> _state_property_tables;
   /**
-   * Array that stores the material properties which have been set using
+   * MemoryBlock that stores the material properties which have been set using
    * polynomials.
    */
-  Array4D<-1, _n_material_states, _n_state_properties, -1,
-          dealii::MemorySpace::Host>
-      _state_property_polynomials;
+  MemoryBlock<double, MemorySpaceType> _state_property_polynomials;
   /**
-   * Array that stores the properties of the material that are independent of
-   * the state of the material.
+   * MemoryBlock that stores the properties of the material that are independent
+   * of the state of the material.
    */
-  Array2D<-1, _n_properties, dealii::MemorySpace::Host> _properties;
+  MemoryBlock<double, MemorySpaceType> _properties;
   /**
-   * Array of vector describing the ratio of each state in each cell. Each
-   * vector corresponds to a state defined in the MaterialState enum.
+   * MemoryBlock that stores the ratio of each in MaterarialState in each cell.
    */
-  std::array<dealii::LA::distributed::Vector<double>, _n_material_states>
-      _state;
+  MemoryBlock<double, MemorySpaceType> _state;
   /**
-   * Array of vector describing the property in each cell. Each vector
-   * corresponds to a property in the StateProperty enum.
+   * MemoryBlock that stores the properties of the material that are dependent
+   * of the state of the material.
    */
-  std::array<dealii::LA::distributed::Vector<double>, _n_state_properties>
-      _property_values;
+  MemoryBlock<double, MemorySpaceType> _property_values;
   /**
    * Discontinuous piecewise constant finite element.
    */
@@ -237,36 +249,28 @@ private:
    * DoFHandler associated to the _state array.
    */
   dealii::DoFHandler<dim> _mp_dof_handler;
+
+  std::unordered_map<dealii::types::global_dof_index, unsigned int> _dofs_map;
 };
 
-template <int dim>
-inline double MaterialProperty<dim>::get(dealii::types::material_id material_id,
-                                         Property property) const
+template <int dim, typename MemorySpaceType>
+inline double MaterialProperty<dim, MemorySpaceType>::get(
+    dealii::types::material_id material_id, Property property) const
 {
-  return _properties(material_id, static_cast<unsigned int>(property));
+  MemoryBlockView<double, MemorySpaceType> properties_view(_properties);
+  return properties_view(material_id, static_cast<unsigned int>(property));
 }
 
-template <int dim>
-inline std::array<dealii::LA::distributed::Vector<double>,
-                  static_cast<unsigned int>(MaterialState::SIZE)> &
-MaterialProperty<dim>::get_state()
+template <int dim, typename MemorySpaceType>
+inline MemoryBlockView<double, MemorySpaceType>
+MaterialProperty<dim, MemorySpaceType>::get_state()
 {
-  return _state;
+  return MemoryBlockView<double, MemorySpaceType>(_state);
 }
 
-template <int dim>
-inline double MaterialProperty<dim>::get_state_ratio(
-    typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
-    MaterialState material_state) const
-{
-  auto const mp_dof_index = get_dof_index(cell);
-  auto const mat_state = static_cast<unsigned int>(material_state);
-
-  return _state[mat_state][mp_dof_index];
-}
-
-template <int dim>
-inline dealii::types::global_dof_index MaterialProperty<dim>::get_dof_index(
+template <int dim, typename MemorySpaceType>
+inline dealii::types::global_dof_index
+MaterialProperty<dim, MemorySpaceType>::get_dof_index(
     typename dealii::Triangulation<dim>::active_cell_iterator const &cell) const
 {
   // Get a DoFCellAccessor from a Triangulation::active_cell_iterator.
@@ -276,12 +280,12 @@ inline dealii::types::global_dof_index MaterialProperty<dim>::get_dof_index(
   std::vector<dealii::types::global_dof_index> mp_dof(1.);
   dof_accessor.get_dof_indices(mp_dof);
 
-  return mp_dof[0];
+  return _dofs_map.at(mp_dof[0]);
 }
 
-template <int dim>
+template <int dim, typename MemorySpaceType>
 inline dealii::DoFHandler<dim> const &
-MaterialProperty<dim>::get_dof_handler() const
+MaterialProperty<dim, MemorySpaceType>::get_dof_handler() const
 {
   return _mp_dof_handler;
 }

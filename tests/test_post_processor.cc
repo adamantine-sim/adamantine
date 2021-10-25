@@ -98,10 +98,13 @@ BOOST_AUTO_TEST_CASE(post_processor)
     src[i] = 1.;
 
   post_processor.output_pvtu(1, 0, 0., src, mat_properties->get_state(),
+                             mat_properties->get_dofs_map(),
                              mat_properties->get_dof_handler());
   post_processor.output_pvtu(1, 1, 0.1, src, mat_properties->get_state(),
+                             mat_properties->get_dofs_map(),
                              mat_properties->get_dof_handler());
   post_processor.output_pvtu(1, 2, 0.2, src, mat_properties->get_state(),
+                             mat_properties->get_dofs_map(),
                              mat_properties->get_dof_handler());
   post_processor.output_pvd();
 

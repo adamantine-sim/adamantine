@@ -64,9 +64,10 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
-      new adamantine::MaterialProperty<2>(
-          communicator, geometry.get_triangulation(), mat_prop_database));
+  std::shared_ptr<adamantine::MaterialProperty<2, dealii::MemorySpace::Host>>
+      mat_properties(
+          new adamantine::MaterialProperty<2, dealii::MemorySpace::Host>(
+              communicator, geometry.get_triangulation(), mat_prop_database));
 
   boost::property_tree::ptree beam_database;
   beam_database.put("depth", 0.1);

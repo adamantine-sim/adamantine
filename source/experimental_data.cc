@@ -128,8 +128,9 @@ std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
           std::regex_replace((std::regex_replace(data_filename, camera_regex,
                                                  std::to_string(camera_id))),
                              frame_regex, std::to_string(frame));
-      ASSERT(boost::filesystem::exists(regex_filename),
-             "The file " + regex_filename + " does not exist.");
+      std::string error_message =
+          "The file " + regex_filename + " does not exist.";
+      ASSERT(boost::filesystem::exists(regex_filename), error_message.c_str());
       std::string filename("data_" + std::to_string(frame) + "_" +
                            std::to_string(camera_id) + ".csv");
 
@@ -141,7 +142,8 @@ std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
       {
         std::string cut_command("cut -d, -f" + data_columns + " " +
                                 regex_filename + " > " + filename);
-        std::system(cut_command.c_str());
+        int error_code = std::system(cut_command.c_str());
+        ASSERT(error_code == 0, "Problem with the cut command.");
       }
 
       // Wait for rank zero before reading the file.
@@ -197,7 +199,8 @@ std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
       if (dealii::Utilities::MPI::this_mpi_process(communicator) == 0)
       {
         std::string rm_command("rm " + filename);
-        std::system(rm_command.c_str());
+        int error_code = std::system(rm_command.c_str());
+        ASSERT(error_code == 0, "Error with the rm command.");
       }
     }
     points_values_all_frames[frame - first_frame] = points_values;
@@ -257,8 +260,9 @@ read_frame_timestamps(boost::property_tree::ptree const &experiment_database)
   std::string log_filename =
       experiment_database.get<std::string>("log_filename");
 
-  ASSERT(boost::filesystem::exists(log_filename),
-         "The file " + log_filename + " does not exist.");
+  [[maybe_unused]] std::string error_message =
+      "The file " + log_filename + " does not exist.";
+  ASSERT(boost::filesystem::exists(log_filename), error_message.c_str());
 
   // PropertyTreeInput experiment.first_frame_temporal_offset
   double first_frame_offset =
@@ -300,10 +304,11 @@ read_frame_timestamps(boost::property_tree::ptree const &experiment_database)
 
       if (entry_index == 0)
       {
+        error_message = "The file " + log_filename +
+                        " does not have consecutive frame indices.";
         ASSERT_THROW(std::stoi(substring) - frame == 1 ||
                          frame == std::numeric_limits<unsigned int>::max(),
-                     "The file " + log_filename +
-                         " does not have consecutive frame indices.");
+                     error_message.c_str());
         frame = std::stoi(substring);
         if (frame >= first_frame && frame <= last_frame)
           frame_of_interest = true;
@@ -357,8 +362,8 @@ RayTracing::RayTracing(boost::property_tree::ptree const &experiment_database)
           std::regex_replace((std::regex_replace(data_filename, camera_regex,
                                                  std::to_string(camera_id))),
                              frame_regex, std::to_string(frame));
-      ASSERT(boost::filesystem::exists(filename),
-             "The file " + filename + " does not exist.");
+      std::string error_message = "The file " + filename + " does not exist.";
+      ASSERT(boost::filesystem::exists(filename), error_message.c_str());
 
       // Read and parse the file
       std::ifstream file;

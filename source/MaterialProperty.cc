@@ -8,4 +8,4 @@
 #include <MaterialProperty.templates.hh>
 #include <instantiation.hh>
 
-INSTANTIATE_DIM(MaterialProperty)
+INSTANTIATE_DIM_HOST(MaterialProperty)

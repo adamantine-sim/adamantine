@@ -43,15 +43,10 @@ public:
       const = 0;
 
   virtual void evaluate_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const
           &state) = 0;
 
-  void evaluate_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> const
-          &)
-  {
-    ASSERT(false, "Internal error");
-  }
+  virtual void clear() = 0;
 
   virtual void get_state_from_material_properties() = 0;
 

@@ -11,11 +11,14 @@
 #include "MaterialProperty.hh"
 #include "types.hh"
 
+#include <deal.II/base/types.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/numerics/data_out.h>
 
 #include <boost/property_tree/ptree.hpp>
+
+#include <unordered_map>
 
 namespace adamantine
 {
@@ -51,12 +54,13 @@ public:
   /**
    * Output the different vtu and pvtu files.
    */
-  void output_pvtu(
-      unsigned int cycle, unsigned int n_time_step, double time,
-      dealii::LA::distributed::Vector<double> const &solution,
-      std::array<dealii::LA::distributed::Vector<double>,
-                 static_cast<unsigned int>(MaterialState::SIZE)> const &state,
-      dealii::DoFHandler<dim> const &material_dof_handler);
+  void
+  output_pvtu(unsigned int cycle, unsigned int n_time_step, double time,
+              dealii::LA::distributed::Vector<double> const &solution,
+              MemoryBlockView<double, dealii::MemorySpace::Host> state,
+              std::unordered_map<dealii::types::global_dof_index, unsigned int>
+                  dofs_map,
+              dealii::DoFHandler<dim> const &material_dof_handler);
 
   /**
    * Output the pvd file for Paraview.
