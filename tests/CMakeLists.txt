@@ -7,7 +7,6 @@ include_directories(${CMAKE_SOURCE_DIR}/source)
 set(UNIT_TESTS "")
 list(APPEND
      UNIT_TESTS
-     test_arraymd
      test_data_assimilator
      test_geometry
      test_heat_source
@@ -35,7 +34,6 @@ list(APPEND
 set(CUDA_UNIT_TESTS "")
 list(APPEND
      CUDA_UNIT_TESTS
-     test_arraymd_device
      test_integration_2d_device
      test_material_property_device
      test_thermal_operator_device

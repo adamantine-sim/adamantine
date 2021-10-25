@@ -8,7 +8,6 @@
 #ifndef MATERIAL_PROPERTY_HH
 #define MATERIAL_PROPERTY_HH
 
-#include <ArrayMD.hh>
 #include <MemoryBlock.hh>
 #include <MemoryBlockView.hh>
 #include <types.hh>

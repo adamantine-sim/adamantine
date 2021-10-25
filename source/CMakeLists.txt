@@ -1,5 +1,4 @@
 set(Adamantine_HEADERS
-    ${CMAKE_CURRENT_SOURCE_DIR}/ArrayMD.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/BeamHeatSourceProperties.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/CubeHeatSource.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/DataAssimilator.hh
