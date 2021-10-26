@@ -30,16 +30,6 @@ class PostProcessor
 {
 public:
   /**
-   * Constructor for non-ensemble simulations.
-   * \param database requires the following entries:
-   *   - <B>database</B>: boost::property_tree::ptree
-   *   - <B>dof_handler</B>: dealii::DoFHandler<dim>
-   * material_properties
-   */
-  PostProcessor(MPI_Comm const &communicator,
-                boost::property_tree::ptree const &database,
-                dealii::DoFHandler<dim> &dof_handler);
-  /**
    * Constructor for ensemble simulations.
    * \param database requires the following entries:
    *   - <B>database</B>: boost::property_tree::ptree
@@ -49,7 +39,7 @@ public:
   PostProcessor(MPI_Comm const &communicator,
                 boost::property_tree::ptree const &database,
                 dealii::DoFHandler<dim> &dof_handler,
-                int ensemble_member_index);
+                int ensemble_member_index = -1);
 
   /**
    * Output the different vtu and pvtu files.

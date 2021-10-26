@@ -18,16 +18,6 @@ namespace adamantine
 template <int dim>
 PostProcessor<dim>::PostProcessor(MPI_Comm const &communicator,
                                   boost::property_tree::ptree const &database,
-                                  dealii::DoFHandler<dim> &dof_handler)
-    : _communicator(communicator), _dof_handler(dof_handler)
-{
-  // PropertyTreeInput post_processor.file_name
-  _filename_prefix = database.get<std::string>("filename_prefix");
-}
-
-template <int dim>
-PostProcessor<dim>::PostProcessor(MPI_Comm const &communicator,
-                                  boost::property_tree::ptree const &database,
                                   dealii::DoFHandler<dim> &dof_handler,
                                   int ensemble_member_index)
     : _communicator(communicator), _dof_handler(dof_handler)
