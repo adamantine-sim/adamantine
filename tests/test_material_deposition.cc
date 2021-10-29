@@ -619,3 +619,61 @@ BOOST_AUTO_TEST_CASE(deposition_from_diagonal_scan_path_3d)
     BOOST_CHECK_CLOSE(deposition_sin.at(0), 1. / std::sqrt(5.), tolerance);
   }
 }
+
+BOOST_AUTO_TEST_CASE(merge_multiple_deposition_paths)
+{
+  dealii::BoundingBox<2> box_0(
+      std::make_pair(dealii::Point<2>(0., 0.), dealii::Point<2>(1., 1.)));
+  dealii::BoundingBox<2> box_1(
+      std::make_pair(dealii::Point<2>(1., 1.), dealii::Point<2>(2., 2.)));
+  dealii::BoundingBox<2> box_2(
+      std::make_pair(dealii::Point<2>(2., 2.), dealii::Point<2>(3., 3.)));
+  dealii::BoundingBox<2> box_3(
+      std::make_pair(dealii::Point<2>(3., 3.), dealii::Point<2>(4., 4.)));
+
+  std::vector<dealii::BoundingBox<2>> bb_p1 = {box_0, box_2};
+  std::vector<dealii::BoundingBox<2>> bb_p2 = {box_1, box_3};
+  std::vector<dealii::BoundingBox<2>> bb_ref = {box_0, box_1, box_2, box_3};
+
+  std::vector<double> time_p1 = {0., 2.};
+  std::vector<double> time_p2 = {1., 3.};
+  std::vector<double> time_ref = {0., 1., 2., 3.};
+
+  std::vector<double> cos_p1 = {0., 0.2};
+  std::vector<double> cos_p2 = {0.1, 0.3};
+  std::vector<double> cos_ref = {0., 0.1, 0.2, 0.3};
+
+  std::vector<double> sin_p1 = {-0., -0.2};
+  std::vector<double> sin_p2 = {-0.1, -0.3};
+  std::vector<double> sin_ref = {-0., -0.1, -0.2, -0.3};
+
+  std::vector<
+      std::tuple<std::vector<dealii::BoundingBox<2>>, std::vector<double>,
+                 std::vector<double>, std::vector<double>>>
+      multiple_paths;
+
+  multiple_paths.push_back({bb_p1, time_p1, cos_p1, sin_p1});
+  multiple_paths.push_back({bb_p2, time_p2, cos_p2, sin_p2});
+
+  auto [bounding_boxes, time, cos, sin] =
+      adamantine::merge_deposition_paths(multiple_paths);
+
+  double const tolerance = 1e-10;
+  for (unsigned int i = 0; i < 4; ++i)
+  {
+    BOOST_CHECK_CLOSE(bounding_boxes[i].get_boundary_points().first(0),
+                      bb_ref[i].get_boundary_points().first(0), tolerance);
+    BOOST_CHECK_CLOSE(bounding_boxes[i].get_boundary_points().first(1),
+                      bb_ref[i].get_boundary_points().first(1), tolerance);
+    BOOST_CHECK_CLOSE(bounding_boxes[i].get_boundary_points().second(0),
+                      bb_ref[i].get_boundary_points().second(0), tolerance);
+    BOOST_CHECK_CLOSE(bounding_boxes[i].get_boundary_points().second(1),
+                      bb_ref[i].get_boundary_points().second(1), tolerance);
+
+    BOOST_CHECK_CLOSE(time[i], time_ref[i], tolerance);
+
+    BOOST_CHECK_CLOSE(cos[i], cos_ref[i], tolerance);
+
+    BOOST_CHECK_CLOSE(sin[i], sin_ref[i], tolerance);
+  }
+}

@@ -14,7 +14,13 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 
+#include <algorithm>
 #include <iostream>
+#include <tuple>
+// libc++ does not support parallel std library
+#ifdef __GLIBCXX__
+#include <execution>
+#endif
 
 namespace adamantine
 {
@@ -262,19 +268,52 @@ template <int dim>
 std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
            std::vector<double>, std::vector<double>>
 merge_deposition_paths(
-    std::vector<
-        std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
-                   std::vector<double>, std::vector<double>>>
-        deposition_paths)
+    std::vector<std::tuple<std::vector<dealii::BoundingBox<dim>>,
+                           std::vector<double>, std::vector<double>,
+                           std::vector<double>>> const &deposition_paths)
 {
-  std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
-             std::vector<double>, std::vector<double>>
-      merged_deposition_paths;
+  // Split the vector of tuples in four vectors
+  std::vector<dealii::BoundingBox<dim>> bounding_boxes;
+  std::vector<double> time;
+  std::vector<double> cos;
+  std::vector<double> sin;
+  for (auto const &path : deposition_paths)
+  {
+    bounding_boxes.insert(bounding_boxes.end(), std::get<0>(path).begin(),
+                          std::get<0>(path).end());
+    time.insert(time.end(), std::get<1>(path).begin(), std::get<1>(path).end());
+    cos.insert(cos.end(), std::get<2>(path).begin(), std::get<2>(path).end());
+    sin.insert(sin.end(), std::get<3>(path).begin(), std::get<3>(path).end());
+  }
 
-  // TODO
-  merged_deposition_paths = deposition_paths.at(0);
+  // Create the permutation that sort the deposition times chronologically
+  unsigned int const n_boxes = bounding_boxes.size();
+  std::vector<int> permutation(n_boxes);
+  std::iota(permutation.begin(), permutation.end(), 0);
+  std::sort(
+#ifdef __GLIBCXX__
+      std::execution::par,
+#endif
+      permutation.begin(), permutation.end(),
+      [&](int const &i, int const &j) { return time[i] < time[j]; });
 
-  return merged_deposition_paths;
+  // Apply the permutation to all the vectors. This is not the most memory
+  // efficient way to do it but I don't think it matters. We store a lot more
+  // dofs
+  std::vector<dealii::BoundingBox<dim>> permutated_bounding_boxes(n_boxes);
+  std::vector<double> permutated_time(n_boxes);
+  std::vector<double> permutated_cos(n_boxes);
+  std::vector<double> permutated_sin(n_boxes);
+  for (unsigned int i = 0; i < n_boxes; ++i)
+  {
+    permutated_bounding_boxes[i] = bounding_boxes[permutation[i]];
+    permutated_time[i] = time[permutation[i]];
+    permutated_cos[i] = cos[permutation[i]];
+    permutated_sin[i] = sin[permutation[i]];
+  }
+
+  return std::make_tuple(permutated_bounding_boxes, permutated_time,
+                         permutated_cos, permutated_sin);
 }
 
 template <int dim>
