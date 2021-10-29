@@ -260,7 +260,7 @@ void init_dof_vector(
 {
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       vector_host(vector.get_partitioner());
-  unsigned int const local_size = vector_host.local_size();
+  unsigned int const local_size = vector_host.locally_owned_size();
   for (unsigned int i = 0; i < local_size; ++i)
     vector_host.local_element(i) = value;
 
