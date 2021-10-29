@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.1-devel
+FROM nvidia/cuda:11.4.2-devel-ubuntu20.04
 
 ARG N_PROCS=12
 
@@ -331,7 +331,7 @@ RUN export ARBORX_HASH=731d3cb9c942158089cbd8c6e3ce64098bb46fb7 && \
 ENV ARBORX_DIR=${INSTALL_DIR}/arborx
 
 # Install deal.II 
-RUN export DEAL_II_HASH=7f0732c52157f6c373020b7b38e26d2e467be5d0 && \
+RUN export DEAL_II_HASH=d3aed38b935ff22bd0d33a5aa47ba014ebce3812 && \
     export DEAL_II_URL=https://github.com/dealii/dealii/archive/${DEAL_II_HASH}.tar.gz && \
     export DEAL_II_ARCHIVE=${ARCHIVE_DIR}/dealii.tar.gz && \
     export DEAL_II_SOURCE_DIR=${SOURCE_DIR}/dealii && \
@@ -343,7 +343,7 @@ RUN export DEAL_II_HASH=7f0732c52157f6c373020b7b38e26d2e467be5d0 && \
     mkdir -p ${DEAL_II_BUILD_DIR} && cd ${DEAL_II_BUILD_DIR} && \
     cmake -DCMAKE_BUILD_TYPE=DebugRelease \
         -DCMAKE_CXX_FLAGS="-std=c++17" \
-        -DCMAKE_CUDA_FLAGS="-std=c++17" \
+        -DCMAKE_CUDA_FLAGS="-std=c++17 --extended-lambda" \
         -DCMAKE_CXX_STANDARD=17 \
         -DDEAL_II_WITH_64BIT_INDICES=ON \
         -DDEAL_II_WITH_MPI=ON \
