@@ -286,7 +286,6 @@ read_frame_timestamps(boost::property_tree::ptree const &experiment_database)
   std::ifstream file;
   file.open(log_filename);
   std::string line;
-  std::getline(file, line);
   while (std::getline(file, line))
   {
     unsigned int entry_index = 0;
@@ -301,10 +300,10 @@ read_frame_timestamps(boost::property_tree::ptree const &experiment_database)
 
       if (entry_index == 0)
       {
-        ASSERT(std::stoi(substring) - frame == 1 ||
-                   frame == std::numeric_limits<unsigned int>::max(),
-               "The file " + log_filename +
-                   " does not have consecutive frame indices.");
+        ASSERT_THROW(std::stoi(substring) - frame == 1 ||
+                         frame == std::numeric_limits<unsigned int>::max(),
+                     "The file " + log_filename +
+                         " does not have consecutive frame indices.");
         frame = std::stoi(substring);
         if (frame >= first_frame && frame <= last_frame)
           frame_of_interest = true;

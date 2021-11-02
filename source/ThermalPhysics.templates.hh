@@ -662,9 +662,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 #ifdef __GLIBCXX__
       std::execution::par,
 #endif
-      solution.begin(), solution.end(),
-      [&](double &val)
-      {
+      solution.begin(), solution.end(), [&](double &val) {
         if (val == std::numeric_limits<double>::infinity())
         {
           val = new_material_temperature;

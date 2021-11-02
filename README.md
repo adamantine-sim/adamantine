@@ -159,6 +159,7 @@ The following options are available:
     * newton\_tolerance: tolerance of the Newton solver (default value: 1e-6)
     * jfnk: use Jacobian-Free Newton Krylov method (default value: false)
 * experiment: (optional)
+  * read\_in\_experimental\_data: Whether to read in experimental data (default: false)
   * file: format of the file names. The format is pretty arbitrary, the keywords \#frame
   and \#camera are replaced by the frame and the camera number. The format of
   the file itself should be csv.
@@ -169,12 +170,15 @@ The following options are available:
   * data\_columns: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D)
   * log\_filename: The (full) filename of the log file that lists the timestamp for each frame from each camera.
   * first\_frame\_temporal\_offset: A uniform shift to the timestamps from all cameras to match the simulation time (default value: 0.0)
+  * estimated\_uncertainty: The estimate of the uncertainty in the experimental data points as given by a standard deviation (under the simplifying assumption that the error is normally distributed and independent for each data point) (default value: 0.0).
 * ensemble: (optional)
   * ensemble\_simulation: Whether to perform an ensemble of simulations (default value: false)
   * ensemble\_size: The number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
+  * initial\_temperature\_stddev: The standard deviation for the initial temperature of the material (default value: 0.0)
   * new\_material\_temperature\_stddev: The standard deviation for the temperature of material added during the process (default value: 0.0)
   * beam\_0\_max\_power\_stddev: The standard deviation for the max power for beam 0 (if it exists) (default value: 0.0)
 * data\_assimilation: (optional)
+  * assimilate\_data : Whether to perform data assimilation (default value: false)
   * solver:
     * max\_number\_of\_temp\_vectors: Maximum number of temporary vectors for the GMRES solve (optional)
     * max\_iterations: Maximum number of iterations for the GMRES solve (optional)

@@ -530,7 +530,7 @@ public:
     sim_at_expt_pt_2_before.push_back(data[2][3]);
 
     // Update the simulation data
-    da.update_ensemble(data, expt_vec, R);
+    da.update_ensemble(communicator, data, expt_vec, R);
 
     // Save the data at the observation points after assimilation
     std::vector<double> sim_at_expt_pt_1_after(3);

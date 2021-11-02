@@ -8,11 +8,13 @@
 #ifndef ADAMANTINE_HH
 #define ADAMANTINE_HH
 
+#include <DataAssimilator.hh>
 #include <Geometry.hh>
 #include <PostProcessor.hh>
 #include <ThermalPhysics.hh>
 #include <Timer.hh>
 #include <ensemble_management.hh>
+#include <experimental_data.hh>
 #include <material_deposition.hh>
 #include <utils.hh>
 
@@ -889,7 +891,10 @@ run_ensemble(MPI_Comm const &communicator,
   CALI_CXX_MARK_FUNCTION;
 #endif
 
-  // Extract property tree children
+  unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
+
+  // ------ Extract child property trees -----
+  // Mandatory subtrees
   boost::property_tree::ptree geometry_database =
       database.get_child("geometry");
   boost::property_tree::ptree discretization_database =
@@ -903,6 +908,14 @@ run_ensemble(MPI_Comm const &communicator,
   boost::property_tree::ptree ensemble_database =
       database.get_child("ensemble");
 
+  // Optional subtrees
+  boost::optional<const boost::property_tree::ptree &>
+      experiment_optional_database = database.get_child_optional("experiment");
+  boost::optional<const boost::property_tree::ptree &>
+      data_assimilation_optional_database =
+          database.get_child_optional("data_assimilation");
+
+  // ------ Get finite element implementation parameters -----
   // PropertyTreeInput discretization.fe_degree
   unsigned int const fe_degree =
       discretization_database.get<unsigned int>("fe_degree");
@@ -913,8 +926,9 @@ run_ensemble(MPI_Comm const &communicator,
                  quadrature_type.begin(),
                  [](unsigned char c) { return std::tolower(c); });
 
+  // ------ Get means of ensemble parameters -----
   // PropertyTreeInput materials.initial_temperature
-  double const initial_temperature =
+  double const initial_temperature_mean =
       database.get("materials.initial_temperature", 300.);
   // Get the nominal (mean) values of the ensemble parameters
   // PropertyTreeInput materials.new_material_temperature
@@ -934,12 +948,20 @@ run_ensemble(MPI_Comm const &communicator,
     beam_0_max_power_mean = 0;
   }
 
-  // Set up the ensemble members
+  // ------ Set up the ensemble members -----
   // There might be a more efficient way to share some of these objects between
   // ensemble members. For now, we'll do the simpler approach of duplicating
   // everything.
   // PropertyTreeInput ensemble.ensemble_size
   const unsigned int ensemble_size = ensemble_database.get("ensemble_size", 5);
+
+  // PropertyTreeInput ensemble.initial_temperature_stddev
+  const double initial_temperature_stddev =
+      ensemble_database.get("initial_temperature_stddev", 0.0);
+
+  std::vector<double> initial_temperature =
+      adamantine::fill_and_sync_random_vector(
+          ensemble_size, initial_temperature_mean, initial_temperature_stddev);
 
   // PropertyTreeInput ensemble.new_material_temperature_stddev
   const double new_material_temperature_stddev =
@@ -997,7 +1019,7 @@ run_ensemble(MPI_Comm const &communicator,
     thermal_physics_ensemble[member]->compute_inverse_mass_matrix();
 
     thermal_physics_ensemble[member]->initialize_dof_vector(
-        initial_temperature, solution_ensemble[member]);
+        initial_temperature[member], solution_ensemble[member]);
     thermal_physics_ensemble[member]->get_state_from_material_properties();
 
     post_processor_ensemble.push_back(
@@ -1007,12 +1029,88 @@ run_ensemble(MPI_Comm const &communicator,
             thermal_physics_ensemble[member]->get_material_property(), member));
   }
 
+  // ----- Read the experimental data -----
+  unsigned int experimental_frame_index = 0;
+  std::vector<std::vector<double>> frame_time_stamps;
+  std::vector<adamantine::PointsValues<dim>> points_values;
+
+  dealii::LA::distributed::Vector<double, MemorySpaceType> temperature_dummy(
+      solution_ensemble[0]);
+
+  if (experiment_optional_database)
+  {
+    auto experiment_database = experiment_optional_database.get();
+
+    // PropertyTreeInput experiment.read_in_experimental_data
+    bool const read_in_experimental_data =
+        experiment_database.get("read_in_experimental_data", false);
+
+    if (read_in_experimental_data)
+    {
+      if (rank == 0)
+        std::cout << "Reading the experimental log file..." << std::endl;
+
+      frame_time_stamps =
+          adamantine::read_frame_timestamps(experiment_database);
+
+      adamantine::ASSERT_THROW(
+          frame_time_stamps.size() > 0,
+          "Error: Experimental data parsing is activated, but "
+          "the log shows zero cameras.");
+      adamantine::ASSERT_THROW(
+          frame_time_stamps[0].size() > 0,
+          "Error: Experimental data parsing is activated, but "
+          "the log shows zero data frames.");
+
+      if (rank == 0)
+        std::cout << "Done. Log entries found for " << frame_time_stamps.size()
+                  << " camera(s), with " << frame_time_stamps[0].size()
+                  << " frame(s)." << std::endl;
+
+      // Get a vector of experimental data where each element contains all
+      // data from all cameras per frame. For now data from all cameras are
+      // intermixed so the frames needs to be synced.
+      if (rank == 0)
+        std::cout << "Reading the experimental data..." << std::endl;
+
+      points_values = adamantine::read_experimental_data_point_cloud<dim>(
+          communicator, experiment_database);
+
+      adamantine::ASSERT_THROW(frame_time_stamps[0].size() ==
+                                   points_values.size(),
+                               "The number of frames in the log file and the "
+                               "data files must match.");
+      if (rank == 0)
+        std::cout << "Done. Data files found for " << points_values.size()
+                  << " frame(s)." << std::endl;
+
+      // PropertyTreeInput experiment.first_frame
+      experimental_frame_index = experiment_database.get("first_frame", 0);
+    }
+  }
+
+  // ----- Initialize the data assimilation object -----
+  boost::property_tree::ptree data_assimilation_solver_database;
+  bool assimilate_data = false;
+  if (data_assimilation_optional_database)
+  {
+    data_assimilation_solver_database =
+        data_assimilation_optional_database.get().get_child("solver");
+
+    if (data_assimilation_optional_database.get().get("assimilate_data", false))
+      assimilate_data = true;
+  }
+
+  adamantine::DataAssimilator data_assimilator(
+      data_assimilation_solver_database);
+
+  // ----- Initialize time and time stepping counters -----
   unsigned int progress = 0;
   unsigned int cycle = 0;
   unsigned int n_time_step = 0;
   double time = 0.;
 
-  // Output the initial solution
+  // ----- Output the initial solution -----
   std::vector<dealii::AffineConstraints<double>> affine_constraints_ensemble;
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
@@ -1024,9 +1122,10 @@ run_ensemble(MPI_Comm const &communicator,
                 timers);
   }
 
-  // Increment the time step
+  // ----- Increment the time step -----
   ++n_time_step;
 
+  // ----- Get refinement and time stepping parameters -----
   // PropertyTreeInput refinement.verbose
   bool const verbose_refinement = refinement_database.get("verbose", false);
   // PropertyTreeInput refinement.time_steps_between_refinement
@@ -1041,23 +1140,29 @@ run_ensemble(MPI_Comm const &communicator,
   unsigned int const time_steps_output =
       post_processor_database.get("time_steps_between_output", 1);
 
-  // For now assume that all ensemble members share the same geometry (they have
-  // independent adamantine::Geometry objects, but all are constructed from
-  // identical parameters), base new additions on the 0th ensemble member
+  // ----- Deposit material -----
+  // For now assume that all ensemble members share the same geometry (they
+  // have independent adamantine::Geometry objects, but all are constructed
+  // from identical parameters), base new additions on the 0th ensemble member
   auto [material_deposition_boxes, deposition_times] =
       adamantine::create_material_deposition_boxes<dim>(
           geometry_database, heat_sources_ensemble[0]);
 
   // Unless we use an embedded method, we know in advance the time step.
 
-  // Thus we can get for each time step, the list of elements that we will need
-  // to activate. This list will be invalidated every time we refine the mesh.
+  // Thus we can get for each time step, the list of elements that we will
+  // need to activate. This list will be invalidated every time we refine the
+  // mesh.
   timers[adamantine::add_material_search].start();
 
   auto elements_to_activate = adamantine::get_elements_to_activate(
       thermal_physics_ensemble[0]->get_dof_handler(),
       material_deposition_boxes);
   timers[adamantine::add_material_search].stop();
+
+  // ----- Main time stepping loop -----
+  if (rank == 0)
+    std::cout << "Starting the main time stepping loop..." << std::endl;
 
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_LOOP_BEGIN(main_loop_id, "main_loop");
@@ -1070,8 +1175,8 @@ run_ensemble(MPI_Comm const &communicator,
 #endif
     if ((time + time_step) > duration)
       time_step = duration - time;
-    unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
+    // ----- Refine the mesh if necessary -----
     // Refine the mesh after time_steps_refinement time steps or when time
     // is greater or equal than the next predicted time for refinement. This
     // is necessary when using an embedded method.
@@ -1093,6 +1198,7 @@ run_ensemble(MPI_Comm const &communicator,
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
 
+      // ----- Add material if necessary -----
       timers[adamantine::add_material_search].start();
       elements_to_activate = adamantine::get_elements_to_activate(
           thermal_physics_ensemble[0]->get_dof_handler(),
@@ -1100,11 +1206,9 @@ run_ensemble(MPI_Comm const &communicator,
       timers[adamantine::add_material_search].stop();
     }
 
-    // Add material if necessary.
-
-    // We use an epsilon to get the "expected" behavior when the deposition time
-    // and the time match should match exactly but don't because of floating
-    // point accuracy.
+    // We use an epsilon to get the "expected" behavior when the deposition
+    // time and the time match should match exactly but don't because of
+    // floating point accuracy.
     timers[adamantine::add_material_activate].start();
 
     double const eps = time_step / 1e12;
@@ -1143,12 +1247,13 @@ run_ensemble(MPI_Comm const &communicator,
 
     timers[adamantine::add_material_activate].stop();
 
+    // ----- Evolve the solution by one time step -----
     // Time can be different than time + time_step if an embedded scheme is
     // used. Note that this is a problem when adding material because it
     // means that the amount of material that needs to be added is not
     // known.
-#if ADAMANTINE_DEBUG
     double const old_time = time;
+#if ADAMANTINE_DEBUG
     bool const adding_material =
         (activation_start == activation_end) ? false : true;
 #endif
@@ -1165,11 +1270,77 @@ run_ensemble(MPI_Comm const &communicator,
 #endif
     timers[adamantine::evol_time].stop();
 
-    // Get the new time step (needs to be the same for all ensemble members,
-    // obtained from the 0th member)
+    // ----- Get the new time step size -----
+    // Needs to be the same for all ensemble members, obtained from the 0th
+    // member
     time_step = thermal_physics_ensemble[0]->get_delta_t_guess();
 
-    // Output progress on screen
+    // ----- Perform data assimilation -----
+    if (assimilate_data)
+    {
+      // Currently assume that all frames are synced so that the 0th camera
+      // frame time is the relevant time
+      double frame_time;
+      if (experimental_frame_index < frame_time_stamps[0].size())
+      {
+        frame_time = frame_time_stamps[0][experimental_frame_index];
+      }
+      else
+      {
+        frame_time = std::numeric_limits<double>::max();
+      }
+      if (frame_time <= time)
+      {
+        adamantine::ASSERT_THROW(
+            frame_time > old_time || n_time_step == 1,
+            "Unexpectedly missed a data assimilation frame.");
+        if (rank == 0)
+          std::cout << "Performing data assimilation at time " << time << "..."
+                    << std::endl;
+
+        auto indices_and_offsets = adamantine::set_with_experimental_data(
+            points_values[experimental_frame_index],
+            thermal_physics_ensemble[0]->get_dof_handler(), temperature_dummy);
+
+        data_assimilator.update_dof_mapping<dim>(
+            thermal_physics_ensemble[0]->get_dof_handler(),
+            indices_and_offsets);
+
+        unsigned int experimental_data_size =
+            points_values[experimental_frame_index].values.size();
+
+        // Create the R matrix (the observation covariance matrix)
+        // PropertyTreeInput experiment.estimated_uncertainty
+        double variance_entries = experiment_optional_database.get().get(
+            "estimated_uncertainty", 0.0);
+        variance_entries = variance_entries * variance_entries;
+
+        dealii::SparsityPattern pattern(experimental_data_size,
+                                        experimental_data_size, 1);
+        for (unsigned int i = 0; i < experimental_data_size; ++i)
+        {
+          pattern.add(i, i);
+        }
+        pattern.compress();
+
+        dealii::SparseMatrix<double> R(pattern);
+        for (unsigned int i = 0; i < experimental_data_size; ++i)
+        {
+          R.add(i, i, variance_entries);
+        }
+
+        data_assimilator.update_ensemble(
+            communicator, solution_ensemble,
+            points_values[experimental_frame_index].values, R);
+
+        if (rank == 0)
+          std::cout << "Done." << std::endl;
+
+        experimental_frame_index++;
+      }
+    }
+
+    // ----- Output progress on screen -----
     if (rank == 0)
     {
       double adim_time = time / (duration / 10.);
@@ -1182,7 +1353,7 @@ run_ensemble(MPI_Comm const &communicator,
       }
     }
 
-    // Output the solution
+    // ----- Output the solution -----
     if (n_time_step % time_steps_output == 0)
     {
       for (unsigned int member = 0; member < ensemble_size; ++member)
