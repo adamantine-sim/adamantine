@@ -11,17 +11,16 @@
 #include <deal.II/grid/filtered_iterator.h>
 
 #include <fstream>
+#include <unordered_map>
 
 namespace adamantine
 {
 template <int dim>
-PostProcessor<dim>::PostProcessor(
-    MPI_Comm const &communicator, boost::property_tree::ptree const &database,
-    dealii::DoFHandler<dim> &dof_handler,
-    std::shared_ptr<MaterialProperty<dim>> material_properties,
-    int ensemble_member_index)
-    : _communicator(communicator), _dof_handler(dof_handler),
-      _material_properties(material_properties)
+PostProcessor<dim>::PostProcessor(MPI_Comm const &communicator,
+                                  boost::property_tree::ptree const &database,
+                                  dealii::DoFHandler<dim> &dof_handler,
+                                  int ensemble_member_index)
+    : _communicator(communicator), _dof_handler(dof_handler)
 {
   // PropertyTreeInput post_processor.file_name
   _filename_prefix = database.get<std::string>("filename_prefix");
@@ -33,21 +32,12 @@ PostProcessor<dim>::PostProcessor(
 }
 
 template <int dim>
-PostProcessor<dim>::PostProcessor(
-    MPI_Comm const &communicator, boost::property_tree::ptree const &database,
-    dealii::DoFHandler<dim> &dof_handler,
-    std::shared_ptr<MaterialProperty<dim>> material_properties)
-    : _communicator(communicator), _dof_handler(dof_handler),
-      _material_properties(material_properties)
-{
-  // PropertyTreeInput post_processor.file_name
-  _filename_prefix = database.get<std::string>("filename_prefix");
-}
-
-template <int dim>
 void PostProcessor<dim>::output_pvtu(
     unsigned int cycle, unsigned int time_step, double time,
-    dealii::LA::distributed::Vector<double> const &solution)
+    dealii::LA::distributed::Vector<double> const &solution,
+    MemoryBlockView<double, dealii::MemorySpace::Host> state,
+    std::unordered_map<dealii::types::global_dof_index, unsigned int> dofs_map,
+    dealii::DoFHandler<dim> const &material_dof_handler)
 {
   // Add the DoFHandler and the temperature.
   _data_out.clear();
@@ -57,13 +47,8 @@ void PostProcessor<dim>::output_pvtu(
 
   // Add MaterialState ratio. We need to copy the data because state is attached
   // to a different DoFHandler.
-  std::array<dealii::LA::distributed::Vector<double>,
-             static_cast<unsigned int>(MaterialState::SIZE)>
-      state = _material_properties->get_state();
   unsigned int const n_active_cells =
       _dof_handler.get_triangulation().n_active_cells();
-  dealii::DoFHandler<dim> const &material_dof_handler =
-      _material_properties->get_dof_handler();
   dealii::Vector<double> powder(n_active_cells);
   dealii::Vector<double> liquid(n_active_cells);
   dealii::Vector<double> solid(n_active_cells);
@@ -80,10 +65,11 @@ void PostProcessor<dim>::output_pvtu(
     if (mp_cell->is_locally_owned())
     {
       mp_cell->get_dof_indices(mp_dof_indices);
-      dealii::types::global_dof_index const mp_dof_index = mp_dof_indices[0];
-      powder[i] = state[powder_index][mp_dof_index];
-      liquid[i] = state[liquid_index][mp_dof_index];
-      solid[i] = state[solid_index][mp_dof_index];
+      dealii::types::global_dof_index const mp_dof_index =
+          dofs_map.at(mp_dof_indices[0]);
+      powder[i] = state(powder_index, mp_dof_index);
+      liquid[i] = state(liquid_index, mp_dof_index);
+      solid[i] = state(solid_index, mp_dof_index);
     }
   _data_out.add_data_vector(powder, "powder");
   _data_out.add_data_vector(liquid, "liquid");

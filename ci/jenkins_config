@@ -99,6 +99,7 @@ pipeline {
                     -D ADAMANTINE_ENABLE_CUDA=ON \
                     -D ADAMANTINE_ENABLE_COVERAGE=OFF \
                     -D CMAKE_CXX_FLAGS="-Wall -Wextra -pedantic" \
+                    -D CMAKE_CUDA_FLAGS="--extended-lambda --expt-relaxed-constexpr" \
                     -D DEAL_II_DIR=${DEAL_II_DIR} \
                     ..
                   '''

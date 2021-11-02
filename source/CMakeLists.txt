@@ -9,7 +9,8 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.templates.hh
-    ${CMAKE_CURRENT_SOURCE_DIR}/ArrayMD.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/MemoryBlock.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/MemoryBlockView.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Operator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Physics.hh

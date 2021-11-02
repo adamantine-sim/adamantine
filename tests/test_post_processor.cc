@@ -60,9 +60,10 @@ BOOST_AUTO_TEST_CASE(post_processor)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  std::shared_ptr<adamantine::MaterialProperty<2>> mat_properties(
-      new adamantine::MaterialProperty<2>(
-          communicator, geometry.get_triangulation(), mat_prop_database));
+  std::shared_ptr<adamantine::MaterialProperty<2, dealii::MemorySpace::Host>>
+      mat_properties(
+          new adamantine::MaterialProperty<2, dealii::MemorySpace::Host>(
+              communicator, geometry.get_triangulation(), mat_prop_database));
 
   boost::property_tree::ptree beam_database;
   beam_database.put("depth", 0.1);
@@ -88,7 +89,7 @@ BOOST_AUTO_TEST_CASE(post_processor)
   boost::property_tree::ptree post_processor_database;
   post_processor_database.put("filename_prefix", "test");
   adamantine::PostProcessor<2> post_processor(
-      communicator, post_processor_database, dof_handler, mat_properties);
+      communicator, post_processor_database, dof_handler);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src;
   dealii::MatrixFree<2, double> const &matrix_free =
       thermal_operator.get_matrix_free();
@@ -96,9 +97,15 @@ BOOST_AUTO_TEST_CASE(post_processor)
   for (unsigned int i = 0; i < src.size(); ++i)
     src[i] = 1.;
 
-  post_processor.output_pvtu(1, 0, 0., src);
-  post_processor.output_pvtu(1, 1, 0.1, src);
-  post_processor.output_pvtu(1, 2, 0.2, src);
+  post_processor.output_pvtu(1, 0, 0., src, mat_properties->get_state(),
+                             mat_properties->get_dofs_map(),
+                             mat_properties->get_dof_handler());
+  post_processor.output_pvtu(1, 1, 0.1, src, mat_properties->get_state(),
+                             mat_properties->get_dofs_map(),
+                             mat_properties->get_dof_handler());
+  post_processor.output_pvtu(1, 2, 0.2, src, mat_properties->get_state(),
+                             mat_properties->get_dofs_map(),
+                             mat_properties->get_dof_handler());
   post_processor.output_pvd();
 
   // Check that the files exist

@@ -42,7 +42,7 @@ __device__ void MassMatrixOperatorQuad<dim, fe_degree>::operator()(
 }
 
 template <int dim, int fe_degree>
-class LocalMassMarixOperator
+class LocalMassMatrixOperator
 {
 public:
   __device__ void
@@ -60,7 +60,7 @@ public:
 };
 
 template <int dim, int fe_degree>
-__device__ void LocalMassMarixOperator<dim, fe_degree>::operator()(
+__device__ void LocalMassMatrixOperator<dim, fe_degree>::operator()(
     unsigned int const cell,
     typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
         *gpu_data,
@@ -173,7 +173,7 @@ namespace adamantine
 template <int dim, int fe_degree, typename MemorySpaceType>
 ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::ThermalOperatorDevice(
     MPI_Comm const &communicator,
-    std::shared_ptr<MaterialProperty<dim>> material_properties)
+    std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> material_properties)
     : _communicator(communicator), _m(0), _n_owned_cells(0),
       _material_properties(material_properties),
       _inverse_mass_matrix(
@@ -226,7 +226,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
   // cell_loop by using a slower path
   dealii::LA::distributed::Vector<double, MemorySpaceType> dummy(
       _inverse_mass_matrix->get_partitioner());
-  LocalMassMarixOperator<dim, fe_degree> local_operator;
+  LocalMassMatrixOperator<dim, fe_degree> local_operator;
   mass_matrix_free.cell_loop(local_operator, dummy, *_inverse_mass_matrix);
   _inverse_mass_matrix->compress(dealii::VectorOperation::add);
   unsigned int const local_size = _inverse_mass_matrix->local_size();
@@ -285,7 +285,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::Tvmult_add(
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
     evaluate_material_properties(
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+        dealii::LA::distributed::Vector<double, MemorySpaceType> const
             &temperature)
 {
   // Update the material properties

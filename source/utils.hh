@@ -9,13 +9,17 @@
 #define UTILS_HH
 
 #include <deal.II/base/cuda.h>
+#include <deal.II/base/cuda_size.h>
 #include <deal.II/base/exceptions.h>
 
 #include <cassert>
 #include <cstring>
 #include <exception>
+#include <execution>
+#include <numeric>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace adamantine
 {
@@ -24,6 +28,56 @@ namespace adamantine
 #else
 #define ADAMANTINE_HOST_DEV
 #endif
+
+template <typename Number>
+inline void deep_copy(Number *output, dealii::MemorySpace::Host const &,
+                      Number const *input, dealii::MemorySpace::Host const &,
+                      unsigned int size)
+{
+  std::memcpy(output, input, size * sizeof(Number));
+}
+
+#ifdef __CUDACC__
+template <typename Number>
+inline void deep_copy(Number *output, dealii::MemorySpace::Host const &,
+                      Number const *input, dealii::MemorySpace::CUDA const &,
+                      unsigned int size)
+{
+  cudaError_t const error_code =
+      cudaMemcpy((void *)output, (void const *)input, size * sizeof(Number),
+                 cudaMemcpyDeviceToHost);
+  AssertCuda(error_code);
+}
+
+template <typename Number>
+inline void deep_copy(Number *output, dealii::MemorySpace::CUDA const &,
+                      Number const *input, dealii::MemorySpace::Host const &,
+                      unsigned int size)
+{
+  cudaError_t const error_code =
+      cudaMemcpy((void *)output, (void const *)input, size * sizeof(Number),
+                 cudaMemcpyHostToDevice);
+  AssertCuda(error_code);
+}
+
+template <typename Number>
+inline void deep_copy(Number *output, dealii::MemorySpace::CUDA const &,
+                      Number const *input, dealii::MemorySpace::CUDA const &,
+                      unsigned int size)
+{
+  cudaError_t const error_code =
+      cudaMemcpy((void *)output, (void const *)input, size * sizeof(Number),
+                 cudaMemcpyDeviceToDevice);
+  AssertCuda(error_code);
+}
+#endif
+
+template <typename ArrayType1, typename ArrayType2>
+void deep_copy(ArrayType1 &output, ArrayType2 const &input)
+{
+  deep_copy(output.data(), typename ArrayType1::memory_space{}, input.data(),
+            typename ArrayType2::memory_space{}, input.size());
+}
 
 template <typename Number, typename MemorySpaceType>
 struct Memory
@@ -52,6 +106,13 @@ struct Memory<Number, dealii::MemorySpace::Host>
   }
 };
 
+template <typename Functor>
+void for_each(dealii::MemorySpace::Host, unsigned int const size, Functor f)
+{
+  for (unsigned int i = 0; i < size; ++i)
+    f(i);
+}
+
 #ifdef __CUDACC__
 template <typename Number>
 struct Memory<Number, dealii::MemorySpace::CUDA>
@@ -76,14 +137,28 @@ struct Memory<Number, dealii::MemorySpace::CUDA>
     AssertCuda(error_code);
   }
 };
+
+template <typename Functor>
+__global__ void for_each_impl(int size, Functor f)
+{
+  int i = blockDim.x * blockIdx.x + threadIdx.x;
+  if (i < size)
+  {
+    f(i);
+  }
+}
+
+template <typename Functor>
+void for_each(dealii::MemorySpace::CUDA, unsigned int const size,
+              Functor const &f)
+{
+  const int n_blocks = 1 + size / dealii::CUDAWrappers::block_size;
+  for_each_impl<<<n_blocks, dealii::CUDAWrappers::block_size>>>(size, f);
+  AssertCudaKernel();
+}
 #endif
 
-inline void ASSERT(bool cond, std::string const &message)
-{
-  assert((cond) && (message.c_str()));
-  (void)cond;
-  (void)message;
-}
+#define ASSERT(condition, message) assert((condition) && (message))
 
 inline void ASSERT_THROW(bool cond, std::string const &message)
 {

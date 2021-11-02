@@ -9,6 +9,6 @@
 
 namespace adamantine
 {
-template class MaterialProperty<2>;
-template class MaterialProperty<3>;
+template class MaterialProperty<2, dealii::MemorySpace::CUDA>;
+template class MaterialProperty<3, dealii::MemorySpace::CUDA>;
 } // namespace adamantine

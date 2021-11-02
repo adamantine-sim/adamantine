@@ -21,9 +21,9 @@ class ThermalOperatorDevice final
     : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
-  ThermalOperatorDevice(
-      MPI_Comm const &communicator,
-      std::shared_ptr<MaterialProperty<dim>> material_properties);
+  ThermalOperatorDevice(MPI_Comm const &communicator,
+                        std::shared_ptr<MaterialProperty<dim, MemorySpaceType>>
+                            material_properties);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
@@ -34,7 +34,7 @@ public:
       dealii::AffineConstraints<double> const &affine_constraints,
       dealii::hp::FECollection<dim> const &fe_collection) override;
 
-  void clear();
+  void clear() override;
 
   dealii::types::global_dof_index m() const override;
 
@@ -71,8 +71,8 @@ public:
       const override;
 
   void evaluate_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &state) override;
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const &state)
+      override;
 
   void get_state_from_material_properties() override
   {
@@ -102,7 +102,7 @@ private:
   unsigned int _n_owned_cells;
   typename dealii::CUDAWrappers::MatrixFree<dim, double>::AdditionalData
       _matrix_free_data;
-  std::shared_ptr<MaterialProperty<dim>> _material_properties;
+  std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> _material_properties;
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _inv_rho_cp;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity_x;

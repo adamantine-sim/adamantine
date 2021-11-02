@@ -12,7 +12,6 @@ list(APPEND
      test_heat_source
      test_implicit_operator
      test_material_property
-     test_arraymd
      test_newton_solver
      test_post_processor
      test_scan_path
@@ -36,7 +35,7 @@ set(CUDA_UNIT_TESTS "")
 list(APPEND
      CUDA_UNIT_TESTS
      test_integration_2d_device
-     test_arraymd_device
+     test_material_property_device
      test_thermal_operator_device
      test_thermal_physics_device
      )

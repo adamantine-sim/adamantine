@@ -22,7 +22,7 @@ namespace adamantine
 template <int dim, int fe_degree, typename MemorySpaceType>
 ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
     MPI_Comm const &communicator, BoundaryType boundary_type,
-    std::shared_ptr<MaterialProperty<dim>> material_properties,
+    std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> material_properties,
     std::vector<std::shared_ptr<HeatSource<dim>>> heat_sources)
     : _communicator(communicator), _boundary_type(boundary_type),
       _material_properties(material_properties), _heat_sources(heat_sources),
@@ -114,6 +114,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::clear()
 {
+  _cell_it_to_mf_cell_map.clear();
   _matrix_free.clear();
   _inverse_mass_matrix->reinit(0);
 }
@@ -495,7 +496,7 @@ void ThermalOperator<dim, fe_degree,
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::
     evaluate_material_properties(
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+        dealii::LA::distributed::Vector<double, MemorySpaceType> const
             &temperature)
 {
   if (!(_boundary_type & BoundaryType::adiabatic))
@@ -503,6 +504,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
         _matrix_free.get_dof_handler(), temperature);
 
   // Store the volumetric material properties
+  _cell_it_to_mf_cell_map.clear();
   unsigned int const n_cells = _matrix_free.n_cell_batches();
   for (unsigned int cell = 0; cell < n_cells; ++cell)
     for (unsigned int i = 0;

@@ -25,7 +25,8 @@ class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
   ThermalOperator(MPI_Comm const &communicator, BoundaryType boundary_type,
-                  std::shared_ptr<MaterialProperty<dim>> material_properties,
+                  std::shared_ptr<MaterialProperty<dim, MemorySpaceType>>
+                      material_properties,
                   std::vector<std::shared_ptr<HeatSource<dim>>> heat_sources);
 
   /**
@@ -48,7 +49,7 @@ public:
    * Clear the MatrixFree object and resize the inverse of the mass matrix to
    * zero.
    */
-  void clear();
+  void clear() override;
 
   dealii::types::global_dof_index m() const override;
 
@@ -102,8 +103,8 @@ public:
   // correctly. The current name does not correctly explain what this
   // function does but the name is still correct for the device.
   void evaluate_material_properties(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &state) override;
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const &state)
+      override;
 
   /**
    * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given cell.
@@ -175,7 +176,7 @@ private:
   /**
    * Material properties associated with the domain.
    */
-  std::shared_ptr<MaterialProperty<dim>> _material_properties;
+  std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> _material_properties;
   /**
    * Vector of heat sources.
    */
