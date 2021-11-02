@@ -19,8 +19,10 @@
 namespace adamantine
 {
 /**
- * This class defines the inteface that every physics needs to implement.
+ * This class defines the interface that every physics needs to implement.
  */
+// FIXME If we have more than one class derived from Physics, we should
+// revisit the interface.
 template <int dim, typename MemorySpaceType>
 class Physics
 {
@@ -45,9 +47,13 @@ public:
    * domain.
    */
   virtual void add_material(
-      std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator> const
+      std::vector<std::vector<
+          typename dealii::DoFHandler<dim>::active_cell_iterator>> const
           &elements_to_activate,
-      double initial_temperature,
+      std::vector<double> const &new_deposition_cos,
+      std::vector<double> const &new_deposition_sin,
+      unsigned int const activation_start, unsigned int const activation_end,
+      double const initial_temperature,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution) = 0;
 
   /**
@@ -91,6 +97,28 @@ public:
    * Physics object.
    */
   virtual void set_state_to_material_properties() = 0;
+
+  /**
+   * Return the cosine of the material deposition angle for the activated cell
+   * @p i.
+   */
+  virtual double get_deposition_cos(unsigned int const i) const = 0;
+
+  /**
+   * Set the cosine of the material deposition angle of the activated cells.
+   */
+  virtual void set_deposition_cos(std::vector<double> const &cos) = 0;
+
+  /**
+   * Return the sine of the material deposition angle for the activated cell
+   * @p i.
+   */
+  virtual double get_deposition_sin(unsigned int const i) const = 0;
+
+  /**
+   * Set the sine of the material deposition angle of the activated cells.
+   */
+  virtual void set_deposition_sin(std::vector<double> const &cos) = 0;
 
   /**
    * Return the DoFHandler.

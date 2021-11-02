@@ -315,11 +315,10 @@ BOOST_AUTO_TEST_CASE(material_deposition)
         std::lower_bound(deposition_times.begin(), deposition_times.end(),
                          time + time_step - eps) -
         deposition_times.begin();
-    for (unsigned int j = activation_start; j < activation_end; ++j)
-    {
-      thermal_physics.add_material(elements_to_activate[j], initial_temperature,
-                                   solution);
-    }
+    if (activation_start < activation_end)
+      thermal_physics.add_material(
+          elements_to_activate, deposition_cos, deposition_sin,
+          activation_start, activation_end, initial_temperature, solution);
 
     time =
         thermal_physics.evolve_one_time_step(time, time_step, solution, timers);

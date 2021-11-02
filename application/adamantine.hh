@@ -299,13 +299,9 @@ void refine_and_transfer(
   // Transfer material state
   unsigned int constexpr n_material_states =
       static_cast<unsigned int>(adamantine::MaterialState::SIZE);
-  std::vector<dealii::Vector<double>> material_state_to_transfer;
-  dealii::Vector<double> cell_material_state(n_material_states);
-  dealii::Vector<double> dummy_material_state(n_material_states);
-  for (auto &val : dummy_material_state)
-  {
-    val = -1.;
-  }
+  std::vector<std::vector<double>> data_to_transfer;
+  std::vector<double> dummy_cell_data(n_material_states + 2,
+                                      std::numeric_limits<double>::infinity());
   adamantine::MemoryBlockView<double, MemorySpaceType> material_state_view =
       material_property->get_state();
   adamantine::MemoryBlock<double, dealii::MemorySpace::Host>
@@ -319,18 +315,34 @@ void refine_and_transfer(
   adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
       state_host_view(material_state_host);
   unsigned int cell_id = 0;
+  unsigned int activated_cell_id = 0;
   for (auto const &cell : dof_handler.active_cell_iterators())
   {
     if (cell->is_locally_owned())
     {
+      std::vector<double> cell_data(n_material_states + 2);
       for (unsigned int i = 0; i < n_material_states; ++i)
-        cell_material_state[i] = state_host_view(i, cell_id);
-      material_state_to_transfer.push_back(cell_material_state);
+        cell_data[i] = state_host_view(i, cell_id);
+      if (cell->active_fe_index() == 0)
+      {
+        cell_data[n_material_states] =
+            thermal_physics->get_deposition_cos(activated_cell_id);
+        cell_data[n_material_states + 1] =
+            thermal_physics->get_deposition_sin(activated_cell_id);
+        ++activated_cell_id;
+      }
+      else
+      {
+        cell_data[n_material_states] = std::numeric_limits<double>::infinity();
+        cell_data[n_material_states + 1] =
+            std::numeric_limits<double>::infinity();
+      }
+      data_to_transfer.push_back(cell_data);
       ++cell_id;
     }
     else
     {
-      material_state_to_transfer.push_back(dummy_material_state);
+      data_to_transfer.push_back(dummy_cell_data);
     }
   }
 
@@ -356,10 +368,9 @@ void refine_and_transfer(
   }
 
   dealii::parallel::distributed::CellDataTransfer<
-      dim, dim, std::vector<dealii::Vector<double>>>
+      dim, dim, std::vector<std::vector<double>>>
       cell_data_trans(triangulation);
-  cell_data_trans.prepare_for_coarsening_and_refinement(
-      material_state_to_transfer);
+  cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
 
   // Execute the refinement
   triangulation.execute_coarsening_and_refinement();
@@ -384,29 +395,41 @@ void refine_and_transfer(
   }
 
   // Unpack the material state and repopulate the material state
-  std::vector<dealii::Vector<double>> transferred_material_state(
+  std::vector<std::vector<double>> transferred_data(
       triangulation.n_active_cells(),
-      dealii::Vector<double>(n_material_states));
-  cell_data_trans.unpack(transferred_material_state);
+      std::vector<double>(n_material_states + 2));
+  cell_data_trans.unpack(transferred_data);
   material_state_view = material_property->get_state();
   material_state_host.reinit(material_state_view.extent(0),
                              material_state_view.extent(1));
   state_host_view.reinit(material_state_host);
   unsigned int total_cell_id = 0;
   cell_id = 0;
+  std::vector<double> transferred_cos;
+  std::vector<double> transferred_sin;
   for (auto const &cell : dof_handler.active_cell_iterators())
   {
     if (cell->is_locally_owned())
     {
       for (unsigned int i = 0; i < n_material_states; ++i)
       {
-        state_host_view(i, cell_id) =
-            transferred_material_state[total_cell_id][i];
+        state_host_view(i, cell_id) = transferred_data[total_cell_id][i];
+      }
+      if (cell->active_fe_index())
+      {
+        transferred_cos.push_back(
+            transferred_data[total_cell_id][n_material_states]);
+        transferred_cos.push_back(
+            transferred_data[total_cell_id][n_material_states]);
       }
       ++cell_id;
     }
     ++total_cell_id;
   }
+
+  // Update the deposition cos and sin
+  thermal_physics->set_deposition_cos(transferred_cos);
+  thermal_physics->set_deposition_sin(transferred_sin);
 
   // Copy the data back to material_property
   adamantine::deep_copy(material_state_view.data(), memspace,
@@ -828,23 +851,15 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         std::lower_bound(deposition_times.begin(), deposition_times.end(),
                          time + time_step - eps) -
         deposition_times.begin();
-    for (unsigned int i = activation_start; i < activation_end; ++i)
-      thermal_physics->add_material(elements_to_activate[i],
-                                    new_material_temperature, solution);
+    if (activation_start < activation_end)
+      thermal_physics->add_material(
+          elements_to_activate, deposition_cos, deposition_sin,
+          activation_start, activation_end, new_material_temperature, solution);
 
     if ((rank == 0) && (verbose_refinement == true) &&
         (activation_end - activation_start > 0))
       std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
                 << std::endl;
-    // Remove elements that have been activated
-    elements_to_activate.erase(elements_to_activate.begin() + activation_start,
-                               elements_to_activate.begin() + activation_end);
-    deposition_times.erase(deposition_times.begin() + activation_start,
-                           deposition_times.begin() + activation_end);
-
-    material_deposition_boxes.erase(
-        material_deposition_boxes.begin() + activation_start,
-        material_deposition_boxes.begin() + activation_end);
 
     timers[adamantine::add_material_activate].stop();
 
@@ -1252,30 +1267,20 @@ run_ensemble(MPI_Comm const &communicator,
         std::lower_bound(deposition_times.begin(), deposition_times.end(),
                          time + time_step - eps) -
         deposition_times.begin();
-    for (unsigned int i = activation_start; i < activation_end; ++i)
-    {
+    if (activation_start < activation_end)
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
         thermal_physics_ensemble[member]->add_material(
-            elements_to_activate[i], new_material_temperature[member],
+            elements_to_activate, deposition_cos, deposition_sin,
+            activation_start, activation_end, new_material_temperature[member],
             solution_ensemble[member]);
       }
-    }
 
     if ((rank == 0) && (verbose_refinement == true) &&
         (activation_end - activation_start > 0))
       std::cout << "n_dofs: "
                 << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                 << std::endl;
-    // Remove elements that have been activated
-    elements_to_activate.erase(elements_to_activate.begin() + activation_start,
-                               elements_to_activate.begin() + activation_end);
-    deposition_times.erase(deposition_times.begin() + activation_start,
-                           deposition_times.begin() + activation_end);
-
-    material_deposition_boxes.erase(
-        material_deposition_boxes.begin() + activation_start,
-        material_deposition_boxes.begin() + activation_end);
 
     timers[adamantine::add_material_activate].stop();
 
