@@ -35,7 +35,9 @@ public:
    */
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
-              dealii::hp::QCollection<1> const &quad) override;
+              dealii::hp::QCollection<1> const &quad,
+              std::vector<double> const &deposition_cos,
+              std::vector<double> const &deposition_sin) override;
 
   /**
    * Compute the inverse of the mass matrix and update the material properties.
@@ -146,6 +148,14 @@ private:
       std::pair<unsigned int, unsigned int> const &cell_range) const;
 
   /**
+   * Set the deposition cosine and sine angles and convert the data from
+   * std::vector to dealii::Table<2, dealii::VectorizedArray>
+   */
+  void set_material_deposition_orientation(
+      std::vector<double> const &deposition_cos,
+      std::vector<double> const &deposition_sin);
+
+  /**
    * MPI communicator.
    */
   MPI_Comm const &_communicator;
@@ -219,6 +229,14 @@ private:
   mutable dealii::Table<2, std::array<dealii::types::material_id,
                                       dealii::VectorizedArray<double>::size()>>
       _material_id;
+  /**
+   * Table of the material deposition cosine angles.
+   */
+  dealii::Table<2, dealii::VectorizedArray<double>> _deposition_cos;
+  /**
+   * Table of the material deposition cosine angles.
+   */
+  dealii::Table<2, dealii::VectorizedArray<double>> _deposition_sin;
 };
 
 template <int dim, int fe_degree, typename MemorySpaceType>

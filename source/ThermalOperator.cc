@@ -40,11 +40,14 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
-    dealii::hp::QCollection<1> const &q_collection)
+    dealii::hp::QCollection<1> const &q_collection,
+    std::vector<double> const &deposition_cos,
+    std::vector<double> const &deposition_sin)
 {
   _matrix_free.reinit(dealii::StaticMappingQ1<dim>::mapping, dof_handler,
                       affine_constraints, q_collection, _matrix_free_data);
   _affine_constraints = &affine_constraints;
+  set_material_deposition_orientation(deposition_cos, deposition_sin);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -409,20 +412,63 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
       auto inv_rho_cp = get_inv_rho_cp(cell, q, state_ratios, temperature);
       auto mat_id = _material_id(cell, q);
       auto th_conductivity_grad = fe_eval.get_gradient(q);
-      th_conductivity_grad[axis<dim>::x] *=
-          _material_properties->compute_material_property(
-              StateProperty::thermal_conductivity_x, mat_id.data(),
-              state_ratios.data(), temperature);
-      th_conductivity_grad[axis<dim>::z] *=
-          _material_properties->compute_material_property(
-              StateProperty::thermal_conductivity_z, mat_id.data(),
-              state_ratios.data(), temperature);
-      // In 2D we only use x and z
+
+      // In 2D we only use x and z, and there are no deposition angle
+      if constexpr (dim == 2)
+      {
+        th_conductivity_grad[axis<dim>::x] *=
+            _material_properties->compute_material_property(
+                StateProperty::thermal_conductivity_x, mat_id.data(),
+                state_ratios.data(), temperature);
+        th_conductivity_grad[axis<dim>::z] *=
+            _material_properties->compute_material_property(
+                StateProperty::thermal_conductivity_z, mat_id.data(),
+                state_ratios.data(), temperature);
+      }
+
       if constexpr (dim == 3)
-        th_conductivity_grad[axis<dim>::y] *=
+      {
+        auto const th_conductivity_grad_x = th_conductivity_grad[axis<dim>::x];
+        auto const th_conductivity_grad_y = th_conductivity_grad[axis<dim>::y];
+        auto const thermal_conductivity_x =
+            _material_properties->compute_material_property(
+                StateProperty::thermal_conductivity_x, mat_id.data(),
+                state_ratios.data(), temperature);
+        auto const thermal_conductivity_y =
             _material_properties->compute_material_property(
                 StateProperty::thermal_conductivity_y, mat_id.data(),
                 state_ratios.data(), temperature);
+        auto cos = _deposition_cos(cell, q);
+        auto sin = _deposition_sin(cell, q);
+
+        // The rotation is performed using the following formula
+        //
+        // (cos  -sin) (x  0) ( cos  sin)
+        // (sin   cos) (0  y) (-sin  cos)
+        // =
+        // ((x*cos^2 + y*sin^2)  ((x-y) * (sin*cos)))
+        // (((x-y) * (sin*cos))  (x*sin^2 + y*cos^2))
+
+        th_conductivity_grad[axis<dim>::x] =
+            (thermal_conductivity_x * cos * cos +
+             thermal_conductivity_y * sin * sin) *
+                th_conductivity_grad_x +
+            ((thermal_conductivity_x - thermal_conductivity_y) * sin * cos) *
+                th_conductivity_grad_y;
+        th_conductivity_grad[axis<dim>::y] =
+            ((thermal_conductivity_x - thermal_conductivity_y) * sin * cos) *
+                th_conductivity_grad_x +
+            (thermal_conductivity_x * sin * sin +
+             thermal_conductivity_y * cos * cos) *
+                th_conductivity_grad_y;
+
+        // There is no deposition angle for the z axis
+        th_conductivity_grad[axis<dim>::z] *=
+            _material_properties->compute_material_property(
+                StateProperty::thermal_conductivity_z, mat_id.data(),
+                state_ratios.data(), temperature);
+      }
+
       fe_eval.submit_gradient(-inv_rho_cp * th_conductivity_grad, q);
 
       // Compute source term
@@ -515,6 +561,48 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
       _cell_it_to_mf_cell_map[cell_it] = std::make_pair(cell, i);
     }
 }
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, fe_degree, MemorySpaceType>::
+    set_material_deposition_orientation(
+        std::vector<double> const &deposition_cos,
+        std::vector<double> const &deposition_sin)
+{
+  unsigned int const n_cells = _matrix_free.n_cell_batches();
+  dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
+      _matrix_free);
+
+  _deposition_cos.reinit(n_cells, fe_eval.n_q_points);
+  _deposition_sin.reinit(n_cells, fe_eval.n_q_points);
+
+  using dof_cell_iterator = typename dealii::DoFHandler<dim>::cell_iterator;
+  std::map<dof_cell_iterator, unsigned int> cell_mapping;
+  unsigned int pos = 0;
+  for (auto const &cell : dealii::filter_iterators(
+           _matrix_free.get_dof_handler().active_cell_iterators(),
+           dealii::IteratorFilters::LocallyOwnedCell(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+  {
+    cell_mapping[cell] = pos;
+    ++pos;
+  }
+
+  for (unsigned int cell = 0; cell < n_cells; ++cell)
+    for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
+      for (unsigned int i = 0;
+           i < _matrix_free.n_active_entries_per_cell_batch(cell); ++i)
+      {
+        dof_cell_iterator cell_it = _matrix_free.get_cell_iterator(cell, i);
+
+        if (cell_it->active_fe_index() == 0)
+        {
+          unsigned int const j = cell_mapping[cell_it];
+          _deposition_cos(cell, q)[i] = deposition_cos[j];
+          _deposition_sin(cell, q)[i] = deposition_sin[j];
+        }
+      }
+}
+
 } // namespace adamantine
 
 INSTANTIATE_DIM_FEDEGREE_HOST(TUPLE(ThermalOperator))

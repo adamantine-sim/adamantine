@@ -561,7 +561,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
                                                   _affine_constraints);
   _affine_constraints.close();
 
-  _thermal_operator->reinit(_dof_handler, _affine_constraints, _q_collection);
+  _thermal_operator->reinit(_dof_handler, _affine_constraints, _q_collection,
+                            _deposition_cos, _deposition_sin);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,

@@ -27,7 +27,9 @@ public:
   virtual void
   reinit(dealii::DoFHandler<dim> const &dof_handler,
          dealii::AffineConstraints<double> const &affine_constraints,
-         dealii::hp::QCollection<1> const &q_collection) = 0;
+         dealii::hp::QCollection<1> const &q_collection,
+         std::vector<double> const &deposition_cos,
+         std::vector<double> const &deposition_sin) = 0;
 
   virtual void compute_inverse_mass_matrix(
       dealii::DoFHandler<dim> const &dof_handler,

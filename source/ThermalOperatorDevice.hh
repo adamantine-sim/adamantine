@@ -27,7 +27,9 @@ public:
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
-              dealii::hp::QCollection<1> const &q_collection) override;
+              dealii::hp::QCollection<1> const &q_collection,
+              std::vector<double> const &deposition_cos,
+              std::vector<double> const &deposition_sin) override;
 
   void compute_inverse_mass_matrix(
       dealii::DoFHandler<dim> const &dof_handler,

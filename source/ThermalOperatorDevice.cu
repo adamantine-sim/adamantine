@@ -188,7 +188,8 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
-    dealii::hp::QCollection<1> const &q_collection)
+    dealii::hp::QCollection<1> const &q_collection, std::vector<double> const &,
+    std::vector<double> const &)
 {
   // FIXME deal.II does not support QCollection on GPU
   _matrix_free.reinit(dof_handler, affine_constraints, q_collection[0],

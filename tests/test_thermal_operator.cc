@@ -85,7 +85,12 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
       communicator, adamantine::BoundaryType::adiabatic, mat_properties,
       heat_sources);
-  thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
+  std::vector<double> deposition_cos(
+      geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
+  std::vector<double> deposition_sin(
+      geometry.get_triangulation().n_locally_owned_active_cells(), 0.);
+  thermal_operator.reinit(dof_handler, affine_constraints, q_collection,
+                          deposition_cos, deposition_sin);
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
@@ -187,7 +192,12 @@ BOOST_AUTO_TEST_CASE(spmv)
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
       communicator, adamantine::BoundaryType::adiabatic, mat_properties,
       heat_sources);
-  thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
+  std::vector<double> deposition_cos(
+      geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
+  std::vector<double> deposition_sin(
+      geometry.get_triangulation().n_locally_owned_active_cells(), 0.);
+  thermal_operator.reinit(dof_handler, affine_constraints, q_collection,
+                          deposition_cos, deposition_sin);
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
@@ -290,7 +300,12 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic)
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
       communicator, adamantine::BoundaryType::adiabatic, mat_properties,
       heat_sources);
-  thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
+  std::vector<double> deposition_cos(
+      geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
+  std::vector<double> deposition_sin(
+      geometry.get_triangulation().n_locally_owned_active_cells(), 0.);
+  thermal_operator.reinit(dof_handler, affine_constraints, q_collection,
+                          deposition_cos, deposition_sin);
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
@@ -436,7 +451,12 @@ BOOST_AUTO_TEST_CASE(spmv_rad)
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
       communicator, adamantine::BoundaryType::radiative, mat_properties,
       heat_sources);
-  thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
+  std::vector<double> deposition_cos(
+      geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
+  std::vector<double> deposition_sin(
+      geometry.get_triangulation().n_locally_owned_active_cells(), 0.);
+  thermal_operator.reinit(dof_handler, affine_constraints, q_collection,
+                          deposition_cos, deposition_sin);
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
