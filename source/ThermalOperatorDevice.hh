@@ -99,6 +99,14 @@ public:
                         unsigned int) const override;
 
 private:
+  /**
+   * Set the deposition cosine and sine angles and convert the data from
+   * std::vector to dealii::Table<2, dealii::VectorizedArray>
+   */
+  void set_material_deposition_orientation(
+      std::vector<double> const &deposition_cos,
+      std::vector<double> const &deposition_sin);
+
   MPI_Comm const &_communicator;
   dealii::types::global_dof_index _m;
   unsigned int _n_owned_cells;
@@ -107,6 +115,8 @@ private:
   std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> _material_properties;
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _inv_rho_cp;
+  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _deposition_cos;
+  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _deposition_sin;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity_x;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity_y;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity_z;

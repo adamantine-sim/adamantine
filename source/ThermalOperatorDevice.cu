@@ -78,11 +78,11 @@ template <int dim, int fe_degree>
 class ThermalOperatorQuad
 {
 public:
-  __device__ ThermalOperatorQuad(double inv_rho_cp,
+  __device__ ThermalOperatorQuad(double inv_rho_cp, double cos, double sin,
                                  double thermal_conductivity_x,
                                  double thermal_conductivity_y,
                                  double thermal_conductivity_z)
-      : _inv_rho_cp(inv_rho_cp),
+      : _inv_rho_cp(inv_rho_cp), _cos(cos), _sin(sin),
         _thermal_conductivity_x(thermal_conductivity_x),
         _thermal_conductivity_y(thermal_conductivity_y),
         _thermal_conductivity_z(thermal_conductivity_z)
@@ -94,6 +94,8 @@ public:
 
 private:
   double _inv_rho_cp;
+  double _cos;
+  double _sin;
   double _thermal_conductivity_x;
   double _thermal_conductivity_y;
   double _thermal_conductivity_z;
@@ -104,10 +106,44 @@ __device__ void ThermalOperatorQuad<dim, fe_degree>::operator()(
     dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const
 {
   auto th_conductivity_grad = fe_eval->get_gradient();
-  th_conductivity_grad[::adamantine::axis<dim>::x] *= _thermal_conductivity_x;
-  th_conductivity_grad[::adamantine::axis<dim>::z] *= _thermal_conductivity_z;
+
+  // In 2D we only use x and z, and there are no deposition angle
+  if constexpr (dim == 2)
+  {
+    th_conductivity_grad[::adamantine::axis<dim>::x] *= _thermal_conductivity_x;
+    th_conductivity_grad[::adamantine::axis<dim>::z] *= _thermal_conductivity_z;
+  }
+
   if constexpr (dim == 3)
-    th_conductivity_grad[::adamantine::axis<dim>::y] *= _thermal_conductivity_y;
+  {
+    auto const th_conductivity_grad_x =
+        th_conductivity_grad[::adamantine::axis<dim>::x];
+    auto const th_conductivity_grad_y =
+        th_conductivity_grad[::adamantine::axis<dim>::y];
+
+    // The rotation is performed using the following formula
+    //
+    // (cos  -sin) (x  0) ( cos  sin)
+    // (sin   cos) (0  y) (-sin  cos)
+    // =
+    // ((x*cos^2 + y*sin^2)  ((x-y) * (sin*cos)))
+    // (((x-y) * (sin*cos))  (x*sin^2 + y*cos^2))
+    th_conductivity_grad[::adamantine::axis<dim>::x] =
+        (_thermal_conductivity_x * _cos * _cos +
+         _thermal_conductivity_y * _sin * _sin) *
+            th_conductivity_grad_x +
+        ((_thermal_conductivity_x - _thermal_conductivity_y) * _sin * _cos) *
+            th_conductivity_grad_y;
+    th_conductivity_grad[::adamantine::axis<dim>::y] =
+        ((_thermal_conductivity_x - _thermal_conductivity_y) * _sin * _cos) *
+            th_conductivity_grad_x +
+        (_thermal_conductivity_x * _sin * _sin +
+         _thermal_conductivity_y * _cos * _cos) *
+            th_conductivity_grad_y;
+
+    // There is no deposition angle for the z axis
+    th_conductivity_grad[::adamantine::axis<dim>::z] *= _thermal_conductivity_z;
+  }
 
   fe_eval->submit_gradient(-_inv_rho_cp * th_conductivity_grad);
 }
@@ -116,10 +152,11 @@ template <int dim, int fe_degree>
 class LocalThermalOperatorDevice
 {
 public:
-  LocalThermalOperatorDevice(double *inv_rho_cp, double *thermal_conductivity_x,
+  LocalThermalOperatorDevice(double *inv_rho_cp, double *cos, double *sin,
+                             double *thermal_conductivity_x,
                              double *thermal_conductivity_y,
                              double *thermal_conductivity_z)
-      : _inv_rho_cp(inv_rho_cp),
+      : _inv_rho_cp(inv_rho_cp), _cos(cos), _sin(sin),
         _thermal_conductivity_x(thermal_conductivity_x),
         _thermal_conductivity_y(thermal_conductivity_y),
         _thermal_conductivity_z(thermal_conductivity_z)
@@ -141,6 +178,8 @@ public:
 
 private:
   double *_inv_rho_cp;
+  double *_cos;
+  double *_sin;
   double *_thermal_conductivity_x;
   double *_thermal_conductivity_y;
   double *_thermal_conductivity_z;
@@ -161,7 +200,7 @@ __device__ void LocalThermalOperatorDevice<dim, fe_degree>::operator()(
   fe_eval.read_dof_values(src);
   fe_eval.evaluate(false, true);
   fe_eval.apply_for_each_quad_point(ThermalOperatorQuad<dim, fe_degree>(
-      _inv_rho_cp[pos], _thermal_conductivity_x[pos],
+      _inv_rho_cp[pos], _cos[pos], _sin[pos], _thermal_conductivity_x[pos],
       _thermal_conductivity_y[pos], _thermal_conductivity_z[pos]));
   fe_eval.integrate(false, true);
   fe_eval.distribute_local_to_global(dst);
@@ -188,8 +227,9 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
-    dealii::hp::QCollection<1> const &q_collection, std::vector<double> const &,
-    std::vector<double> const &)
+    dealii::hp::QCollection<1> const &q_collection,
+    std::vector<double> const &deposition_cos,
+    std::vector<double> const &deposition_sin)
 {
   // FIXME deal.II does not support QCollection on GPU
   _matrix_free.reinit(dof_handler, affine_constraints, q_collection[0],
@@ -201,6 +241,8 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
       dynamic_cast<dealii::parallel::DistributedTriangulationBase<dim> const *>(
           &dof_handler.get_triangulation())
           ->n_locally_owned_active_cells();
+
+  set_material_deposition_orientation(deposition_cos, deposition_sin);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -267,7 +309,8 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::vmult_add(
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
   LocalThermalOperatorDevice<dim, fe_degree> local_operator(
-      _inv_rho_cp.get_values(), _thermal_conductivity_x.get_values(),
+      _inv_rho_cp.get_values(), _deposition_cos.get_values(),
+      _deposition_sin.get_values(), _thermal_conductivity_x.get_values(),
       _thermal_conductivity_y.get_values(),
       _thermal_conductivity_z.get_values());
   _matrix_free.cell_loop(local_operator, src, dst);
@@ -367,6 +410,65 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
         dealii::LA::distributed::Vector<double, MemorySpaceType> &vector) const
 {
   _matrix_free.initialize_dof_vector(vector);
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType>
+void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
+    set_material_deposition_orientation(
+        std::vector<double> const &deposition_cos,
+        std::vector<double> const &deposition_sin)
+{
+  unsigned int const n_coefs =
+      dealii::Utilities::pow(fe_degree + 1, dim) * _n_owned_cells;
+  _deposition_cos.reinit(n_coefs);
+  _deposition_sin.reinit(n_coefs);
+  dealii::LA::ReadWriteVector<double> deposition_cos_host(n_coefs);
+  dealii::LA::ReadWriteVector<double> deposition_sin_host(n_coefs);
+
+  using dof_cell_iterator = typename dealii::DoFHandler<dim>::cell_iterator;
+  std::map<dof_cell_iterator, unsigned int> cell_mapping;
+  unsigned int cell_pos = 0;
+  for (auto const &cell : dealii::filter_iterators(
+           _matrix_free.get_dof_handler().active_cell_iterators(),
+           dealii::IteratorFilters::LocallyOwnedCell(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+  {
+    cell_mapping[cell] = cell_pos;
+    ++cell_pos;
+  }
+
+  unsigned int constexpr n_dofs_1d = fe_degree + 1;
+  unsigned int constexpr n_q_points_per_cell =
+      dealii::Utilities::pow(n_dofs_1d, dim);
+  auto graph = _matrix_free.get_colored_graph();
+  unsigned int const n_colors = graph.size();
+  for (unsigned int color = 0; color < n_colors; ++color)
+  {
+    typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data gpu_data =
+        _matrix_free.get_data(color);
+    unsigned int const n_cells = gpu_data.n_cells;
+    auto gpu_data_host =
+        dealii::CUDAWrappers::copy_mf_data_to_host<dim, double>(
+            gpu_data, _matrix_free_data.mapping_update_flags);
+    for (unsigned int cell_id = 0; cell_id < n_cells; ++cell_id)
+    {
+      auto cell = graph[color][cell_id];
+      double const cos = deposition_cos[cell_mapping[cell]];
+      double const sin = deposition_sin[cell_mapping[cell]];
+      for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
+      {
+        unsigned int const pos =
+            dealii::CUDAWrappers::local_q_point_id_host<dim, double>(
+                cell_id, gpu_data_host, n_q_points_per_cell, i);
+        deposition_cos_host[pos] = cos;
+        deposition_sin_host[pos] = sin;
+      }
+    }
+  }
+
+  // Copy the coefficient to the host
+  _deposition_cos.import(deposition_cos_host, dealii::VectorOperation::insert);
+  _deposition_sin.import(deposition_sin_host, dealii::VectorOperation::insert);
 }
 } // namespace adamantine
 
