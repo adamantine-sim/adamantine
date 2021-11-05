@@ -220,10 +220,12 @@ The first entry of the file is the dimension the problem: 2 or 3.
   * Column 1 to 2: (x,y) coordinates of the center of the deposition box in m.
   * Column 3 to 4: (x,y) length of deposition box in m.
   * Column 5: deposition time in s.
+  * Column 6: angle of material deposition.
 * For 3D problems, the column descriptions are:
   * Column 1 to 3: (x,y,z) coordinates of the center of the deposition box in m.
   * Column 4 to 6: (x,y,z) length of deposition box in m.
   * Column 7: deposition time in s.
+  * Column 6: angle of material deposition.
 
 ## License
 `adamantine` is distributed under the 3-Clause BSD License.
