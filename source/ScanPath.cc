@@ -123,7 +123,7 @@ void ScanPath::load_event_series_scan_path(std::string scan_path_file)
     ScanPathSegment segment;
 
     std::vector<std::string> split_line;
-    boost::split(split_line, line, boost::is_any_of(" "),
+    boost::split(split_line, line, boost::is_any_of(" ,,"),
                  boost::token_compress_on);
 
     // Set the segment end time
