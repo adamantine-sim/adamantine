@@ -43,7 +43,7 @@ struct ScanPathSegment
 {
   double end_time;            // Unit: seconds
   double power_modifier;      // Dimensionless
-  dealii::Point<3> end_point; // Unit: m (NOTE: converted from mm in the file)
+  dealii::Point<3> end_point; // Unit: m
 };
 
 /**
