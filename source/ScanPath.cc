@@ -38,68 +38,72 @@ void ScanPath::load_segment_scan_path(std::string scan_path_file)
   std::ifstream file;
   file.open(scan_path_file);
   std::string line;
-  int line_index = 0;
-  while (getline(file, line))
+  unsigned int line_index = 3;
+  // Skip first line
+  getline(file, line);
+  // Read the number of path segments
+  getline(file, line);
+  unsigned int n_segments = std::stoi(line);
+  // Skip third line
+  getline(file, line);
+  // Read file as long as there are lines to read or we reached the number of
+  // segments to read, whichever comes first
+  while ((getline(file, line)) || (line_index - 2 < n_segments))
   {
-    // Skip the header
-    if (line_index > 2)
+    std::vector<std::string> split_line;
+    boost::split(split_line, line, boost::is_any_of(" "),
+                 boost::token_compress_on);
+    ScanPathSegment segment;
+
+    // Set the segment type
+    ScanPathSegmentType segment_type = ScanPathSegmentType::line;
+    if (split_line[0] == "0")
     {
-      std::vector<std::string> split_line;
-      boost::split(split_line, line, boost::is_any_of(" "),
-                   boost::token_compress_on);
-      ScanPathSegment segment;
-
-      // Set the segment type
-      ScanPathSegmentType segment_type = ScanPathSegmentType::line;
-      if (split_line[0] == "0")
-      {
-        // Check to make sure the segment isn't the first, if it is, throw an
-        // exception (the first segment must be a point in the spec).
-        ASSERT_THROW(_segment_list.size() > 0,
-                     "Error: Scan paths must begin with a 'point' segment.");
-      }
-      else if (split_line[0] == "1")
-      {
-        segment_type = ScanPathSegmentType::point;
-      }
-      else
-      {
-        ASSERT_THROW(false, "Error: Mode type in scan path file line " +
-                                std::to_string(line_index) +
-                                " not recognized.");
-      }
-
-      // Set the segment end position
-      segment.end_point(0) = std::stod(split_line[1]);
-      segment.end_point(1) = std::stod(split_line[2]);
-      segment.end_point(2) = std::stod(split_line[3]);
-
-      // Set the power modifier
-      segment.power_modifier = std::stod(split_line[4]);
-
-      // Set the velocity and end time
-      if (segment_type == ScanPathSegmentType::point)
-      {
-        if (_segment_list.size() > 0)
-        {
-          segment.end_time =
-              _segment_list.back().end_time + std::stod(split_line[5]);
-        }
-        else
-        {
-          segment.end_time = std::stod(split_line[5]);
-        }
-      }
-      else
-      {
-        double velocity = std::stod(split_line[5]);
-        double line_length =
-            segment.end_point.distance(_segment_list.back().end_point);
-        segment.end_time =
-            _segment_list.back().end_time + std::abs(line_length / velocity);
-      }
-      _segment_list.push_back(segment);
+      // Check to make sure the segment isn't the first, if it is, throw an
+      // exception (the first segment must be a point in the spec).
+      ASSERT_THROW(_segment_list.size() > 0,
+                   "Error: Scan paths must begin with a 'point' segment.");
     }
+    else if (split_line[0] == "1")
+    {
+      segment_type = ScanPathSegmentType::point;
+    }
+    else
+    {
+      ASSERT_THROW(false, "Error: Mode type in scan path file line " +
+                              std::to_string(line_index) + " not recognized.");
+    }
+
+    // Set the segment end position
+    segment.end_point(0) = std::stod(split_line[1]);
+    segment.end_point(1) = std::stod(split_line[2]);
+    segment.end_point(2) = std::stod(split_line[3]);
+
+    // Set the power modifier
+    segment.power_modifier = std::stod(split_line[4]);
+
+    // Set the velocity and end time
+    if (segment_type == ScanPathSegmentType::point)
+    {
+      if (_segment_list.size() > 0)
+      {
+        segment.end_time =
+            _segment_list.back().end_time + std::stod(split_line[5]);
+      }
+      else
+      {
+        segment.end_time = std::stod(split_line[5]);
+      }
+    }
+    else
+    {
+      double velocity = std::stod(split_line[5]);
+      double line_length =
+          segment.end_point.distance(_segment_list.back().end_point);
+      segment.end_time =
+          _segment_list.back().end_time + std::abs(line_length / velocity);
+    }
+    _segment_list.push_back(segment);
     line_index++;
   }
   file.close();
