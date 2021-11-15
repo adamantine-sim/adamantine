@@ -763,7 +763,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   unsigned int const time_steps_output =
       post_processor_database.get("time_steps_between_output", 1);
 
-  auto [material_deposition_boxes, deposition_times] =
+  auto [material_deposition_boxes, deposition_times, deposition_cos,
+        deposition_sin] =
       adamantine::create_material_deposition_boxes<dim>(geometry_database,
                                                         heat_sources);
 
@@ -1171,10 +1172,11 @@ run_ensemble(MPI_Comm const &communicator,
       post_processor_database.get("time_steps_between_output", 1);
 
   // ----- Deposit material -----
-  // For now assume that all ensemble members share the same geometry (they
-  // have independent adamantine::Geometry objects, but all are constructed
-  // from identical parameters), base new additions on the 0th ensemble member
-  auto [material_deposition_boxes, deposition_times] =
+  // For now assume that all ensemble members share the same geometry (they have
+  // independent adamantine::Geometry objects, but all are constructed from
+  // identical parameters), base new additions on the 0th ensemble member
+  auto [material_deposition_boxes, deposition_times, deposition_cos,
+        deposition_sin] =
       adamantine::create_material_deposition_boxes<dim>(
           geometry_database, heat_sources_ensemble[0]);
 
