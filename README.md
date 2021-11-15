@@ -194,7 +194,7 @@ The following options are available:
 #### Segment format
 After the self-explainatory tree-line header, the column descriptions are:
 * Column 1: mode 0 for line mode, mode 1 for spot mode
-* Columns 2 to 4: (x,y,z) coordinates in units of mm. For line mode, this
+* Columns 2 to 4: (x,y,z) coordinates in units of m. For line mode, this
 is the ending position of the the line.
 * Column 5: the coefficient for the nominal power. Usually this is either
 0 or 1, but sometimes intermediate values are used when turning a corner.
@@ -209,7 +209,7 @@ and instead choose some small positive number.
 For an event series the first segment is a point, then the rest are lines.
 The column descriptions are:
 * Column 1: segment endtime
-* Columns 2 to 4: (x,y,z) coordinates in units of mm. This is the ending
+* Columns 2 to 4: (x,y,z) coordinates in units of m. This is the ending
 position of the line.
 * Column 5: the coefficient for the nominal power. Usually this is either
 0 or 1, but sometimes intermediate values are used when turning a corner.
