@@ -364,3 +364,6 @@ RUN export DEAL_II_HASH=d3aed38b935ff22bd0d33a5aa47ba014ebce3812 && \
     rm -rf ${DEAL_II_BUILD_DIR} && \
     rm -rf ${DEAL_II_SOURCE_DIR}
 ENV DEAL_II_DIR=${INSTALL_DIR}/dealii
+
+# There is a bug when using multithreading. Disabling it for now.
+ENV DEAL_II_NUM_THREADS=1
