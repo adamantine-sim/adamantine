@@ -59,6 +59,14 @@ void DataAssimilator::update_ensemble(
   adamantine::ASSERT_THROW(_expt_size == expt_data.size(),
                            "Error: Unexpected experiment vector size.");
 
+  // Check if R is diagonal, needed for filling the noise vector
+  auto bandwidth = R.get_sparsity_pattern().bandwidth();
+  bool R_is_diagonal = false;
+  if (bandwidth == 0)
+  {
+    R_is_diagonal = true;
+  }
+
   // Get the perturbed innovation, ( y+u - Hx )
   if (rank == 0)
     std::cout << "Getting the perturbed innovation..." << std::endl;
@@ -68,7 +76,7 @@ void DataAssimilator::update_ensemble(
   for (unsigned int member = 0; member < _num_ensemble_members; ++member)
   {
     perturbed_innovation[member].reinit(_expt_size);
-    fill_noise_vector(perturbed_innovation[member], R);
+    fill_noise_vector(perturbed_innovation[member], R, R_is_diagonal);
     dealii::Vector<double> temporary = calc_Hx(sim_data[member]);
     for (unsigned int i = 0; i < _expt_size; ++i)
     {
@@ -243,25 +251,45 @@ dealii::Vector<double> DataAssimilator::calc_Hx(
 }
 
 void DataAssimilator::fill_noise_vector(dealii::Vector<double> &vec,
-                                        dealii::SparseMatrix<double> &R)
+                                        dealii::SparseMatrix<double> &R,
+                                        bool R_is_diagonal)
 {
   auto vector_size = vec.size();
 
-  // Do Cholesky decomposition
-  dealii::FullMatrix<double> L(vector_size);
-  dealii::FullMatrix<double> R_full(vector_size);
-  R_full.copy_from(R);
-  L.cholesky(R_full);
+  // If R is diagonal, then the entries in the noise vector are independent and
+  // each are simply a scaled output of the pseudo-random number generator. For
+  // a more general R, one needs to multiply by the Cholesky decomposition of R
+  // to achieve the appropriate correlation between the entries. Deal.II only
+  // has a specific Cholesky function for full matrices, which is used in the
+  // implementation below. The Cholesky decomposition is a special case of LU
+  // decomposition, so we can use a sparse LU solver to obtain the "L" below if
+  // needed in the future.
 
-  // Get a vector of normally distributed values
-  dealii::Vector<double> uncorrelated_noise_vector(vector_size);
-
-  for (unsigned int i = 0; i < vector_size; ++i)
+  if (R_is_diagonal)
   {
-    uncorrelated_noise_vector(i) = _normal_dist_generator(_prng);
+    for (unsigned int i = 0; i < vector_size; ++i)
+    {
+      vec(i) = _normal_dist_generator(_prng) * std::sqrt(R(i, i));
+    }
   }
+  else
+  {
+    // Do Cholesky decomposition
+    dealii::FullMatrix<double> L(vector_size);
+    dealii::FullMatrix<double> R_full(vector_size);
+    R_full.copy_from(R);
+    L.cholesky(R_full);
 
-  L.vmult(vec, uncorrelated_noise_vector);
+    // Get a vector of normally distributed values
+    dealii::Vector<double> uncorrelated_noise_vector(vector_size);
+
+    for (unsigned int i = 0; i < vector_size; ++i)
+    {
+      uncorrelated_noise_vector(i) = _normal_dist_generator(_prng);
+    }
+
+    L.vmult(vec, uncorrelated_noise_vector);
+  }
 }
 
 template <typename VectorType>

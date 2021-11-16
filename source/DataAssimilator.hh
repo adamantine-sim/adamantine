@@ -102,10 +102,12 @@ private:
 
   /**
    * This fills a vector (vec) with noise from a multivariate normal
-   * distribution defined by a covariance matrix (R).
+   * distribution defined by a covariance matrix (R). Note: For non-diagonal R
+   * this method currently uses full matrices, which substantially limits the
+   * allowable problem size.
    */
   void fill_noise_vector(dealii::Vector<double> &vec,
-                         dealii::SparseMatrix<double> &R);
+                         dealii::SparseMatrix<double> &R, bool R_is_diagonal);
 
   /**
    * This calculates the sample covariance for an input ensemble of vectors

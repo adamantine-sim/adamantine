@@ -405,44 +405,81 @@ public:
     BOOST_CHECK_CLOSE(cov2(4, 4), 0.24333333333333, tol);
   };
 
-  void test_fill_noise_vector()
+  void test_fill_noise_vector(bool R_is_diagonal)
   {
-    boost::property_tree::ptree solver_settings_database;
-    DataAssimilator da(solver_settings_database);
-
-    dealii::SparsityPattern pattern(3, 3, 3);
-    pattern.add(0, 0);
-    pattern.add(1, 0);
-    pattern.add(1, 1);
-    pattern.add(0, 1);
-    pattern.add(2, 2);
-    pattern.compress();
-
-    dealii::SparseMatrix<double> R(pattern);
-
-    R.add(0, 0, 0.1);
-    R.add(1, 0, 0.3);
-    R.add(1, 1, 1.0);
-    R.add(0, 1, 0.3);
-    R.add(2, 2, 0.2);
-
-    std::vector<dealii::Vector<double>> data;
-    dealii::Vector<double> ensemble_member(3);
-    for (unsigned int i = 0; i < 1000; ++i)
+    if (R_is_diagonal)
     {
-      da.fill_noise_vector(ensemble_member, R);
-      data.push_back(ensemble_member);
+      boost::property_tree::ptree solver_settings_database;
+      DataAssimilator da(solver_settings_database);
+
+      dealii::SparsityPattern pattern(3, 3, 1);
+      pattern.add(0, 0);
+      pattern.add(1, 1);
+      pattern.add(2, 2);
+      pattern.compress();
+
+      dealii::SparseMatrix<double> R(pattern);
+
+      R.add(0, 0, 0.1);
+      R.add(1, 1, 1.0);
+      R.add(2, 2, 0.2);
+
+      std::vector<dealii::Vector<double>> data;
+      dealii::Vector<double> ensemble_member(3);
+      for (unsigned int i = 0; i < 1000; ++i)
+      {
+        da.fill_noise_vector(ensemble_member, R, R_is_diagonal);
+        data.push_back(ensemble_member);
+      }
+
+      dealii::FullMatrix<double> Rtest = da.calc_sample_covariance_dense(data);
+
+      double tol =
+          20.; // Loose 20% tolerance because this is a statistical check
+      BOOST_CHECK_CLOSE(R(0, 0), Rtest(0, 0), tol);
+      BOOST_CHECK_CLOSE(R(1, 1), Rtest(1, 1), tol);
+      BOOST_CHECK_CLOSE(R(2, 2), Rtest(2, 2), tol);
     }
+    else
+    {
+      boost::property_tree::ptree solver_settings_database;
+      DataAssimilator da(solver_settings_database);
 
-    dealii::FullMatrix<double> Rtest = da.calc_sample_covariance_dense(data);
+      dealii::SparsityPattern pattern(3, 3, 3);
+      pattern.add(0, 0);
+      pattern.add(1, 0);
+      pattern.add(1, 1);
+      pattern.add(0, 1);
+      pattern.add(2, 2);
+      pattern.compress();
 
-    double tol = 20.; // Loose 20% tolerance because this is a statistical check
-    BOOST_CHECK_CLOSE(R(0, 0), Rtest(0, 0), tol);
-    BOOST_CHECK_CLOSE(R(1, 0), Rtest(1, 0), tol);
-    BOOST_CHECK_CLOSE(R(1, 1), Rtest(1, 1), tol);
-    BOOST_CHECK_CLOSE(R(0, 1), Rtest(0, 1), tol);
-    BOOST_CHECK_CLOSE(R(2, 2), Rtest(2, 2), tol);
-  };
+      dealii::SparseMatrix<double> R(pattern);
+
+      R.add(0, 0, 0.1);
+      R.add(1, 0, 0.3);
+      R.add(1, 1, 1.0);
+      R.add(0, 1, 0.3);
+      R.add(2, 2, 0.2);
+
+      std::vector<dealii::Vector<double>> data;
+      dealii::Vector<double> ensemble_member(3);
+      for (unsigned int i = 0; i < 1000; ++i)
+      {
+        da.fill_noise_vector(ensemble_member, R, R_is_diagonal);
+        data.push_back(ensemble_member);
+      }
+
+      dealii::FullMatrix<double> Rtest = da.calc_sample_covariance_dense(data);
+
+      double tol =
+          20.; // Loose 20% tolerance because this is a statistical check
+      BOOST_CHECK_CLOSE(R(0, 0), Rtest(0, 0), tol);
+      BOOST_CHECK_CLOSE(R(1, 0), Rtest(1, 0), tol);
+      BOOST_CHECK_CLOSE(R(1, 1), Rtest(1, 1), tol);
+      BOOST_CHECK_CLOSE(R(0, 1), Rtest(0, 1), tol);
+      BOOST_CHECK_CLOSE(R(2, 2), Rtest(2, 2), tol);
+    }
+  }; // namespace adamantine
 
   void test_update_ensemble()
   {
@@ -563,7 +600,8 @@ BOOST_AUTO_TEST_CASE(data_assimilator)
   dat.test_constructor();
   dat.test_update_dof_mapping();
   dat.test_calc_sample_covariance_dense();
-  dat.test_fill_noise_vector();
+  dat.test_fill_noise_vector(true);
+  dat.test_fill_noise_vector(false);
   dat.test_calc_H();
   dat.test_calc_Hx();
   dat.test_calc_kalman_gain();
