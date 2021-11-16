@@ -54,10 +54,9 @@ template <int dim>
 std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
            std::vector<double>, std::vector<double>>
 merge_deposition_paths(
-    std::vector<
-        std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
-                   std::vector<double>, std::vector<double>>>
-        bounding_box_lists);
+    std::vector<std::tuple<std::vector<dealii::BoundingBox<dim>>,
+                           std::vector<double>, std::vector<double>,
+                           std::vector<double>>> const &bounding_box_lists);
 /**
  * Return a vector of cells to activate for each time deposition.
  */

@@ -301,7 +301,7 @@ void material_property_table()
       temperature(dof_handler.locally_owned_dofs(), communicator);
   dealii::LA::ReadWriteVector<double> rw_vector(
       dof_handler.locally_owned_dofs());
-  for (unsigned int i = 0; i < rw_vector.n_elements(); ++i)
+  for (unsigned int i = 0; i < rw_vector.locally_owned_size(); ++i)
     rw_vector.local_element(i) = 15;
   temperature.import(rw_vector, dealii::VectorOperation::insert);
   mat_prop.update(dof_handler, temperature);
