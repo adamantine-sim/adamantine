@@ -61,11 +61,7 @@ void DataAssimilator::update_ensemble(
 
   // Check if R is diagonal, needed for filling the noise vector
   auto bandwidth = R.get_sparsity_pattern().bandwidth();
-  bool R_is_diagonal = false;
-  if (bandwidth == 0)
-  {
-    R_is_diagonal = true;
-  }
+  bool const R_is_diagonal = bandwidth == 0 ? true : false;
 
   // Get the perturbed innovation, ( y+u - Hx )
   if (rank == 0)
