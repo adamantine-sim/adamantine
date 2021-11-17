@@ -49,7 +49,7 @@ materials
       thermal_conductivity_x 31.4 ; [W/m K]
       thermal_conductivity_y 31.4 ; [W/m K]
       thermal_conductivity_z 31.4 ; [W/m K]
-
+      convection_heat_transfer_coef 100 ; [W/(m^2*K)]
     }
 
     powder
@@ -59,21 +59,25 @@ materials
       thermal_conductivity_x 0.314 ; [W/m K]
       thermal_conductivity_y 0.314 ; [W/m K]
       thermal_conductivity_z 0.314 ; [W/m K]
+      convection_heat_transfer_coef 100 ; [W/(m^2*K)]
     }
 
     liquid
     {
       specific_heat 847; [J/kg K]
       density 7904; [kg/m^3]
-      thermal_conductivity_x 37.3 ; [W/m k] 
-      thermal_conductivity_y 37.3 ; [W/m k] 
-      thermal_conductivity_z 37.3 ; [W/m k] 
+      thermal_conductivity_x 37.3 ; [W/m k]
+      thermal_conductivity_y 37.3 ; [W/m k]
+      thermal_conductivity_z 37.3 ; [W/m k]
+      convection_heat_transfer_coef 100 ; [W/(m^2*K)]
       ; Not all three states need to define the same properties or to exist
     }
 
     solidus 1675; [K]
     liquidus 1708; [K]
     latent_heat 290000 ; [J/kg]
+    radiation_temperature_infty 300 ; [K]
+    convection_temperature_infty 300 ; [K]
   }
 }
 
