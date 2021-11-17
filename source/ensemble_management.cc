@@ -18,8 +18,7 @@ std::vector<double> fill_and_sync_random_vector(unsigned int length,
 
   if (rank == 0)
   {
-    std::random_device dev;
-    std::mt19937 pseudorandom_number_generator(dev());
+    std::mt19937 pseudorandom_number_generator;
     std::normal_distribution<> normal_dist_generator(0.0, 1.0);
 
     for (unsigned int member = 0; member < length; ++member)
