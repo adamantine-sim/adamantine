@@ -8,6 +8,8 @@
 #ifndef TYPES_HH
 #define TYPES_HH
 
+#include <array>
+
 namespace dealii
 {
 namespace LinearAlgebra
@@ -63,6 +65,29 @@ enum class Property
   convection_temperature_infty,
   SIZE
 };
+
+/**
+ * Array containing the possible material states.
+ */
+static std::array<std::string, 3> material_state_names = {
+    {"powder", "solid", "liquid"}};
+
+/**
+ * Array continaing the possible material properties that depend on the state of
+ * the material.
+ */
+static std::array<std::string, 5> property_names = {
+    {"liquidus", "solidus", "latent_heat", "radiation_temperature_infty",
+     "convection_temperature_infty"}};
+
+/**
+ * Array containing the possible material properties that do not depend on the
+ * state of the material.
+ */
+static std::array<std::string, 8> state_property_names = {
+    {"density", "specific_heat", "thermal_conductivity_x",
+     "thermal_conductivity_y", "thermal_conductivity_z", "emissivity",
+     "radiation_heat_transfer_coef", "convection_heat_transfer_coef"}};
 
 /**
  * Enum on the possible timers.

@@ -632,21 +632,9 @@ template <int dim, typename MemorySpaceType>
 void MaterialProperty<dim, MemorySpaceType>::fill_properties(
     boost::property_tree::ptree const &database)
 {
-  std::array<std::string, _n_material_states> material_state = {
-      {"powder", "solid", "liquid"}};
-  std::array<std::string, _n_properties> properties = {
-      {"liquidus", "solidus", "latent_heat", "radiation_temperature_infty",
-       "convection_temperature_infty"}};
-  std::array<std::string, _n_state_properties> state_properties = {
-      {"density", "specific_heat", "thermal_conductivity_x",
-       "thermal_conductivity_y", "thermal_conductivity_z", "emissivity",
-       "radiation_heat_transfer_coef", "convection_heat_transfer_coef"}};
-
   // PropertyTreeInput materials.property_format
   std::string property_format = database.get<std::string>("property_format");
-  ASSERT_THROW((property_format == "table") ||
-                   (property_format == "polynomial"),
-               "property_format should be table or polynomial.");
+
   _use_table = (property_format == "table");
   // PropertyTreeInput materials.n_materials
   unsigned int const n_materials = database.get<unsigned int>("n_materials");
@@ -660,8 +648,6 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
     if (material_ids.size() == n_materials)
       break;
   }
-  ASSERT_THROW(material_ids.size() == n_materials,
-               "Could not find all the material_ids.");
 
   // When using the polynomial format we allocate one contiguous block of
   // memory. Thus, the largest material_id should be as small as possible
@@ -708,22 +694,20 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
     boost::property_tree::ptree const &material_database =
         database.get_child("material_" + std::to_string(material_id));
     // For each material, loop over the possible states.
-    bool valid_state = false;
     for (unsigned int state = 0; state < _n_material_states; ++state)
     {
       // The state may or may not exist for the material.
       boost::optional<boost::property_tree::ptree const &> state_database =
-          material_database.get_child_optional(material_state[state]);
+          material_database.get_child_optional(material_state_names[state]);
       if (state_database)
       {
-        valid_state = true;
         // For each state, loop over the possible properties.
         for (unsigned int p = 0; p < _n_state_properties; ++p)
         {
           // The property may or may not exist for that state
           boost::optional<std::string> const property =
               state_database.get().get_optional<std::string>(
-                  state_properties[p]);
+                  state_property_names[p]);
           // If the property exists, put it in the map. If the property does not
           // exist, we have a nullptr.
           if (property)
@@ -783,10 +767,6 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
         }
       }
     }
-    // Check that there is at least one valid MaterialState
-    ASSERT_THROW(
-        valid_state == true,
-        "Material without any valid state (solid, powder, or liquid).");
 
     // Check for the properties that are associated to a material but that
     // are independent of an individual state. These properties are duplicated
@@ -795,7 +775,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
     {
       // The property may or may not exist for that state
       boost::optional<double> const property =
-          material_database.get_optional<double>(properties[p]);
+          material_database.get_optional<double>(property_names[p]);
       // If the property exists, put it in the map. If the property does not
       // exist, we use the largest possible value. This is useful if the
       // liquidus and the solidus are not set.

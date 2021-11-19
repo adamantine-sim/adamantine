@@ -332,15 +332,10 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   auto parse_boundary_type = [&](std::string const &boundary) {
     if (boundary == "adiabatic")
     {
-      ASSERT_THROW(_boundary_type == BoundaryType::invalid,
-                   "Adiabatic condition cannot be combined with another type.");
       _boundary_type = BoundaryType::adiabatic;
     }
     else
     {
-      ASSERT_THROW(_boundary_type != BoundaryType::adiabatic,
-                   "Adiabatic condition cannot be combined with another type.");
-
       if (boundary == "radiative")
       {
         _boundary_type |= BoundaryType::radiative;

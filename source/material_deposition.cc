@@ -41,10 +41,6 @@ create_material_deposition_boxes(
   std::string method =
       geometry_database.get<std::string>("material_deposition_method");
 
-  ASSERT_THROW((method == "file" || method == "scan_paths"),
-               "Error: Method type for material deposition, '" + method +
-                   "', is not recognized. Valid options are: 'file' "
-                   "and 'scan_paths'");
   if (method == "file")
   {
     return read_material_deposition<dim>(geometry_database);

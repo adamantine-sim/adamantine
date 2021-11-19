@@ -50,12 +50,12 @@ valid as `input.info`.
 The following options are available:
 * boundary:
   * type: type of boundary: adiabatic, radiative, or convective. Multiple types
-  can be chosen simultaneously by separating them by comma
+  can be chosen simultaneously by separating them by comma (required)
 * discretization:
-  * fe\_degree: degree of the finite element used
+  * fe\_degree: degree of the finite element used (required)
   * quadrature: quadrature used: gauss or lobatto (default value: gauss)
 * geometry:
-  * dim: the dimension of the problem (2 or 3)
+  * dim: the dimension of the problem (2 or 3, required)
   * material\_height: below this height the domain contains material. Above this
   height the domain is empty (default value: 1e9)
   * use\_powder: the additive manufacturing process use powder: true or false
@@ -73,8 +73,9 @@ The following options are available:
         * deposition\_width: width of material deposition boxes (in the plane of the material, normal to the scan direction, 3D only)
         * deposition\_height: height of material deposition boxes (out of the plane of the material)
         * deposition\_lead\_time: amount of time before the scan path reaches a point that the material is added
-  * import\_mesh: true of false
+  * import\_mesh: true or false (required)
   * if import\_mesh is true:
+    * mesh\_file: The filename for the mesh file
     * mesh\_format: abaqus, assimp, unv, ucd, dbmesh, gmsh, tecplot, xda, vtk,
     vtu, exodus, or default, i.e., use the file suffix to try to determine the
     mesh format
@@ -86,25 +87,25 @@ The following options are available:
     * height\_divisions: number of cell layers in the height (default value: 10)
     * width\_divisions: number of cell layers in width (only in 3D) (default value: 10)
 * materials:
-  * n\_materials: number of materials
-  * property\_format: format of the material property: table or polynomial
+  * n\_materials: number of materials (required)
+  * property\_format: format of the material property: table or polynomial (required)
   * initial\_temperature: initial temperature of all the materials (default value: 300)
   * new\_material\_temperature: temperature of all the material that is being added during the process (default value: 300)
   * material\_X: property tree for the material with number X
   * material\_X.Y: property tree where Y is either liquid, powder, or solid
-  (optional)
+  (one is required)
   * material\_X.Y.Z: Z is either density in kg/m^3, specific\_heat in J/(K\*kg),
-  thermal\_conductivity\_x, resp. y or z, in the direction x, resp. y or z (in 2D only x and z are used), in W/(m\*K), emissivity, 
+  thermal\_conductivity\_x, resp. y or z, in the direction x, resp. y or z (in 2D only x and z are used), in W/(m\*K), emissivity,
   or convection\_heat\_transfer\_coef in W/(m^2\*K) (optional)
   * material\_X.A: A is either solidus in kelvin, liquidus in kelvin, latent\_heat
   in J/kg, radiation\_temperature\_infty in kelvin, or convection\_temperature\_infty
   in kelvin (optional)
 * memory\_space: device (use GPU) or host (use CPU) (default value: host)
-* post\_processor:
-  * filename\_prefix: prefix of output files
+* post\_processor (required):
+  * filename\_prefix: prefix of output files (required)
   * time\_steps\_between\_output: number of time steps between the
   fields being written to the output files (default value: 1)
-* refinement:
+* refinement (required):
   * n\_heat\_refinements: number of coarsening/refinement to execute (default value: 2)
   * heat\_cell\_ratio: this is the ratio (n new cells)/(n old cells) after heat
   refinement (default value: 1)
@@ -116,25 +117,25 @@ The following options are available:
   * time\_steps\_between\_refinement: number of time steps after which the
   refinement process is performed (default value: 2)
   * verbose: true or false (default value: false)
-* sources:
-  * n\_beams: number of heat source beams
+* sources (required):
+  * n\_beams: number of heat source beams (required)
   * beam\_X: property tree for the beam with number X
-  * beam\_X.type: type of heat source: goldak or electron\_beam
-  * beam\_X.scan\_path\_file: scan path filename
+  * beam\_X.type: type of heat source: goldak, electron\_beam, or cube (required)
+  * beam\_X.scan\_path\_file: scan path filename (required)
   * beam\_X.scan\_path\_file\_format: format of the scan path: segment or
-  event\_series
-  * beam\_X.depth: maximum depth reached by the electron beam in meters
+  event\_series (required)
+  * beam\_X.depth: maximum depth reached by the electron beam in meters (required)
   * beam\_X.absorption\_efficiency: absorption efficiency of the beam equivalent
   to energy\_conversion\_efficiency * control\_efficiency for electon beam. Number
-  between 0 and 1.
+  between 0 and 1 (required).
   * beam\_X.diameter: diameter of the beam in meters (default value: 2e-3)
-* time\_stepping:
+* time\_stepping (required):
   * method: name of the method to use for the time integration: forward\_euler,
   rk\_third\_order, rk\_fourth\_order, heun\_euler, bogacki\_shampine, dopri,
   fehlberg, cash\_karp, backward\_euler, implicit\_midpoint, crank\_nicolson, or
-  sdirk2
-  * duration: duration of the simulation in seconds
-  * time\_step: length of the time steps used for the simulation in seconds
+  sdirk2 (required)
+  * duration: duration of the simulation in seconds (required)
+  * time\_step: length of the time steps used for the simulation in seconds (required)
   * for embedded methods:
     * coarsening\_parameter: coarsening of the time step when the error is small
     enough (default value: 1.2)
