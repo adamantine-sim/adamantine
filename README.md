@@ -61,7 +61,7 @@ The following options are available:
   * use\_powder: the additive manufacturing process use powder: true or false
   (default value: false)
   * if use\_powder is true:
-    * powder\_layer: thickness of the initial layer of powder in meters
+    * powder\_layer: thickness of the initial layer of powder in meters (required)
   * material\_deposition: material is deposed during the simulation: true or
   false (default value: false)
   * if material\_deposition is true:
@@ -75,13 +75,13 @@ The following options are available:
         * deposition\_lead\_time: amount of time before the scan path reaches a point that the material is added
   * import\_mesh: true or false (required)
   * if import\_mesh is true:
-    * mesh\_file: The filename for the mesh file
+    * mesh\_file: The filename for the mesh file (required)
     * mesh\_format: abaqus, assimp, unv, ucd, dbmesh, gmsh, tecplot, xda, vtk,
     vtu, exodus, or default, i.e., use the file suffix to try to determine the
-    mesh format
+    mesh format (required)
   * if import\_mesh is false:
-    * length: the length of the domain in meters
-    * height: the height of the domain in meters
+    * length: the length of the domain in meters (required)
+    * height: the height of the domain in meters (required)
     * width: the width of the domain in meters (only in 3D)
     * length\_divisions: number of cell layers in length (default value: 10)
     * height\_divisions: number of cell layers in the height (default value: 10)
@@ -161,15 +161,16 @@ The following options are available:
     * jfnk: use Jacobian-Free Newton Krylov method (default value: false)
 * experiment: (optional)
   * read\_in\_experimental\_data: Whether to read in experimental data (default: false)
+  * if reading in experimental data:
   * file: format of the file names. The format is pretty arbitrary, the keywords \#frame
   and \#camera are replaced by the frame and the camera number. The format of
-  the file itself should be csv.
+  the file itself should be csv. (required)
   * first\_frame: number associated to the first frame (default value: 0)
-  * last\_frame: number associated to the last frame
-  * first\_camera\_id: number associated to the first camera
-  * last\_camera\_id: number associated to the last camera
-  * data\_columns: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D)
-  * log\_filename: The (full) filename of the log file that lists the timestamp for each frame from each camera.
+  * last\_frame: number associated to the last frame (required)
+  * first\_camera\_id: number associated to the first camera (required)
+  * last\_camera\_id: number associated to the last camera (required)
+  * data\_columns: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D) (required)
+  * log\_filename: The (full) filename of the log file that lists the timestamp for each frame from each camera. (required)
   * first\_frame\_temporal\_offset: A uniform shift to the timestamps from all cameras to match the simulation time (default value: 0.0)
   * estimated\_uncertainty: The estimate of the uncertainty in the experimental data points as given by a standard deviation (under the simplifying assumption that the error is normally distributed and independent for each data point) (default value: 0.0).
 * ensemble: (optional)
