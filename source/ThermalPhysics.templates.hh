@@ -527,7 +527,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     {
       cell->set_active_fe_index(0);
       // Set material deposition cos and sin. We arbitrarily choose cos = 1 and
-      // sin = 1
+      // sin = 0
       _deposition_cos.push_back(1.);
       _deposition_sin.push_back(0.);
     }
