@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     }
     catch (std::runtime_error const &exception)
     {
-      std::cerr << exception.what();
+      std::cerr << exception.what() << std::endl;
       return 1;
     }
 

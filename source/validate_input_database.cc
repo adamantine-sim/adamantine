@@ -86,7 +86,7 @@ void validate_input_database(boost::property_tree::ptree &database)
 
   // Tree: geometry
   unsigned int dim = database.get<unsigned int>("geometry.dim");
-  ASSERT_THROW((dim == 2) || (dim == 3), "dim should be 2 or 3");
+  ASSERT_THROW((dim == 2) || (dim == 3), "Error: dim should be 2 or 3");
 
   boost::optional<double> material_height_optional =
       database.get_optional<double>("geometry.material_height");
@@ -103,7 +103,8 @@ void validate_input_database(boost::property_tree::ptree &database)
   if (use_powder)
   {
     double powder_layer = database.get<double>("geometry.powder_layer");
-    ASSERT_THROW(powder_layer >= 0.0, "Powder layer must be non-negative.");
+    ASSERT_THROW(powder_layer >= 0.0,
+                 "Error: Powder layer must be non-negative.");
   }
 
   bool material_deposition =
