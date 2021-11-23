@@ -101,7 +101,7 @@ public:
 private:
   /**
    * Set the deposition cosine and sine angles and convert the data from
-   * std::vector to dealii::Table<2, dealii::VectorizedArray>
+   * std::vector to dealii::LinearAlgebra::CUDAWrappers::Vector<double>
    */
   void set_material_deposition_orientation(
       std::vector<double> const &deposition_cos,
