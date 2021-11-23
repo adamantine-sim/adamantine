@@ -6,6 +6,7 @@
  */
 
 #include "adamantine.hh"
+#include <validate_input_database.hh>
 
 #ifdef ADAMANTINE_WITH_ADIAK
 #include <adiak.hpp>
