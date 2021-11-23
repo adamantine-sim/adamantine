@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
     catch (std::runtime_error const &exception)
     {
       std::cerr << exception.what() << std::endl;
-      return 1;
+      return 0;
     }
 
 #ifdef ADAMANTINE_WITH_CALIPER
