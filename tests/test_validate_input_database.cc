@@ -64,7 +64,7 @@ BOOST_AUTO_TEST_CASE(parse_test_input_files)
   boost::property_tree::info_parser::read_info(filename, database);
   validate_input_database(database);
 
-  filename = "integration_2D.info";
+  filename = "integration_2d.info";
   boost::property_tree::info_parser::read_info(filename, database);
   validate_input_database(database);
 }

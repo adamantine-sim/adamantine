@@ -72,7 +72,15 @@ int main(int argc, char *argv[])
                              "The file " + filename + " does not exist.");
     boost::property_tree::ptree database;
     boost::property_tree::info_parser::read_info(filename, database);
-    adamantine::validate_input_database(database);
+    try
+    {
+      adamantine::validate_input_database(database);
+    }
+    catch (std::runtime_error const &exception)
+    {
+      std::cerr << exception.what();
+      return 1;
+    }
 
 #ifdef ADAMANTINE_WITH_CALIPER
     cali::ConfigManager caliper_manager;
