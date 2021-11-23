@@ -50,6 +50,7 @@ materials
       thermal_conductivity_y 31.4 ; [W/m K]
       thermal_conductivity_z 31.4 ; [W/m K]
       convection_heat_transfer_coef 100 ; [W/(m^2*K)]
+      emissivity 0.15
     }
 
     powder
@@ -60,6 +61,7 @@ materials
       thermal_conductivity_y 0.314 ; [W/m K]
       thermal_conductivity_z 0.314 ; [W/m K]
       convection_heat_transfer_coef 100 ; [W/(m^2*K)]
+      emissivity 0.15
     }
 
     liquid
@@ -70,6 +72,7 @@ materials
       thermal_conductivity_y 37.3 ; [W/m k]
       thermal_conductivity_z 37.3 ; [W/m k]
       convection_heat_transfer_coef 100 ; [W/(m^2*K)]
+      emissivity 0.15
       ; Not all three states need to define the same properties or to exist
     }
 

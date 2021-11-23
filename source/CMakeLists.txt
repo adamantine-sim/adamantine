@@ -25,6 +25,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/material_deposition.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/utils.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/types.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/validate_input_database.hh
   )
 set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/CubeHeatSource.cc
@@ -43,6 +44,7 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ensemble_management.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/experimental_data.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/material_deposition.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/validate_input_database.cc
   )
 
 if (ADAMANTINE_ENABLE_CUDA)

@@ -19,6 +19,7 @@ list(APPEND
      test_timer
      test_utils
      test_integration_3d
+     test_validate_input_database
      )
 
 set(MPI_UNIT_TESTS "")

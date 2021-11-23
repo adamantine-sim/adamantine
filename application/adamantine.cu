@@ -6,6 +6,7 @@
  */
 
 #include "adamantine.hh"
+#include <validate_input_database.hh>
 
 #ifdef ADAMANTINE_WITH_ADIAK
 #include <adiak.hpp>
@@ -72,6 +73,15 @@ int main(int argc, char *argv[])
                              "The file " + filename + " does not exist.");
     boost::property_tree::ptree database;
     boost::property_tree::info_parser::read_info(filename, database);
+    try
+    {
+      adamantine::validate_input_database(database);
+    }
+    catch (std::runtime_error const &exception)
+    {
+      std::cerr << exception.what() << std::endl;
+      return 0;
+    }
 
 #ifdef ADAMANTINE_WITH_CALIPER
     cali::ConfigManager caliper_manager;
@@ -100,7 +110,6 @@ int main(int argc, char *argv[])
         database.get_child("geometry");
     // PropertyTreeInput geometry.dim
     int const dim = geometry_database.get<int>("dim");
-    adamantine::ASSERT_THROW((dim == 2) || (dim == 3), "dim should be 2 or 3");
 
     unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
     if (rank == 0)
