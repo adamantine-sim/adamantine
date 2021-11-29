@@ -107,13 +107,15 @@ public:
 
   void set_state_to_material_properties() override;
 
+  void update_material_deposition_orientation() override;
+
+  void set_material_deposition_orientation(
+      std::vector<double> const &deposition_cos,
+      std::vector<double> const &deposition_sin) override;
+
   double get_deposition_cos(unsigned int const i) const override;
 
-  void set_deposition_cos(std::vector<double> const &cos) override;
-
   double get_deposition_sin(unsigned int const i) const override;
-
-  void set_deposition_sin(std::vector<double> const &cos) override;
 
   dealii::DoFHandler<dim> &get_dof_handler() override;
 
@@ -246,6 +248,28 @@ inline double ThermalPhysics<dim, fe_degree, MemorySpaceType,
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
+inline void
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
+               QuadratureType>::update_material_deposition_orientation()
+{
+  _thermal_operator->set_material_deposition_orientation(_deposition_cos,
+                                                         _deposition_sin);
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+    set_material_deposition_orientation(
+        std::vector<double> const &deposition_cos,
+        std::vector<double> const &deposition_sin)
+{
+  _deposition_cos = deposition_cos;
+  _deposition_sin = deposition_sin;
+  update_material_deposition_orientation();
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
 inline double
 ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_deposition_cos(unsigned int const i) const
@@ -255,27 +279,11 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType,
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-inline void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
-    set_deposition_cos(std::vector<double> const &cos)
-{
-  _deposition_cos = cos;
-}
-
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
 inline double
 ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_deposition_sin(unsigned int const i) const
 {
   return _deposition_sin[i];
-}
-
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
-inline void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
-    set_deposition_sin(std::vector<double> const &sin)
-{
-  _deposition_sin = sin;
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,

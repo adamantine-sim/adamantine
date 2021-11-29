@@ -415,7 +415,7 @@ void refine_and_transfer(
       {
         state_host_view(i, cell_id) = transferred_data[total_cell_id][i];
       }
-      if (cell->active_fe_index())
+      if (cell->active_fe_index() == 0)
       {
         transferred_cos.push_back(
             transferred_data[total_cell_id][n_material_states]);
@@ -428,8 +428,8 @@ void refine_and_transfer(
   }
 
   // Update the deposition cos and sin
-  thermal_physics->set_deposition_cos(transferred_cos);
-  thermal_physics->set_deposition_sin(transferred_sin);
+  thermal_physics->set_material_deposition_orientation(transferred_cos,
+                                                       transferred_sin);
 
   // Copy the data back to material_property
   adamantine::deep_copy(material_state_view.data(), memspace,
@@ -753,6 +753,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       thermal_physics->get_dof_handler());
 
   thermal_physics->setup_dofs();
+  thermal_physics->update_material_deposition_orientation();
   thermal_physics->compute_inverse_mass_matrix();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   thermal_physics->initialize_dof_vector(initial_temperature, solution);
@@ -1055,6 +1056,7 @@ run_ensemble(MPI_Comm const &communicator,
         *geometry_ensemble[member], thermal_physics_ensemble[member]);
 
     thermal_physics_ensemble[member]->setup_dofs();
+    thermal_physics_ensemble[member]->update_material_deposition_orientation();
     thermal_physics_ensemble[member]->compute_inverse_mass_matrix();
 
     thermal_physics_ensemble[member]->initialize_dof_vector(

@@ -99,26 +99,30 @@ public:
   virtual void set_state_to_material_properties() = 0;
 
   /**
+   * Update the depostion cosine and sine from the Physics object to the
+   * operator object.
+   */
+  virtual void update_material_deposition_orientation() = 0;
+
+  /**
+   * Set the deposition cosine and sine and call
+   * update_material_deposition_orientation.
+   */
+  virtual void set_material_deposition_orientation(
+      std::vector<double> const &deposition_cos,
+      std::vector<double> const &deposition_sin) = 0;
+
+  /**
    * Return the cosine of the material deposition angle for the activated cell
    * @p i.
    */
   virtual double get_deposition_cos(unsigned int const i) const = 0;
 
   /**
-   * Set the cosine of the material deposition angle of the activated cells.
-   */
-  virtual void set_deposition_cos(std::vector<double> const &cos) = 0;
-
-  /**
    * Return the sine of the material deposition angle for the activated cell
    * @p i.
    */
   virtual double get_deposition_sin(unsigned int const i) const = 0;
-
-  /**
-   * Set the sine of the material deposition angle of the activated cells.
-   */
-  virtual void set_deposition_sin(std::vector<double> const &cos) = 0;
 
   /**
    * Return the DoFHandler.

@@ -20,6 +20,9 @@ BOOST_AUTO_TEST_CASE(thermal_2d_explicit_device)
   database.put("time_stepping.method", "forward_euler");
   database.put("sources.beam_0.scan_path_file",
                "scan_path_test_thermal_physics.txt");
+  database.put("sources.beam_0.type", "electron_beam");
+  database.put("sources.beam_0.scan_path_file_format", "segment");
+
   thermal_2d<dealii::MemorySpace::CUDA>(database, 0.05);
 }
 
@@ -33,6 +36,8 @@ BOOST_AUTO_TEST_CASE(thermal_2d_implicit_device)
   database.put("time_stepping.n_tmp_vectors", 100);
   database.put("sources.beam_0.scan_path_file",
                "scan_path_test_thermal_physics.txt");
+  database.put("sources.beam_0.type", "electron_beam");
+  database.put("sources.beam_0.scan_path_file_format", "segment");
 
   thermal_2d<dealii::MemorySpace::CUDA>(database, 0.025);
 }

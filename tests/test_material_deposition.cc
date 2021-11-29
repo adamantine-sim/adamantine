@@ -280,6 +280,7 @@ BOOST_AUTO_TEST_CASE(material_deposition)
                              dealii::QGauss<1>>
       thermal_physics(communicator, database, geometry);
   thermal_physics.setup_dofs();
+  thermal_physics.update_material_deposition_orientation();
   thermal_physics.compute_inverse_mass_matrix();
   auto &dof_handler = thermal_physics.get_dof_handler();
 

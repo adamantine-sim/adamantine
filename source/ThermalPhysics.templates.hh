@@ -561,8 +561,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
                                                   _affine_constraints);
   _affine_constraints.close();
 
-  _thermal_operator->reinit(_dof_handler, _affine_constraints, _q_collection,
-                            _deposition_cos, _deposition_sin);
+  _thermal_operator->reinit(_dof_handler, _affine_constraints, _q_collection);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -696,6 +695,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     }
     ++active_cell_id;
   }
+  _thermal_operator->set_material_deposition_orientation(_deposition_cos,
+                                                         _deposition_sin);
 
   // Communicate the results.
   solution.compress(dealii::VectorOperation::min);

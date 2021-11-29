@@ -27,9 +27,7 @@ public:
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
-              dealii::hp::QCollection<1> const &q_collection,
-              std::vector<double> const &deposition_cos,
-              std::vector<double> const &deposition_sin) override;
+              dealii::hp::QCollection<1> const &q_collection) override;
 
   void compute_inverse_mass_matrix(
       dealii::DoFHandler<dim> const &dof_handler,
@@ -86,6 +84,14 @@ public:
     // TODO
   }
 
+  /**
+   * Set the deposition cosine and sine angles and convert the data from
+   * std::vector to dealii::LinearAlgebra::CUDAWrappers::Vector<double>
+   */
+  void set_material_deposition_orientation(
+      std::vector<double> const &deposition_cos,
+      std::vector<double> const &deposition_sin);
+
   virtual void set_time_and_source_height(double, double)
   {
     // TODO
@@ -99,14 +105,6 @@ public:
                         unsigned int) const override;
 
 private:
-  /**
-   * Set the deposition cosine and sine angles and convert the data from
-   * std::vector to dealii::LinearAlgebra::CUDAWrappers::Vector<double>
-   */
-  void set_material_deposition_orientation(
-      std::vector<double> const &deposition_cos,
-      std::vector<double> const &deposition_sin);
-
   MPI_Comm const &_communicator;
   dealii::types::global_dof_index _m;
   unsigned int _n_owned_cells;

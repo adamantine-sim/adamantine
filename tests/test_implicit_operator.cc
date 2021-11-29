@@ -91,8 +91,9 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
       geometry.get_triangulation().n_locally_owned_active_cells(), 0.);
-  thermal_operator->reinit(dof_handler, affine_constraints, q_collection,
-                           deposition_cos, deposition_sin);
+  thermal_operator->reinit(dof_handler, affine_constraints, q_collection);
+  thermal_operator->set_material_deposition_orientation(deposition_cos,
+                                                        deposition_sin);
   thermal_operator->compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                 fe_collection);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(

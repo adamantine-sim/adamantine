@@ -7,6 +7,7 @@
 
 #include <ThermalOperator.hh>
 #include <instantiation.hh>
+#include <utils.hh>
 
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/types.h>
@@ -40,14 +41,11 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
-    dealii::hp::QCollection<1> const &q_collection,
-    std::vector<double> const &deposition_cos,
-    std::vector<double> const &deposition_sin)
+    dealii::hp::QCollection<1> const &q_collection)
 {
   _matrix_free.reinit(dealii::StaticMappingQ1<dim>::mapping, dof_handler,
                       affine_constraints, q_collection, _matrix_free_data);
   _affine_constraints = &affine_constraints;
-  set_material_deposition_orientation(deposition_cos, deposition_sin);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -586,6 +584,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
     cell_mapping[cell] = pos;
     ++pos;
   }
+  ASSERT((pos == 0) || (pos - 1 < deposition_cos.size()),
+         "Out-of-bound access.");
 
   for (unsigned int cell = 0; cell < n_cells; ++cell)
     for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)

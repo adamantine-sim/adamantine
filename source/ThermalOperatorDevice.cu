@@ -227,9 +227,7 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
-    dealii::hp::QCollection<1> const &q_collection,
-    std::vector<double> const &deposition_cos,
-    std::vector<double> const &deposition_sin)
+    dealii::hp::QCollection<1> const &q_collection)
 {
   // FIXME deal.II does not support QCollection on GPU
   _matrix_free.reinit(dof_handler, affine_constraints, q_collection[0],
@@ -241,8 +239,6 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
       dynamic_cast<dealii::parallel::DistributedTriangulationBase<dim> const *>(
           &dof_handler.get_triangulation())
           ->n_locally_owned_active_cells();
-
-  set_material_deposition_orientation(deposition_cos, deposition_sin);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>

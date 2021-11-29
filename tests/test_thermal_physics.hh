@@ -56,6 +56,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
       communicator, database, geometry);
   physics.setup_dofs();
+  physics.update_material_deposition_orientation();
   physics.compute_inverse_mass_matrix();
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
@@ -125,6 +126,7 @@ void thermal_2d_manufactured_solution()
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
       communicator, database, geometry);
   physics.setup_dofs();
+  physics.update_material_deposition_orientation();
   physics.compute_inverse_mass_matrix();
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
@@ -205,6 +207,7 @@ void initial_temperature()
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
       communicator, database, geometry);
   physics.setup_dofs();
+  physics.update_material_deposition_orientation();
   physics.compute_inverse_mass_matrix();
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
@@ -261,6 +264,7 @@ void energy_conservation()
   adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
       physics(communicator, database, geometry);
   physics.setup_dofs();
+  physics.update_material_deposition_orientation();
   physics.compute_inverse_mass_matrix();
 
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
@@ -357,6 +361,7 @@ void radiation_bcs()
   adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
       physics(communicator, database, geometry);
   physics.setup_dofs();
+  physics.update_material_deposition_orientation();
   physics.compute_inverse_mass_matrix();
 
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
@@ -451,6 +456,7 @@ void convection_bcs()
   adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
       physics(communicator, database, geometry);
   physics.setup_dofs();
+  physics.update_material_deposition_orientation();
   physics.compute_inverse_mass_matrix();
 
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
