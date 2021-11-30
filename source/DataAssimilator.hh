@@ -22,6 +22,13 @@
 
 namespace adamantine
 {
+
+enum class LocalizationCutoff
+{
+  gaspari_cohn,
+  step_function
+};
+
 /**
  * Forward declaration of the tester friend class to DataAssimilator.
  */
@@ -78,6 +85,14 @@ public:
       dealii::DoFHandler<dim> const &dof_handler,
       std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
 
+  /**
+   *
+   */
+  template <int dim>
+  void
+  update_covariance_sparsity_pattern(dealii::DoFHandler<dim> const &dof_handler,
+                                     double cutoff_distance);
+
 private:
   /**
    * This calculates the Kalman gain and applies it to the perturbed innovation.
@@ -121,6 +136,14 @@ private:
   dealii::FullMatrix<double>
   calc_sample_covariance_dense(std::vector<VectorType> vec_ensemble) const;
 
+  template <typename VectorType>
+  dealii::SparseMatrix<double>
+  calc_sample_covariance_sparse(std::vector<VectorType> vec_ensemble,
+                                LocalizationCutoff method,
+                                double cutoff_distance) const;
+
+  double gaspari_cohn_function(double r) const;
+
   /**
    * The number of ensemble members in the simulation.
    */
@@ -135,6 +158,13 @@ private:
    * The length of the data vector the experimental observations.
    */
   unsigned int _expt_size;
+
+  /**
+   * The sparsity pattern for the localized covariance matrix
+   */
+  dealii::SparsityPattern _covariance_sparsity_pattern;
+
+  std::vector<double> _covariance_localization_distances;
 
   /**
    * The pseudo-random number generator, used for the perturbations to the

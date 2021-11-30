@@ -9,6 +9,7 @@
 #include <utils.hh>
 
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/linear_operator_tools.h>
 
 // libc++ does not support parallel std library
@@ -228,6 +229,44 @@ void DataAssimilator::update_dof_mapping(
   }
 }
 
+template <int dim>
+void DataAssimilator::update_covariance_sparsity_pattern(
+    dealii::DoFHandler<dim> const &dof_handler, double cutoff_distance)
+{
+  _sim_size = dof_handler.n_dofs();
+
+  dealii::DynamicSparsityPattern dsp(dof_handler.n_dofs());
+  // dealii::DoFTools::make_sparsity_pattern(dof_handler, dsp);
+
+  // Loop through the dofs to see which pairs are within the specified distance
+  std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
+
+  dealii::DoFTools::map_dofs_to_support_points(
+      dealii::StaticMappingQ1<dim>::mapping, dof_handler, indices_points);
+
+  unsigned int i = 0;
+
+  _covariance_localization_distances.clear();
+
+  for (auto map_it_i = indices_points.begin(); map_it_i != indices_points.end();
+       ++map_it_i, ++i)
+  {
+    unsigned int j = 0;
+    for (auto map_it_j = indices_points.begin();
+         map_it_j != indices_points.end(); ++map_it_j, ++j)
+    {
+      double dist = map_it_i->second.distance(map_it_j->second);
+      if (dist < cutoff_distance)
+      {
+        dsp.add(i, j);
+        _covariance_localization_distances.push_back(dist);
+      }
+    }
+  }
+
+  _covariance_sparsity_pattern.copy_from(dsp);
+}
+
 dealii::Vector<double> DataAssimilator::calc_Hx(
     const dealii::LA::distributed::Vector<double> &sim_ensemble_member) const
 {
@@ -330,6 +369,101 @@ dealii::FullMatrix<double> DataAssimilator::calc_sample_covariance_dense(
   return cov;
 }
 
+double DataAssimilator::gaspari_cohn_function(double r) const
+{
+  if (r < 1.0)
+  {
+    return 1. - 5. / 3. * r * r + 5. / 8. * r * r * r + 0.5 * r * r * r * r -
+           0.25 * r * r * r * r * r;
+  }
+  else if (r < 2)
+  {
+    return 4. - 5. * r + 5. / 3. * r * r + 5. / 8. * r * r * r -
+           0.5 * r * r * r * r + 1. / 12. * r * r * r * r * r - 2. / (3. * r);
+  }
+  else
+  {
+    return 0.;
+  }
+}
+
+template <typename VectorType>
+dealii::SparseMatrix<double> DataAssimilator::calc_sample_covariance_sparse(
+    std::vector<VectorType> vec_ensemble, LocalizationCutoff method,
+    double cutoff_distance) const
+{
+  unsigned int num_ensemble_members = vec_ensemble.size();
+  unsigned int vec_size = 0;
+  if (vec_ensemble.size() > 0)
+  {
+    vec_size = vec_ensemble[0].size();
+  }
+
+  // Calculate the mean
+  dealii::Vector<double> mean(vec_size);
+  for (unsigned int i = 0; i < vec_size; ++i)
+  {
+    double sum = 0.0;
+    for (unsigned int sample = 0; sample < num_ensemble_members; ++sample)
+    {
+      sum += vec_ensemble[sample][i];
+    }
+    mean[i] = sum / num_ensemble_members;
+  }
+
+  // This could be calculated on the fly, but for now we're pre-calculating it.
+  dealii::FullMatrix<double> anomaly(vec_size, num_ensemble_members);
+  for (unsigned int member = 0; member < num_ensemble_members; ++member)
+  {
+    for (unsigned int i = 0; i < vec_size; ++i)
+    {
+      anomaly(i, member) = (vec_ensemble[member][i] - mean[i]) /
+                           std::sqrt(num_ensemble_members - 1.0);
+    }
+  }
+
+  // Do the element-wise matrix multiply by hand
+  dealii::SparseMatrix<double> cov(_covariance_sparsity_pattern);
+
+  unsigned int pos = 0;
+  for (auto conv_iter = cov.begin(); conv_iter != cov.end(); ++conv_iter, ++pos)
+  {
+    unsigned int i = conv_iter->row();
+    unsigned int j = conv_iter->column();
+
+    double element_value = 0;
+    for (unsigned int k = 0; k < num_ensemble_members; ++k)
+    {
+      // std::cout << anomaly(i, k) << " " << anomaly(j, k) << std::endl;
+      element_value += anomaly(i, k) * anomaly(j, k);
+    }
+
+    // std::cout << "i: " << i << " j: " << j << " val: " << element_value
+    //          << std::endl;
+
+    double localization_scaling;
+    if (method == LocalizationCutoff::gaspari_cohn)
+    {
+      localization_scaling = gaspari_cohn_function(
+          2.0 * _covariance_localization_distances[pos] / cutoff_distance);
+    }
+    else
+    {
+      if (_covariance_localization_distances[pos] <= cutoff_distance)
+        localization_scaling = 1.0;
+      else
+        localization_scaling = 0.0;
+    }
+
+    std::cout << "i: " << i << " j: " << j << " val: " << element_value
+              << " scaling: " << localization_scaling << std::endl;
+
+    conv_iter->value() = element_value * localization_scaling;
+  }
+
+  return cov;
+}
+
 // Explicit instantiation
 template void DataAssimilator::update_dof_mapping<2>(
     dealii::DoFHandler<2> const &dof_handler,
@@ -337,6 +471,10 @@ template void DataAssimilator::update_dof_mapping<2>(
 template void DataAssimilator::update_dof_mapping<3>(
     dealii::DoFHandler<3> const &dof_handler,
     std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
+template void DataAssimilator::update_covariance_sparsity_pattern<2>(
+    dealii::DoFHandler<2> const &dof_handler, double cutoff_distance);
+template void DataAssimilator::update_covariance_sparsity_pattern<3>(
+    dealii::DoFHandler<3> const &dof_handler, double cutoff_distance);
 template dealii::FullMatrix<double>
 DataAssimilator::calc_sample_covariance_dense<dealii::Vector<double>>(
     std::vector<dealii::Vector<double>> vec_ensemble) const;
@@ -344,5 +482,14 @@ template dealii::FullMatrix<double>
 DataAssimilator::calc_sample_covariance_dense<
     dealii::LA::distributed::Vector<double>>(
     std::vector<dealii::LA::distributed::Vector<double>> vec_ensemble) const;
+template dealii::SparseMatrix<double>
+DataAssimilator::calc_sample_covariance_sparse<dealii::Vector<double>>(
+    std::vector<dealii::Vector<double>> vec_ensemble, LocalizationCutoff method,
+    double cutoff_distance) const;
+template dealii::SparseMatrix<double>
+DataAssimilator::calc_sample_covariance_sparse<
+    dealii::LA::distributed::Vector<double>>(
+    std::vector<dealii::LA::distributed::Vector<double>> vec_ensemble,
+    LocalizationCutoff method, double cutoff_distance) const;
 
 } // namespace adamantine

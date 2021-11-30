@@ -405,6 +405,154 @@ public:
     BOOST_CHECK_CLOSE(cov2(4, 4), 0.24333333333333, tol);
   };
 
+  void test_update_covariance_sparsity_pattern()
+  {
+    MPI_Comm communicator = MPI_COMM_WORLD;
+
+    boost::property_tree::ptree database;
+    database.put("import_mesh", false);
+    database.put("length", 1);
+    database.put("length_divisions", 2);
+    database.put("height", 1);
+    database.put("height_divisions", 2);
+    adamantine::Geometry<2> geometry(communicator, database);
+    dealii::parallel::distributed::Triangulation<2> const &tria =
+        geometry.get_triangulation();
+
+    dealii::FE_Q<2> fe(1);
+    dealii::DoFHandler<2> dof_handler(tria);
+    dof_handler.distribute_dofs(fe);
+
+    boost::property_tree::ptree solver_settings_database;
+    DataAssimilator da(solver_settings_database);
+
+    // Effectively a dense matrix
+    double cutoff_distance = 100.0;
+    da.update_covariance_sparsity_pattern<2>(dof_handler, cutoff_distance);
+    BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 81);
+
+    // Sparse diagonal matrix
+    cutoff_distance = 1.0e-6;
+    da.update_covariance_sparsity_pattern<2>(dof_handler, cutoff_distance);
+    BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 9);
+
+    // More general sparse matrix, cuts off interactions between the corners of
+    // the domain
+    cutoff_distance = 1.2;
+    da.update_covariance_sparsity_pattern<2>(dof_handler, cutoff_distance);
+    BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 77);
+  }
+
+  void test_calc_sample_covariance_sparse()
+  {
+    MPI_Comm communicator = MPI_COMM_WORLD;
+
+    boost::property_tree::ptree database;
+    database.put("import_mesh", false);
+    database.put("length", 1);
+    database.put("length_divisions", 1);
+    database.put("height", 1);
+    database.put("height_divisions", 1);
+    adamantine::Geometry<2> geometry(communicator, database);
+    dealii::parallel::distributed::Triangulation<2> const &tria =
+        geometry.get_triangulation();
+
+    dealii::FE_Q<2> fe(1);
+    dealii::DoFHandler<2> dof_handler(tria);
+    dof_handler.distribute_dofs(fe);
+
+    // Trivial case of identical vectors, effectively dense, covariance should
+    // be the zero matrix
+    dealii::LA::distributed::Vector<double> sim_vec(dof_handler.n_dofs());
+    sim_vec(0) = 2.0;
+    sim_vec(1) = 4.0;
+    sim_vec(2) = 5.0;
+    sim_vec(3) = 7.0;
+
+    std::vector<dealii::LA::distributed::Vector<double>> vec_ensemble;
+    vec_ensemble.push_back(sim_vec);
+    vec_ensemble.push_back(sim_vec);
+
+    boost::property_tree::ptree solver_settings_database;
+    DataAssimilator da(solver_settings_database);
+    da._sim_size = sim_vec.size();
+
+    double cutoff_distance = 100.0;
+    da.update_covariance_sparsity_pattern<2>(dof_handler, cutoff_distance);
+
+    dealii::SparseMatrix<double> cov = da.calc_sample_covariance_sparse(
+        vec_ensemble, LocalizationCutoff::step_function, cutoff_distance);
+
+    // Check results
+    double tol = 1e-10;
+    for (unsigned int i = 0; i < 4; ++i)
+    {
+      for (unsigned int j = 0; j < 4; ++j)
+      {
+        BOOST_CHECK_SMALL(std::abs(cov(i, j)), tol);
+      }
+    }
+
+    // Non-trivial case, still effectively dense, using NumPy solution as the
+    // reference
+    dealii::LA::distributed::Vector<double> sim_vec1(dof_handler.n_dofs());
+    sim_vec1(0) = 2.1;
+    sim_vec1(1) = 4.3;
+    sim_vec1(2) = 5.2;
+    sim_vec1(3) = 7.4;
+
+    std::vector<dealii::LA::distributed::Vector<double>> vec_ensemble1;
+    vec_ensemble1.push_back(sim_vec);
+    vec_ensemble1.push_back(sim_vec1);
+
+    dealii::SparseMatrix<double> cov1 = da.calc_sample_covariance_sparse(
+        vec_ensemble1, LocalizationCutoff::step_function, cutoff_distance);
+
+    BOOST_CHECK_CLOSE(cov1(0, 0), 0.005, tol);
+    BOOST_CHECK_CLOSE(cov1(0, 1), 0.015, tol);
+    BOOST_CHECK_CLOSE(cov1(0, 2), 0.01, tol);
+    BOOST_CHECK_CLOSE(cov1(0, 3), 0.02, tol);
+    BOOST_CHECK_CLOSE(cov1(1, 0), 0.015, tol);
+    BOOST_CHECK_CLOSE(cov1(1, 1), 0.045, tol);
+    BOOST_CHECK_CLOSE(cov1(1, 2), 0.03, tol);
+    BOOST_CHECK_CLOSE(cov1(1, 3), 0.06, tol);
+    BOOST_CHECK_CLOSE(cov1(2, 0), 0.01, tol);
+    BOOST_CHECK_CLOSE(cov1(2, 1), 0.03, tol);
+    BOOST_CHECK_CLOSE(cov1(2, 2), 0.02, tol);
+    BOOST_CHECK_CLOSE(cov1(2, 3), 0.04, tol);
+    BOOST_CHECK_CLOSE(cov1(3, 0), 0.02, tol);
+    BOOST_CHECK_CLOSE(cov1(3, 1), 0.06, tol);
+    BOOST_CHECK_CLOSE(cov1(3, 2), 0.04, tol);
+    BOOST_CHECK_CLOSE(cov1(3, 3), 0.08, tol);
+
+    // Non-trivial case with step-function sparsity
+    cutoff_distance = 1.0e-6;
+    da.update_covariance_sparsity_pattern<2>(dof_handler, cutoff_distance);
+    std::cout << "n_nonzero_elements: "
+              << da._covariance_sparsity_pattern.n_nonzero_elements()
+              << std::endl;
+    BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 4);
+    dealii::SparseMatrix<double> cov2 = da.calc_sample_covariance_sparse(
+        vec_ensemble1, LocalizationCutoff::step_function, cutoff_distance);
+
+    BOOST_CHECK_CLOSE(cov2.el(0, 0), 0.005, tol);
+    BOOST_CHECK_CLOSE(cov2.el(0, 1), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov2.el(0, 2), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov2.el(0, 3), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov2.el(1, 0), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov2.el(1, 1), 0.045, tol);
+    BOOST_CHECK_CLOSE(cov2.el(1, 2), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov2.el(1, 3), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov2.el(2, 0), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov2.el(2, 1), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov2.el(2, 2), 0.02, tol);
+    BOOST_CHECK_CLOSE(cov2.el(2, 3), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov2.el(3, 0), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov2.el(3, 1), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov2.el(3, 2), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov2.el(3, 3), 0.08, tol);
+  };
+
   void test_fill_noise_vector(bool R_is_diagonal)
   {
     if (R_is_diagonal)
@@ -600,6 +748,8 @@ BOOST_AUTO_TEST_CASE(data_assimilator)
   dat.test_constructor();
   dat.test_update_dof_mapping();
   dat.test_calc_sample_covariance_dense();
+  dat.test_update_covariance_sparsity_pattern();
+  dat.test_calc_sample_covariance_sparse();
   dat.test_fill_noise_vector(true);
   dat.test_fill_noise_vector(false);
   dat.test_calc_H();
