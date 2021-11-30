@@ -1340,9 +1340,18 @@ run_ensemble(MPI_Comm const &communicator,
             points_values[experimental_frame_index],
             thermal_physics_ensemble[0]->get_dof_handler(), temperature_dummy);
 
+        // NOTE: As is, this updates the dof mapping and covariance sparsity
+        // pattern for every data assimilation operation. Strictly, this is only
+        // necessary if the mesh changes (both updates) or the locations of
+        // observations changes (the dof mapping). In practice, changes to the
+        // mesh due to deposition likely cause the updates to be required for
+        // each operation. If this is a bottleneck, it can be fixed in the
+        // future.
         data_assimilator.update_dof_mapping<dim>(
             thermal_physics_ensemble[0]->get_dof_handler(),
             indices_and_offsets);
+        data_assimilator.update_covariance_sparsity_pattern<dim>(
+            thermal_physics_ensemble[0]->get_dof_handler());
 
         unsigned int experimental_data_size =
             points_values[experimental_frame_index].values.size();
