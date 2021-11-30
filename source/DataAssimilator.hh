@@ -26,7 +26,8 @@ namespace adamantine
 enum class LocalizationCutoff
 {
   gaspari_cohn,
-  step_function
+  step_function,
+  none
 };
 
 /**
@@ -89,9 +90,8 @@ public:
    *
    */
   template <int dim>
-  void
-  update_covariance_sparsity_pattern(dealii::DoFHandler<dim> const &dof_handler,
-                                     double cutoff_distance);
+  void update_covariance_sparsity_pattern(
+      dealii::DoFHandler<dim> const &dof_handler);
 
 private:
   /**
@@ -126,21 +126,12 @@ private:
 
   /**
    * This calculates the sample covariance for an input ensemble of vectors
-   * (vec_ensemble). Currently this is for a full (i.e. not sparse) matrix. For
-   * improved computational performance and reduced spurious correlations a
-   * sparse matrix version of this with localization should also be implemented.
-   * This is templated so that it can be called on both simulated and
-   * experimental data.
+   * (vec_ensemble). This is templated so that it can be called on both
+   * simulated and experimental data.
    */
   template <typename VectorType>
-  dealii::FullMatrix<double>
-  calc_sample_covariance_dense(std::vector<VectorType> vec_ensemble) const;
-
-  template <typename VectorType>
   dealii::SparseMatrix<double>
-  calc_sample_covariance_sparse(std::vector<VectorType> vec_ensemble,
-                                LocalizationCutoff method,
-                                double cutoff_distance) const;
+  calc_sample_covariance_sparse(std::vector<VectorType> vec_ensemble) const;
 
   double gaspari_cohn_function(double r) const;
 
@@ -164,7 +155,17 @@ private:
    */
   dealii::SparsityPattern _covariance_sparsity_pattern;
 
-  std::vector<double> _covariance_localization_distances;
+  /**
+   * Map between the indices in the covariance matrix and the distance between
+   * the support points for the associated dofs on the mesh. This is necessary
+   * for localization.
+   */
+  std::map<const std::pair<unsigned int, unsigned int>, double>
+      _covariance_distance_map;
+
+  double _localization_cutoff_distance;
+
+  LocalizationCutoff _localization_cutoff_function;
 
   /**
    * The pseudo-random number generator, used for the perturbations to the

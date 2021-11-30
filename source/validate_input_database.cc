@@ -471,5 +471,17 @@ void validate_input_database(boost::property_tree::ptree &database)
                  "Error: The data assimilation convergene tolerance must be "
                  "non-negative.");
   }
+
+  std::string localization_cutoff_function_str =
+      database.get("data_assimilation.localization_cutoff_function", "none");
+
+  if (!(boost::iequals(localization_cutoff_function_str, "gaspari_cohn") ||
+        boost::iequals(localization_cutoff_function_str, "step_function") ||
+        boost::iequals(localization_cutoff_function_str, "none")))
+  {
+    ASSERT_THROW(false,
+                 "Error: Unknown localization cutoff function. Valid options "
+                 "are 'gaspari_cohn', 'step_function', and 'none'.");
+  }
 }
 } // namespace adamantine
