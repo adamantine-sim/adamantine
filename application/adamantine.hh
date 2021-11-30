@@ -1130,19 +1130,17 @@ run_ensemble(MPI_Comm const &communicator,
   }
 
   // ----- Initialize the data assimilation object -----
-  boost::property_tree::ptree data_assimilation_solver_database;
+  boost::property_tree::ptree data_assimilation_database;
   bool assimilate_data = false;
   if (data_assimilation_optional_database)
   {
-    data_assimilation_solver_database =
-        data_assimilation_optional_database.get().get_child("solver");
+    data_assimilation_database = data_assimilation_optional_database.get();
 
     if (data_assimilation_optional_database.get().get("assimilate_data", false))
       assimilate_data = true;
   }
 
-  adamantine::DataAssimilator data_assimilator(
-      data_assimilation_solver_database);
+  adamantine::DataAssimilator data_assimilator(data_assimilation_database);
 
   // ----- Initialize time and time stepping counters -----
   unsigned int progress = 0;
@@ -1350,6 +1348,7 @@ run_ensemble(MPI_Comm const &communicator,
         data_assimilator.update_dof_mapping<dim>(
             thermal_physics_ensemble[0]->get_dof_handler(),
             indices_and_offsets);
+
         data_assimilator.update_covariance_sparsity_pattern<dim>(
             thermal_physics_ensemble[0]->get_dof_handler());
 
