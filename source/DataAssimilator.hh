@@ -136,8 +136,9 @@ private:
 
   /**
    * This calculates the sample covariance for an input ensemble of vectors
-   * (vec_ensemble). This is templated so that it can be called on both
-   * simulated and experimental data.
+   * (vec_ensemble). Currently this is tied to the simulation ensemble, through
+   * the use of member variables inside. If needed, the interface could be
+   * redone to make it more generally applicable.
    */
   template <typename VectorType>
   dealii::SparseMatrix<double> calc_sample_covariance_sparse(
