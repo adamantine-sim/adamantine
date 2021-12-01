@@ -519,7 +519,13 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     // If the center of the cell is below material_height, it contains material
     // otherwise it does not.
     if (cell->center()[axis<dim>::z] < material_height)
+    {
       cell->set_active_fe_index(0);
+      // Set material deposition cos and sin. We arbitrarily choose cos = 1 and
+      // sin = 0
+      _deposition_cos.push_back(1.);
+      _deposition_sin.push_back(0.);
+    }
     else
       cell->set_active_fe_index(1);
   }
@@ -569,10 +575,13 @@ template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
 void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     add_material(
-        std::vector<
-            typename dealii::DoFHandler<dim>::active_cell_iterator> const
+        std::vector<std::vector<
+            typename dealii::DoFHandler<dim>::active_cell_iterator>> const
             &elements_to_activate,
-        double new_material_temperature,
+        std::vector<double> const &new_deposition_cos,
+        std::vector<double> const &new_deposition_sin,
+        unsigned int const activation_start, unsigned int const activation_end,
+        double const new_material_temperature,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -580,33 +589,54 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 #endif
 
   _thermal_operator->clear();
-  std::vector<dealii::Vector<double>> data_to_transfer;
-  unsigned int const dofs_per_cell = _dof_handler.get_fe().n_dofs_per_cell();
-  dealii::Vector<double> cell_solution(dofs_per_cell);
-  dealii::Vector<double> dummy_cell_solution(dofs_per_cell);
-  for (auto &val : dummy_cell_solution)
-  {
-    val = std::numeric_limits<double>::infinity();
-  }
+  std::vector<std::vector<double>> data_to_transfer;
+  unsigned int const n_dofs_per_cell = _dof_handler.get_fe().n_dofs_per_cell();
+  dealii::Vector<double> cell_solution(n_dofs_per_cell);
+  std::vector<double> dummy_cell_data(n_dofs_per_cell + 2,
+                                      std::numeric_limits<double>::infinity());
+
   solution.update_ghost_values();
-  std::vector<dealii::types::global_dof_index> dof_indices(dofs_per_cell);
+
+  unsigned int cell_id = 0;
+  unsigned int active_cell_id = 0;
+  std::map<typename dealii::DoFHandler<dim>::active_cell_iterator, int>
+      cell_to_id;
   for (auto const &cell : _dof_handler.active_cell_iterators())
   {
     if ((cell->is_locally_owned()) && (cell->active_fe_index() == 0))
     {
+      std::vector<double> cell_data(2);
       cell->get_dof_values(solution, cell_solution);
-      data_to_transfer.push_back(cell_solution);
+      cell_data.insert(cell_data.begin(), cell_solution.begin(),
+                       cell_solution.end());
+      cell_data[n_dofs_per_cell] = _deposition_cos[cell_id];
+      cell_data[n_dofs_per_cell + 1] = _deposition_sin[cell_id];
+      data_to_transfer.push_back(cell_data);
+
+      ++cell_id;
     }
     else
     {
-      data_to_transfer.push_back(dummy_cell_solution);
+      data_to_transfer.push_back(dummy_cell_data);
     }
+    cell_to_id[cell] = active_cell_id;
+    ++active_cell_id;
   }
 
   // Activate elements by updating the fe_index
-  for (auto const &cell : elements_to_activate)
+  for (unsigned int i = activation_start; i < activation_end; ++i)
   {
-    cell->set_active_fe_index(0);
+    for (auto const &cell : elements_to_activate[i])
+    {
+      if (cell->active_fe_index() != 0)
+      {
+        cell->set_active_fe_index(0);
+        data_to_transfer[cell_to_id[cell]][n_dofs_per_cell] =
+            new_deposition_cos[i];
+        data_to_transfer[cell_to_id[cell]][n_dofs_per_cell + 1] =
+            new_deposition_sin[i];
+      }
+    }
   }
 
   dealii::parallel::distributed::Triangulation<dim> &triangulation =
@@ -615,7 +645,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
               _dof_handler.get_triangulation()));
   triangulation.prepare_coarsening_and_refinement();
   dealii::parallel::distributed::CellDataTransfer<
-      dim, dim, std::vector<dealii::Vector<double>>>
+      dim, dim, std::vector<std::vector<double>>>
       cell_data_trans(triangulation);
   cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
 
@@ -630,20 +660,38 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   compute_inverse_mass_matrix();
 
   initialize_dof_vector(new_material_temperature, solution);
-  std::vector<dealii::Vector<double>> transferred_data(
-      triangulation.n_active_cells(), dealii::Vector<double>(dofs_per_cell));
+  std::vector<std::vector<double>> transferred_data(
+      triangulation.n_active_cells(), std::vector<double>(n_dofs_per_cell + 2));
   cell_data_trans.unpack(transferred_data);
 
-  unsigned int cell_i = 0;
+  _deposition_cos.clear();
+  _deposition_sin.clear();
+  active_cell_id = 0;
   for (auto const &cell : _dof_handler.active_cell_iterators())
   {
-    if ((cell->is_locally_owned()) && (transferred_data[cell_i][0] !=
-                                       std::numeric_limits<double>::infinity()))
+    if (cell->is_locally_owned())
     {
-      cell->set_dof_values(transferred_data[cell_i], solution);
+      if (transferred_data[active_cell_id][0] !=
+          std::numeric_limits<double>::infinity())
+      {
+        std::copy(transferred_data[active_cell_id].begin(),
+                  transferred_data[active_cell_id].begin() + n_dofs_per_cell,
+                  cell_solution.begin());
+        cell->set_dof_values(cell_solution, solution);
+      }
+
+      if (cell->active_fe_index() == 0)
+      {
+        _deposition_cos.push_back(
+            transferred_data[active_cell_id][n_dofs_per_cell]);
+        _deposition_sin.push_back(
+            transferred_data[active_cell_id][n_dofs_per_cell + 1]);
+      }
     }
-    ++cell_i;
+    ++active_cell_id;
   }
+  _thermal_operator->set_material_deposition_orientation(_deposition_cos,
+                                                         _deposition_sin);
 
   // Communicate the results.
   solution.compress(dealii::VectorOperation::min);

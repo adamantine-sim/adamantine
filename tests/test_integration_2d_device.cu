@@ -35,7 +35,7 @@ BOOST_AUTO_TEST_CASE(intregation_2D_device)
   result_host.import(result, dealii::VectorOperation::insert);
   std::ifstream gold_file("integration_2d_gold.txt");
   double const tolerance = 0.1;
-  for (unsigned int i = 0; i < result_host.local_size(); ++i)
+  for (unsigned int i = 0; i < result_host.locally_owned_size(); ++i)
   {
     double gold_value = -1.;
     gold_file >> gold_value;

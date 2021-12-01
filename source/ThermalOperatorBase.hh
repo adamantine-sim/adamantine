@@ -52,6 +52,10 @@ public:
 
   virtual void set_state_to_material_properties() = 0;
 
+  virtual void set_material_deposition_orientation(
+      std::vector<double> const &deposition_cos,
+      std::vector<double> const &deposition_sin) = 0;
+
   virtual void set_time_and_source_height(double, double) = 0;
 
   virtual double

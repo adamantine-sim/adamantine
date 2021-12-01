@@ -84,6 +84,14 @@ public:
     // TODO
   }
 
+  /**
+   * Set the deposition cosine and sine angles and convert the data from
+   * std::vector to dealii::LinearAlgebra::CUDAWrappers::Vector<double>
+   */
+  void set_material_deposition_orientation(
+      std::vector<double> const &deposition_cos,
+      std::vector<double> const &deposition_sin);
+
   virtual void set_time_and_source_height(double, double)
   {
     // TODO
@@ -105,6 +113,8 @@ private:
   std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> _material_properties;
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _inv_rho_cp;
+  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _deposition_cos;
+  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _deposition_sin;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity_x;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity_y;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity_z;

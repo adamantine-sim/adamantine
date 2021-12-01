@@ -74,9 +74,13 @@ public:
   void compute_inverse_mass_matrix() override;
 
   void add_material(
-      std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator> const
+      std::vector<std::vector<
+          typename dealii::DoFHandler<dim>::active_cell_iterator>> const
           &elements_to_activate,
-      double initial_temperature,
+      std::vector<double> const &new_deposition_cos,
+      std::vector<double> const &new_deposition_sin,
+      unsigned int const activation_start, unsigned int const activation_end,
+      double const initial_temperature,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
       override;
 
@@ -102,6 +106,16 @@ public:
   void get_state_from_material_properties() override;
 
   void set_state_to_material_properties() override;
+
+  void update_material_deposition_orientation() override;
+
+  void set_material_deposition_orientation(
+      std::vector<double> const &deposition_cos,
+      std::vector<double> const &deposition_sin) override;
+
+  double get_deposition_cos(unsigned int const i) const override;
+
+  double get_deposition_sin(unsigned int const i) const override;
 
   dealii::DoFHandler<dim> &get_dof_handler() override;
 
@@ -195,6 +209,14 @@ private:
    */
   dealii::hp::QCollection<1> _q_collection;
   /**
+   * Cosine of the material deposition angles.
+   */
+  std::vector<double> _deposition_cos;
+  /**
+   * Sine of the material deposition angles.
+   */
+  std::vector<double> _deposition_sin;
+  /**
    * Shared pointer to the material properties associated to the domain.
    */
   std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> _material_properties;
@@ -222,6 +244,46 @@ inline double ThermalPhysics<dim, fe_degree, MemorySpaceType,
                              QuadratureType>::get_delta_t_guess() const
 {
   return _delta_t_guess;
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline void
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
+               QuadratureType>::update_material_deposition_orientation()
+{
+  _thermal_operator->set_material_deposition_orientation(_deposition_cos,
+                                                         _deposition_sin);
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+    set_material_deposition_orientation(
+        std::vector<double> const &deposition_cos,
+        std::vector<double> const &deposition_sin)
+{
+  _deposition_cos = deposition_cos;
+  _deposition_sin = deposition_sin;
+  update_material_deposition_orientation();
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline double
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
+               QuadratureType>::get_deposition_cos(unsigned int const i) const
+{
+  return _deposition_cos[i];
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline double
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
+               QuadratureType>::get_deposition_sin(unsigned int const i) const
+{
+  return _deposition_sin[i];
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,

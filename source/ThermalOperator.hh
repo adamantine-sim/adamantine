@@ -96,6 +96,14 @@ public:
   void set_state_to_material_properties() override;
 
   /**
+   * Set the deposition cosine and sine angles and convert the data from
+   * std::vector to dealii::Table<2, dealii::VectorizedArray>
+   */
+  void set_material_deposition_orientation(
+      std::vector<double> const &deposition_cos,
+      std::vector<double> const &deposition_sin) override;
+
+  /**
    * Evaluate the material properties for a given state field.
    */
   // This function should be removed once the MaterialProperty for the device
@@ -219,6 +227,14 @@ private:
   mutable dealii::Table<2, std::array<dealii::types::material_id,
                                       dealii::VectorizedArray<double>::size()>>
       _material_id;
+  /**
+   * Table of the material deposition cosine angles.
+   */
+  dealii::Table<2, dealii::VectorizedArray<double>> _deposition_cos;
+  /**
+   * Table of the material deposition cosine angles.
+   */
+  dealii::Table<2, dealii::VectorizedArray<double>> _deposition_sin;
 };
 
 template <int dim, int fe_degree, typename MemorySpaceType>
