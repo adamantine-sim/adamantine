@@ -71,7 +71,8 @@ public:
   void update_ensemble(
       MPI_Comm const &communicator,
       std::vector<dealii::LA::distributed::Vector<double>> &sim_data,
-      std::vector<double> const &expt_data, dealii::SparseMatrix<double> &R);
+      std::vector<double> const &expt_data,
+      dealii::SparseMatrix<double> const &R);
 
   /**
    * This updates the internal mapping between the indices of the entries in
@@ -87,7 +88,9 @@ public:
       std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
 
   /**
-   *
+   * This updates the sparsity pattern for the sample covariance matrix for the
+   * simulation ensemble. This must be called before updateEnsemble whenever
+   * there are changes to the simulation mesh.
    */
   template <int dim>
   void update_covariance_sparsity_pattern(
@@ -99,8 +102,8 @@ private:
    */
   std::vector<dealii::LA::distributed::Vector<double>> apply_kalman_gain(
       std::vector<dealii::LA::distributed::Vector<double>> &vec_ensemble,
-      dealii::SparseMatrix<double> &R,
-      std::vector<dealii::Vector<double>> &perturbed_innovation);
+      dealii::SparseMatrix<double> const &R,
+      std::vector<dealii::Vector<double>> const &perturbed_innovation);
 
   /**
    * This calculates the observation matrix.
@@ -113,7 +116,7 @@ private:
    * construction of a sparse matrix for H.
    */
   dealii::Vector<double> calc_Hx(
-      const dealii::LA::distributed::Vector<double> &sim_ensemble_member) const;
+      dealii::LA::distributed::Vector<double> const &sim_ensemble_member) const;
 
   /**
    * This fills a vector (vec) with noise from a multivariate normal
@@ -122,7 +125,14 @@ private:
    * allowable problem size.
    */
   void fill_noise_vector(dealii::Vector<double> &vec,
-                         dealii::SparseMatrix<double> &R, bool R_is_diagonal);
+                         dealii::SparseMatrix<double> const &R,
+                         bool const R_is_diagonal);
+
+  /**
+   * A standard localization function, resembles a Gaussian, but with finite
+   * support.
+   */
+  double gaspari_cohn_function(double const r) const;
 
   /**
    * This calculates the sample covariance for an input ensemble of vectors
@@ -130,10 +140,8 @@ private:
    * simulated and experimental data.
    */
   template <typename VectorType>
-  dealii::SparseMatrix<double>
-  calc_sample_covariance_sparse(std::vector<VectorType> vec_ensemble) const;
-
-  double gaspari_cohn_function(double r) const;
+  dealii::SparseMatrix<double> calc_sample_covariance_sparse(
+      std::vector<VectorType> const vec_ensemble) const;
 
   /**
    * The number of ensemble members in the simulation.
@@ -151,7 +159,7 @@ private:
   unsigned int _expt_size;
 
   /**
-   * The sparsity pattern for the localized covariance matrix
+   * The sparsity pattern for the localized covariance matrix.
    */
   dealii::SparsityPattern _covariance_sparsity_pattern;
 
@@ -163,8 +171,15 @@ private:
   std::map<const std::pair<unsigned int, unsigned int>, double>
       _covariance_distance_map;
 
+  /**
+   * The distance at which the sample covariance is truncated.
+   */
   double _localization_cutoff_distance;
 
+  /**
+   * The function used to reduce the sample covariance entries based on the
+   * distance between the relevant points.
+   */
   LocalizationCutoff _localization_cutoff_function;
 
   /**

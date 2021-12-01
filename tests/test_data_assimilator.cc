@@ -390,6 +390,7 @@ public:
                                  "step_function");
     DataAssimilator da(solver_settings_database);
     da._sim_size = sim_vec.size();
+    da._num_ensemble_members = vec_ensemble.size();
 
     da.update_covariance_sparsity_pattern<2>(dof_handler);
 

@@ -72,7 +72,7 @@ DataAssimilator::DataAssimilator(boost::property_tree::ptree const &database)
 void DataAssimilator::update_ensemble(
     MPI_Comm const &communicator,
     std::vector<dealii::LA::distributed::Vector<double>> &sim_data,
-    std::vector<double> const &expt_data, dealii::SparseMatrix<double> &R)
+    std::vector<double> const &expt_data, dealii::SparseMatrix<double> const &R)
 {
   unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
@@ -130,8 +130,8 @@ void DataAssimilator::update_ensemble(
 std::vector<dealii::LA::distributed::Vector<double>>
 DataAssimilator::apply_kalman_gain(
     std::vector<dealii::LA::distributed::Vector<double>> &vec_ensemble,
-    dealii::SparseMatrix<double> &R,
-    std::vector<dealii::Vector<double>> &perturbed_innovation)
+    dealii::SparseMatrix<double> const &R,
+    std::vector<dealii::Vector<double>> const &perturbed_innovation)
 {
   /*
    * Currently this function uses GMRES to apply the inverse of HPH^T+R in the
@@ -298,7 +298,7 @@ void DataAssimilator::update_covariance_sparsity_pattern(
 }
 
 dealii::Vector<double> DataAssimilator::calc_Hx(
-    const dealii::LA::distributed::Vector<double> &sim_ensemble_member) const
+    dealii::LA::distributed::Vector<double> const &sim_ensemble_member) const
 {
   int num_expt_dof_map_entries = _expt_to_dof_mapping.first.size();
 
@@ -316,8 +316,8 @@ dealii::Vector<double> DataAssimilator::calc_Hx(
 }
 
 void DataAssimilator::fill_noise_vector(dealii::Vector<double> &vec,
-                                        dealii::SparseMatrix<double> &R,
-                                        bool R_is_diagonal)
+                                        dealii::SparseMatrix<double> const &R,
+                                        bool const R_is_diagonal)
 {
   auto vector_size = vec.size();
 
@@ -357,7 +357,7 @@ void DataAssimilator::fill_noise_vector(dealii::Vector<double> &vec,
   }
 }
 
-double DataAssimilator::gaspari_cohn_function(double r) const
+double DataAssimilator::gaspari_cohn_function(double const r) const
 {
   if (r < 1.0)
   {
@@ -377,39 +377,20 @@ double DataAssimilator::gaspari_cohn_function(double r) const
 
 template <typename VectorType>
 dealii::SparseMatrix<double> DataAssimilator::calc_sample_covariance_sparse(
-    std::vector<VectorType> vec_ensemble) const
+    std::vector<VectorType> const vec_ensemble) const
 {
-  unsigned int num_ensemble_members = vec_ensemble.size();
-  unsigned int vec_size = 0;
-  if (vec_ensemble.size() > 0)
-  {
-    vec_size = vec_ensemble[0].size();
-  }
-
   // Calculate the mean
-  dealii::Vector<double> mean(vec_size);
-  for (unsigned int i = 0; i < vec_size; ++i)
+  dealii::Vector<double> mean(_sim_size);
+  for (unsigned int i = 0; i < _sim_size; ++i)
   {
     double sum = 0.0;
-    for (unsigned int sample = 0; sample < num_ensemble_members; ++sample)
+    for (unsigned int sample = 0; sample < _num_ensemble_members; ++sample)
     {
       sum += vec_ensemble[sample][i];
     }
-    mean[i] = sum / num_ensemble_members;
+    mean[i] = sum / _num_ensemble_members;
   }
 
-  // This could be calculated on the fly, but for now we're pre-calculating it.
-  dealii::FullMatrix<double> anomaly(vec_size, num_ensemble_members);
-  for (unsigned int member = 0; member < num_ensemble_members; ++member)
-  {
-    for (unsigned int i = 0; i < vec_size; ++i)
-    {
-      anomaly(i, member) = (vec_ensemble[member][i] - mean[i]) /
-                           std::sqrt(num_ensemble_members - 1.0);
-    }
-  }
-
-  // Do the element-wise matrix multiply by hand
   dealii::SparseMatrix<double> cov(_covariance_sparsity_pattern);
 
   unsigned int pos = 0;
@@ -418,12 +399,17 @@ dealii::SparseMatrix<double> DataAssimilator::calc_sample_covariance_sparse(
     unsigned int i = conv_iter->row();
     unsigned int j = conv_iter->column();
 
+    // Do the element-wise matrix multiply by hand
     double element_value = 0;
-    for (unsigned int k = 0; k < num_ensemble_members; ++k)
+    for (unsigned int k = 0; k < _num_ensemble_members; ++k)
     {
-      element_value += anomaly(i, k) * anomaly(j, k);
+      element_value +=
+          (vec_ensemble[k][i] - mean[i]) * (vec_ensemble[k][j] - mean[j]);
     }
 
+    element_value /= (_num_ensemble_members - 1.0);
+
+    // Apply localization
     double localization_scaling;
     double dist = _covariance_distance_map.find(std::make_pair(i, j))->second;
     if (_localization_cutoff_function == LocalizationCutoff::gaspari_cohn)
@@ -462,10 +448,11 @@ template void DataAssimilator::update_covariance_sparsity_pattern<3>(
     dealii::DoFHandler<3> const &dof_handler);
 template dealii::SparseMatrix<double>
 DataAssimilator::calc_sample_covariance_sparse<dealii::Vector<double>>(
-    std::vector<dealii::Vector<double>> vec_ensemble) const;
+    std::vector<dealii::Vector<double>> const vec_ensemble) const;
 template dealii::SparseMatrix<double>
 DataAssimilator::calc_sample_covariance_sparse<
     dealii::LA::distributed::Vector<double>>(
-    std::vector<dealii::LA::distributed::Vector<double>> vec_ensemble) const;
+    std::vector<dealii::LA::distributed::Vector<double>> const vec_ensemble)
+    const;
 
 } // namespace adamantine
