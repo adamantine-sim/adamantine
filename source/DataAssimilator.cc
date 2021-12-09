@@ -361,13 +361,13 @@ double DataAssimilator::gaspari_cohn_function(double const r) const
 {
   if (r < 1.0)
   {
-    return 1. - 5. / 3. * r * r + 5. / 8. * r * r * r + 0.5 * r * r * r * r -
-           0.25 * r * r * r * r * r;
+    return 1. - 5. / 3. * std::pow(r, 2) + 5. / 8. * std::pow(r, 3) +
+           0.5 * std::pow(r, 4) - 0.25 * std::pow(r, 5);
   }
   else if (r < 2)
   {
-    return 4. - 5. * r + 5. / 3. * r * r + 5. / 8. * r * r * r -
-           0.5 * r * r * r * r + 1. / 12. * r * r * r * r * r - 2. / (3. * r);
+    return 4. - 5. * r + 5. / 3. * std::pow(r, 2) + 5. / 8. * std::pow(r, 3) -
+           0.5 * std::pow(r, 4) + 1. / 12. * std::pow(r, 5) - 2. / (3. * r);
   }
   else
   {

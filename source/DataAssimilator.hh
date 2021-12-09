@@ -23,6 +23,12 @@
 namespace adamantine
 {
 
+/**
+ * Enum for different options for the functions that determine how the
+ * covariance is decreased with distance for localization. The 'gaspari_cohn'
+ * option corrseponds to a function defined in Gaspari and Cohn, Quarterly
+ * Journal of the Royal Meteorological Society, 125, 1999.
+ */
 enum class LocalizationCutoff
 {
   gaspari_cohn,
@@ -130,7 +136,8 @@ private:
 
   /**
    * A standard localization function, resembles a Gaussian, but with finite
-   * support.
+   * support. From Gaspari and Cohn, Quarterly Journal of the Royal
+   * Meteorological Society, 125, 1999.
    */
   double gaspari_cohn_function(double const r) const;
 

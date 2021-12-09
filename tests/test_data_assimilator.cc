@@ -715,7 +715,7 @@ private:
     anomaly.mTmult(cov, anomaly);
 
     return cov;
-  };
+  }
 };
 
 BOOST_AUTO_TEST_CASE(data_assimilator)
