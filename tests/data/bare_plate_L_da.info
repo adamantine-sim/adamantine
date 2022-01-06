@@ -124,13 +124,13 @@ time_stepping
                         ; rk_fourth_order, bogacki_shampine, dopri,
                         ; fehlberg, cash_karp
   duration 5.0e-2 ; [s]
-  time_step 5.0e-5 ; [s]
+  time_step 1.0e-4 ; [s]
 }
 
 post_processor
 {
   filename_prefix output
-  time_steps_between_output 10
+  time_steps_between_output 20
 }
 
 discretization

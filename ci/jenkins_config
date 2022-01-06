@@ -71,7 +71,7 @@ pipeline {
                     ..
                   '''
                   sh 'make -j8'
-                  sh 'ctest --timeout 3600 --no-compress-output -R test_ -T Test'
+                  sh 'ctest --timeout 7200 --no-compress-output -R test_ -T Test'
                 }
             }
             post {
