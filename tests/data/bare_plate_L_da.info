@@ -21,7 +21,7 @@ data_assimilation
 {
   assimilate_data true
   localization_cutoff_function gaspari_cohn
-  localization_cutoff_distance 5.0e-3
+  localization_cutoff_distance 1.0e-3
   solver
   {
     max_number_of_temp_vectors 10
@@ -35,9 +35,9 @@ geometry
   length 5.0e-3 ; [m]
   height 0.5e-3 ; [m] In 3D, the third parameters is width
   width  5.0e-3
-  length_divisions 10 ; Number of cell layers in the length direction
-  height_divisions 2 ; Number of cell layers in the height direction
-  width_divisions  10
+  length_divisions 8 ; Number of cell layers in the length direction
+  height_divisions 1 ; Number of cell layers in the height direction
+  width_divisions  8
 }
 
 boundary
