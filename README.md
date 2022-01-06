@@ -188,6 +188,8 @@ The following options are available:
   * beam\_0\_max\_power\_stddev: The standard deviation for the max power for beam 0 (if it exists) (default value: 0.0)
 * data\_assimilation: (optional)
   * assimilate\_data : Whether to perform data assimilation (default value: false)
+  * localization\_cutoff\_function : The function used to decrease the sample covariance as the relevant points become farther away: gaspari\_cohn, step\_function, none (default: none)
+  * localization\_cutoff\_distance : The distance at which sample covariance entries are set to zero (default: infinity)
   * solver:
     * max\_number\_of\_temp\_vectors: Maximum number of temporary vectors for the GMRES solve (optional)
     * max\_iterations: Maximum number of iterations for the GMRES solve (optional)

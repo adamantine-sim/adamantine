@@ -22,6 +22,20 @@
 
 namespace adamantine
 {
+
+/**
+ * Enum for different options for the functions that determine how the
+ * covariance is decreased with distance for localization. The 'gaspari_cohn'
+ * option corrseponds to a function defined in Gaspari and Cohn, Quarterly
+ * Journal of the Royal Meteorological Society, 125, 1999.
+ */
+enum class LocalizationCutoff
+{
+  gaspari_cohn,
+  step_function,
+  none
+};
+
 /**
  * Forward declaration of the tester friend class to DataAssimilator.
  */
@@ -63,7 +77,8 @@ public:
   void update_ensemble(
       MPI_Comm const &communicator,
       std::vector<dealii::LA::distributed::Vector<double>> &sim_data,
-      std::vector<double> const &expt_data, dealii::SparseMatrix<double> &R);
+      std::vector<double> const &expt_data,
+      dealii::SparseMatrix<double> const &R);
 
   /**
    * This updates the internal mapping between the indices of the entries in
@@ -78,14 +93,23 @@ public:
       dealii::DoFHandler<dim> const &dof_handler,
       std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
 
+  /**
+   * This updates the sparsity pattern for the sample covariance matrix for the
+   * simulation ensemble. This must be called before updateEnsemble whenever
+   * there are changes to the simulation mesh.
+   */
+  template <int dim>
+  void update_covariance_sparsity_pattern(
+      dealii::DoFHandler<dim> const &dof_handler);
+
 private:
   /**
    * This calculates the Kalman gain and applies it to the perturbed innovation.
    */
   std::vector<dealii::LA::distributed::Vector<double>> apply_kalman_gain(
       std::vector<dealii::LA::distributed::Vector<double>> &vec_ensemble,
-      dealii::SparseMatrix<double> &R,
-      std::vector<dealii::Vector<double>> &perturbed_innovation);
+      dealii::SparseMatrix<double> const &R,
+      std::vector<dealii::Vector<double>> const &perturbed_innovation);
 
   /**
    * This calculates the observation matrix.
@@ -98,7 +122,7 @@ private:
    * construction of a sparse matrix for H.
    */
   dealii::Vector<double> calc_Hx(
-      const dealii::LA::distributed::Vector<double> &sim_ensemble_member) const;
+      dealii::LA::distributed::Vector<double> const &sim_ensemble_member) const;
 
   /**
    * This fills a vector (vec) with noise from a multivariate normal
@@ -107,19 +131,25 @@ private:
    * allowable problem size.
    */
   void fill_noise_vector(dealii::Vector<double> &vec,
-                         dealii::SparseMatrix<double> &R, bool R_is_diagonal);
+                         dealii::SparseMatrix<double> const &R,
+                         bool const R_is_diagonal);
+
+  /**
+   * A standard localization function, resembles a Gaussian, but with finite
+   * support. From Gaspari and Cohn, Quarterly Journal of the Royal
+   * Meteorological Society, 125, 1999.
+   */
+  double gaspari_cohn_function(double const r) const;
 
   /**
    * This calculates the sample covariance for an input ensemble of vectors
-   * (vec_ensemble). Currently this is for a full (i.e. not sparse) matrix. For
-   * improved computational performance and reduced spurious correlations a
-   * sparse matrix version of this with localization should also be implemented.
-   * This is templated so that it can be called on both simulated and
-   * experimental data.
+   * (vec_ensemble). Currently this is tied to the simulation ensemble, through
+   * the use of member variables inside. If needed, the interface could be
+   * redone to make it more generally applicable.
    */
   template <typename VectorType>
-  dealii::FullMatrix<double>
-  calc_sample_covariance_dense(std::vector<VectorType> vec_ensemble) const;
+  dealii::SparseMatrix<double> calc_sample_covariance_sparse(
+      std::vector<VectorType> const vec_ensemble) const;
 
   /**
    * The number of ensemble members in the simulation.
@@ -135,6 +165,30 @@ private:
    * The length of the data vector the experimental observations.
    */
   unsigned int _expt_size;
+
+  /**
+   * The sparsity pattern for the localized covariance matrix.
+   */
+  dealii::SparsityPattern _covariance_sparsity_pattern;
+
+  /**
+   * Map between the indices in the covariance matrix and the distance between
+   * the support points for the associated dofs on the mesh. This is necessary
+   * for localization.
+   */
+  std::map<const std::pair<unsigned int, unsigned int>, double>
+      _covariance_distance_map;
+
+  /**
+   * The distance at which the sample covariance is truncated.
+   */
+  double _localization_cutoff_distance;
+
+  /**
+   * The function used to reduce the sample covariance entries based on the
+   * distance between the relevant points.
+   */
+  LocalizationCutoff _localization_cutoff_function;
 
   /**
    * The pseudo-random number generator, used for the perturbations to the

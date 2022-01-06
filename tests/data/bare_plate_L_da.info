@@ -20,6 +20,8 @@ experiment
 data_assimilation
 {
   assimilate_data true
+  localization_cutoff_function gaspari_cohn
+  localization_cutoff_distance 1.0e-3
   solver
   {
     max_number_of_temp_vectors 10
@@ -33,9 +35,9 @@ geometry
   length 5.0e-3 ; [m]
   height 0.5e-3 ; [m] In 3D, the third parameters is width
   width  5.0e-3
-  length_divisions 10 ; Number of cell layers in the length direction
+  length_divisions 8 ; Number of cell layers in the length direction
   height_divisions 1 ; Number of cell layers in the height direction
-  width_divisions  10
+  width_divisions  8
 }
 
 boundary
@@ -122,13 +124,13 @@ time_stepping
                         ; rk_fourth_order, bogacki_shampine, dopri,
                         ; fehlberg, cash_karp
   duration 5.0e-2 ; [s]
-  time_step 5.0e-5 ; [s]
+  time_step 1.0e-4 ; [s]
 }
 
 post_processor
 {
   filename_prefix output
-  time_steps_between_output 10
+  time_steps_between_output 20
 }
 
 discretization
