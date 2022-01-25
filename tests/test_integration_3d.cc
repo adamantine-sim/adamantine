@@ -41,10 +41,11 @@ BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation)
   for (unsigned int member = 0; member < result.size(); ++member)
   {
     double min_val = std::numeric_limits<double>::max();
-    for (unsigned int i = 0; i < result.at(member).locally_owned_size(); ++i)
+    for (unsigned int i = 0;
+         i < result.at(member).block(0).locally_owned_size(); ++i)
     {
-      if (result.at(member).local_element(i) < min_val)
-        min_val = result.at(member).local_element(i);
+      if (result.at(member).block(0).local_element(i) < min_val)
+        min_val = result.at(member).block(0).local_element(i);
     }
     sum += min_val;
   }

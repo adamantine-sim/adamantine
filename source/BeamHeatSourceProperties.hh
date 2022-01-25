@@ -33,6 +33,11 @@ public:
    */
   BeamHeatSourceProperties(boost::property_tree::ptree const &database)
   {
+    set_from_database(database);
+  }
+
+  void set_from_database(boost::property_tree::ptree const &database)
+  {
     // PropertyTreeInput sources.beam_X.depth
     depth = database.get<double>("depth");
     // PropertyTreeInput sources.beam_X.absorption_efficiency

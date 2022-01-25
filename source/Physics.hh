@@ -62,7 +62,7 @@ public:
    * t+delta_t.
    */
   virtual double evolve_one_time_step(
-      double t, double delta_t,
+      double t, double delta_t, boost::property_tree::ptree const &database,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
       std::vector<Timer> &timers) = 0;
 

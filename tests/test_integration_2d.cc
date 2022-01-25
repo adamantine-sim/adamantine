@@ -61,11 +61,13 @@ BOOST_AUTO_TEST_CASE(integration_2D_ensemble)
   for (unsigned int member = 0; member < 3; ++member)
   {
     std::ifstream gold_file("integration_2d_gold.txt");
-    for (unsigned int i = 0; i < result[member].locally_owned_size(); ++i)
+    for (unsigned int i = 0; i < result[member].block(0).locally_owned_size();
+         ++i)
     {
       double gold_value = -1.;
       gold_file >> gold_value;
-      BOOST_CHECK_CLOSE(result[member].local_element(i), gold_value, tolerance);
+      BOOST_CHECK_CLOSE(result[member].block(0).local_element(i), gold_value,
+                        tolerance);
     }
   }
 }

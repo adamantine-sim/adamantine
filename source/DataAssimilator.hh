@@ -13,6 +13,7 @@
 
 #include <deal.II/fe/mapping_q1_eulerian.h>
 #include <deal.II/lac/full_matrix.h>
+#include <deal.II/lac/la_parallel_block_vector.h>
 #include <deal.II/lac/la_vector.h>
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/sparse_matrix.h>
@@ -34,6 +35,12 @@ enum class LocalizationCutoff
   gaspari_cohn,
   step_function,
   none
+};
+
+enum class AugmentedStateParameters
+{
+  beam_0_absorption,
+  beam_0_max_power
 };
 
 /**
@@ -74,11 +81,11 @@ public:
    * u is a perturbation to the observed solution
    * H is the observation matrix
    */
-  void update_ensemble(
-      MPI_Comm const &communicator,
-      std::vector<dealii::LA::distributed::Vector<double>> &sim_data,
-      std::vector<double> const &expt_data,
-      dealii::SparseMatrix<double> const &R);
+  void update_ensemble(MPI_Comm const &communicator,
+                       std::vector<dealii::LA::distributed::BlockVector<double>>
+                           &augmented_state_ensemble,
+                       std::vector<double> const &expt_data,
+                       dealii::SparseMatrix<double> const &R);
 
   /**
    * This updates the internal mapping between the indices of the entries in
@@ -106,8 +113,9 @@ private:
   /**
    * This calculates the Kalman gain and applies it to the perturbed innovation.
    */
-  std::vector<dealii::LA::distributed::Vector<double>> apply_kalman_gain(
-      std::vector<dealii::LA::distributed::Vector<double>> &vec_ensemble,
+  std::vector<dealii::LA::distributed::BlockVector<double>> apply_kalman_gain(
+      std::vector<dealii::LA::distributed::BlockVector<double>>
+          &enriched_sim_ensemble,
       dealii::SparseMatrix<double> const &R,
       std::vector<dealii::Vector<double>> const &perturbed_innovation);
 
@@ -160,6 +168,11 @@ private:
    * The length of the data vector for each simulation ensemble member.
    */
   unsigned int _sim_size;
+
+  /**
+   * The length of the parameter vector for each simulation ensemble member.
+   */
+  unsigned int _parameter_size;
 
   /**
    * The length of the data vector the experimental observations.

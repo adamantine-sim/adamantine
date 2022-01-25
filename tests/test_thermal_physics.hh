@@ -65,7 +65,10 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
   while (time < 0.1)
-    time = physics.evolve_one_time_step(time, time_step, solution, timers);
+  {
+    time = physics.evolve_one_time_step(
+        time, time_step, database.get_child("sources"), solution, timers);
+  }
 
   double const tolerance = 1e-3;
   BOOST_CHECK(time == 0.1);
@@ -133,7 +136,8 @@ void thermal_2d_manufactured_solution()
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   physics.initialize_dof_vector(solution);
   physics.get_state_from_material_properties();
-  double time = physics.evolve_one_time_step(0., 0.1, solution, timers);
+  double time = physics.evolve_one_time_step(
+      0., 0.1, database.get_child("sources"), solution, timers);
 
   double const tolerance = 1e-5;
 
@@ -276,7 +280,8 @@ void energy_conservation()
   double time = 0;
   while (time < 100)
   {
-    time = physics.evolve_one_time_step(time, 0.05, solution, timers);
+    time = physics.evolve_one_time_step(
+        time, 0.05, database.get_child("sources"), solution, timers);
   }
 
   double max = -1;
@@ -372,7 +377,8 @@ void radiation_bcs()
   double time = 0;
   while (time < 100)
   {
-    time = physics.evolve_one_time_step(time, 0.05, solution, timers);
+    time = physics.evolve_one_time_step(
+        time, 0.05, database.get_child("sources"), solution, timers);
   }
 
   double max = -1;
@@ -467,7 +473,8 @@ void convection_bcs()
   double time = 0;
   while (time < 10)
   {
-    time = physics.evolve_one_time_step(time, 0.05, solution, timers);
+    time = physics.evolve_one_time_step(
+        time, 0.05, database.get_child("sources"), solution, timers);
   }
 
   double max = -1;

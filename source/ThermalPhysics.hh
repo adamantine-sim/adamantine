@@ -86,6 +86,7 @@ public:
 
   double evolve_one_time_step(
       double t, double delta_t,
+      boost::property_tree::ptree const &heat_source_database,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
       std::vector<Timer> &timers) override;
 

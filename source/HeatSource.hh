@@ -80,6 +80,12 @@ public:
    */
   virtual double get_current_height(double const time) const;
 
+  /**
+   * (Re)sets the BeamHeatSourceProperties member variable, necessary if the
+   * beam parameters vary in time (e.g. due to data assimilation).
+   */
+  virtual void set_beam_properties(boost::property_tree::ptree const &database);
+
 protected:
   /**
    * Structure of the physical properties of the beam heat source.
@@ -102,6 +108,13 @@ template <int dim>
 inline double HeatSource<dim>::get_current_height(double const time) const
 {
   return _scan_path.value(time)[2];
+}
+
+template <int dim>
+inline void HeatSource<dim>::set_beam_properties(
+    boost::property_tree::ptree const &database)
+{
+  _beam.set_from_database(database);
 }
 
 } // namespace adamantine

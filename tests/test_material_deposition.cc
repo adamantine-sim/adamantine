@@ -296,8 +296,8 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   std::vector<unsigned int> n_cells_ref = {610, 620, 630, 650, 650,
                                            660, 670, 680, 720, 720};
   double const time_step = 0.1;
-  double time =
-      thermal_physics.evolve_one_time_step(0., time_step, solution, timers);
+  double time = thermal_physics.evolve_one_time_step(
+      0., time_step, database.get_child("sources"), solution, timers);
   double const eps = time_step / 1e12;
   // The build is too slow in debug mode when using sanitizer. In that case
   // reduce the size of the loop
@@ -321,8 +321,8 @@ BOOST_AUTO_TEST_CASE(material_deposition)
           elements_to_activate, deposition_cos, deposition_sin,
           activation_start, activation_end, initial_temperature, solution);
 
-    time =
-        thermal_physics.evolve_one_time_step(time, time_step, solution, timers);
+    time = thermal_physics.evolve_one_time_step(
+        time, time_step, database.get_child("sources"), solution, timers);
 
     unsigned int n_cells = 0;
     for (auto const &cell : dealii::filter_iterators(

@@ -81,27 +81,36 @@ public:
     DataAssimilator da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
+    da._parameter_size = 0;
     da._num_ensemble_members = 3;
     da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
     da.update_covariance_sparsity_pattern<2>(dof_handler);
 
     // Create the simulation data
-    std::vector<dealii::LA::distributed::Vector<double>> data(3);
-    data[0].reinit(4);
-    data[0](0) = 1.0;
-    data[0](1) = 3.0;
-    data[0](2) = 6.0;
-    data[0](3) = 9.0;
-    data[1].reinit(4);
-    data[1](0) = 1.5;
-    data[1](1) = 3.2;
-    data[1](2) = 6.3;
-    data[1](3) = 9.7;
-    data[2].reinit(4);
-    data[2](0) = 1.1;
-    data[2](1) = 3.1;
-    data[2](2) = 6.1;
-    data[2](3) = 9.1;
+    std::vector<dealii::LA::distributed::BlockVector<double>>
+        augmented_state_ensemble(3);
+
+    augmented_state_ensemble[0].reinit(2);
+    augmented_state_ensemble[0].block(0).reinit(4);
+    augmented_state_ensemble[0].block(0)(0) = 1.0;
+    augmented_state_ensemble[0].block(0)(1) = 3.0;
+    augmented_state_ensemble[0].block(0)(2) = 6.0;
+    augmented_state_ensemble[0].block(0)(3) = 9.0;
+    augmented_state_ensemble[0].collect_sizes();
+    augmented_state_ensemble[1].reinit(2);
+    augmented_state_ensemble[1].block(0).reinit(4);
+    augmented_state_ensemble[1].block(0)(0) = 1.5;
+    augmented_state_ensemble[1].block(0)(1) = 3.2;
+    augmented_state_ensemble[1].block(0)(2) = 6.3;
+    augmented_state_ensemble[1].block(0)(3) = 9.7;
+    augmented_state_ensemble[1].collect_sizes();
+    augmented_state_ensemble[2].reinit(2);
+    augmented_state_ensemble[2].block(0).reinit(4);
+    augmented_state_ensemble[2].block(0)(0) = 1.1;
+    augmented_state_ensemble[2].block(0)(1) = 3.1;
+    augmented_state_ensemble[2].block(0)(2) = 6.1;
+    augmented_state_ensemble[2].block(0)(3) = 9.1;
+    augmented_state_ensemble[2].collect_sizes();
 
     // Build the sparse experimental covariance matrix
     dealii::SparsityPattern pattern(expt_size, expt_size, 1);
@@ -119,7 +128,8 @@ public:
          ++sample)
     {
       perturbed_innovation[sample].reinit(expt_size);
-      dealii::Vector<double> temp = da.calc_Hx(data[sample]);
+      dealii::Vector<double> temp =
+          da.calc_Hx(augmented_state_ensemble[sample].block(0));
       for (unsigned int i = 0; i < expt_size; ++i)
       {
         perturbed_innovation[sample][i] = expt_vec[i] - temp[i];
@@ -134,8 +144,8 @@ public:
     perturbed_innovation[2][1] = perturbed_innovation[2][1] - 0.0009;
 
     // Apply the Kalman gain
-    std::vector<dealii::LA::distributed::Vector<double>> forecast_shift =
-        da.apply_kalman_gain(data, R, perturbed_innovation);
+    std::vector<dealii::LA::distributed::BlockVector<double>> forecast_shift =
+        da.apply_kalman_gain(augmented_state_ensemble, R, perturbed_innovation);
 
     double tol = 1.0e-4;
 
@@ -603,6 +613,7 @@ public:
     boost::property_tree::ptree solver_settings_database;
     DataAssimilator da(solver_settings_database);
     da._sim_size = sim_size;
+    da._parameter_size = 0;
     da._expt_size = expt_size;
     da._num_ensemble_members = 3;
 
@@ -610,22 +621,30 @@ public:
     da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
 
     // Create the simulation data
-    std::vector<dealii::LA::distributed::Vector<double>> data(3);
-    data[0].reinit(4);
-    data[0](0) = 1.0;
-    data[0](1) = 3.0;
-    data[0](2) = 6.0;
-    data[0](3) = 9.0;
-    data[1].reinit(4);
-    data[1](0) = 1.5;
-    data[1](1) = 3.2;
-    data[1](2) = 6.3;
-    data[1](3) = 9.7;
-    data[2].reinit(4);
-    data[2](0) = 1.1;
-    data[2](1) = 3.1;
-    data[2](2) = 6.1;
-    data[2](3) = 9.1;
+    std::vector<dealii::LA::distributed::BlockVector<double>>
+        augmented_state_ensemble(3);
+
+    augmented_state_ensemble[0].reinit(2);
+    augmented_state_ensemble[0].block(0).reinit(4);
+    augmented_state_ensemble[0].block(0)(0) = 1.0;
+    augmented_state_ensemble[0].block(0)(1) = 3.0;
+    augmented_state_ensemble[0].block(0)(2) = 6.0;
+    augmented_state_ensemble[0].block(0)(3) = 9.0;
+    augmented_state_ensemble[0].collect_sizes();
+    augmented_state_ensemble[1].reinit(2);
+    augmented_state_ensemble[1].block(0).reinit(4);
+    augmented_state_ensemble[1].block(0)(0) = 1.5;
+    augmented_state_ensemble[1].block(0)(1) = 3.2;
+    augmented_state_ensemble[1].block(0)(2) = 6.3;
+    augmented_state_ensemble[1].block(0)(3) = 9.7;
+    augmented_state_ensemble[1].collect_sizes();
+    augmented_state_ensemble[2].reinit(2);
+    augmented_state_ensemble[2].block(0).reinit(4);
+    augmented_state_ensemble[2].block(0)(0) = 1.1;
+    augmented_state_ensemble[2].block(0)(1) = 3.1;
+    augmented_state_ensemble[2].block(0)(2) = 6.1;
+    augmented_state_ensemble[2].block(0)(3) = 9.1;
+    augmented_state_ensemble[2].collect_sizes();
 
     // Build the sparse experimental covariance matrix
     dealii::SparsityPattern pattern(expt_size, expt_size, 1);
@@ -639,28 +658,28 @@ public:
 
     // Save the data at the observation points before assimilation
     std::vector<double> sim_at_expt_pt_1_before(3);
-    sim_at_expt_pt_1_before.push_back(data[0][1]);
-    sim_at_expt_pt_1_before.push_back(data[1][1]);
-    sim_at_expt_pt_1_before.push_back(data[2][1]);
+    sim_at_expt_pt_1_before.push_back(augmented_state_ensemble[0].block(0)[1]);
+    sim_at_expt_pt_1_before.push_back(augmented_state_ensemble[1].block(0)[1]);
+    sim_at_expt_pt_1_before.push_back(augmented_state_ensemble[2].block(0)[1]);
 
     std::vector<double> sim_at_expt_pt_2_before(3);
-    sim_at_expt_pt_2_before.push_back(data[0][3]);
-    sim_at_expt_pt_2_before.push_back(data[1][3]);
-    sim_at_expt_pt_2_before.push_back(data[2][3]);
+    sim_at_expt_pt_2_before.push_back(augmented_state_ensemble[0].block(0)[3]);
+    sim_at_expt_pt_2_before.push_back(augmented_state_ensemble[1].block(0)[3]);
+    sim_at_expt_pt_2_before.push_back(augmented_state_ensemble[2].block(0)[3]);
 
     // Update the simulation data
-    da.update_ensemble(communicator, data, expt_vec, R);
+    da.update_ensemble(communicator, augmented_state_ensemble, expt_vec, R);
 
     // Save the data at the observation points after assimilation
     std::vector<double> sim_at_expt_pt_1_after(3);
-    sim_at_expt_pt_1_after.push_back(data[0][1]);
-    sim_at_expt_pt_1_after.push_back(data[1][1]);
-    sim_at_expt_pt_1_after.push_back(data[2][1]);
+    sim_at_expt_pt_1_after.push_back(augmented_state_ensemble[0].block(0)[1]);
+    sim_at_expt_pt_1_after.push_back(augmented_state_ensemble[1].block(0)[1]);
+    sim_at_expt_pt_1_after.push_back(augmented_state_ensemble[2].block(0)[1]);
 
     std::vector<double> sim_at_expt_pt_2_after(3);
-    sim_at_expt_pt_2_after.push_back(data[0][3]);
-    sim_at_expt_pt_2_after.push_back(data[1][3]);
-    sim_at_expt_pt_2_after.push_back(data[2][3]);
+    sim_at_expt_pt_2_after.push_back(augmented_state_ensemble[0].block(0)[3]);
+    sim_at_expt_pt_2_after.push_back(augmented_state_ensemble[1].block(0)[3]);
+    sim_at_expt_pt_2_after.push_back(augmented_state_ensemble[2].block(0)[3]);
 
     // Check the solution
     // The observed points should get closer to the experimental values
