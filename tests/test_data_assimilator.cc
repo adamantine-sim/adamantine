@@ -84,7 +84,7 @@ public:
     da._parameter_size = 0;
     da._num_ensemble_members = 3;
     da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
-    da.update_covariance_sparsity_pattern<2>(dof_handler);
+    da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
 
     // Create the simulation data
     std::vector<dealii::LA::distributed::BlockVector<double>>
@@ -347,21 +347,27 @@ public:
     DataAssimilator da(solver_settings_database);
     da._localization_cutoff_distance = 100.0;
     da._localization_cutoff_function = LocalizationCutoff::step_function;
-    da.update_covariance_sparsity_pattern<2>(dof_handler);
+    da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
     BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 81);
 
     // Sparse diagonal matrix
     da._localization_cutoff_distance = 1.0e-6;
     da._localization_cutoff_function = LocalizationCutoff::step_function;
-    da.update_covariance_sparsity_pattern<2>(dof_handler);
+    da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
     BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 9);
 
     // More general sparse matrix, cuts off interactions between the corners
     // of the domain
     da._localization_cutoff_distance = 1.2;
     da._localization_cutoff_function = LocalizationCutoff::step_function;
-    da.update_covariance_sparsity_pattern<2>(dof_handler);
+    da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
     BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 77);
+
+    // Sparse diagonal matrix with two augmentation parameters
+    da._localization_cutoff_distance = 1.0e-6;
+    da._localization_cutoff_function = LocalizationCutoff::step_function;
+    da.update_covariance_sparsity_pattern<2>(dof_handler, 2);
+    BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 49);
   }
 
   void test_calc_sample_covariance_sparse()
@@ -402,7 +408,7 @@ public:
     da._sim_size = sim_vec.size();
     da._num_ensemble_members = vec_ensemble.size();
 
-    da.update_covariance_sparsity_pattern<2>(dof_handler);
+    da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
 
     dealii::SparseMatrix<double> cov =
         da.calc_sample_covariance_sparse(vec_ensemble);
@@ -451,7 +457,7 @@ public:
 
     // Non-trivial case with step-function sparsity
     da._localization_cutoff_distance = 1.0e-6;
-    da.update_covariance_sparsity_pattern<2>(dof_handler);
+    da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
     BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 4);
     dealii::SparseMatrix<double> cov2 =
         da.calc_sample_covariance_sparse(vec_ensemble1);
@@ -476,7 +482,7 @@ public:
     // Non-trivial case with Gaspari-Cohn sparsity
     da._localization_cutoff_distance = 3.0;
     da._localization_cutoff_function = LocalizationCutoff::gaspari_cohn;
-    da.update_covariance_sparsity_pattern<2>(dof_handler);
+    da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
     BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 16);
     dealii::SparseMatrix<double> cov3 =
         da.calc_sample_covariance_sparse(vec_ensemble1);
@@ -497,6 +503,64 @@ public:
     BOOST_CHECK(cov3.el(3, 1) > 0.0 && cov3.el(3, 1) < 0.06);
     BOOST_CHECK(cov3.el(3, 2) > 0.0 && cov3.el(3, 2) < 0.04);
     BOOST_CHECK_CLOSE(cov3.el(3, 3), 0.08, tol);
+
+    // Non-trivial case with step-function sparsity and two augmented parameters
+    dealii::LA::distributed::Vector<double> sim_vec2(dof_handler.n_dofs() + 2);
+    sim_vec2(0) = 2.0;
+    sim_vec2(1) = 4.0;
+    sim_vec2(2) = 5.0;
+    sim_vec2(3) = 7.0;
+    sim_vec2(4) = 1.0;
+    sim_vec2(5) = 1.5;
+
+    dealii::LA::distributed::Vector<double> sim_vec3(dof_handler.n_dofs() + 2);
+    sim_vec3(0) = 2.1;
+    sim_vec3(1) = 4.3;
+    sim_vec3(2) = 5.2;
+    sim_vec3(3) = 7.4;
+    sim_vec3(4) = 1.1;
+    sim_vec3(5) = 1.4;
+
+    std::vector<dealii::LA::distributed::Vector<double>> vec_ensemble2;
+    vec_ensemble2.push_back(sim_vec2);
+    vec_ensemble2.push_back(sim_vec3);
+
+    da._localization_cutoff_distance = 1.0e-6;
+    da.update_covariance_sparsity_pattern<2>(dof_handler, 2);
+    BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 24);
+    dealii::SparseMatrix<double> cov4 =
+        da.calc_sample_covariance_sparse(vec_ensemble2);
+
+    BOOST_CHECK_CLOSE(cov4.el(0, 0), 0.005, tol);
+    BOOST_CHECK_CLOSE(cov4.el(0, 1), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov4.el(0, 2), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov4.el(0, 3), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov4.el(1, 0), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov4.el(1, 1), 0.045, tol);
+    BOOST_CHECK_CLOSE(cov4.el(1, 2), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov4.el(1, 3), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov4.el(2, 0), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov4.el(2, 1), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov4.el(2, 2), 0.02, tol);
+    BOOST_CHECK_CLOSE(cov4.el(2, 3), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov4.el(3, 0), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov4.el(3, 1), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov4.el(3, 2), 0.0, tol);
+    BOOST_CHECK_CLOSE(cov4.el(3, 3), 0.08, tol);
+
+    BOOST_CHECK_CLOSE(cov4.el(4, 0), 0.005, tol);
+    BOOST_CHECK_CLOSE(cov4.el(4, 1), 0.015, tol);
+    BOOST_CHECK_CLOSE(cov4.el(4, 2), 0.01, tol);
+    BOOST_CHECK_CLOSE(cov4.el(4, 3), 0.02, tol);
+    BOOST_CHECK_CLOSE(cov4.el(4, 4), 0.005, tol);
+    BOOST_CHECK_CLOSE(cov4.el(4, 5), -0.005, tol);
+
+    BOOST_CHECK_CLOSE(cov4.el(5, 0), -0.005, tol);
+    BOOST_CHECK_CLOSE(cov4.el(5, 1), -0.015, tol);
+    BOOST_CHECK_CLOSE(cov4.el(5, 2), -0.01, tol);
+    BOOST_CHECK_CLOSE(cov4.el(5, 3), -0.02, tol);
+    BOOST_CHECK_CLOSE(cov4.el(5, 4), -0.005, tol);
+    BOOST_CHECK_CLOSE(cov4.el(5, 5), 0.005, tol);
   };
 
   void test_fill_noise_vector(bool R_is_diagonal)
@@ -617,7 +681,7 @@ public:
     da._expt_size = expt_size;
     da._num_ensemble_members = 3;
 
-    da.update_covariance_sparsity_pattern<2>(dof_handler);
+    da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
     da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
 
     // Create the simulation data
@@ -644,6 +708,136 @@ public:
     augmented_state_ensemble[2].block(0)(1) = 3.1;
     augmented_state_ensemble[2].block(0)(2) = 6.1;
     augmented_state_ensemble[2].block(0)(3) = 9.1;
+    augmented_state_ensemble[2].collect_sizes();
+
+    // Build the sparse experimental covariance matrix
+    dealii::SparsityPattern pattern(expt_size, expt_size, 1);
+    pattern.add(0, 0);
+    pattern.add(1, 1);
+    pattern.compress();
+
+    dealii::SparseMatrix<double> R(pattern);
+    R.add(0, 0, 0.002);
+    R.add(1, 1, 0.001);
+
+    // Save the data at the observation points before assimilation
+    std::vector<double> sim_at_expt_pt_1_before(3);
+    sim_at_expt_pt_1_before.push_back(augmented_state_ensemble[0].block(0)[1]);
+    sim_at_expt_pt_1_before.push_back(augmented_state_ensemble[1].block(0)[1]);
+    sim_at_expt_pt_1_before.push_back(augmented_state_ensemble[2].block(0)[1]);
+
+    std::vector<double> sim_at_expt_pt_2_before(3);
+    sim_at_expt_pt_2_before.push_back(augmented_state_ensemble[0].block(0)[3]);
+    sim_at_expt_pt_2_before.push_back(augmented_state_ensemble[1].block(0)[3]);
+    sim_at_expt_pt_2_before.push_back(augmented_state_ensemble[2].block(0)[3]);
+
+    // Update the simulation data
+    da.update_ensemble(communicator, augmented_state_ensemble, expt_vec, R);
+
+    // Save the data at the observation points after assimilation
+    std::vector<double> sim_at_expt_pt_1_after(3);
+    sim_at_expt_pt_1_after.push_back(augmented_state_ensemble[0].block(0)[1]);
+    sim_at_expt_pt_1_after.push_back(augmented_state_ensemble[1].block(0)[1]);
+    sim_at_expt_pt_1_after.push_back(augmented_state_ensemble[2].block(0)[1]);
+
+    std::vector<double> sim_at_expt_pt_2_after(3);
+    sim_at_expt_pt_2_after.push_back(augmented_state_ensemble[0].block(0)[3]);
+    sim_at_expt_pt_2_after.push_back(augmented_state_ensemble[1].block(0)[3]);
+    sim_at_expt_pt_2_after.push_back(augmented_state_ensemble[2].block(0)[3]);
+
+    // Check the solution
+    // The observed points should get closer to the experimental values
+    // Large entries in R could make these fail spuriously
+    for (int member = 0; member < 3; ++member)
+    {
+      BOOST_CHECK(std::abs(expt_vec[0] - sim_at_expt_pt_1_after[member]) <=
+                  std::abs(expt_vec[0] - sim_at_expt_pt_1_before[member]));
+      BOOST_CHECK(std::abs(expt_vec[1] - sim_at_expt_pt_2_after[member]) <=
+                  std::abs(expt_vec[1] - sim_at_expt_pt_2_before[member]));
+    }
+  };
+
+  void test_update_ensemble_augmented()
+  {
+    // Create the DoF mapping
+    MPI_Comm communicator = MPI_COMM_WORLD;
+
+    boost::property_tree::ptree database;
+    database.put("import_mesh", false);
+    database.put("length", 1);
+    database.put("length_divisions", 1);
+    database.put("height", 1);
+    database.put("height_divisions", 1);
+    adamantine::Geometry<2> geometry(communicator, database);
+    dealii::parallel::distributed::Triangulation<2> const &tria =
+        geometry.get_triangulation();
+
+    dealii::FE_Q<2> fe(1);
+    dealii::DoFHandler<2> dof_handler(tria);
+    dof_handler.distribute_dofs(fe);
+
+    int sim_size = 4;
+    int parameter_size = 2;
+    int expt_size = 2;
+
+    std::vector<double> expt_vec(2);
+    expt_vec[0] = 2.5;
+    expt_vec[1] = 9.5;
+
+    std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
+    indices_and_offsets.first.resize(2);
+    indices_and_offsets.second.resize(3); // Offset vector is one longer
+    indices_and_offsets.first[0] = 1;
+    indices_and_offsets.first[1] = 3;
+    indices_and_offsets.second[0] = 0;
+    indices_and_offsets.second[1] = 1;
+    indices_and_offsets.second[2] = 2;
+
+    boost::property_tree::ptree solver_settings_database;
+    DataAssimilator da(solver_settings_database);
+    da._sim_size = sim_size;
+    da._parameter_size = parameter_size;
+    da._expt_size = expt_size;
+    da._num_ensemble_members = 3;
+
+    da.update_covariance_sparsity_pattern<2>(dof_handler, parameter_size);
+    da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
+
+    // Create the simulation data
+    std::vector<dealii::LA::distributed::BlockVector<double>>
+        augmented_state_ensemble(3);
+
+    augmented_state_ensemble[0].reinit(2);
+    augmented_state_ensemble[0].block(0).reinit(sim_size);
+    augmented_state_ensemble[0].block(0)(0) = 1.0;
+    augmented_state_ensemble[0].block(0)(1) = 3.0;
+    augmented_state_ensemble[0].block(0)(2) = 6.0;
+    augmented_state_ensemble[0].block(0)(3) = 9.0;
+    augmented_state_ensemble[1].reinit(2);
+    augmented_state_ensemble[1].block(0).reinit(sim_size);
+    augmented_state_ensemble[1].block(0)(0) = 1.5;
+    augmented_state_ensemble[1].block(0)(1) = 3.2;
+    augmented_state_ensemble[1].block(0)(2) = 6.3;
+    augmented_state_ensemble[1].block(0)(3) = 9.7;
+    augmented_state_ensemble[2].reinit(2);
+    augmented_state_ensemble[2].block(0).reinit(sim_size);
+    augmented_state_ensemble[2].block(0)(0) = 1.1;
+    augmented_state_ensemble[2].block(0)(1) = 3.1;
+    augmented_state_ensemble[2].block(0)(2) = 6.1;
+    augmented_state_ensemble[2].block(0)(3) = 9.1;
+
+    augmented_state_ensemble[0].block(1).reinit(parameter_size);
+    augmented_state_ensemble[0].block(1)(0) = 1.0;
+    augmented_state_ensemble[0].block(1)(0) = 5.0;
+    augmented_state_ensemble[1].block(1).reinit(parameter_size);
+    augmented_state_ensemble[1].block(1)(0) = 1.2;
+    augmented_state_ensemble[1].block(1)(0) = 4.5;
+    augmented_state_ensemble[2].block(1).reinit(parameter_size);
+    augmented_state_ensemble[2].block(1)(0) = 1.4;
+    augmented_state_ensemble[2].block(1)(0) = 5.5;
+
+    augmented_state_ensemble[0].collect_sizes();
+    augmented_state_ensemble[1].collect_sizes();
     augmented_state_ensemble[2].collect_sizes();
 
     // Build the sparse experimental covariance matrix
@@ -751,5 +945,6 @@ BOOST_AUTO_TEST_CASE(data_assimilator)
   dat.test_calc_Hx();
   dat.test_calc_kalman_gain();
   dat.test_update_ensemble();
+  dat.test_update_ensemble_augmented();
 }
 } // namespace adamantine

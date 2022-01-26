@@ -106,8 +106,9 @@ public:
    * there are changes to the simulation mesh.
    */
   template <int dim>
-  void update_covariance_sparsity_pattern(
-      dealii::DoFHandler<dim> const &dof_handler);
+  void
+  update_covariance_sparsity_pattern(dealii::DoFHandler<dim> const &dof_handler,
+                                     const unsigned int parameter_size);
 
 private:
   /**

@@ -274,13 +274,16 @@ void DataAssimilator::update_dof_mapping(
 
 template <int dim>
 void DataAssimilator::update_covariance_sparsity_pattern(
-    dealii::DoFHandler<dim> const &dof_handler)
+    dealii::DoFHandler<dim> const &dof_handler,
+    const unsigned int parameter_size)
 {
   _sim_size = dof_handler.n_dofs();
+  _parameter_size = parameter_size;
+  unsigned int augmented_state_size = _sim_size + _parameter_size;
 
   // Use a DynamicSparsityPattern temporarily because the number of entries per
   // row is difficult to guess.
-  dealii::DynamicSparsityPattern dsp(dof_handler.n_dofs());
+  dealii::DynamicSparsityPattern dsp(augmented_state_size);
 
   // Loop through the dofs to see which pairs are within the specified distance
   std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
@@ -303,6 +306,23 @@ void DataAssimilator::update_covariance_sparsity_pattern(
         dsp.add(i, j);
         _covariance_distance_map[std::make_pair(i, j)] = dist;
       }
+    }
+  }
+
+  // Add entries for the parameter augmentation
+  for (unsigned int i1 = _sim_size; i1 < augmented_state_size; ++i1)
+  {
+    for (unsigned int j1 = 0; j1 < augmented_state_size; ++j1)
+    {
+      dsp.add(i1, j1);
+    }
+  }
+
+  for (unsigned int i1 = 0; i1 < _sim_size; ++i1)
+  {
+    for (unsigned int j1 = _sim_size; j1 < augmented_state_size; ++j1)
+    {
+      dsp.add(i1, j1);
     }
   }
 
@@ -392,9 +412,11 @@ template <typename VectorType>
 dealii::SparseMatrix<double> DataAssimilator::calc_sample_covariance_sparse(
     std::vector<VectorType> const vec_ensemble) const
 {
+  unsigned int augmented_state_size = _sim_size + _parameter_size;
+
   // Calculate the mean
-  dealii::Vector<double> mean(_sim_size);
-  for (unsigned int i = 0; i < _sim_size; ++i)
+  dealii::Vector<double> mean(augmented_state_size);
+  for (unsigned int i = 0; i < augmented_state_size; ++i)
   {
     double sum = 0.0;
     for (unsigned int sample = 0; sample < _num_ensemble_members; ++sample)
@@ -424,18 +446,26 @@ dealii::SparseMatrix<double> DataAssimilator::calc_sample_covariance_sparse(
 
     // Apply localization
     double localization_scaling;
-    double dist = _covariance_distance_map.find(std::make_pair(i, j))->second;
-    if (_localization_cutoff_function == LocalizationCutoff::gaspari_cohn)
+    if (i < _sim_size && j < _sim_size)
     {
-      localization_scaling =
-          gaspari_cohn_function(2.0 * dist / _localization_cutoff_distance);
-    }
-    else if (_localization_cutoff_function == LocalizationCutoff::step_function)
-    {
-      if (dist <= _localization_cutoff_distance)
-        localization_scaling = 1.0;
+      double dist = _covariance_distance_map.find(std::make_pair(i, j))->second;
+      if (_localization_cutoff_function == LocalizationCutoff::gaspari_cohn)
+      {
+        localization_scaling =
+            gaspari_cohn_function(2.0 * dist / _localization_cutoff_distance);
+      }
+      else if (_localization_cutoff_function ==
+               LocalizationCutoff::step_function)
+      {
+        if (dist <= _localization_cutoff_distance)
+          localization_scaling = 1.0;
+        else
+          localization_scaling = 0.0;
+      }
       else
-        localization_scaling = 0.0;
+      {
+        localization_scaling = 1.0;
+      }
     }
     else
     {
@@ -456,9 +486,11 @@ template void DataAssimilator::update_dof_mapping<3>(
     dealii::DoFHandler<3> const &dof_handler,
     std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
 template void DataAssimilator::update_covariance_sparsity_pattern<2>(
-    dealii::DoFHandler<2> const &dof_handler);
+    dealii::DoFHandler<2> const &dof_handler,
+    const unsigned int parameter_size);
 template void DataAssimilator::update_covariance_sparsity_pattern<3>(
-    dealii::DoFHandler<3> const &dof_handler);
+    dealii::DoFHandler<3> const &dof_handler,
+    const unsigned int parameter_size);
 template dealii::SparseMatrix<double>
 DataAssimilator::calc_sample_covariance_sparse<dealii::Vector<double>>(
     std::vector<dealii::Vector<double>> const vec_ensemble) const;

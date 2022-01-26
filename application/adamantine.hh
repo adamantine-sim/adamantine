@@ -1416,7 +1416,8 @@ run_ensemble(MPI_Comm const &communicator,
             indices_and_offsets);
 
         data_assimilator.update_covariance_sparsity_pattern<dim>(
-            thermal_physics_ensemble[0]->get_dof_handler());
+            thermal_physics_ensemble[0]->get_dof_handler(),
+            solution_augmented_ensemble[0].block(1).size());
 
         unsigned int experimental_data_size =
             points_values[experimental_frame_index].values.size();
