@@ -116,7 +116,7 @@ private:
    */
   std::vector<dealii::LA::distributed::BlockVector<double>> apply_kalman_gain(
       std::vector<dealii::LA::distributed::BlockVector<double>>
-          &enriched_sim_ensemble,
+          &augmented_state_ensemble,
       dealii::SparseMatrix<double> const &R,
       std::vector<dealii::Vector<double>> const &perturbed_innovation);
 
@@ -126,9 +126,9 @@ private:
   dealii::SparseMatrix<double> calc_H(dealii::SparsityPattern &pattern) const;
 
   /**
-   * This calculates the application of the observation matrix on an ensemble
-   * member from the simulation (sim_ensemble_member), avoiding explicit
-   * construction of a sparse matrix for H.
+   * This calculates the application of the observation matrix on an unaugmented
+   * ensemble member from the simulation, avoiding explicit construction of a
+   * sparse matrix for H.
    */
   dealii::Vector<double> calc_Hx(
       dealii::LA::distributed::Vector<double> const &sim_ensemble_member) const;

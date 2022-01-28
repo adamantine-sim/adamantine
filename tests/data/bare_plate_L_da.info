@@ -130,7 +130,7 @@ time_stepping
 post_processor
 {
   filename_prefix output
-  time_steps_between_output 10
+  time_steps_between_output 20
 }
 
 discretization

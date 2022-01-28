@@ -51,8 +51,6 @@ BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation)
   }
   double average_minimum_value = sum / result.size();
 
-  std::cout << "average minimum value: " << average_minimum_value << std::endl;
-
   // Based on the experimental data, the expected temperature is ~200.0
   BOOST_CHECK((average_minimum_value >= 200.0) &&
               (average_minimum_value < 300.0));
@@ -65,8 +63,6 @@ BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation_augmented)
 
   std::vector<adamantine::Timer> timers;
   initialize_timers(communicator, timers);
-
-  // TODO: Create the experiment files
 
   // Read the input.
   std::string const filename = "bare_plate_L_da_augmented.info";

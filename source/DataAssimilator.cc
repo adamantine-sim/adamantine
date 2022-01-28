@@ -76,8 +76,6 @@ void DataAssimilator::update_ensemble(
         &augmented_state_ensemble,
     std::vector<double> const &expt_data, dealii::SparseMatrix<double> const &R)
 {
-  _num_ensemble_members = augmented_state_ensemble.size();
-
   unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
   // Set some constants
@@ -101,7 +99,8 @@ void DataAssimilator::update_ensemble(
   bool const R_is_diagonal = bandwidth == 0 ? true : false;
 
   // Get the perturbed innovation, ( y+u - Hx )
-  // This can be determined using the unenriched ensemble
+  // This is determined using the unaugmented state because the parameters are
+  // not observable
   if (rank == 0)
     std::cout << "Getting the perturbed innovation..." << std::endl;
 
@@ -120,7 +119,7 @@ void DataAssimilator::update_ensemble(
     }
   }
 
-  // Apply the Kalman gain to update the enriched ensemble
+  // Apply the Kalman gain to update the augmented state ensemble
   if (rank == 0)
     std::cout << "Applying the Kalman gain..." << std::endl;
 
@@ -200,8 +199,10 @@ DataAssimilator::apply_kalman_gain(
         // Apply the Kalman gain to each innovation vector
         dealii::Vector<double> temporary = op_K * entry;
 
+        // Copy into a distributed block vector, this is the only place where
+        // the mismatch matters, using dealii::Vector for the experimental data
+        // and dealii::LA::distributed::BlockVector for the simulation data.
         dealii::LA::distributed::BlockVector<double> output_member(block_sizes);
-
         for (unsigned int i = 0; i < augmented_state_size; ++i)
         {
           output_member(i) = temporary(i);

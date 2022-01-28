@@ -1131,7 +1131,6 @@ run_ensemble(MPI_Comm const &communicator,
         *geometry_ensemble[member], thermal_physics_ensemble[member]);
 
     thermal_physics_ensemble[member]->setup_dofs();
-
     thermal_physics_ensemble[member]->update_material_deposition_orientation();
     thermal_physics_ensemble[member]->compute_inverse_mass_matrix();
 
@@ -1384,11 +1383,13 @@ run_ensemble(MPI_Comm const &communicator,
     // ----- Perform data assimilation -----
     if (assimilate_data)
     {
-      // TESTING
-      for (unsigned int member = 0; member < ensemble_size; ++member)
-      {
-        solution_augmented_ensemble[member].collect_sizes();
-      }
+      /*
+    // TESTING
+    for (unsigned int member = 0; member < ensemble_size; ++member)
+    {
+      solution_augmented_ensemble[member].collect_sizes();
+    }
+    */
 
       // Currently assume that all frames are synced so that the 0th camera
       // frame time is the relevant time
