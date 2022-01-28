@@ -51,9 +51,49 @@ BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation)
   }
   double average_minimum_value = sum / result.size();
 
+  std::cout << "average minimum value: " << average_minimum_value << std::endl;
+
   // Based on the experimental data, the expected temperature is ~200.0
   BOOST_CHECK((average_minimum_value >= 200.0) &&
               (average_minimum_value < 300.0));
+}
+
+BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation_augmented)
+{
+
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  std::vector<adamantine::Timer> timers;
+  initialize_timers(communicator, timers);
+
+  // TODO: Create the experiment files
+
+  // Read the input.
+  std::string const filename = "bare_plate_L_da_augmented.info";
+  adamantine::ASSERT_THROW(boost::filesystem::exists(filename) == true,
+                           "The file " + filename + " does not exist.");
+  boost::property_tree::ptree database;
+  boost::property_tree::info_parser::read_info(filename, database);
+
+  // Run the simulation
+  auto result = run_ensemble<3, dealii::MemorySpace::Host>(communicator,
+                                                           database, timers);
+
+  // Three ensemble members expected
+  BOOST_CHECK(result.size() == 3);
+
+  // Get the average absorption value for each ensemble member
+  double sum = 0.0;
+  for (unsigned int member = 0; member < result.size(); ++member)
+  {
+    sum += result.at(member).block(1).local_element(0);
+  }
+  double average_value = sum / result.size();
+
+  // Based on the reference solution, the expected absorption efficiency is 0.3
+  double gold_solution = 0.3;
+  double tolerance = 5.0;
+  BOOST_CHECK_CLOSE(average_value, gold_solution, tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(integration_3D)

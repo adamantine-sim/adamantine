@@ -76,6 +76,8 @@ void DataAssimilator::update_ensemble(
         &augmented_state_ensemble,
     std::vector<double> const &expt_data, dealii::SparseMatrix<double> const &R)
 {
+  _num_ensemble_members = augmented_state_ensemble.size();
+
   unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
   // Set some constants
@@ -111,6 +113,7 @@ void DataAssimilator::update_ensemble(
     fill_noise_vector(perturbed_innovation[member], R, R_is_diagonal);
     dealii::Vector<double> temporary =
         calc_Hx(augmented_state_ensemble[member].block(0));
+
     for (unsigned int i = 0; i < _expt_size; ++i)
     {
       perturbed_innovation[member][i] += expt_data[i] - temporary[i];
@@ -142,21 +145,22 @@ DataAssimilator::apply_kalman_gain(
     dealii::SparseMatrix<double> const &R,
     std::vector<dealii::Vector<double>> const &perturbed_innovation)
 {
-  unsigned int augmented_state_ensemble_size = _sim_size + _parameter_size;
+  unsigned int augmented_state_size = _sim_size + _parameter_size;
 
   /*
    * Currently this function uses GMRES to apply the inverse of HPH^T+R in the
-   * Kalman gain calculation for each ensemble member individually. Depending on
-   * the size of the datasets, the number of ensembles, and other factors doing
-   * a direct solve of (HPH^T+R)^-1 once and then applying to the perturbed
-   * innovation from each ensemble member might be more efficient.
+   * Kalman gain calculation for each ensemble member individually. Depending
+   * on the size of the datasets, the number of ensembles, and other factors
+   * doing a direct solve of (HPH^T+R)^-1 once and then applying to the
+   * perturbed innovation from each ensemble member might be more efficient.
    */
-  dealii::SparsityPattern pattern_H(_expt_size, augmented_state_ensemble_size,
+  dealii::SparsityPattern pattern_H(_expt_size, augmented_state_size,
                                     _expt_size);
 
   dealii::SparseMatrix<double> H = calc_H(pattern_H);
 
   dealii::SparseMatrix<double> P(_covariance_sparsity_pattern);
+
   P = calc_sample_covariance_sparse(augmented_state_ensemble);
 
   const auto op_H = dealii::linear_operator(H);
@@ -176,10 +180,8 @@ DataAssimilator::apply_kalman_gain(
   auto solver_control = _solver_control;
   auto additional_data = _additional_data;
 
-  unsigned int augmented_state_size = _sim_size + _parameter_size;
-
-  // Apply the Kalman gain to the perturbed innovation for the ensemble members
-  // in parallel
+  // Apply the Kalman gain to the perturbed innovation for the ensemble
+  // members in parallel
   std::transform(
 #ifdef __GLIBCXX__
       std::execution::par,
@@ -281,11 +283,12 @@ void DataAssimilator::update_covariance_sparsity_pattern(
   _parameter_size = parameter_size;
   unsigned int augmented_state_size = _sim_size + _parameter_size;
 
-  // Use a DynamicSparsityPattern temporarily because the number of entries per
-  // row is difficult to guess.
+  // Use a DynamicSparsityPattern temporarily because the number of entries
+  // per row is difficult to guess.
   dealii::DynamicSparsityPattern dsp(augmented_state_size);
 
-  // Loop through the dofs to see which pairs are within the specified distance
+  // Loop through the dofs to see which pairs are within the specified
+  // distance
   std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
 
   dealii::DoFTools::map_dofs_to_support_points(
@@ -354,14 +357,14 @@ void DataAssimilator::fill_noise_vector(dealii::Vector<double> &vec,
 {
   auto vector_size = vec.size();
 
-  // If R is diagonal, then the entries in the noise vector are independent and
-  // each are simply a scaled output of the pseudo-random number generator. For
-  // a more general R, one needs to multiply by the Cholesky decomposition of R
-  // to achieve the appropriate correlation between the entries. Deal.II only
-  // has a specific Cholesky function for full matrices, which is used in the
-  // implementation below. The Cholesky decomposition is a special case of LU
-  // decomposition, so we can use a sparse LU solver to obtain the "L" below if
-  // needed in the future.
+  // If R is diagonal, then the entries in the noise vector are independent
+  // and each are simply a scaled output of the pseudo-random number
+  // generator. For a more general R, one needs to multiply by the Cholesky
+  // decomposition of R to achieve the appropriate correlation between the
+  // entries. Deal.II only has a specific Cholesky function for full matrices,
+  // which is used in the implementation below. The Cholesky decomposition is
+  // a special case of LU decomposition, so we can use a sparse LU solver to
+  // obtain the "L" below if needed in the future.
 
   if (R_is_diagonal)
   {

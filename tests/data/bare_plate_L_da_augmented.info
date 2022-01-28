@@ -2,19 +2,19 @@ ensemble
 {
   ensemble_simulation true
   ensemble_size 3
-  initial_temperature_stddev 50.0
+  beam_0_absorption_stddev 0.1
 }
 experiment
 {
   read_in_experimental_data true
-  log_filename bare_plate_L_expt_log.txt
-  file bare_plate_L_expt_data_#camera_#frame.csv
+  log_filename bare_plate_L_da_aug_ref_log.txt
+  file bare_plate_L_da_aug_ref_data_#camera_#frame.csv
   data_columns 1,2,3,4
   first_frame 0
   last_frame 1
   first_camera_id 0
   last_camera_id 0
-  first_frame_temporal_offset 0.0105
+  first_frame_temporal_offset 0.02
   estimated_uncertainty 5.0
 }
 data_assimilation
@@ -22,6 +22,7 @@ data_assimilation
   assimilate_data true
   localization_cutoff_function gaspari_cohn
   localization_cutoff_distance 1.0e-3
+  augment_with_beam_0_absorption true
   solver
   {
     max_number_of_temp_vectors 10
@@ -110,7 +111,7 @@ sources
     diameter 0.6e-3 ; [m]
     scan_path_file bare_plate_L_scan_path.txt
     scan_path_file_format segment
-    absorption_efficiency 0.3 ; number between 0 and 1 equivalent to
+    absorption_efficiency 0.4 ; number between 0 and 1 equivalent to
                               ; energy_conversion_efficiency * control_efficiency
                               ; for an electron beam
     max_power 400.0 ; [W], current * voltage for an electron beam
@@ -130,7 +131,7 @@ time_stepping
 post_processor
 {
   filename_prefix output
-  time_steps_between_output 10
+  time_steps_between_output 20
 }
 
 discretization

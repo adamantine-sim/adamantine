@@ -1131,6 +1131,7 @@ run_ensemble(MPI_Comm const &communicator,
         *geometry_ensemble[member], thermal_physics_ensemble[member]);
 
     thermal_physics_ensemble[member]->setup_dofs();
+
     thermal_physics_ensemble[member]->update_material_deposition_orientation();
     thermal_physics_ensemble[member]->compute_inverse_mass_matrix();
 
@@ -1138,6 +1139,8 @@ run_ensemble(MPI_Comm const &communicator,
         initial_temperature[member],
         solution_augmented_ensemble[member].block(0));
     thermal_physics_ensemble[member]->get_state_from_material_properties();
+
+    solution_augmented_ensemble[member].collect_sizes();
 
     post_processor_ensemble.push_back(
         std::make_unique<adamantine::PostProcessor<dim>>(
@@ -1280,7 +1283,6 @@ run_ensemble(MPI_Comm const &communicator,
 #endif
   while (time < duration)
   {
-
 #ifdef ADAMANTINE_WITH_CALIPER
     CALI_CXX_MARK_LOOP_ITERATION(main_loop_id, n_time_step - 1);
 #endif
@@ -1355,6 +1357,7 @@ run_ensemble(MPI_Comm const &communicator,
     // means that the amount of material that needs to be added is not
     // known.
     double const old_time = time;
+    double temp_time = 0.0;
 #if ADAMANTINE_DEBUG
     bool const adding_material =
         (activation_start == activation_end) ? false : true;
@@ -1362,10 +1365,11 @@ run_ensemble(MPI_Comm const &communicator,
     timers[adamantine::evol_time].start();
     for (unsigned int member = 0; member < ensemble_size; ++member)
     {
-      time = thermal_physics_ensemble[member]->evolve_one_time_step(
+      temp_time = thermal_physics_ensemble[member]->evolve_one_time_step(
           time, time_step, database_ensemble[member].get_child("sources"),
           solution_augmented_ensemble[member].block(0), timers);
     }
+    time = temp_time;
 #if ADAMANTINE_DEBUG
     ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),
            "Unexpected time step while adding material.");
@@ -1380,6 +1384,12 @@ run_ensemble(MPI_Comm const &communicator,
     // ----- Perform data assimilation -----
     if (assimilate_data)
     {
+      // TESTING
+      for (unsigned int member = 0; member < ensemble_size; ++member)
+      {
+        solution_augmented_ensemble[member].collect_sizes();
+      }
+
       // Currently assume that all frames are synced so that the 0th camera
       // frame time is the relevant time
       double frame_time;

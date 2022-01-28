@@ -191,6 +191,8 @@ The following options are available:
   * assimilate\_data : Whether to perform data assimilation (default value: false)
   * localization\_cutoff\_function : The function used to decrease the sample covariance as the relevant points become farther away: gaspari\_cohn, step\_function, none (default: none)
   * localization\_cutoff\_distance : The distance at which sample covariance entries are set to zero (default: infinity)
+  * augment\_with\_beam\_0\_absorption : Whether to augment the state vector with the beam 0 absorption efficiency (default: false)
+  * augment\_with\_beam\_0\_max_power : Whether to augment the state vector with the beam 0 max power (default: false)
   * solver:
     * max\_number\_of\_temp\_vectors: Maximum number of temporary vectors for the GMRES solve (optional)
     * max\_iterations: Maximum number of iterations for the GMRES solve (optional)
