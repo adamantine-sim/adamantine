@@ -19,6 +19,8 @@ list(APPEND
      test_timer
      test_utils
      test_integration_3d
+     test_integration_da
+     test_integration_da_augmented
      test_validate_input_database
      )
 

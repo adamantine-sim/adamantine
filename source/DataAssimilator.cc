@@ -78,12 +78,16 @@ void DataAssimilator::update_ensemble(
 {
   unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
+  // Give names to the blocks in the augmented state vector
+  int constexpr base_state = 0;
+  int constexpr augmented_state = 1;
+
   // Set some constants
   _num_ensemble_members = augmented_state_ensemble.size();
   if (_num_ensemble_members > 0)
   {
-    _sim_size = augmented_state_ensemble[0].block(0).size();
-    _parameter_size = augmented_state_ensemble[0].block(1).size();
+    _sim_size = augmented_state_ensemble[0].block(base_state).size();
+    _parameter_size = augmented_state_ensemble[0].block(augmented_state).size();
   }
   else
   {
@@ -111,7 +115,7 @@ void DataAssimilator::update_ensemble(
     perturbed_innovation[member].reinit(_expt_size);
     fill_noise_vector(perturbed_innovation[member], R, R_is_diagonal);
     dealii::Vector<double> temporary =
-        calc_Hx(augmented_state_ensemble[member].block(0));
+        calc_Hx(augmented_state_ensemble[member].block(base_state));
 
     for (unsigned int i = 0; i < _expt_size; ++i)
     {
