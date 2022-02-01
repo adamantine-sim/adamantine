@@ -104,11 +104,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
   unsigned int const local_size = _inverse_mass_matrix->locally_owned_size();
   for (unsigned int k = 0; k < local_size; ++k)
   {
-    if (_inverse_mass_matrix->local_element(k) > 1e-15)
-      _inverse_mass_matrix->local_element(k) =
-          1. / _inverse_mass_matrix->local_element(k);
-    else
-      _inverse_mass_matrix->local_element(k) = 0.;
+    _inverse_mass_matrix->local_element(k) =
+        1. / _inverse_mass_matrix->local_element(k);
   }
 }
 
