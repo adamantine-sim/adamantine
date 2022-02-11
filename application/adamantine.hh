@@ -1067,12 +1067,14 @@ run_ensemble(MPI_Comm const &communicator,
     {
       assimilate_data = true;
 
+      // PropertyTreeInput data_assimilation.augment_with_beam_0_absorption
       if (data_assimilation_database.get("augment_with_beam_0_absorption",
                                          false))
       {
         augmented_state_parameters.push_back(
             adamantine::AugmentedStateParameters::beam_0_absorption);
       }
+      // PropertyTreeInput data_assimilation.augment_with_beam_0_max_power
       if (data_assimilation_database.get("augment_with_beam_0_max_power",
                                          false))
       {
