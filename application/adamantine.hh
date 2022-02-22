@@ -886,8 +886,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         (activation_start == activation_end) ? false : true;
 #endif
     timers[adamantine::evol_time].start();
-    time = thermal_physics->evolve_one_time_step(
-        time, time_step, database.get_child("sources"), solution, timers);
+    time = thermal_physics->evolve_one_time_step(time, time_step, solution,
+                                                 timers);
 #if ADAMANTINE_DEBUG
     ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),
            "Unexpected time step while adding material.");
@@ -1384,7 +1384,7 @@ run_ensemble(MPI_Comm const &communicator,
     for (unsigned int member = 0; member < ensemble_size; ++member)
     {
       time = thermal_physics_ensemble[member]->evolve_one_time_step(
-          old_time, time_step, database_ensemble[member].get_child("sources"),
+          old_time, time_step,
           solution_augmented_ensemble[member].block(base_state), timers);
     }
 #if ADAMANTINE_DEBUG
@@ -1540,6 +1540,13 @@ run_ensemble(MPI_Comm const &communicator,
           std::cout << "Done." << std::endl;
 
         experimental_frame_index++;
+      }
+
+      // Update the heat source in the ThermalPhysics objects
+      for (unsigned int member = 0; member < ensemble_size; ++member)
+      {
+        thermal_physics_ensemble[member]->update_physics_parameters(
+            database_ensemble[member].get_child("sources"));
       }
     }
 
