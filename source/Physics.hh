@@ -62,7 +62,7 @@ public:
    * simulation based on data assimilation with an augmented state.
    */
   virtual void
-  update_physics_parameters(boost::property_tree::ptree const &database);
+  update_physics_parameters(boost::property_tree::ptree const &database) = 0;
 
   /**
    * Evolve the physics from time t to time t+delta_t. solution first contains
