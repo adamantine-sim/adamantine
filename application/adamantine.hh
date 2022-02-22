@@ -159,6 +159,18 @@ inline void initialize_timers(MPI_Comm const &communicator,
   timers.push_back(adamantine::Timer(communicator, "Refinement"));
   timers.push_back(adamantine::Timer(communicator, "Add Material, Search"));
   timers.push_back(adamantine::Timer(communicator, "Add Material, Activate"));
+  timers.push_back(
+      adamantine::Timer(communicator, "Data Assimilation, Exp. Data"));
+  timers.push_back(
+      adamantine::Timer(communicator, "Data Assimilation, DOF Mapping"));
+  timers.push_back(
+      adamantine::Timer(communicator, "Data Assimilation, Cov. Sparsity"));
+  timers.push_back(
+      adamantine::Timer(communicator, "Data Assimilation, Exp. Cov."));
+  timers.push_back(
+      adamantine::Timer(communicator, "Data Assimilation, Update Ensemble"));
+  timers.push_back(
+      adamantine::Timer(communicator, "Data Assimilation, Exp. Data"));
   timers.push_back(adamantine::Timer(communicator, "Evolve One Time Step"));
   timers.push_back(adamantine::Timer(
       communicator, "Evolve One Time Step: evaluate_thermal_physics"));
@@ -1409,9 +1421,17 @@ run_ensemble(MPI_Comm const &communicator,
           std::cout << "Performing data assimilation at time " << time << "..."
                     << std::endl;
 
+        timers[adamantine::da_experimental_data].start();
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_BEGIN("da_experimental_data");
+#endif
         auto indices_and_offsets = adamantine::set_with_experimental_data(
             points_values[experimental_frame_index],
             thermal_physics_ensemble[0]->get_dof_handler(), temperature_dummy);
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_END("da_experimental_data");
+#endif
+        timers[adamantine::da_experimental_data].stop();
 
         // NOTE: As is, this updates the dof mapping and covariance sparsity
         // pattern for every data assimilation operation. Strictly, this is only
@@ -1420,19 +1440,39 @@ run_ensemble(MPI_Comm const &communicator,
         // mesh due to deposition likely cause the updates to be required for
         // each operation. If this is a bottleneck, it can be fixed in the
         // future.
+        timers[adamantine::da_dof_mapping].start();
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_BEGIN("da_dof_mapping");
+#endif
         data_assimilator.update_dof_mapping<dim>(
             thermal_physics_ensemble[0]->get_dof_handler(),
             indices_and_offsets);
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_END("da_dof_mapping");
+#endif
+        timers[adamantine::da_dof_mapping].stop();
 
+        timers[adamantine::da_covariance_sparsity].start();
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_BEGIN("da_covariance_sparsity");
+#endif
         data_assimilator.update_covariance_sparsity_pattern<dim>(
             thermal_physics_ensemble[0]->get_dof_handler(),
             solution_augmented_ensemble[0].block(augmented_state).size());
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_END("da_covariance_sparsity");
+#endif
+        timers[adamantine::da_covariance_sparsity].start();
 
         unsigned int experimental_data_size =
             points_values[experimental_frame_index].values.size();
 
         // Create the R matrix (the observation covariance matrix)
         // PropertyTreeInput experiment.estimated_uncertainty
+        timers[adamantine::da_obs_covariance].start();
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_BEGIN("da_obs_covariance");
+#endif
         double variance_entries = experiment_optional_database.get().get(
             "estimated_uncertainty", 0.0);
         variance_entries = variance_entries * variance_entries;
@@ -1450,11 +1490,23 @@ run_ensemble(MPI_Comm const &communicator,
         {
           R.add(i, i, variance_entries);
         }
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_END("da_obs_covariance");
+#endif
+        timers[adamantine::da_obs_covariance].stop();
 
         // Perform data assimilation to update the augmented state ensemble
+        timers[adamantine::da_update_ensemble].start();
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_BEGIN("da_update_ensemble");
+#endif
         data_assimilator.update_ensemble(
             communicator, solution_augmented_ensemble,
             points_values[experimental_frame_index].values, R);
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_END("da_update_ensemble");
+#endif
+        timers[adamantine::da_update_ensemble].stop();
 
         // Extract the parameters from the augmented state
         for (unsigned int member = 0; member < ensemble_size; ++member)

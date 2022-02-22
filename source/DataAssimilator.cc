@@ -15,6 +15,10 @@
 
 #include <boost/algorithm/string/predicate.hpp>
 
+#ifdef ADAMANTINE_WITH_CALIPER
+#include <caliper/cali.h>
+#endif
+
 // libc++ does not support parallel std library
 #ifdef __GLIBCXX__
 #include <execution>
@@ -108,6 +112,10 @@ void DataAssimilator::update_ensemble(
   if (rank == 0)
     std::cout << "Getting the perturbed innovation..." << std::endl;
 
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("da_get_pert_inno");
+#endif
+
   std::vector<dealii::Vector<double>> perturbed_innovation(
       _num_ensemble_members);
   for (unsigned int member = 0; member < _num_ensemble_members; ++member)
@@ -123,22 +131,42 @@ void DataAssimilator::update_ensemble(
     }
   }
 
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("da_get_pert_inno");
+#endif
+
   // Apply the Kalman gain to update the augmented state ensemble
   if (rank == 0)
     std::cout << "Applying the Kalman gain..." << std::endl;
+
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("da_apply_K");
+#endif
 
   // Apply the Kalman filter to the perturbed innovation, K ( y+u - Hx )
   std::vector<dealii::LA::distributed::BlockVector<double>> forecast_shift =
       apply_kalman_gain(augmented_state_ensemble, R, perturbed_innovation);
 
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("da_apply_K");
+#endif
+
   // Update the ensemble, x = x + K ( y+u - Hx )
   if (rank == 0)
     std::cout << "Updating the ensemble members..." << std::endl;
+
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("da_update_members");
+#endif
 
   for (unsigned int member = 0; member < _num_ensemble_members; ++member)
   {
     augmented_state_ensemble[member] += forecast_shift[member];
   }
+
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("da_update_members");
+#endif
 }
 
 std::vector<dealii::LA::distributed::BlockVector<double>>
