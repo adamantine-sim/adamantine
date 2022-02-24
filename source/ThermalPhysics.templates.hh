@@ -716,13 +716,37 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+    update_physics_parameters(
+        boost::property_tree::ptree const &heat_source_database)
+{
+  // Update the heat source from heat_source_database to reflect changes during
+  // the simulation (i.e. due to data assimilation)
+  unsigned int source_index = 0;
+  for (auto const &source : _heat_sources)
+  {
+    // PropertyTreeInput sources.beam_X
+    boost::property_tree::ptree const &beam_database =
+        heat_source_database.get_child("beam_" + std::to_string(source_index));
+
+    // PropertyTreeInput sources.beam_X.type
+    std::string type = beam_database.get<std::string>("type");
+
+    if (type == "goldak" || type == "electron_beam")
+      source->set_beam_properties(beam_database);
+
+    source_index++;
+  }
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
 double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     evolve_one_time_step(
         double t, double delta_t,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
         std::vector<Timer> &timers)
 {
-
   // Update the height of the heat source. Right now this is just the
   // maximum heat source height, which can lead to unexpected behavior for
   // different sources with different heights.

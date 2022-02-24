@@ -159,6 +159,18 @@ inline void initialize_timers(MPI_Comm const &communicator,
   timers.push_back(adamantine::Timer(communicator, "Refinement"));
   timers.push_back(adamantine::Timer(communicator, "Add Material, Search"));
   timers.push_back(adamantine::Timer(communicator, "Add Material, Activate"));
+  timers.push_back(
+      adamantine::Timer(communicator, "Data Assimilation, Exp. Data"));
+  timers.push_back(
+      adamantine::Timer(communicator, "Data Assimilation, DOF Mapping"));
+  timers.push_back(
+      adamantine::Timer(communicator, "Data Assimilation, Cov. Sparsity"));
+  timers.push_back(
+      adamantine::Timer(communicator, "Data Assimilation, Exp. Cov."));
+  timers.push_back(
+      adamantine::Timer(communicator, "Data Assimilation, Update Ensemble"));
+  timers.push_back(
+      adamantine::Timer(communicator, "Data Assimilation, Exp. Data"));
   timers.push_back(adamantine::Timer(communicator, "Evolve One Time Step"));
   timers.push_back(adamantine::Timer(
       communicator, "Evolve One Time Step: evaluate_thermal_physics"));
@@ -922,7 +934,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 }
 
 template <int dim, typename MemorySpaceType>
-std::vector<dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>>
+std::vector<dealii::LA::distributed::BlockVector<double>>
 run_ensemble(MPI_Comm const &communicator,
              boost::property_tree::ptree const &database,
              std::vector<adamantine::Timer> &timers)
@@ -977,15 +989,16 @@ run_ensemble(MPI_Comm const &communicator,
 
   // PropertyTreeInput sources.n_beams
   unsigned int const n_beams = database.get<unsigned int>("sources.n_beams");
-  double beam_0_max_power_mean;
+  double beam_0_max_power_mean = 0.0;
+  double beam_0_absorption_mean = 0.0;
   if (n_beams > 0)
   {
     // PropertyTreeInput sources.beam_0.max_power
     beam_0_max_power_mean = database.get<double>("sources.beam_0.max_power");
-  }
-  else
-  {
-    beam_0_max_power_mean = 0;
+
+    // PropertyTreeInput sources.beam_0.absorption_efficiency
+    beam_0_absorption_mean =
+        database.get<double>("sources.beam_0.absorption_efficiency");
   }
 
   // ------ Set up the ensemble members -----
@@ -1020,6 +1033,14 @@ run_ensemble(MPI_Comm const &communicator,
       adamantine::fill_and_sync_random_vector(
           ensemble_size, beam_0_max_power_mean, beam_0_max_power_stddev);
 
+  // PropertyTreeInput ensemble.beam_0_absorption_stddev
+  const double beam_0_absorption_stddev =
+      ensemble_database.get("beam_0_absorption_stddev", 0.0);
+
+  std::vector<double> beam_0_absorption =
+      adamantine::fill_and_sync_random_vector(
+          ensemble_size, beam_0_absorption_mean, beam_0_absorption_stddev);
+
   // Create a new property tree database for each ensemble member
   std::vector<boost::property_tree::ptree> database_ensemble(ensemble_size,
                                                              database);
@@ -1030,22 +1051,96 @@ run_ensemble(MPI_Comm const &communicator,
   std::vector<std::vector<std::shared_ptr<adamantine::HeatSource<dim>>>>
       heat_sources_ensemble(ensemble_size);
 
-  std::vector<dealii::LA::distributed::Vector<double, MemorySpaceType>>
-      solution_ensemble(ensemble_size);
-
   std::vector<std::unique_ptr<adamantine::Geometry<dim>>> geometry_ensemble;
 
   std::vector<std::unique_ptr<adamantine::PostProcessor<dim>>>
       post_processor_ensemble;
 
+  // Create the vector of augmented state vectors
+  std::vector<dealii::LA::distributed::BlockVector<double>>
+      solution_augmented_ensemble(ensemble_size);
+
+  // Give names to the blocks in the augmented state vector
+  int constexpr base_state = 0;
+  int constexpr augmented_state = 1;
+
+  // ----- Initialize the data assimilation object -----
+  boost::property_tree::ptree data_assimilation_database;
+  bool assimilate_data = false;
+  std::vector<adamantine::AugmentedStateParameters> augmented_state_parameters;
+
+  if (data_assimilation_optional_database)
+  {
+    // PropertyTreeInput data_assimilation
+    data_assimilation_database = data_assimilation_optional_database.get();
+
+    // PropertyTreeInput data_assimilation.assimilate_data
+    if (data_assimilation_database.get("assimilate_data", false))
+    {
+      assimilate_data = true;
+
+      // PropertyTreeInput data_assimilation.augment_with_beam_0_absorption
+      if (data_assimilation_database.get("augment_with_beam_0_absorption",
+                                         false))
+      {
+        augmented_state_parameters.push_back(
+            adamantine::AugmentedStateParameters::beam_0_absorption);
+      }
+      // PropertyTreeInput data_assimilation.augment_with_beam_0_max_power
+      if (data_assimilation_database.get("augment_with_beam_0_max_power",
+                                         false))
+      {
+        augmented_state_parameters.push_back(
+            adamantine::AugmentedStateParameters::beam_0_max_power);
+      }
+    }
+  }
+  adamantine::DataAssimilator data_assimilator(data_assimilation_database);
+
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
+    // Resize the augmented ensemble block vector to have two blocks
+    solution_augmented_ensemble[member].reinit(2);
+
     // Edit the database for the ensemble
     if (n_beams > 0)
     {
       // PropertyTreeInput sources.beam_0.max_power
       database_ensemble[member].put("sources.beam_0.max_power",
                                     beam_0_max_power[member]);
+
+      // PropertyTreeInput sources.beam_0.absorption_efficiency
+      database_ensemble[member].put("sources.beam_0.absorption_efficiency",
+                                    beam_0_absorption[member]);
+
+      // Populate the parameter augmentation block of the augmented state
+      // ensemble
+      if (assimilate_data)
+      {
+        solution_augmented_ensemble[member]
+            .block(augmented_state)
+            .reinit(augmented_state_parameters.size());
+
+        for (unsigned int index = 0; index < augmented_state_parameters.size();
+             ++index)
+        {
+          // FIXME: Need to consider how we want to generalize this. It could
+          // get unwieldy if we want to specify every parameter of an arbitrary
+          // number of beams.
+          if (augmented_state_parameters.at(index) ==
+              adamantine::AugmentedStateParameters::beam_0_absorption)
+          {
+            solution_augmented_ensemble[member].block(augmented_state)[index] =
+                beam_0_absorption[member];
+          }
+          else if (augmented_state_parameters.at(index) ==
+                   adamantine::AugmentedStateParameters::beam_0_max_power)
+          {
+            solution_augmented_ensemble[member].block(augmented_state)[index] =
+                beam_0_max_power[member];
+          }
+        }
+      }
     }
 
     geometry_ensemble.push_back(std::make_unique<adamantine::Geometry<dim>>(
@@ -1060,8 +1155,11 @@ run_ensemble(MPI_Comm const &communicator,
     thermal_physics_ensemble[member]->compute_inverse_mass_matrix();
 
     thermal_physics_ensemble[member]->initialize_dof_vector(
-        initial_temperature[member], solution_ensemble[member]);
+        initial_temperature[member],
+        solution_augmented_ensemble[member].block(base_state));
     thermal_physics_ensemble[member]->get_state_from_material_properties();
+
+    solution_augmented_ensemble[member].collect_sizes();
 
     post_processor_ensemble.push_back(
         std::make_unique<adamantine::PostProcessor<dim>>(
@@ -1075,7 +1173,7 @@ run_ensemble(MPI_Comm const &communicator,
   std::vector<adamantine::PointsValues<dim>> points_values;
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> temperature_dummy(
-      solution_ensemble[0]);
+      solution_augmented_ensemble[0].block(base_state));
 
   if (experiment_optional_database)
   {
@@ -1129,19 +1227,6 @@ run_ensemble(MPI_Comm const &communicator,
     }
   }
 
-  // ----- Initialize the data assimilation object -----
-  boost::property_tree::ptree data_assimilation_database;
-  bool assimilate_data = false;
-  if (data_assimilation_optional_database)
-  {
-    data_assimilation_database = data_assimilation_optional_database.get();
-
-    if (data_assimilation_optional_database.get().get("assimilate_data", false))
-      assimilate_data = true;
-  }
-
-  adamantine::DataAssimilator data_assimilator(data_assimilation_database);
-
   // ----- Initialize time and time stepping counters -----
   unsigned int progress = 0;
   unsigned int cycle = 0;
@@ -1157,7 +1242,8 @@ run_ensemble(MPI_Comm const &communicator,
 
     output_pvtu(
         *post_processor_ensemble[member], cycle, n_time_step, time,
-        affine_constraints_ensemble[member], solution_ensemble[member],
+        affine_constraints_ensemble[member],
+        solution_augmented_ensemble[member].block(base_state),
         thermal_physics_ensemble[member]->get_material_property()->get_state(),
         thermal_physics_ensemble[member]
             ->get_material_property()
@@ -1216,7 +1302,6 @@ run_ensemble(MPI_Comm const &communicator,
 #endif
   while (time < duration)
   {
-
 #ifdef ADAMANTINE_WITH_CALIPER
     CALI_CXX_MARK_LOOP_ITERATION(main_loop_id, n_time_step - 1);
 #endif
@@ -1235,7 +1320,8 @@ run_ensemble(MPI_Comm const &communicator,
 
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
-        refine_mesh(thermal_physics_ensemble[member], solution_ensemble[member],
+        refine_mesh(thermal_physics_ensemble[member],
+                    solution_augmented_ensemble[member].block(base_state),
                     heat_sources_ensemble[member], time, next_refinement_time,
                     time_steps_refinement, refinement_database, fe_degree);
       }
@@ -1273,7 +1359,7 @@ run_ensemble(MPI_Comm const &communicator,
         thermal_physics_ensemble[member]->add_material(
             elements_to_activate, deposition_cos, deposition_sin,
             activation_start, activation_end, new_material_temperature[member],
-            solution_ensemble[member]);
+            solution_augmented_ensemble[member].block(base_state));
       }
 
     if ((rank == 0) && (verbose_refinement == true) &&
@@ -1298,7 +1384,8 @@ run_ensemble(MPI_Comm const &communicator,
     for (unsigned int member = 0; member < ensemble_size; ++member)
     {
       time = thermal_physics_ensemble[member]->evolve_one_time_step(
-          time, time_step, solution_ensemble[member], timers);
+          old_time, time_step,
+          solution_augmented_ensemble[member].block(base_state), timers);
     }
 #if ADAMANTINE_DEBUG
     ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),
@@ -1334,9 +1421,17 @@ run_ensemble(MPI_Comm const &communicator,
           std::cout << "Performing data assimilation at time " << time << "..."
                     << std::endl;
 
+        timers[adamantine::da_experimental_data].start();
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_BEGIN("da_experimental_data");
+#endif
         auto indices_and_offsets = adamantine::set_with_experimental_data(
             points_values[experimental_frame_index],
             thermal_physics_ensemble[0]->get_dof_handler(), temperature_dummy);
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_END("da_experimental_data");
+#endif
+        timers[adamantine::da_experimental_data].stop();
 
         // NOTE: As is, this updates the dof mapping and covariance sparsity
         // pattern for every data assimilation operation. Strictly, this is only
@@ -1345,18 +1440,39 @@ run_ensemble(MPI_Comm const &communicator,
         // mesh due to deposition likely cause the updates to be required for
         // each operation. If this is a bottleneck, it can be fixed in the
         // future.
+        timers[adamantine::da_dof_mapping].start();
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_BEGIN("da_dof_mapping");
+#endif
         data_assimilator.update_dof_mapping<dim>(
             thermal_physics_ensemble[0]->get_dof_handler(),
             indices_and_offsets);
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_END("da_dof_mapping");
+#endif
+        timers[adamantine::da_dof_mapping].stop();
 
+        timers[adamantine::da_covariance_sparsity].start();
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_BEGIN("da_covariance_sparsity");
+#endif
         data_assimilator.update_covariance_sparsity_pattern<dim>(
-            thermal_physics_ensemble[0]->get_dof_handler());
+            thermal_physics_ensemble[0]->get_dof_handler(),
+            solution_augmented_ensemble[0].block(augmented_state).size());
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_END("da_covariance_sparsity");
+#endif
+        timers[adamantine::da_covariance_sparsity].start();
 
         unsigned int experimental_data_size =
             points_values[experimental_frame_index].values.size();
 
         // Create the R matrix (the observation covariance matrix)
         // PropertyTreeInput experiment.estimated_uncertainty
+        timers[adamantine::da_obs_covariance].start();
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_BEGIN("da_obs_covariance");
+#endif
         double variance_entries = experiment_optional_database.get().get(
             "estimated_uncertainty", 0.0);
         variance_entries = variance_entries * variance_entries;
@@ -1374,15 +1490,63 @@ run_ensemble(MPI_Comm const &communicator,
         {
           R.add(i, i, variance_entries);
         }
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_END("da_obs_covariance");
+#endif
+        timers[adamantine::da_obs_covariance].stop();
 
+        // Perform data assimilation to update the augmented state ensemble
+        timers[adamantine::da_update_ensemble].start();
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_BEGIN("da_update_ensemble");
+#endif
         data_assimilator.update_ensemble(
-            communicator, solution_ensemble,
+            communicator, solution_augmented_ensemble,
             points_values[experimental_frame_index].values, R);
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_END("da_update_ensemble");
+#endif
+        timers[adamantine::da_update_ensemble].stop();
+
+        // Extract the parameters from the augmented state
+        for (unsigned int member = 0; member < ensemble_size; ++member)
+        {
+          for (unsigned int index = 0;
+               index < augmented_state_parameters.size(); ++index)
+          {
+            // FIXME: Need to consider how we want to generalize this. It could
+            // get unwieldy if we want to specify every parameter of an
+            // arbitrary number of beams.
+            if (augmented_state_parameters.at(index) ==
+                adamantine::AugmentedStateParameters::beam_0_absorption)
+            {
+              database_ensemble[member].put(
+                  "sources.beam_0.absorption_efficiency",
+                  solution_augmented_ensemble[member].block(
+                      augmented_state)[index]);
+            }
+            else if (augmented_state_parameters.at(index) ==
+                     adamantine::AugmentedStateParameters::beam_0_max_power)
+            {
+              database_ensemble[member].put(
+                  "sources.beam_0.max_power",
+                  solution_augmented_ensemble[member].block(
+                      augmented_state)[index]);
+            }
+          }
+        }
 
         if (rank == 0)
           std::cout << "Done." << std::endl;
 
         experimental_frame_index++;
+      }
+
+      // Update the heat source in the ThermalPhysics objects
+      for (unsigned int member = 0; member < ensemble_size; ++member)
+      {
+        thermal_physics_ensemble[member]->update_physics_parameters(
+            database_ensemble[member].get_child("sources"));
       }
     }
 
@@ -1407,7 +1571,7 @@ run_ensemble(MPI_Comm const &communicator,
         thermal_physics_ensemble[member]->set_state_to_material_properties();
         output_pvtu(*post_processor_ensemble[member], cycle, n_time_step, time,
                     affine_constraints_ensemble[member],
-                    solution_ensemble[member],
+                    solution_augmented_ensemble[member].block(base_state),
                     thermal_physics_ensemble[member]
                         ->get_material_property()
                         ->get_state(),
@@ -1434,6 +1598,6 @@ run_ensemble(MPI_Comm const &communicator,
   }
 
   // This is only used for integration test
-  return solution_ensemble;
+  return solution_augmented_ensemble;
 }
 #endif

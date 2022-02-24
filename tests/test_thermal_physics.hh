@@ -65,7 +65,9 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
   while (time < 0.1)
+  {
     time = physics.evolve_one_time_step(time, time_step, solution, timers);
+  }
 
   double const tolerance = 1e-3;
   BOOST_CHECK(time == 0.1);

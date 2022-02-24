@@ -19,6 +19,8 @@ list(APPEND
      test_timer
      test_utils
      test_integration_3d
+     test_integration_da
+     test_integration_da_augmented
      test_validate_input_database
      )
 
@@ -81,3 +83,7 @@ adamantine_COPY_INPUT_FILE(bare_plate_L_expt_log.txt tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_expt_data_0_0.csv tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_expt_data_0_1.csv tests/data)
 adamantine_COPY_INPUT_FILE(experiment_log_test.txt tests/data)
+adamantine_COPY_INPUT_FILE(bare_plate_L_da_aug_ref_log.txt tests/data)
+adamantine_COPY_INPUT_FILE(bare_plate_L_da_aug_ref_data_0_0.csv tests/data)
+adamantine_COPY_INPUT_FILE(bare_plate_L_da_aug_ref_data_0_1.csv tests/data)
+adamantine_COPY_INPUT_FILE(bare_plate_L_da_augmented.info tests/data)

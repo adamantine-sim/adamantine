@@ -84,6 +84,14 @@ public:
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
       override;
 
+  /**
+   * For ThermalPhysics, update_physics_parameters is used to modify the heat
+   * sources in the middle of a simulation, e.g. for data assimilation with an
+   * augmented ensemble involving heat source parameters.
+   */
+  void update_physics_parameters(
+      boost::property_tree::ptree const &heat_source_database);
+
   double evolve_one_time_step(
       double t, double delta_t,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,

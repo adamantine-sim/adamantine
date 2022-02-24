@@ -9,10 +9,15 @@
 #include <utils.hh>
 
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/lac/block_vector.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/linear_operator_tools.h>
 
 #include <boost/algorithm/string/predicate.hpp>
+
+#ifdef ADAMANTINE_WITH_CALIPER
+#include <caliper/cali.h>
+#endif
 
 // libc++ does not support parallel std library
 #ifdef __GLIBCXX__
@@ -71,21 +76,29 @@ DataAssimilator::DataAssimilator(boost::property_tree::ptree const &database)
 
 void DataAssimilator::update_ensemble(
     MPI_Comm const &communicator,
-    std::vector<dealii::LA::distributed::Vector<double>> &sim_data,
+    std::vector<dealii::LA::distributed::BlockVector<double>>
+        &augmented_state_ensemble,
     std::vector<double> const &expt_data, dealii::SparseMatrix<double> const &R)
 {
   unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
+  // Give names to the blocks in the augmented state vector
+  int constexpr base_state = 0;
+  int constexpr augmented_state = 1;
+
   // Set some constants
-  _num_ensemble_members = sim_data.size();
-  if (sim_data.size() > 0)
+  _num_ensemble_members = augmented_state_ensemble.size();
+  if (_num_ensemble_members > 0)
   {
-    _sim_size = sim_data[0].size();
+    _sim_size = augmented_state_ensemble[0].block(base_state).size();
+    _parameter_size = augmented_state_ensemble[0].block(augmented_state).size();
   }
   else
   {
     _sim_size = 0;
+    _parameter_size = 0;
   }
+
   adamantine::ASSERT_THROW(_expt_size == expt_data.size(),
                            "Error: Unexpected experiment vector size.");
 
@@ -94,8 +107,14 @@ void DataAssimilator::update_ensemble(
   bool const R_is_diagonal = bandwidth == 0 ? true : false;
 
   // Get the perturbed innovation, ( y+u - Hx )
+  // This is determined using the unaugmented state because the parameters are
+  // not observable
   if (rank == 0)
     std::cout << "Getting the perturbed innovation..." << std::endl;
+
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("da_get_pert_inno");
+#endif
 
   std::vector<dealii::Vector<double>> perturbed_innovation(
       _num_ensemble_members);
@@ -103,49 +122,77 @@ void DataAssimilator::update_ensemble(
   {
     perturbed_innovation[member].reinit(_expt_size);
     fill_noise_vector(perturbed_innovation[member], R, R_is_diagonal);
-    dealii::Vector<double> temporary = calc_Hx(sim_data[member]);
+    dealii::Vector<double> temporary =
+        calc_Hx(augmented_state_ensemble[member].block(base_state));
+
     for (unsigned int i = 0; i < _expt_size; ++i)
     {
       perturbed_innovation[member][i] += expt_data[i] - temporary[i];
     }
   }
 
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("da_get_pert_inno");
+#endif
+
+  // Apply the Kalman gain to update the augmented state ensemble
   if (rank == 0)
     std::cout << "Applying the Kalman gain..." << std::endl;
 
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("da_apply_K");
+#endif
+
   // Apply the Kalman filter to the perturbed innovation, K ( y+u - Hx )
-  std::vector<dealii::LA::distributed::Vector<double>> forecast_shift =
-      apply_kalman_gain(sim_data, R, perturbed_innovation);
+  std::vector<dealii::LA::distributed::BlockVector<double>> forecast_shift =
+      apply_kalman_gain(augmented_state_ensemble, R, perturbed_innovation);
+
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("da_apply_K");
+#endif
 
   // Update the ensemble, x = x + K ( y+u - Hx )
   if (rank == 0)
     std::cout << "Updating the ensemble members..." << std::endl;
 
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("da_update_members");
+#endif
+
   for (unsigned int member = 0; member < _num_ensemble_members; ++member)
   {
-    sim_data[member] += forecast_shift[member];
+    augmented_state_ensemble[member] += forecast_shift[member];
   }
+
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("da_update_members");
+#endif
 }
 
-std::vector<dealii::LA::distributed::Vector<double>>
+std::vector<dealii::LA::distributed::BlockVector<double>>
 DataAssimilator::apply_kalman_gain(
-    std::vector<dealii::LA::distributed::Vector<double>> &vec_ensemble,
+    std::vector<dealii::LA::distributed::BlockVector<double>>
+        &augmented_state_ensemble,
     dealii::SparseMatrix<double> const &R,
     std::vector<dealii::Vector<double>> const &perturbed_innovation)
 {
+  unsigned int augmented_state_size = _sim_size + _parameter_size;
+
   /*
    * Currently this function uses GMRES to apply the inverse of HPH^T+R in the
-   * Kalman gain calculation for each ensemble member individually. Depending on
-   * the size of the datasets, the number of ensembles, and other factors doing
-   * a direct solve of (HPH^T+R)^-1 once and then applying to the perturbed
-   * innovation from each ensemble member might be more efficient.
+   * Kalman gain calculation for each ensemble member individually. Depending
+   * on the size of the datasets, the number of ensembles, and other factors
+   * doing a direct solve of (HPH^T+R)^-1 once and then applying to the
+   * perturbed innovation from each ensemble member might be more efficient.
    */
-  dealii::SparsityPattern pattern_H(_expt_size, _sim_size, _expt_size);
+  dealii::SparsityPattern pattern_H(_expt_size, augmented_state_size,
+                                    _expt_size);
 
   dealii::SparseMatrix<double> H = calc_H(pattern_H);
 
   dealii::SparseMatrix<double> P(_covariance_sparsity_pattern);
-  P = calc_sample_covariance_sparse(vec_ensemble);
+
+  P = calc_sample_covariance_sparse(augmented_state_ensemble);
 
   const auto op_H = dealii::linear_operator(H);
   const auto op_P = dealii::linear_operator(P);
@@ -154,17 +201,18 @@ DataAssimilator::apply_kalman_gain(
   const auto op_HPH_plus_R =
       op_H * op_P * dealii::transpose_operator(op_H) + op_R;
 
-  std::vector<dealii::LA::distributed::Vector<double>> output(
+  const std::vector<dealii::types::global_dof_index> block_sizes = {
+      _sim_size, _parameter_size};
+  std::vector<dealii::LA::distributed::BlockVector<double>> output(
       _num_ensemble_members,
-      dealii::LA::distributed::Vector<double>(_sim_size));
+      dealii::LA::distributed::BlockVector<double>(block_sizes));
 
   // Create non-member versions of these for use in the lambda function
   auto solver_control = _solver_control;
   auto additional_data = _additional_data;
-  auto sim_size = _sim_size;
 
-  // Apply the Kalman gain to the perturbed innovation for the ensemble members
-  // in parallel
+  // Apply the Kalman gain to the perturbed innovation for the ensemble
+  // members in parallel
   std::transform(
 #ifdef __GLIBCXX__
       std::execution::par,
@@ -183,11 +231,11 @@ DataAssimilator::apply_kalman_gain(
         // Apply the Kalman gain to each innovation vector
         dealii::Vector<double> temporary = op_K * entry;
 
-        // Copy into a distributed vector, this is the only place where the
-        // mismatch matters, using dealii::Vector for the experimental data
-        // and dealii::LA::distributed::Vector for the simulation data.
-        dealii::LA::distributed::Vector<double> output_member(sim_size);
-        for (unsigned int i = 0; i < sim_size; ++i)
+        // Copy into a distributed block vector, this is the only place where
+        // the mismatch matters, using dealii::Vector for the experimental data
+        // and dealii::LA::distributed::BlockVector for the simulation data.
+        dealii::LA::distributed::BlockVector<double> output_member(block_sizes);
+        for (unsigned int i = 0; i < augmented_state_size; ++i)
         {
           output_member(i) = temporary(i);
         }
@@ -261,15 +309,19 @@ void DataAssimilator::update_dof_mapping(
 
 template <int dim>
 void DataAssimilator::update_covariance_sparsity_pattern(
-    dealii::DoFHandler<dim> const &dof_handler)
+    dealii::DoFHandler<dim> const &dof_handler,
+    const unsigned int parameter_size)
 {
   _sim_size = dof_handler.n_dofs();
+  _parameter_size = parameter_size;
+  unsigned int augmented_state_size = _sim_size + _parameter_size;
 
-  // Use a DynamicSparsityPattern temporarily because the number of entries per
-  // row is difficult to guess.
-  dealii::DynamicSparsityPattern dsp(dof_handler.n_dofs());
+  // Use a DynamicSparsityPattern temporarily because the number of entries
+  // per row is difficult to guess.
+  dealii::DynamicSparsityPattern dsp(augmented_state_size);
 
-  // Loop through the dofs to see which pairs are within the specified distance
+  // Loop through the dofs to see which pairs are within the specified
+  // distance
   std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
 
   dealii::DoFTools::map_dofs_to_support_points(
@@ -290,6 +342,23 @@ void DataAssimilator::update_covariance_sparsity_pattern(
         dsp.add(i, j);
         _covariance_distance_map[std::make_pair(i, j)] = dist;
       }
+    }
+  }
+
+  // Add entries for the parameter augmentation
+  for (unsigned int i1 = _sim_size; i1 < augmented_state_size; ++i1)
+  {
+    for (unsigned int j1 = 0; j1 < augmented_state_size; ++j1)
+    {
+      dsp.add(i1, j1);
+    }
+  }
+
+  for (unsigned int i1 = 0; i1 < _sim_size; ++i1)
+  {
+    for (unsigned int j1 = _sim_size; j1 < augmented_state_size; ++j1)
+    {
+      dsp.add(i1, j1);
     }
   }
 
@@ -321,14 +390,14 @@ void DataAssimilator::fill_noise_vector(dealii::Vector<double> &vec,
 {
   auto vector_size = vec.size();
 
-  // If R is diagonal, then the entries in the noise vector are independent and
-  // each are simply a scaled output of the pseudo-random number generator. For
-  // a more general R, one needs to multiply by the Cholesky decomposition of R
-  // to achieve the appropriate correlation between the entries. Deal.II only
-  // has a specific Cholesky function for full matrices, which is used in the
-  // implementation below. The Cholesky decomposition is a special case of LU
-  // decomposition, so we can use a sparse LU solver to obtain the "L" below if
-  // needed in the future.
+  // If R is diagonal, then the entries in the noise vector are independent
+  // and each are simply a scaled output of the pseudo-random number
+  // generator. For a more general R, one needs to multiply by the Cholesky
+  // decomposition of R to achieve the appropriate correlation between the
+  // entries. Deal.II only has a specific Cholesky function for full matrices,
+  // which is used in the implementation below. The Cholesky decomposition is
+  // a special case of LU decomposition, so we can use a sparse LU solver to
+  // obtain the "L" below if needed in the future.
 
   if (R_is_diagonal)
   {
@@ -379,9 +448,11 @@ template <typename VectorType>
 dealii::SparseMatrix<double> DataAssimilator::calc_sample_covariance_sparse(
     std::vector<VectorType> const vec_ensemble) const
 {
+  unsigned int augmented_state_size = _sim_size + _parameter_size;
+
   // Calculate the mean
-  dealii::Vector<double> mean(_sim_size);
-  for (unsigned int i = 0; i < _sim_size; ++i)
+  dealii::Vector<double> mean(augmented_state_size);
+  for (unsigned int i = 0; i < augmented_state_size; ++i)
   {
     double sum = 0.0;
     for (unsigned int sample = 0; sample < _num_ensemble_members; ++sample)
@@ -411,18 +482,26 @@ dealii::SparseMatrix<double> DataAssimilator::calc_sample_covariance_sparse(
 
     // Apply localization
     double localization_scaling;
-    double dist = _covariance_distance_map.find(std::make_pair(i, j))->second;
-    if (_localization_cutoff_function == LocalizationCutoff::gaspari_cohn)
+    if (i < _sim_size && j < _sim_size)
     {
-      localization_scaling =
-          gaspari_cohn_function(2.0 * dist / _localization_cutoff_distance);
-    }
-    else if (_localization_cutoff_function == LocalizationCutoff::step_function)
-    {
-      if (dist <= _localization_cutoff_distance)
-        localization_scaling = 1.0;
+      double dist = _covariance_distance_map.find(std::make_pair(i, j))->second;
+      if (_localization_cutoff_function == LocalizationCutoff::gaspari_cohn)
+      {
+        localization_scaling =
+            gaspari_cohn_function(2.0 * dist / _localization_cutoff_distance);
+      }
+      else if (_localization_cutoff_function ==
+               LocalizationCutoff::step_function)
+      {
+        if (dist <= _localization_cutoff_distance)
+          localization_scaling = 1.0;
+        else
+          localization_scaling = 0.0;
+      }
       else
-        localization_scaling = 0.0;
+      {
+        localization_scaling = 1.0;
+      }
     }
     else
     {
@@ -443,9 +522,11 @@ template void DataAssimilator::update_dof_mapping<3>(
     dealii::DoFHandler<3> const &dof_handler,
     std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
 template void DataAssimilator::update_covariance_sparsity_pattern<2>(
-    dealii::DoFHandler<2> const &dof_handler);
+    dealii::DoFHandler<2> const &dof_handler,
+    const unsigned int parameter_size);
 template void DataAssimilator::update_covariance_sparsity_pattern<3>(
-    dealii::DoFHandler<3> const &dof_handler);
+    dealii::DoFHandler<3> const &dof_handler,
+    const unsigned int parameter_size);
 template dealii::SparseMatrix<double>
 DataAssimilator::calc_sample_covariance_sparse<dealii::Vector<double>>(
     std::vector<dealii::Vector<double>> const vec_ensemble) const;

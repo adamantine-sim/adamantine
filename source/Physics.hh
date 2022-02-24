@@ -57,6 +57,14 @@ public:
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution) = 0;
 
   /**
+   * Public interface for modifying the private state of the Physics object. One
+   * use of this is to modify nominally constant parameters in the middle of a
+   * simulation based on data assimilation with an augmented state.
+   */
+  virtual void
+  update_physics_parameters(boost::property_tree::ptree const &database) = 0;
+
+  /**
    * Evolve the physics from time t to time t+delta_t. solution first contains
    * the field at time t and after execution of the function, the field at time
    * t+delta_t.
