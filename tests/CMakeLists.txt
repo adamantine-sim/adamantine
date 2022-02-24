@@ -19,6 +19,7 @@ list(APPEND
      test_timer
      test_utils
      test_integration_3d
+     test_integration_3d_amr
      test_integration_da
      test_integration_da_augmented
      test_validate_input_database
@@ -58,6 +59,7 @@ if (ADAMANTINE_ENABLE_CUDA)
 endif()
 
 adamantine_COPY_INPUT_FILE(demo_316_short.info tests/data)
+adamantine_COPY_INPUT_FILE(amr_test.info tests/data)
 adamantine_COPY_INPUT_FILE(demo_316_short_anisotropic.info tests/data)
 adamantine_COPY_INPUT_FILE(demo_316_short_scan_path.txt tests/data)
 adamantine_COPY_INPUT_FILE(experimental_data_0_0.csv tests/data)

@@ -431,8 +431,8 @@ void refine_and_transfer(
       {
         transferred_cos.push_back(
             transferred_data[total_cell_id][n_material_states]);
-        transferred_cos.push_back(
-            transferred_data[total_cell_id][n_material_states]);
+        transferred_sin.push_back(
+            transferred_data[total_cell_id][n_material_states + 1]);
       }
       ++cell_id;
     }
@@ -447,6 +447,9 @@ void refine_and_transfer(
   adamantine::deep_copy(material_state_view.data(), memspace,
                         material_state_host.data(), dealii::MemorySpace::Host{},
                         material_state_view.size());
+
+  // Update the material states in the ThermalOperator
+  thermal_physics->get_state_from_material_properties();
 
 #if ADAMANTINE_DEBUG
   // Check that we are not losing material
