@@ -889,8 +889,12 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         (activation_start == activation_end) ? false : true;
 #endif
     timers[adamantine::evol_time].start();
+
     time = thermal_physics->evolve_one_time_step(time, time_step, solution,
                                                  timers);
+    // Apply constraints
+    affine_constraints.distribute(solution);
+
 #if ADAMANTINE_DEBUG
     ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),
            "Unexpected time step while adding material.");
@@ -1389,6 +1393,12 @@ run_ensemble(MPI_Comm const &communicator,
       time = thermal_physics_ensemble[member]->evolve_one_time_step(
           old_time, time_step,
           solution_augmented_ensemble[member].block(base_state), timers);
+
+      for (unsigned int member = 0; member < ensemble_size; ++member)
+      {
+        affine_constraints_ensemble[member].distribute(
+            solution_augmented_ensemble[member].block(base_state));
+      }
     }
 #if ADAMANTINE_DEBUG
     ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),

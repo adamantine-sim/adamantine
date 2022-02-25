@@ -46,11 +46,8 @@ BOOST_AUTO_TEST_CASE(integration_3D_amr)
   double global_min =
       dealii::Utilities::MPI::min(min_val, result.get_mpi_communicator());
 
-  std::cout << min_val << " " << global_min << std::endl;
-  std::cout << max_val << " " << global_max << std::endl;
-
-  double expected_max = 527.0;
-  double expected_min = 281.6;
+  double expected_max = 329.5;
+  double expected_min = 296.1;
 
   double const tolerance = 0.1;
 

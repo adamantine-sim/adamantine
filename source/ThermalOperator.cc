@@ -433,6 +433,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
             _material_properties->compute_material_property(
                 StateProperty::thermal_conductivity_y, mat_id.data(),
                 state_ratios.data(), temperature);
+
         auto cos = _deposition_cos(cell, q);
         auto sin = _deposition_sin(cell, q);
 
