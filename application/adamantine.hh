@@ -1330,6 +1330,9 @@ run_ensemble(MPI_Comm const &communicator,
 
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
+        affine_constraints_ensemble[member].distribute(
+            solution_augmented_ensemble[member].block(base_state));
+
         refine_mesh(thermal_physics_ensemble[member],
                     solution_augmented_ensemble[member].block(base_state),
                     heat_sources_ensemble[member], time, next_refinement_time,
@@ -1396,12 +1399,6 @@ run_ensemble(MPI_Comm const &communicator,
       time = thermal_physics_ensemble[member]->evolve_one_time_step(
           old_time, time_step,
           solution_augmented_ensemble[member].block(base_state), timers);
-
-      for (unsigned int member = 0; member < ensemble_size; ++member)
-      {
-        affine_constraints_ensemble[member].distribute(
-            solution_augmented_ensemble[member].block(base_state));
-      }
     }
 #if ADAMANTINE_DEBUG
     ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),
@@ -1614,6 +1611,11 @@ run_ensemble(MPI_Comm const &communicator,
   }
 
   // This is only used for integration test
+  for (unsigned int member = 0; member < ensemble_size; ++member)
+  {
+    affine_constraints_ensemble[member].distribute(
+        solution_augmented_ensemble[member].block(base_state));
+  }
   return solution_augmented_ensemble;
 }
 #endif
