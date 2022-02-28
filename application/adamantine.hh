@@ -837,6 +837,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     {
       next_refinement_time = time + time_steps_refinement * time_step;
       timers[adamantine::refine].start();
+
+      affine_constraints.distribute(solution);
+
       refine_mesh(thermal_physics, solution, heat_sources, time,
                   next_refinement_time, time_steps_refinement,
                   refinement_database, fe_degree);
@@ -848,6 +851,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       timers[adamantine::add_material_search].start();
       elements_to_activate = adamantine::get_elements_to_activate(
           thermal_physics->get_dof_handler(), material_deposition_boxes);
+
       timers[adamantine::add_material_search].stop();
     }
 
@@ -892,8 +896,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 
     time = thermal_physics->evolve_one_time_step(time, time_step, solution,
                                                  timers);
-    // Apply constraints
-    affine_constraints.distribute(solution);
 
 #if ADAMANTINE_DEBUG
     ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),
@@ -937,6 +939,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   post_processor.output_pvd();
 
   // This is only used for integration test
+  affine_constraints.distribute(solution);
   return solution;
 }
 
