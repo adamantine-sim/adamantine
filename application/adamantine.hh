@@ -727,7 +727,7 @@ void refine_mesh(
 }
 
 template <int dim, typename MemorySpaceType>
-dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
+dealii::LinearAlgebra::distributed::Vector<double, dealii::MemorySpace::Host>
 run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     std::vector<adamantine::Timer> &timers)
 {
