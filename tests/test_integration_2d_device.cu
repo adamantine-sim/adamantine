@@ -30,15 +30,12 @@ BOOST_AUTO_TEST_CASE(intregation_2D_device)
   auto result =
       run<2, dealii::MemorySpace::CUDA>(communicator, database, timers);
 
-  dealii::LinearAlgebra::distributed::Vector<double, dealii::MemorySpace::Host>
-      result_host(result.get_partitioner());
-  result_host.import(result, dealii::VectorOperation::insert);
   std::ifstream gold_file("integration_2d_gold.txt");
   double const tolerance = 0.1;
-  for (unsigned int i = 0; i < result_host.locally_owned_size(); ++i)
+  for (unsigned int i = 0; i < result.locally_owned_size(); ++i)
   {
     double gold_value = -1.;
     gold_file >> gold_value;
-    BOOST_CHECK_CLOSE(result_host.local_element(i), gold_value, tolerance);
+    BOOST_CHECK_CLOSE(result.local_element(i), gold_value, tolerance);
   }
 }

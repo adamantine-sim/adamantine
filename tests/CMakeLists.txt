@@ -19,6 +19,7 @@ list(APPEND
      test_timer
      test_utils
      test_integration_3d
+     test_integration_3d_amr
      test_integration_da
      test_integration_da_augmented
      test_validate_input_database
@@ -58,6 +59,7 @@ if (ADAMANTINE_ENABLE_CUDA)
 endif()
 
 adamantine_COPY_INPUT_FILE(demo_316_short.info tests/data)
+adamantine_COPY_INPUT_FILE(amr_test.info tests/data)
 adamantine_COPY_INPUT_FILE(demo_316_short_anisotropic.info tests/data)
 adamantine_COPY_INPUT_FILE(demo_316_short_scan_path.txt tests/data)
 adamantine_COPY_INPUT_FILE(experimental_data_0_0.csv tests/data)
@@ -79,6 +81,7 @@ adamantine_COPY_INPUT_FILE(scan_path_layers.txt tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_ensemble.info tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_da.info tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_scan_path.txt tests/data)
+adamantine_COPY_INPUT_FILE(bare_plate_L_scan_path_fast.txt tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_expt_log.txt tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_expt_data_0_0.csv tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_expt_data_0_1.csv tests/data)

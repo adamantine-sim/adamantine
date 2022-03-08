@@ -358,11 +358,7 @@ void refine_and_transfer(
     }
   }
 
-  // We need to update the ghost values before we can do the interpolation on
-  // the new mesh.
-  solution.update_ghost_values();
-
-  // Prepare the Triangulation and the diffent data transder objects for
+  // Prepare the Triangulation and the diffent data transfer objects for
   // refinement
   triangulation.prepare_coarsening_and_refinement();
   // Prepare for refinement of the solution
@@ -370,12 +366,22 @@ void refine_and_transfer(
       solution_host;
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
   {
+    // We need to apply the constraints before the mesh transfer
+    thermal_physics->get_affine_constraints().distribute(solution);
+    // We need to update the ghost values before we can do the interpolation on
+    // the new mesh.
+    solution.update_ghost_values();
     solution_transfer.prepare_for_coarsening_and_refinement(solution);
   }
   else
   {
     solution_host.reinit(solution.get_partitioner());
     solution_host.import(solution, dealii::VectorOperation::insert);
+    // We need to apply the constraints before the mesh transfer
+    thermal_physics->get_affine_constraints().distribute(solution_host);
+    // We need to update the ghost values before we can do the interpolation on
+    // the new mesh.
+    solution_host.update_ghost_values();
     solution_transfer.prepare_for_coarsening_and_refinement(solution_host);
   }
 
@@ -431,8 +437,8 @@ void refine_and_transfer(
       {
         transferred_cos.push_back(
             transferred_data[total_cell_id][n_material_states]);
-        transferred_cos.push_back(
-            transferred_data[total_cell_id][n_material_states]);
+        transferred_sin.push_back(
+            transferred_data[total_cell_id][n_material_states + 1]);
       }
       ++cell_id;
     }
@@ -447,6 +453,9 @@ void refine_and_transfer(
   adamantine::deep_copy(material_state_view.data(), memspace,
                         material_state_host.data(), dealii::MemorySpace::Host{},
                         material_state_view.size());
+
+  // Update the material states in the ThermalOperator
+  thermal_physics->get_state_from_material_properties();
 
 #if ADAMANTINE_DEBUG
   // Check that we are not losing material
@@ -718,7 +727,7 @@ void refine_mesh(
 }
 
 template <int dim, typename MemorySpaceType>
-dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
+dealii::LinearAlgebra::distributed::Vector<double, dealii::MemorySpace::Host>
 run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     std::vector<adamantine::Timer> &timers)
 {
@@ -845,6 +854,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       timers[adamantine::add_material_search].start();
       elements_to_activate = adamantine::get_elements_to_activate(
           thermal_physics->get_dof_handler(), material_deposition_boxes);
+
       timers[adamantine::add_material_search].stop();
     }
 
@@ -886,8 +896,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         (activation_start == activation_end) ? false : true;
 #endif
     timers[adamantine::evol_time].start();
+
     time = thermal_physics->evolve_one_time_step(time, time_step, solution,
                                                  timers);
+
 #if ADAMANTINE_DEBUG
     ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),
            "Unexpected time step while adding material.");
@@ -930,7 +942,20 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   post_processor.output_pvd();
 
   // This is only used for integration test
-  return solution;
+  if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
+  {
+    affine_constraints.distribute(solution);
+    return solution;
+  }
+  else
+  {
+    dealii::LinearAlgebra::distributed::Vector<double,
+                                               dealii::MemorySpace::Host>
+        solution_host(solution.get_partitioner());
+    solution_host.import(solution, dealii::VectorOperation::insert);
+    affine_constraints.distribute(solution_host);
+    return solution_host;
+  }
 }
 
 template <int dim, typename MemorySpaceType>
@@ -1598,6 +1623,44 @@ run_ensemble(MPI_Comm const &communicator,
   }
 
   // This is only used for integration test
-  return solution_augmented_ensemble;
+  if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
+  {
+    for (unsigned int member = 0; member < ensemble_size; ++member)
+    {
+      affine_constraints_ensemble[member].distribute(
+          solution_augmented_ensemble[member].block(base_state));
+    }
+    return solution_augmented_ensemble;
+  }
+  else
+  {
+    // NOTE: Currently unused. Added for the future case where run_ensemble is
+    // functional on the device.
+    std::vector<dealii::LA::distributed::BlockVector<double>>
+        solution_augmented_ensemble_host(ensemble_size);
+
+    for (unsigned int member = 0; member < ensemble_size; ++member)
+    {
+      solution_augmented_ensemble[member].reinit(2);
+
+      solution_augmented_ensemble_host[member].block(0).reinit(
+          solution_augmented_ensemble[member].block(0).get_partitioner());
+
+      solution_augmented_ensemble_host[member].block(0).import(
+          solution_augmented_ensemble[member].block(0),
+          dealii::VectorOperation::insert);
+      affine_constraints_ensemble[member].distribute(
+          solution_augmented_ensemble_host[member].block(0));
+
+      solution_augmented_ensemble_host[member].block(1).reinit(
+          solution_augmented_ensemble[member].block(0).get_partitioner());
+
+      solution_augmented_ensemble_host[member].block(1).import(
+          solution_augmented_ensemble[member].block(1),
+          dealii::VectorOperation::insert);
+    }
+
+    return solution_augmented_ensemble_host;
+  }
 }
 #endif
