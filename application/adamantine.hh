@@ -506,11 +506,22 @@ compute_cells_to_refine(
                triangulation.active_cell_iterators(),
                dealii::IteratorFilters::LocallyOwnedCell()))
       {
+        // Check the value at the center of the cell faces and cell center.
+        // Checking both is helpful when starting with a coarse mesh when the
+        // radius of the beam is smaller than the element size.
+        bool refine = false;
+        for (unsigned int f = 0; f < cell->reference_cell().n_faces(); ++f)
+        {
+          if (beam->value(cell->face(f)->center(), current_time,
+                          current_source_height) > refinement_beam_cutoff)
+            refine = true;
+        }
         if (beam->value(cell->center(), current_time, current_source_height) >
             refinement_beam_cutoff)
-        {
+          refine = true;
+
+        if (refine)
           cells_to_refine.push_back(cell);
-        }
       }
     }
   }
@@ -1168,6 +1179,8 @@ run_ensemble(MPI_Comm const &communicator,
       }
     }
 
+    solution_augmented_ensemble[member].collect_sizes();
+
     geometry_ensemble.push_back(std::make_unique<adamantine::Geometry<dim>>(
         communicator, geometry_database));
 
@@ -1182,9 +1195,10 @@ run_ensemble(MPI_Comm const &communicator,
     thermal_physics_ensemble[member]->initialize_dof_vector(
         initial_temperature[member],
         solution_augmented_ensemble[member].block(base_state));
-    thermal_physics_ensemble[member]->get_state_from_material_properties();
 
     solution_augmented_ensemble[member].collect_sizes();
+
+    thermal_physics_ensemble[member]->get_state_from_material_properties();
 
     post_processor_ensemble.push_back(
         std::make_unique<adamantine::PostProcessor<dim>>(
@@ -1196,9 +1210,6 @@ run_ensemble(MPI_Comm const &communicator,
   unsigned int experimental_frame_index = 0;
   std::vector<std::vector<double>> frame_time_stamps;
   std::vector<adamantine::PointsValues<dim>> points_values;
-
-  dealii::LA::distributed::Vector<double, MemorySpaceType> temperature_dummy(
-      solution_augmented_ensemble[0].block(base_state));
 
   if (experiment_optional_database)
   {
@@ -1259,15 +1270,11 @@ run_ensemble(MPI_Comm const &communicator,
   double time = 0.;
 
   // ----- Output the initial solution -----
-  std::vector<dealii::AffineConstraints<double>> affine_constraints_ensemble;
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
-    affine_constraints_ensemble.push_back(
-        thermal_physics_ensemble[member]->get_affine_constraints());
-
     output_pvtu(
         *post_processor_ensemble[member], cycle, n_time_step, time,
-        affine_constraints_ensemble[member],
+        thermal_physics_ensemble[member]->get_affine_constraints(),
         solution_augmented_ensemble[member].block(base_state),
         thermal_physics_ensemble[member]->get_material_property()->get_state(),
         thermal_physics_ensemble[member]
@@ -1350,6 +1357,7 @@ run_ensemble(MPI_Comm const &communicator,
                     heat_sources_ensemble[member], time, next_refinement_time,
                     time_steps_refinement, refinement_database, fe_degree);
       }
+
       timers[adamantine::refine].stop();
       if ((rank == 0) && (verbose_refinement == true))
         std::cout << "n_dofs: "
@@ -1362,6 +1370,11 @@ run_ensemble(MPI_Comm const &communicator,
           thermal_physics_ensemble[0]->get_dof_handler(),
           material_deposition_boxes);
       timers[adamantine::add_material_search].stop();
+
+      for (unsigned int member = 0; member < ensemble_size; ++member)
+      {
+        solution_augmented_ensemble[member].collect_sizes();
+      }
     }
 
     // We use an epsilon to get the "expected" behavior when the deposition
@@ -1385,6 +1398,8 @@ run_ensemble(MPI_Comm const &communicator,
             elements_to_activate, deposition_cos, deposition_sin,
             activation_start, activation_end, new_material_temperature[member],
             solution_augmented_ensemble[member].block(base_state));
+
+        solution_augmented_ensemble[member].collect_sizes();
       }
 
     if ((rank == 0) && (verbose_refinement == true) &&
@@ -1406,12 +1421,14 @@ run_ensemble(MPI_Comm const &communicator,
         (activation_start == activation_end) ? false : true;
 #endif
     timers[adamantine::evol_time].start();
+
     for (unsigned int member = 0; member < ensemble_size; ++member)
     {
       time = thermal_physics_ensemble[member]->evolve_one_time_step(
           old_time, time_step,
           solution_augmented_ensemble[member].block(base_state), timers);
     }
+
 #if ADAMANTINE_DEBUG
     ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),
            "Unexpected time step while adding material.");
@@ -1426,6 +1443,12 @@ run_ensemble(MPI_Comm const &communicator,
     // ----- Perform data assimilation -----
     if (assimilate_data)
     {
+      for (unsigned int member = 0; member < ensemble_size; ++member)
+      {
+        thermal_physics_ensemble[member]->get_affine_constraints().distribute(
+            solution_augmented_ensemble[member].block(base_state));
+      }
+
       // Currently assume that all frames are synced so that the 0th camera
       // frame time is the relevant time
       double frame_time;
@@ -1446,10 +1469,26 @@ run_ensemble(MPI_Comm const &communicator,
           std::cout << "Performing data assimilation at time " << time << "..."
                     << std::endl;
 
+        // Print out the augmented parameters
+        if (rank == 0)
+        {
+          for (unsigned int member = 0; member < ensemble_size; ++member)
+          {
+            std::cout << "Old parameters for member " << member << ": ";
+            for (auto param : solution_augmented_ensemble[member].block(1))
+              std::cout << param << " ";
+
+            std::cout << std::endl;
+          }
+        }
+
         timers[adamantine::da_experimental_data].start();
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_BEGIN("da_experimental_data");
 #endif
+        dealii::LA::distributed::Vector<double, MemorySpaceType>
+            temperature_dummy(solution_augmented_ensemble[0].block(base_state));
+
         auto indices_and_offsets = adamantine::set_with_experimental_data(
             points_values[experimental_frame_index],
             thermal_physics_ensemble[0]->get_dof_handler(), temperature_dummy);
@@ -1564,6 +1603,19 @@ run_ensemble(MPI_Comm const &communicator,
         if (rank == 0)
           std::cout << "Done." << std::endl;
 
+        // Print out the augmented parameters
+        if (rank == 0)
+        {
+          for (unsigned int member = 0; member < ensemble_size; ++member)
+          {
+            std::cout << "New parameters for member " << member << ": ";
+            for (auto param : solution_augmented_ensemble[member].block(1))
+              std::cout << param << " ";
+
+            std::cout << std::endl;
+          }
+        }
+
         experimental_frame_index++;
       }
 
@@ -1595,7 +1647,7 @@ run_ensemble(MPI_Comm const &communicator,
       {
         thermal_physics_ensemble[member]->set_state_to_material_properties();
         output_pvtu(*post_processor_ensemble[member], cycle, n_time_step, time,
-                    affine_constraints_ensemble[member],
+                    thermal_physics_ensemble[member]->get_affine_constraints(),
                     solution_augmented_ensemble[member].block(base_state),
                     thermal_physics_ensemble[member]
                         ->get_material_property()
@@ -1627,7 +1679,7 @@ run_ensemble(MPI_Comm const &communicator,
   {
     for (unsigned int member = 0; member < ensemble_size; ++member)
     {
-      affine_constraints_ensemble[member].distribute(
+      thermal_physics_ensemble[member]->get_affine_constraints().distribute(
           solution_augmented_ensemble[member].block(base_state));
     }
     return solution_augmented_ensemble;
@@ -1649,7 +1701,7 @@ run_ensemble(MPI_Comm const &communicator,
       solution_augmented_ensemble_host[member].block(0).import(
           solution_augmented_ensemble[member].block(0),
           dealii::VectorOperation::insert);
-      affine_constraints_ensemble[member].distribute(
+      thermal_physics_ensemble[member]->get_affine_constraints().distribute(
           solution_augmented_ensemble_host[member].block(0));
 
       solution_augmented_ensemble_host[member].block(1).reinit(

@@ -96,14 +96,17 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
       }
     }
     cell->get_dof_indices(local_dof_indices);
+
     affine_constraints.distribute_local_to_global(cell_mass, local_dof_indices,
                                                   *_inverse_mass_matrix);
   }
   _inverse_mass_matrix->compress(dealii::VectorOperation::add);
 
   unsigned int const local_size = _inverse_mass_matrix->locally_owned_size();
+
   for (unsigned int k = 0; k < local_size; ++k)
   {
+
     _inverse_mass_matrix->local_element(k) =
         1. / _inverse_mass_matrix->local_element(k);
   }
@@ -142,6 +145,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::vmult_add(
 {
   // Execute the matrix-free matrix-vector multiplication
   _matrix_free.cell_loop(&ThermalOperator::cell_local_apply, this, dst, src);
+
   // We compute the boundary conditions by hand. We would like to use
   // dealii::MatrixFree::loop() but there are two problems: 1. the function does
   // not work with FE_Nothing 2. even if it did we could only use it for the
