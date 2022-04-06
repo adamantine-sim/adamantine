@@ -1,4 +1,4 @@
-/* Copyright (c) 2021, the adamantine authors.
+/* Copyright (c) 2021-2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -8,12 +8,15 @@
 #include <DataAssimilator.hh>
 #include <utils.hh>
 
+#include <deal.II/arborx/bvh.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/lac/block_vector.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/linear_operator_tools.h>
 
 #include <boost/algorithm/string/predicate.hpp>
+
+#include <ArborX.hpp>
 
 #ifdef ADAMANTINE_WITH_CALIPER
 #include <caliper/cali.h>
@@ -23,6 +26,78 @@
 #ifdef __GLIBCXX__
 #include <execution>
 #endif
+
+// FIXME remove this code once it's in deal.II
+class SphereIntersectPredicate
+{
+public:
+  template <int dim, typename Number>
+  SphereIntersectPredicate(
+      const std::vector<std::pair<dealii::Point<dim, Number>, Number>>
+          &spheres_)
+  {
+    for (auto const &sph : spheres_)
+      spheres.push_back(
+          {{static_cast<float>(sph.first[0]), static_cast<float>(sph.first[1]),
+            dim == 2 ? 0.f : static_cast<float>(sph.first[2])},
+           static_cast<float>(sph.second)});
+  }
+
+  std::size_t size() const { return spheres.size(); }
+
+  const std::pair<dealii::Point<3, float>, float> &get(unsigned int i) const
+  {
+    return spheres[i];
+  }
+
+private:
+  std::vector<std::pair<dealii::Point<3, float>, float>> spheres;
+};
+
+namespace ArborX
+{
+template <int dim, typename Number>
+struct AccessTraits<std::vector<std::pair<dealii::Point<dim, Number>, Number>>,
+                    PrimitivesTag>
+{
+  using memory_space = Kokkos::HostSpace;
+
+  static std::size_t
+  size(const std::vector<std::pair<dealii::Point<dim, Number>, Number>> &v)
+  {
+    return v.size();
+  }
+
+  static Sphere
+  get(const std::vector<std::pair<dealii::Point<dim, Number>, Number>> &v,
+      std::size_t i)
+  {
+    return {{static_cast<float>(v[i].first[0]),
+             static_cast<float>(v[i].first[1]),
+             dim == 2 ? 0.f : static_cast<float>(v[i].first[2])},
+            static_cast<float>(v[i].second)};
+  }
+};
+
+template <>
+struct AccessTraits<SphereIntersectPredicate, PredicatesTag>
+{
+  using memory_space = Kokkos::HostSpace;
+
+  static std::size_t size(const SphereIntersectPredicate &sph_intersect)
+  {
+    return sph_intersect.size();
+  }
+
+  static auto get(const SphereIntersectPredicate &sph_intersect, std::size_t i)
+  {
+    const auto dealii_sphere = sph_intersect.get(i);
+    return intersects(Sphere{{dealii_sphere.first[0], dealii_sphere.first[1],
+                              dealii_sphere.first[2]},
+                             dealii_sphere.second});
+  }
+};
+} // namespace ArborX
 
 namespace adamantine
 {
@@ -322,26 +397,49 @@ void DataAssimilator::update_covariance_sparsity_pattern(
 
   // Loop through the dofs to see which pairs are within the specified
   // distance
+  // Note: this code is identical to code in
+  // experimental_data.cc:set_with_experimental_data
   std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
 
   dealii::DoFTools::map_dofs_to_support_points(
       dealii::StaticMappingQ1<dim>::mapping, dof_handler, indices_points);
 
-  unsigned int i = 0;
-  _covariance_distance_map.clear();
-  for (auto map_it_i = indices_points.begin(); map_it_i != indices_points.end();
-       ++map_it_i, ++i)
+  // Change the format to something that can be used by ArborX
+  std::vector<dealii::types::global_dof_index> dof_indices(
+      indices_points.size());
+  std::vector<dealii::Point<dim>> support_points(indices_points.size());
+  unsigned int pos = 0;
+  for (auto map_it = indices_points.begin(); map_it != indices_points.end();
+       ++map_it, ++pos)
   {
-    unsigned int j = 0;
-    for (auto map_it_j = indices_points.begin();
-         map_it_j != indices_points.end(); ++map_it_j, ++j)
+    dof_indices[pos] = map_it->first;
+    support_points[pos] = map_it->second;
+  }
+
+  // Perform the spatial search using ArborX
+  dealii::ArborXWrappers::BVH bvh(support_points);
+
+  std::vector<std::pair<dealii::Point<dim, double>, double>> spheres;
+  if (dim == 2)
+    for (auto const pt : support_points)
+      spheres.push_back({{pt[0], pt[1]}, _localization_cutoff_distance});
+  else
+    for (auto const pt : support_points)
+      spheres.push_back({{pt[0], pt[1], pt[2]}, _localization_cutoff_distance});
+  SphereIntersectPredicate sph_intersect(spheres);
+  auto [indices, offsets] = bvh.query(sph_intersect);
+
+  for (unsigned int i = 0; i < offsets.size() - 1; ++i)
+  {
+    for (int j = offsets[i]; j < offsets[i + 1]; ++j)
     {
-      double dist = map_it_i->second.distance(map_it_j->second);
-      if (dist <= _localization_cutoff_distance)
-      {
-        dsp.add(i, j);
-        _covariance_distance_map[std::make_pair(i, j)] = dist;
-      }
+      int k = indices[j];
+      _covariance_distance_map[std::make_pair(i, k)] =
+          support_points[i].distance(support_points[k]);
+      // We would like to use the add_entries functions but we cannot because
+      // deal.II only accepts unsigned int but ArborX returns int.
+      // Note that the entries are unique but not sorted.
+      dsp.add(i, k);
     }
   }
 
