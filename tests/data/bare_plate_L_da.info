@@ -35,9 +35,9 @@ geometry
   length 5.0e-3 ; [m]
   height 0.5e-3 ; [m] In 3D, the third parameters is width
   width  5.0e-3
-  length_divisions 8 ; Number of cell layers in the length direction
+  length_divisions 4 ; Number of cell layers in the length direction
   height_divisions 1 ; Number of cell layers in the height direction
-  width_divisions  8
+  width_divisions  4
 }
 
 boundary
@@ -50,10 +50,10 @@ refinement
   n_heat_refinements 0 ; Number of coarsening/refinement executed (uses Kelly's
                        ; error estimator)
   heat_cell_ratio    2.0 ;
-  n_beam_refinements 0 ; Number of time the cells on the paths of the beams are
+  n_beam_refinements 1 ; Number of time the cells on the paths of the beams are
                        ; refined
-  max_level          0 ; Maximum number of time a cell can be refined
-  time_steps_between_refinement 2000000000 ; number of time steps after which
+  max_level          1 ; Maximum number of time a cell can be refined
+  time_steps_between_refinement 250 ; number of time steps after which
                                                  ; the refinement process is performed
 }
 
