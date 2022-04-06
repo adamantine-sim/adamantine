@@ -96,17 +96,14 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
       }
     }
     cell->get_dof_indices(local_dof_indices);
-
     affine_constraints.distribute_local_to_global(cell_mass, local_dof_indices,
                                                   *_inverse_mass_matrix);
   }
   _inverse_mass_matrix->compress(dealii::VectorOperation::add);
 
   unsigned int const local_size = _inverse_mass_matrix->locally_owned_size();
-
   for (unsigned int k = 0; k < local_size; ++k)
   {
-
     _inverse_mass_matrix->local_element(k) =
         1. / _inverse_mass_matrix->local_element(k);
   }
