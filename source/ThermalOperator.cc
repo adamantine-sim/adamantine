@@ -142,6 +142,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::vmult_add(
 {
   // Execute the matrix-free matrix-vector multiplication
   _matrix_free.cell_loop(&ThermalOperator::cell_local_apply, this, dst, src);
+
   // We compute the boundary conditions by hand. We would like to use
   // dealii::MatrixFree::loop() but there are two problems: 1. the function does
   // not work with FE_Nothing 2. even if it did we could only use it for the
