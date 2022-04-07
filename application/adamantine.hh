@@ -506,22 +506,19 @@ compute_cells_to_refine(
                triangulation.active_cell_iterators(),
                dealii::IteratorFilters::LocallyOwnedCell()))
       {
-        // Check the value at the center of the cell faces and cell center.
-        // Checking both is helpful when starting with a coarse mesh when the
-        // radius of the beam is smaller than the element size.
-        bool refine = false;
+        // Check the value at the center of the cell faces. For most cases this
+        // should be sufficient, but if the beam is small compared to the
+        // coarsest mesh we may need to add other points to check (e.g.
+        // quadrature points, vertices).
         for (unsigned int f = 0; f < cell->reference_cell().n_faces(); ++f)
         {
           if (beam->value(cell->face(f)->center(), current_time,
                           current_source_height) > refinement_beam_cutoff)
-            refine = true;
+          {
+            cells_to_refine.push_back(cell);
+            break;
+          }
         }
-        if (beam->value(cell->center(), current_time, current_source_height) >
-            refinement_beam_cutoff)
-          refine = true;
-
-        if (refine)
-          cells_to_refine.push_back(cell);
       }
     }
   }
