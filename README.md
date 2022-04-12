@@ -8,7 +8,8 @@ Installing `adamantine` requires:
 * A compiler that support C++17
 * CMake: 3.15 or later
 * Boost: 1.70.0 or later
-* deal.II: for compatibility purpose we recommend to use the adamantine branch [here](https://github.com/Rombur/dealii/tree/adamantine).
+* ArborX: 1.2 or later
+* deal.II: 9.4 or later
 You need to compile deal.II with MPI, P4EST, and ArborX. If you want to use Exodus file, you also need Trilinos with SEACAS support.
 `adamantine` also optionally supports profiling through [Caliper](https://github.com/llnl/Caliper).
 
