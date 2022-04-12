@@ -82,8 +82,8 @@ struct AccessTraits<adamantine::RayIntersectPredicate, PredicatesTag>
     auto const &direction = ray.direction;
     ArborX::Experimental::Ray arborx_ray = {
         ArborX::Point{(float)origin[0], (float)origin[1], (float)origin[2]},
-        ArborX::Experimental::Ray::Vector{
-            (float)direction[0], (float)direction[1], (float)direction[2]}};
+        ArborX::Experimental::Vector{(float)direction[0], (float)direction[1],
+                                     (float)direction[2]}};
     return intersects(arborx_ray);
   }
 };
