@@ -27,78 +27,6 @@
 #include <execution>
 #endif
 
-// FIXME remove this code once it's in deal.II
-class SphereIntersectPredicate
-{
-public:
-  template <int dim, typename Number>
-  SphereIntersectPredicate(
-      const std::vector<std::pair<dealii::Point<dim, Number>, Number>>
-          &spheres_)
-  {
-    for (auto const &sph : spheres_)
-      spheres.push_back(
-          {{static_cast<float>(sph.first[0]), static_cast<float>(sph.first[1]),
-            dim == 2 ? 0.f : static_cast<float>(sph.first[2])},
-           static_cast<float>(sph.second)});
-  }
-
-  std::size_t size() const { return spheres.size(); }
-
-  const std::pair<dealii::Point<3, float>, float> &get(unsigned int i) const
-  {
-    return spheres[i];
-  }
-
-private:
-  std::vector<std::pair<dealii::Point<3, float>, float>> spheres;
-};
-
-namespace ArborX
-{
-template <int dim, typename Number>
-struct AccessTraits<std::vector<std::pair<dealii::Point<dim, Number>, Number>>,
-                    PrimitivesTag>
-{
-  using memory_space = Kokkos::HostSpace;
-
-  static std::size_t
-  size(const std::vector<std::pair<dealii::Point<dim, Number>, Number>> &v)
-  {
-    return v.size();
-  }
-
-  static Sphere
-  get(const std::vector<std::pair<dealii::Point<dim, Number>, Number>> &v,
-      std::size_t i)
-  {
-    return {{static_cast<float>(v[i].first[0]),
-             static_cast<float>(v[i].first[1]),
-             dim == 2 ? 0.f : static_cast<float>(v[i].first[2])},
-            static_cast<float>(v[i].second)};
-  }
-};
-
-template <>
-struct AccessTraits<SphereIntersectPredicate, PredicatesTag>
-{
-  using memory_space = Kokkos::HostSpace;
-
-  static std::size_t size(const SphereIntersectPredicate &sph_intersect)
-  {
-    return sph_intersect.size();
-  }
-
-  static auto get(const SphereIntersectPredicate &sph_intersect, std::size_t i)
-  {
-    const auto dealii_sphere = sph_intersect.get(i);
-    return intersects(Sphere{{dealii_sphere.first[0], dealii_sphere.first[1],
-                              dealii_sphere.first[2]},
-                             dealii_sphere.second});
-  }
-};
-} // namespace ArborX
-
 namespace adamantine
 {
 
@@ -426,7 +354,7 @@ void DataAssimilator::update_covariance_sparsity_pattern(
   else
     for (auto const pt : support_points)
       spheres.push_back({{pt[0], pt[1], pt[2]}, _localization_cutoff_distance});
-  SphereIntersectPredicate sph_intersect(spheres);
+  dealii::ArborXWrappers::SphereIntersectPredicate sph_intersect(spheres);
   auto [indices, offsets] = bvh.query(sph_intersect);
 
   for (unsigned int i = 0; i < offsets.size() - 1; ++i)

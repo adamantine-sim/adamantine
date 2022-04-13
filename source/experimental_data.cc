@@ -82,8 +82,8 @@ struct AccessTraits<adamantine::RayIntersectPredicate, PredicatesTag>
     auto const &direction = ray.direction;
     ArborX::Experimental::Ray arborx_ray = {
         ArborX::Point{(float)origin[0], (float)origin[1], (float)origin[2]},
-        ArborX::Experimental::Ray::Vector{
-            (float)direction[0], (float)direction[1], (float)direction[2]}};
+        ArborX::Experimental::Vector{(float)direction[0], (float)direction[1],
+                                     (float)direction[2]}};
     return intersects(arborx_ray);
   }
 };
@@ -142,7 +142,7 @@ std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
       {
         std::string cut_command("cut -d, -f" + data_columns + " " +
                                 regex_filename + " > " + filename);
-        int error_code = std::system(cut_command.c_str());
+        [[maybe_unused]] int error_code = std::system(cut_command.c_str());
         ASSERT(error_code == 0, "Problem with the cut command.");
       }
 
@@ -199,7 +199,7 @@ std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
       if (dealii::Utilities::MPI::this_mpi_process(communicator) == 0)
       {
         std::string rm_command("rm " + filename);
-        int error_code = std::system(rm_command.c_str());
+        [[maybe_unused]] int error_code = std::system(rm_command.c_str());
         ASSERT(error_code == 0, "Error with the rm command.");
       }
     }
