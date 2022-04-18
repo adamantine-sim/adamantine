@@ -31,10 +31,10 @@ class PostProcessor
 public:
   /**
    * Constructor for ensemble simulations.
-   * \param database requires the following entries:
-   *   - <B>database</B>: boost::property_tree::ptree
-   *   - <B>dof_handler</B>: dealii::DoFHandler<dim>
-   *   - <B>ensemble_member_index</B>: int
+   * \param[in] communicator: MPI communicator
+   * \param[in] database: boost::property_tree::ptree
+   * \param[in] dof_handler: dealii::DoFHandler<dim>
+   * \param[in] ensemble_member_index: int
    */
   PostProcessor(MPI_Comm const &communicator,
                 boost::property_tree::ptree const &database,
