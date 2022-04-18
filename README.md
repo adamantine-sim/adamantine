@@ -10,6 +10,7 @@ Installing `adamantine` requires:
 * Boost: 1.70.0 or later
 * ArborX: 1.2 or later
 * deal.II: 9.4 or later
+
 You need to compile deal.II with MPI, P4EST, and ArborX. If you want to use Exodus file, you also need Trilinos with SEACAS support.
 `adamantine` also optionally supports profiling through [Caliper](https://github.com/llnl/Caliper).
 
@@ -38,6 +39,13 @@ The list of configuration options is:
 * CMAKE\_BUILD\_TYPE=Debug/Release
 * CALIPER\_DIR=/path/to/caliper (optional)
 * DEAL\_II\_DIR=/path/to/dealii
+
+## Docker 
+The Docker image containing the latest version of `adamantine` can be pulled
+using
+```bash
+docker pull rombur/adamantine:latest
+```
 
 ## Run
 After compiling `adamantine`, you can run a simulation using
@@ -159,8 +167,7 @@ The following options are available:
     * max\_iteration: mamximum number of the iterations of the linear solver
     (default value: 1000)
     * tolerance: tolerance of the linear solver (default value: 1e-12)
-    * n\_tmp\_vectors: maximum number of vectors used by GMRES (default value:
-    30)
+    * n\_tmp\_vectors: maximum number of vectors used by GMRES (default value: 30)
     * right\_preconditioner: use left or right preconditioning for the linear
     solver (default value: false)
     * newton\_max\_iteration: maximum number of iterations of Newton solver
@@ -168,36 +175,40 @@ The following options are available:
     * newton\_tolerance: tolerance of the Newton solver (default value: 1e-6)
     * jfnk: use Jacobian-Free Newton Krylov method (default value: false)
 * experiment: (optional)
-  * read\_in\_experimental\_data: Whether to read in experimental data (default: false)
+  * read\_in\_experimental\_data: whether to read in experimental data (default: false)
   * if reading in experimental data:
-  * file: format of the file names. The format is pretty arbitrary, the keywords \#frame
-  and \#camera are replaced by the frame and the camera number. The format of
-  the file itself should be csv. (required)
-  * first\_frame: number associated to the first frame (default value: 0)
-  * last\_frame: number associated to the last frame (required)
-  * first\_camera\_id: number associated to the first camera (required)
-  * last\_camera\_id: number associated to the last camera (required)
-  * data\_columns: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D) (required)
-  * log\_filename: The (full) filename of the log file that lists the timestamp for each frame from each camera. (required)
-  * first\_frame\_temporal\_offset: A uniform shift to the timestamps from all cameras to match the simulation time (default value: 0.0)
-  * estimated\_uncertainty: The estimate of the uncertainty in the experimental data points as given by a standard deviation (under the simplifying assumption that the error is normally distributed and independent for each data point) (default value: 0.0).
+    * file: format of the file names. The format is pretty arbitrary, the keywords \#frame
+    and \#camera are replaced by the frame and the camera number. The format of
+    the file itself should be csv. (required)
+    * first\_frame: number associated to the first frame (default value: 0)
+    * last\_frame: number associated to the last frame (required)
+    * first\_camera\_id: number associated to the first camera (required)
+    * last\_camera\_id: number associated to the last camera (required)
+    * data\_columns: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D) (required)
+    * log\_filename: The (full) filename of the log file that lists the timestamp for each frame 
+    from each camera. (required)
+    * first\_frame\_temporal\_offset: A uniform shift to the timestamps from all cameras to match 
+    the simulation time (default value: 0.0)
+    * estimated\_uncertainty: The estimate of the uncertainty in the experimental data points as 
+    given by a standard deviation (under the simplifying assumption that the error is normally 
+    distributed and independent for each data point) (default value: 0.0).
 * ensemble: (optional)
-  * ensemble\_simulation: Whether to perform an ensemble of simulations (default value: false)
-  * ensemble\_size: The number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
-  * initial\_temperature\_stddev: The standard deviation for the initial temperature of the material (default value: 0.0)
-  * new\_material\_temperature\_stddev: The standard deviation for the temperature of material added during the process (default value: 0.0)
-  * beam\_0\_max\_power\_stddev: The standard deviation for the max power for beam 0 (if it exists) (default value: 0.0)
-  * beam\_0\_absorption\_efficiency\_stddev: The standard deviation for the absorption efficiency for beam 0 (if it exists) (default value: 0.0)
+  * ensemble\_simulation: whether to perform an ensemble of simulations (default value: false)
+  * ensemble\_size: the number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
+  * initial\_temperature\_stddev: the standard deviation for the initial temperature of the material (default value: 0.0)
+  * new\_material\_temperature\_stddev: the standard deviation for the temperature of material added during the process (default value: 0.0)
+  * beam\_0\_max\_power\_stddev: the standard deviation for the max power for beam 0 (if it exists) (default value: 0.0)
+  * beam\_0\_absorption\_efficiency\_stddev: the standard deviation for the absorption efficiency for beam 0 (if it exists) (default value: 0.0)
 * data\_assimilation: (optional)
-  * assimilate\_data: Whether to perform data assimilation (default value: false)
-  * localization\_cutoff\_function: The function used to decrease the sample covariance as the relevant points become farther away: gaspari\_cohn, step\_function, none (default: none)
-  * localization\_cutoff\_distance: The distance at which sample covariance entries are set to zero (default: infinity)
-  * augment\_with\_beam\_0\_absorption: Whether to augment the state vector with the beam 0 absorption efficiency (default: false)
-  * augment\_with\_beam\_0\_max_power: Whether to augment the state vector with the beam 0 max power (default: false)
+  * assimilate\_data: whether to perform data assimilation (default value: false)
+  * localization\_cutoff\_function: the function used to decrease the sample covariance as the relevant points become farther away: gaspari\_cohn, step\_function, none (default: none)
+  * localization\_cutoff\_distance: the distance at which sample covariance entries are set to zero (default: infinity)
+  * augment\_with\_beam\_0\_absorption: whether to augment the state vector with the beam 0 absorption efficiency (default: false)
+  * augment\_with\_beam\_0\_max_power: whether to augment the state vector with the beam 0 max power (default: false)
   * solver:
-    * max\_number\_of\_temp\_vectors: Maximum number of temporary vectors for the GMRES solve (optional)
-    * max\_iterations: Maximum number of iterations for the GMRES solve (optional)
-    * convergence\_tolerance: Convergence tolerance for the GMRES solve (optional)
+    * max\_number\_of\_temp\_vectors: maximum number of temporary vectors for the GMRES solve (optional)
+    * max\_iterations: maximum number of iterations for the GMRES solve (optional)
+    * convergence\_tolerance: convergence tolerance for the GMRES solve (optional)
 * profiling (optional):
   * timer: output timing information (default value: false)
   * caliper: configuration string for Caliper (optional)
