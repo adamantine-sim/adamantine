@@ -92,3 +92,14 @@ if (ADAMANTINE_ENABLE_CALIPER)
   target_include_directories(Adamantine PUBLIC ${caliper_INCLUDE_DIR})
   target_link_libraries(Adamantine caliper)
 endif()
+if (ADAMANTINE_ENABLE_DEALII_WEAK_FORMS)
+  target_include_directories(Adamantine PUBLIC ${WEAK_FORMS_INCLUDE_DIRS})
+  # FIXME dealii-weak_forms exposes its dependency to deal.II
+  # (target_link_libraries adds a -ldeal_II flag) but it does not include the
+  # path to deal.II. We manually add the path to deal.II. Note that we link
+  # deal.II a second time and we may use a different version (Debug vs Release)
+  # than the first time around. Ideally, we should remove the deal.II flag since
+  # we alreay link to deal.II
+  target_link_directories(Adamantine PUBLIC ${DEAL_II_PATH}/lib)
+  target_link_libraries(Adamantine ${WEAK_FORMS_LIBRARIES})
+endif()
