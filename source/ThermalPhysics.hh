@@ -33,6 +33,7 @@ class ThermalPhysics : public Physics<dim, MemorySpaceType>
 public:
   /**
    * Constructor.
+   * \param[in] communicator: MPI communicator
    * \param[in] database requires the following entries:
    *   - <B>materials</B>: property tree
    *   - <B>sources</B>: property tree
@@ -64,6 +65,7 @@ public:
    *   - <B>time_stepping.newton_tolerance</B>: double in \f$(0,\infty)\f$
    *   [optional, default of 1e-6]
    *   - <B>time_stepping.jfnk</B>: boolean [optional, default value of false]
+   * \param[in] geometry: Triangulation of the domain
    */
   ThermalPhysics(MPI_Comm const &communicator,
                  boost::property_tree::ptree const &database,

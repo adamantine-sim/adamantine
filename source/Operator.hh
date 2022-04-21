@@ -92,9 +92,10 @@ public:
    * \param[inout] dst
    */
   virtual void jacobian_vmult(
-      dealii::LA::distributed::Vector<double, MemorySpaceType> & /*dst*/,
-      dealii::LA::distributed::Vector<double, MemorySpaceType> const & /*src*/)
-      const
+      [[maybe_unused]] dealii::LA::distributed::Vector<double, MemorySpaceType>
+          &dst,
+      [[maybe_unuse]] dealii::LA::distributed::Vector<
+          double, MemorySpaceType> const &src) const
   {
     ASSERT_THROW_NOT_IMPLEMENTED();
   }
