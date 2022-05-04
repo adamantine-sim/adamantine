@@ -1,4 +1,0 @@
-clang-format -style=file -i source/*.cc
-clang-format -style=file -i source/*.hh
-clang-format -style=file -i tests/*.cc
-clang-format -style=file -i application/*.cc

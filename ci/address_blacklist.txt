@@ -1,2 +1,0 @@
-leak:libmpi.so
-leak:libopen-pal.so

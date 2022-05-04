@@ -1,5 +1,0 @@
-Number of path segments
-2
-Mode    x       y     z   pmod    param
-1       0.000   0.000  0   1.0       1e-15
-0       1.0   0.000  0     1.0       1.0
