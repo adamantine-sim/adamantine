@@ -29,9 +29,15 @@ github_username: adamantine-sim
 
 # Build settings
 remote_theme: just-the-docs/just-the-docs
+plugins:
+  - jekyll-feed
+  - jekyll-remote-theme
 
 # Only dark or light
 color_scheme: light
+
+compress_html:
+  blanklines: true
 
 # Exclude from processing.
 # The following items will not be processed, by default.
