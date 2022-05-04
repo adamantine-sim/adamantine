@@ -31,7 +31,6 @@ github_username: adamantine-sim
 remote_theme: just-the-docs/just-the-docs
 plugins:
   - jekyll-feed
-  - jekyll-remote-theme
 
 # Only dark or light
 color_scheme: light
@@ -39,7 +38,7 @@ color_scheme: light
 compress_html:
   blanklines: true
 mathjax:
-  source: https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS_CHTML
+  source: http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML
   config: 'MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "AMS" } } })'
 
 # Exclude from processing.
