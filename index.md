@@ -72,7 +72,7 @@ $$
 \frac{\partial h(T)}{\partial t} =
   \cases{
     \rho_s C_{p,s} \frac{\partial T}{\partial t} &  if $T \leq T_{s}$\cr
-     \(\rho_{\text{eff}} C_{p,\text{eff}} + \rho_{\text{eff}} \frac{\mathcal{L}}{T_l-T_s}\)
+     \left(\rho_{\text{eff}} C_{p,\text{eff}} + \rho_{\text{eff}} \frac{\mathcal{L}}{T_l-T_s}\right)
      \frac{\partial T}{\partial t}  & if $T>T_{s}$ and $T<T_l$ \cr
     \rho_l C_{p,l} \frac{\partial T}{\partial t} &  if $T \geq T_{l}$
   }
@@ -188,7 +188,7 @@ $$
 with
 
 $$
-h_{\text{rad}} = \varepsilon \sigma\right(T+T_{\infty}\left)\right(T^2 + T_{\infty}^2\left).
+h_{\text{rad}} = \varepsilon \sigma\left(T+T_{\infty}\right)\left(T^2 + T_{\infty}^2\right).
 $$
 
 Thus, we have:
