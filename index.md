@@ -42,7 +42,7 @@ When there is a phase change, the heat equation is usually written in term of
 the enthalpy, $$h$$:
 
 $$
-\frac{\partial h(T)}{\partial t} -  \nabla \cdot \(k\nabla T\) = Q
+\frac{\partial h(T)}{\partial t} -  \nabla \cdot \left(k\nabla T\right) = Q
 $$
 
 In the absence of phase change, we have:
@@ -58,8 +58,8 @@ $$
 h(T) =
   \cases{
    \rho_s C_{p,s} T & if $T<T_{s}$\cr
-   \rho_s C_{p,s} T_s + \(\frac{\rho_s C_{p,s}+\rho_l C_{p,l}}{2} +
-    \frac{\rho_s+\rho_l}{2}  \frac{\mathcal{L}}{T_l-T_s}\) (T-T_s) & if $T>T_{s}$ and $T<T_l$ \cr
+   \rho_s C_{p,s} T_s + \left(\frac{\rho_s C_{p,s}+\rho_l C_{p,l}}{2} +
+    \frac{\rho_s+\rho_l}{2}  \frac{\mathcal{L}}{T_l-T_s}\right) (T-T_s) & if $T>T_{s}$ and $T<T_l$ \cr
     \rho_s C_{p,s} T_s + \frac{C_{p,s}+C_{p,l}}{2} (T_l - T_s) +
     \frac{\rho_s+\rho_l}{2} \mathcal{L} + \rho_s C_{p,l}
     (T-T_l) & if $T>T_l$.
@@ -104,7 +104,7 @@ Finally we can write:
 
   $$
   \frac{\partial T}{\partial t} = \frac{1}{\left(\rho_{\text{eff}}
-  C_{p,\text{eff}} + \rho_{\text{eff}} \frac{\mathcal{L}}{T_l-T_s}\)} \(
+  C_{p,\text{eff}} + \rho_{\text{eff}} \frac{\mathcal{L}}{T_l-T_s}\right)} \left(
   \nabla \cdot \left(k \nabla T\right) + Q \right)
   $$
 
@@ -182,7 +182,7 @@ the boundary condition. This is less than ideal. Instead, we will linearize the
 Stefan-Boltzmann equation:
 
 $$
--\boldsymbol{n} \cdot \(k\nabla T\) = h_{\text{rad}}\left(T-T_{\infty}\right),
+-\boldsymbol{n} \cdot \left(k\nabla T\right) = h_{\text{rad}}\left(T-T_{\infty}\right),
 $$
 
 with
@@ -213,7 +213,7 @@ Thus, we have:
 $$
 \begin{split}
   \int_{\partial} \alpha b_i \boldsymbol{n} \cdot \left(k \nabla T\right) &=
-  -\int_{\partial} \alpha b_i h_{\text{conv}} \(T-T_{\infty}\),\\\\\\
+  -\int_{\partial} \alpha b_i h_{\text{conv}} \left(T-T_{\infty}\right),\\\\\\
   &=-\int_{\partial} \alpha h_{\text{conv}} \sum_j T_j b_i b_j +
   \int_{\partial} \alpha h_{\text{conv}} T_{\infty} b_i.
 \end{split}
