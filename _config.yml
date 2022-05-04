@@ -37,9 +37,6 @@ color_scheme: light
 
 compress_html:
   blanklines: true
-mathjax:
-  source: http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML
-  config: 'MathJax.Hub.Config({ TeX: { equationNumbers: { autoNumber: "AMS" } } })'
 
 # Exclude from processing.
 # The following items will not be processed, by default.
