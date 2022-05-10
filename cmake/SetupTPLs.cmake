@@ -30,7 +30,7 @@ endif()
 
 #### dealii-weak_forms #######################################################
 if (ADAMANTINE_ENABLE_DEALII_WEAK_FORMS)
-  find_package(weak_forms REQUIRED PATHS ${DEALII_WEAK_FORMS_DIR})
+  find_package(dealii-weak_forms REQUIRED PATHS ${DEALII_WEAK_FORMS_DIR})
   add_compile_definitions(ADAMANTINE_WITH_DEALII_WEAK_FORMS)
   message(STATUS "Found dealii-weak_forms: ${WEAK_FORMS_INCLUDE_DIRS}")
 endif()
