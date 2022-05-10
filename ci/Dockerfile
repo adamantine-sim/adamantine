@@ -185,8 +185,6 @@ RUN export NETCDF_VERSION=4.7.4 && \
     rm -rf ${NETCDF_SOURCE_DIR}
 ENV NETCDF_DIR=/opt/netcdf
 
-# We want to enable SEACAS to be able to read EXODUS file but it clashes with ADOL-C. For now,
-# we disable it
 # Install Trilinos 13.2.0
 RUN export TRILINOS_HASH=4a5f7906a6420ee2f9450367e9cc95b28c00d744 && \
     export TRILINOS_URL=https://github.com/trilinos/Trilinos/archive/${TRILINOS_HASH}.tar.gz && \
@@ -218,7 +216,7 @@ RUN export TRILINOS_HASH=4a5f7906a6420ee2f9450367e9cc95b28c00d744 && \
         -DTrilinos_ENABLE_Ifpack=ON \
         -DTrilinos_ENABLE_Kokkos=ON \
         -DTrilinos_ENABLE_ML=ON \
-        -DTrilinos_ENABLE_SEACAS=OFF \
+        -DTrilinos_ENABLE_SEACAS=ON \
         -DTrilinos_ENABLE_Sacado=ON \
         -DTrilinos_ENABLE_EXPLICIT_INSTANTIATION=ON \
         -DBLAS_LIBRARY_NAMES="openblas" \
@@ -312,50 +310,6 @@ RUN export ARBORX_HASH=dc372874ce4d1ec756de2503a30c293e2fd0776b && \
     rm -rf ${ARBORX_SOURCE_DIR}
 ENV ARBORX_DIR=${INSTALL_DIR}/arborx
 
-# For now dealii-weak_forms requires Sacado, ADOL-C, and symengine
-# Install ADOL-C 2.7.2
-RUN export ADOLC_HASH=0e8f8a62715b7f71f05cbb3b371157aef5d24f94 && \
-    export ADOLC_URL=https://github.com/coin-or/ADOL-C/archive/${ADOLC_HASH}.tar.gz && \
-    export ADOLC_ARCHIVE=${ARCHIVE_DIR}/adolc.tar.gz && \
-    export ADOLC_SOURCE_DIR=${SOURCE_DIR}/adolc && \
-    export ADOLC_BUILD_DIR=${BUILD_DIR}/adolc && \
-    export ADOLC_INSTALL_DIR=${INSTALL_DIR}/adolc && \
-    wget --quiet ${ADOLC_URL} --output-document=${ADOLC_ARCHIVE} && \
-    mkdir -p ${ADOLC_SOURCE_DIR} && \
-    tar -xf ${ADOLC_ARCHIVE} -C ${ADOLC_SOURCE_DIR} --strip-components=1 && \
-    mkdir -p ${ADOLC_BUILD_DIR} && \
-    cd ${ADOLC_BUILD_DIR} && \
-    ${ADOLC_SOURCE_DIR}/configure --with-boost=${BOOST_DIR} --prefix=${ADOLC_INSTALL_DIR} && \
-    make -j${N_PROCS} install && \
-    rm -rf ${ADOLC_ARCHIVE} && \
-    rm -rf ${ADOLC_BUILD_DIR} && \
-    rm -rf ${ADOLC_SOURCE_DIR}
-ENV ADOLC_DIR=${INSTALL_DIR}/adolc
-
-# Install SymEngine 0.9.0
-RUN export SYMENGINE_HASH=7b1880824c2cce98787ae29a317682ba6c294484 && \
-    export SYMENGINE_URL=https://github.com/symengine/symengine/archive/${SYMENGINE_HASH}.tar.gz && \
-    export SYMENGINE_ARCHIVE=${ARCHIVE_DIR}/symengine.tar.gz && \
-    export SYMENGINE_SOURCE_DIR=${SOURCE_DIR}/symengine && \
-    export SYMENGINE_BUILD_DIR=${BUILD_DIR}/symengine && \
-    export SYMENGINE_INSTALL_DIR=${INSTALL_DIR}/symengine && \
-    wget --quiet ${SYMENGINE_URL} --output-document=${SYMENGINE_ARCHIVE} && \
-    mkdir -p ${SYMENGINE_SOURCE_DIR} && \
-    tar -xf ${SYMENGINE_ARCHIVE} -C ${SYMENGINE_SOURCE_DIR} --strip-components=1 && \
-    mkdir -p ${SYMENGINE_BUILD_DIR} && \
-    cd ${SYMENGINE_BUILD_DIR} && \
-    cmake -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_SHARED_LIBS=ON \
-        -DBUILD_TESTS=OFF \
-        -DBUILD_BENCHMARKS=OFF \
-        -DCMAKE_INSTALL_PREFIX=${SYMENGINE_INSTALL_DIR} \
-        ${SYMENGINE_SOURCE_DIR} && \
-    make -j${N_PROCS} install && \
-    rm -rf ${SYMENGINE_ARCHIVE} && \
-    rm -rf ${SYMENGINE_BUILD_DIR} && \
-    rm -rf ${SYMENGINE_SOURCE_DIR}
-ENV SYMENGINE_DIR=${INSTALL_DIR}/symengine
-
 # Install deal.II 
 RUN export DEAL_II_HASH=8197bc4197029df173581bc09c18030e9d824104 && \
     export DEAL_II_URL=https://github.com/dealii/dealii/archive/${DEAL_II_HASH}.tar.gz && \
@@ -381,11 +335,7 @@ RUN export DEAL_II_HASH=8197bc4197029df173581bc09c18030e9d824104 && \
         -DDEAL_II_WITH_TRILINOS=ON \
         -DTRILINOS_DIR=${TRILINOS_DIR} \
         -DDEAL_II_TRILINOS_WITH_SACADO=ON \
-        -DDEAL_II_TRILINOS_WITH_SEACAS=OFF \
-        -DDEAL_II_WITH_ADOLC=ON \
-        -DADOLC_DIR=${ADOLC_DIR} \
-        -DDEAL_II_WITH_SYMENGINE=ON \
-        -DSYMENGINE_DIR=${SYMENGINE_DIR} \
+        -DDEAL_II_TRILINOS_WITH_SEACAS=ON \
         -DDEAL_II_COMPONENT_EXAMPLES=OFF \
         -DCMAKE_INSTALL_PREFIX=${DEAL_II_INSTALL_DIR} \
         ${DEAL_II_SOURCE_DIR}  && \
@@ -399,7 +349,7 @@ ENV DEAL_II_DIR=${INSTALL_DIR}/dealii
 ENV DEAL_II_NUM_THREADS=1
 
 # Install dealii-weak_forms
-RUN export DEALII_WEAK_FORMS_HASH=962180dd9a60d40125e4cfbadb4b7e58a1a6bb08 && \
+RUN export DEALII_WEAK_FORMS_HASH=f5c7b185d8eb1aae7b7cb837e025a3636b6e11d2 && \
     export DEALII_WEAK_FORMS_URL=https://github.com/jppelteret/dealii-weak_forms/archive/${DEALII_WEAK_FORMS_HASH}.tar.gz && \
     export DEALII_WEAK_FORMS_ARCHIVE=${ARCHIVE_DIR}/dealii-weak_forms.tar.gz && \
     export DEALII_WEAK_FORMS_SOURCE_DIR=${SOURCE_DIR}/dealii-weak_forms && \
