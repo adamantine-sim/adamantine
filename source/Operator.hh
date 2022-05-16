@@ -94,7 +94,7 @@ public:
   virtual void jacobian_vmult(
       [[maybe_unused]] dealii::LA::distributed::Vector<double, MemorySpaceType>
           &dst,
-      [[maybe_unuse]] dealii::LA::distributed::Vector<
+      [[maybe_unused]] dealii::LA::distributed::Vector<
           double, MemorySpaceType> const &src) const
   {
     ASSERT_THROW_NOT_IMPLEMENTED();
