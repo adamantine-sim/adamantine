@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Turcksin"
+  given-names: "Bruno"
+  orcid: "https://orcid.org/0000-0001-5954-6313"
+- family-names: "DeWitt"
+  given-names: "Stephen"
+  orcid: "https://orcid.org/0000-0002-9550-293X"
+title: "adamantine"
+doi: 10.11578/dc.20211129.1
+url: "https://github.com/adamantine-sim/adamantine"
