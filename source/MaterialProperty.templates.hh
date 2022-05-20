@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -570,7 +570,7 @@ void MaterialProperty<dim, MemorySpaceType>::set_state(
   std::vector<dealii::types::global_dof_index> mp_dof(1.);
 
   MemoryBlockView<double, MemorySpaceType> state_view(_state);
-  for (auto cell :
+  for (auto const &cell :
        dealii::filter_iterators(dof_handler.active_cell_iterators(),
                                 dealii::IteratorFilters::LocallyOwnedCell()))
   {
@@ -594,6 +594,76 @@ void MaterialProperty<dim, MemorySpaceType>::set_state(
                      state_view(powder_state, mp_dof_index),
                  0.);
   }
+}
+
+template <int dim, typename MemorySpaceType>
+void MaterialProperty<dim, MemorySpaceType>::set_state(
+    MemoryBlock<double, MemorySpaceType> const &liquid_ratio,
+    MemoryBlock<double, MemorySpaceType> const &powder_ratio,
+    std::map<typename dealii::DoFHandler<dim>::cell_iterator,
+             std::vector<unsigned int>> const &_cell_it_to_mf_pos,
+    dealii::DoFHandler<dim> const &dof_handler)
+{
+#ifdef __CUDACC__
+  // Create a mapping between the matrix free dofs and material property dofs
+  std::vector<dealii::types::global_dof_index> mp_dof(1.);
+  unsigned int const n_q_points = dof_handler.get_fe().tensor_degree() + 1;
+  MemoryBlock<unsigned int, dealii::MemorySpace::Host> mapping_host(
+      _state.extent(1), n_q_points);
+  MemoryBlockView<unsigned, dealii::MemorySpace::Host> mapping_host_view(
+      mapping_host);
+  MemoryBlock<double, dealii::MemorySpace::Host> mp_dof_host_block(
+      _state.extent(1));
+  MemoryBlockView<double, dealii::MemorySpace::Host> mp_dof_host_view(
+      mp_dof_host_block);
+  unsigned int cell_i = 0;
+  for (auto const &cell :
+       dealii::filter_iterators(dof_handler.active_cell_iterators(),
+                                dealii::IteratorFilters::LocallyOwnedCell()))
+  {
+    typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
+    auto mp_dof_index = get_dof_index(cell_tria);
+    auto const &mf_cell_vector = _cell_it_to_mf_pos.at(cell);
+    for (unsigned int q = 0; q < n_q_points; ++q)
+    {
+      mapping_host_view(cell_i, q) = mf_cell_vector[q];
+    }
+    mp_dof_host_view(cell_i) = mp_dof_index;
+    ++cell_i;
+  }
+
+  MemoryBlock<unsigned int, dealii::MemorySpace::CUDA> mapping(mapping_host);
+  MemoryBlockView<unsigned, dealii::MemorySpace::CUDA> mapping_view(mapping);
+  MemoryBlockView<double, dealii::MemorySpace::CUDA> liquid_ratio_view(
+      liquid_ratio);
+  MemoryBlockView<double, dealii::MemorySpace::CUDA> powder_ratio_view(
+      powder_ratio);
+  MemoryBlock<double, dealii::MemorySpace::CUDA> mp_dof_block(
+      mp_dof_host_block);
+  MemoryBlockView<double, dealii::MemorySpace::CUDA> mp_dof_view(mp_dof_block);
+  MemoryBlockView<double, dealii::MemorySpace::CUDA> state_view(_state);
+  auto const powder_state = static_cast<unsigned int>(MaterialState::powder);
+  auto const liquid_state = static_cast<unsigned int>(MaterialState::liquid);
+  auto const solid_state = static_cast<unsigned int>(MaterialState::solid);
+  for_each(MemorySpaceType{}, mapping_host_view.extent(0),
+           [=] ADAMANTINE_HOST_DEV(int i) mutable {
+             double liquid_ratio_sum = 0.;
+             double powder_ratio_sum = 0.;
+             for (unsigned int q = 0; q < n_q_points; ++q)
+             {
+               liquid_ratio_sum += liquid_ratio_view(mapping_view(i, q));
+               powder_ratio_sum += powder_ratio_view(mapping_view(i, q));
+             }
+             state_view(liquid_state, mp_dof_view(i)) =
+                 liquid_ratio_sum / n_q_points;
+             state_view(powder_state, mp_dof_view(i)) =
+                 powder_ratio_sum / n_q_points;
+             state_view(solid_state, mp_dof_view(i)) =
+                 std::max(1. - state_view(liquid_state, mp_dof_view(i)) -
+                              state_view(powder_state, mp_dof_view(i)),
+                          0.);
+           });
+#endif
 }
 
 template <int dim, typename MemorySpaceType>
@@ -788,6 +858,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
   deep_copy(_state_property_polynomials, state_property_polynomials_host);
   deep_copy(_state_property_tables, state_property_tables_host);
   deep_copy(_properties, properties_host);
+  _properties_view.reinit(_properties);
 }
 
 // We need to compute the average temperature on the cell because we need the
@@ -830,7 +901,7 @@ ADAMANTINE_HOST_DEV double
 MaterialProperty<dim, MemorySpaceType>::compute_property_from_table(
     MemoryBlockView<double, MemorySpaceType> const &state_property_tables_view,
     unsigned int const material_id, unsigned int const material_state,
-    unsigned int const property, double const temperature) const
+    unsigned int const property, double const temperature)
 {
   if (temperature <=
       state_property_tables_view(material_id, material_state, property, 0, 0))

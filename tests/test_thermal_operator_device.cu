@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -72,7 +72,8 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev)
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
-      thermal_operator_dev(communicator, mat_properties);
+      thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
+                           mat_properties);
   thermal_operator_dev.compute_inverse_mass_matrix(
       dof_handler, affine_constraints, fe_collection);
   std::vector<double> deposition_cos(
@@ -82,9 +83,7 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev)
   thermal_operator_dev.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator_dev.set_material_deposition_orientation(deposition_cos,
                                                            deposition_sin);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dummy(
-      thermal_operator_dev.m());
-  thermal_operator_dev.evaluate_material_properties(dummy);
+  thermal_operator_dev.get_state_from_material_properties();
   BOOST_CHECK(thermal_operator_dev.m() == 99);
   BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
 
@@ -164,7 +163,8 @@ BOOST_AUTO_TEST_CASE(spmv)
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
-      thermal_operator_dev(communicator, mat_properties);
+      thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
+                           mat_properties);
   thermal_operator_dev.compute_inverse_mass_matrix(
       dof_handler, affine_constraints, fe_collection);
   std::vector<double> deposition_cos(
@@ -174,9 +174,7 @@ BOOST_AUTO_TEST_CASE(spmv)
   thermal_operator_dev.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator_dev.set_material_deposition_orientation(deposition_cos,
                                                            deposition_sin);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dummy(
-      thermal_operator_dev.m());
-  thermal_operator_dev.evaluate_material_properties(dummy);
+  thermal_operator_dev.get_state_from_material_properties();
   BOOST_CHECK(thermal_operator_dev.m() == 99);
   BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
 
@@ -271,7 +269,7 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
           new adamantine::MaterialProperty<2, dealii::MemorySpace::CUDA>(
               communicator, geometry.get_triangulation(), mat_prop_database));
 
-  // Create the heat souces
+  // Create the heat sources
   boost::property_tree::ptree beam_database;
   beam_database.put("depth", 0.1);
   beam_database.put("absorption_efficiency", 0.1);
@@ -286,7 +284,8 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
-      thermal_operator_dev(communicator, mat_properties);
+      thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
+                           mat_properties);
   thermal_operator_dev.compute_inverse_mass_matrix(
       dof_handler, affine_constraints, fe_collection);
   std::vector<double> deposition_cos(
@@ -296,9 +295,7 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
   thermal_operator_dev.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator_dev.set_material_deposition_orientation(deposition_cos,
                                                            deposition_sin);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dummy(
-      thermal_operator_dev.m());
-  thermal_operator_dev.evaluate_material_properties(dummy);
+  thermal_operator_dev.get_state_from_material_properties();
   BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
 
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>
@@ -405,7 +402,8 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle)
 
   // Initialize the ThermalOperatorDevice
   adamantine::ThermalOperatorDevice<3, 2, dealii::MemorySpace::CUDA>
-      thermal_operator_dev(communicator, mat_properties);
+      thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
+                           mat_properties);
   double constexpr deposition_angle = M_PI / 6.;
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(),
@@ -416,11 +414,6 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle)
   thermal_operator_dev.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator_dev.set_material_deposition_orientation(deposition_cos,
                                                            deposition_sin);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dummy(
-      thermal_operator_dev.m());
-  thermal_operator_dev.evaluate_material_properties(dummy);
-  thermal_operator_dev.compute_inverse_mass_matrix(
-      dof_handler, affine_constraints, fe_collection);
   thermal_operator_dev.get_state_from_material_properties();
   BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
 
