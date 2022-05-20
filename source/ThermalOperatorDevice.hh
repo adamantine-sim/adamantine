@@ -71,7 +71,7 @@ public:
       dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
       const override;
 
-  void evaluate_material_properties(
+  void update_boundary_material_properties(
       dealii::LA::distributed::Vector<double, MemorySpaceType> const &state)
       override;
 

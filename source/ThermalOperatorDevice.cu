@@ -615,7 +615,7 @@ void ThermalOperatorDevice<dim, fe_degree,
 
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
-    evaluate_material_properties(
+    update_boundary_material_properties(
         dealii::LA::distributed::Vector<double, MemorySpaceType> const
             &temperature)
 {

@@ -619,7 +619,7 @@ BOOST_AUTO_TEST_CASE(spmv_rad)
   {
     temperature.local_element(i) = 1.;
   }
-  thermal_operator.evaluate_material_properties(temperature);
+  thermal_operator.update_boundary_material_properties(temperature);
   thermal_operator.get_state_from_material_properties();
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());

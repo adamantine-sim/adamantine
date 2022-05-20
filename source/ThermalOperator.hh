@@ -105,13 +105,12 @@ public:
       std::vector<double> const &deposition_sin) override;
 
   /**
-   * Evaluate the material properties for a given state field.
+   * Update the material properties used by non-adiabatic boundary conditiions
+   * for a given state field.
    */
-  // This function should be removed once the MaterialProperty for the device
-  // has been reworked and the material properties on the surface is computed
-  // correctly. The current name does not correctly explain what this
-  // function does but the name is still correct for the device.
-  void evaluate_material_properties(
+  // This function should be removed once the material properties on the surface
+  // is computed correctly.
+  void update_boundary_material_properties(
       dealii::LA::distributed::Vector<double, MemorySpaceType> const &state)
       override;
 
