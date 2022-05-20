@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -46,6 +46,18 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::reinit(
   _matrix_free.reinit(dealii::StaticMappingQ1<dim>::mapping, dof_handler,
                       affine_constraints, q_collection, _matrix_free_data);
   _affine_constraints = &affine_constraints;
+
+  // Compute mapping between DoFHandler cells and the MatrixFree cells
+  _cell_it_to_mf_cell_map.clear();
+  unsigned int const n_cells = _matrix_free.n_cell_batches();
+  for (unsigned int cell = 0; cell < n_cells; ++cell)
+    for (unsigned int i = 0;
+         i < _matrix_free.n_active_entries_per_cell_batch(cell); ++i)
+    {
+      typename dealii::DoFHandler<dim>::cell_iterator cell_it =
+          _matrix_free.get_cell_iterator(cell, i);
+      _cell_it_to_mf_cell_map[cell_it] = std::make_pair(cell, i);
+    }
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -277,7 +289,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::update_state_ratios(
   for (unsigned int n = 0; n < temperature.size(); ++n)
   {
     // Get the material id at this point
-    dealii::types::material_id material_id = _material_id(cell, q)[n];
+    dealii::types::material_id const material_id = _material_id(cell, q)[n];
 
     // Get the material thermodynamic properties
     double const solidus =
@@ -545,18 +557,6 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
   if (!(_boundary_type & BoundaryType::adiabatic))
     _material_properties->update_boundary_material_properties(
         _matrix_free.get_dof_handler(), temperature);
-
-  // Store the volumetric material properties
-  _cell_it_to_mf_cell_map.clear();
-  unsigned int const n_cells = _matrix_free.n_cell_batches();
-  for (unsigned int cell = 0; cell < n_cells; ++cell)
-    for (unsigned int i = 0;
-         i < _matrix_free.n_active_entries_per_cell_batch(cell); ++i)
-    {
-      typename dealii::DoFHandler<dim>::cell_iterator cell_it =
-          _matrix_free.get_cell_iterator(cell, i);
-      _cell_it_to_mf_cell_map[cell_it] = std::make_pair(cell, i);
-    }
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
