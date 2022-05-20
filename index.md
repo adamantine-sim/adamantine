@@ -131,12 +131,12 @@ $$
 
 $$
 \int b_i b_j \frac{d T_j}{dt} = \int \alpha T_j b_i \nabla \cdot \left(k \nabla b_j\right) +
-\int b_i Q,
+\int \alpha b_i Q,
 $$
 
 $$
 \left(\int b_i b_j\right) \frac{d T_j}{dt} = - \int \alpha T_j \nabla b_i \cdot \left(k \nabla b_j\right) +
-\int_{\partial} \alpha T_j b_i \boldsymbol{n}\cdot \left(k \nabla b_j\right) + \int b_i Q.
+\int_{\partial} \alpha T_j b_i \boldsymbol{n}\cdot \left(k \nabla b_j\right) + \int \alpha b_i Q.
 $$
 
 #### Boundary Condition
