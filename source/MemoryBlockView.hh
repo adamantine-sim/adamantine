@@ -1,4 +1,4 @@
-/* Copyright (c) 2021, the adamantine authors.
+/* Copyright (c) 2021-2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -21,6 +21,12 @@ class MemoryBlockView
 {
 public:
   using memory_space = MemorySpaceType;
+
+  /**
+   * Default constructor.
+   */
+  ADAMANTINE_HOST_DEV
+  MemoryBlockView() = default;
 
   /**
    * Constructor.
