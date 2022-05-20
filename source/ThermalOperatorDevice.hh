@@ -21,10 +21,10 @@ class ThermalOperatorDevice final
     : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
-  ThermalOperatorDevice(MPI_Comm const &communicator,
-                        BoundaryType boundary_type,
-                        std::shared_ptr<MaterialProperty<dim, MemorySpaceType>>
-                            material_properties);
+  ThermalOperatorDevice(
+      MPI_Comm const &communicator, BoundaryType boundary_type,
+      std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> const
+          &material_properties);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,

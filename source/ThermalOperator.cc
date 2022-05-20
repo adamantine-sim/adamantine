@@ -23,8 +23,9 @@ namespace adamantine
 template <int dim, int fe_degree, typename MemorySpaceType>
 ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
     MPI_Comm const &communicator, BoundaryType boundary_type,
-    std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> material_properties,
-    std::vector<std::shared_ptr<HeatSource<dim>>> heat_sources)
+    std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> const
+        &material_properties,
+    std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources)
     : _communicator(communicator), _boundary_type(boundary_type),
       _material_properties(material_properties), _heat_sources(heat_sources),
       _inverse_mass_matrix(
