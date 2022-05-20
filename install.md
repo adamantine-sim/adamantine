@@ -24,8 +24,8 @@ An example on how to install all the dependencies can be found in
 To configure *adamantine* use:
 ```CMake
 cmake \
-  -D CMAKE_BUILD_TYPE=Release \
-  -D DEAL_II_DIR=/path/to/dealii \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DDEAL_II_DIR=/path/to/dealii \
   -DBOOST_DIR=/path/to/boost \
 /path/to/source/dir
 ```
@@ -49,3 +49,4 @@ You can pull Docker image containing *adamantine* using
 ```
 docker pull rombur/adamantine:latest
 ```
+*adamantine* can be found in `/home/adamantine/bin`
