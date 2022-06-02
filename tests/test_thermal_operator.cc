@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -95,8 +95,6 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
                                                        deposition_sin);
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
-      thermal_operator.m());
   thermal_operator.get_state_from_material_properties();
 
   BOOST_CHECK(thermal_operator.m() == 99);
@@ -203,8 +201,6 @@ BOOST_AUTO_TEST_CASE(spmv)
                                                        deposition_sin);
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
-      thermal_operator.m());
   thermal_operator.get_state_from_material_properties();
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
@@ -312,8 +308,6 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic)
                                                        deposition_sin);
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
-      thermal_operator.m());
   thermal_operator.get_state_from_material_properties();
   BOOST_CHECK(thermal_operator.m() == 99);
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
@@ -454,8 +448,6 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle)
                                                        deposition_sin);
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dummy(
-      thermal_operator.m());
   thermal_operator.get_state_from_material_properties();
   BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
 

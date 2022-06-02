@@ -1,4 +1,4 @@
-/* Copyright (c) 2021, the adamantine authors.
+/* Copyright (c) 2021-2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -213,7 +213,7 @@ void MemoryBlock<Number, MemorySpaceType>::reinit(
   _size = other._size;
   _extent = other._extent;
   _data = Memory<Number, MemorySpaceType>::allocate_data(_size);
-  deep_copy(_data, other);
+  deep_copy(*this, other);
 }
 
 template <typename Number, typename MemorySpaceType>
