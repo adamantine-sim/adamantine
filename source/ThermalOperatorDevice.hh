@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -22,6 +22,7 @@ class ThermalOperatorDevice final
 {
 public:
   ThermalOperatorDevice(MPI_Comm const &communicator,
+                        BoundaryType boundary_type,
                         std::shared_ptr<MaterialProperty<dim, MemorySpaceType>>
                             material_properties);
 
@@ -74,15 +75,9 @@ public:
       dealii::LA::distributed::Vector<double, MemorySpaceType> const &state)
       override;
 
-  void get_state_from_material_properties() override
-  {
-    // TODO
-  }
+  void get_state_from_material_properties() override;
 
-  virtual void set_state_to_material_properties()
-  {
-    // TODO
-  }
+  void set_state_to_material_properties() override;
 
   /**
    * Set the deposition cosine and sine angles and convert the data from
@@ -92,32 +87,43 @@ public:
       std::vector<double> const &deposition_cos,
       std::vector<double> const &deposition_sin);
 
-  virtual void set_time_and_source_height(double, double)
+  void set_time_and_source_height(double, double) override
   {
     // TODO
   }
 
   /**
+   * Update \f$ \frac{1}{\rho C_p} \f$ on the cells using the values computed at
+   * the quadrature points.
+   */
+  void update_inv_rho_cp_cell();
+
+  /**
    * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given cell and
    * quadrature point.
    */
-  double get_inv_rho_cp(typename dealii::DoFHandler<dim>::cell_iterator const &,
-                        unsigned int) const override;
+  double
+  get_inv_rho_cp(typename dealii::DoFHandler<dim>::cell_iterator const &cell,
+                 unsigned int q) const override;
 
 private:
   MPI_Comm const &_communicator;
+  BoundaryType _boundary_type;
   dealii::types::global_dof_index _m;
   unsigned int _n_owned_cells;
   typename dealii::CUDAWrappers::MatrixFree<dim, double>::AdditionalData
       _matrix_free_data;
   std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> _material_properties;
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
-  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _inv_rho_cp;
+  MemoryBlock<double, dealii::MemorySpace::CUDA> _liquid_ratio;
+  MemoryBlock<double, dealii::MemorySpace::CUDA> _powder_ratio;
+  MemoryBlock<double, dealii::MemorySpace::CUDA> _material_id;
+  MemoryBlock<double, dealii::MemorySpace::CUDA> _inv_rho_cp;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _deposition_cos;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _deposition_sin;
-  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity_x;
-  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity_y;
-  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _thermal_conductivity_z;
+  std::map<typename dealii::DoFHandler<dim>::cell_iterator,
+           std::vector<unsigned int>>
+      _cell_it_to_mf_pos;
   std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
       _inverse_mass_matrix;
   std::map<typename dealii::DoFHandler<dim>::cell_iterator, double>

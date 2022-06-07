@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -27,6 +27,7 @@
 #include <deal.II/hp/q_collection.h>
 #include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_gmres.h>
+#include <deal.II/lac/vector_operation.h>
 
 #ifdef ADAMANTINE_WITH_CALIPER
 #include <caliper/cali.h>
@@ -37,6 +38,7 @@
 #ifdef __GLIBCXX__
 #include <execution>
 #endif
+#include <memory>
 
 namespace adamantine
 {
@@ -87,33 +89,7 @@ void init_dof_vector(
     vector.local_element(i) = value;
 }
 
-#ifdef ADAMANTINE_HAVE_CUDA
-template <int dim, int fe_degree, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
-              int> = 0>
-dealii::LA::distributed::Vector<double, MemorySpaceType> vmult_and_scale(
-    std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> const
-        &thermal_operator,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &value,
-    std::vector<Timer> &timers)
-{
-  dealii::LA::distributed::Vector<double, MemorySpaceType> value_dev(
-      value.get_partitioner());
-  value_dev.import(value, dealii::VectorOperation::insert);
-
-  // Apply the Thermal Operator.
-  thermal_operator->vmult_add(value_dev, y);
-
-  // Multiply by the inverse of the mass matrix.
-  value_dev.scale(*thermal_operator->get_inverse_mass_matrix());
-
-  timers[evol_time_eval_th_ph].stop();
-
-  return value_dev;
-}
-
+#if defined(ADAMANTINE_HAVE_CUDA) && defined(__CUDACC__)
 template <int dim, int fe_degree, typename MemorySpaceType,
           std::enable_if_t<
               std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
@@ -137,12 +113,25 @@ evaluate_thermal_physics_impl(
   timers[evol_time_eval_mat_prop].stop();
 
   timers[evol_time_eval_th_ph].start();
+
+  dealii::LA::distributed::Vector<double, MemorySpaceType> value_dev(
+      y.get_partitioner());
+
+  // Apply the Thermal Operator.
+  thermal_operator->vmult(value_dev, y);
+
+  // Compute the source term.
+  // TODO do this on the GPU
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> source(
       y.get_partitioner());
   source = 0.;
 
-  // Compute the source term.
-  // TODO do this on the GPU
+  // Compute inv_rho_cp at the cell level on the host. We would not need to do
+  // this if everything was done on the GPU.
+  auto thermal_operator_dev = std::dynamic_pointer_cast<
+      ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>>(thermal_operator);
+  thermal_operator_dev->update_inv_rho_cp_cell();
+
   dealii::hp::QCollection<dim> source_q_collection;
   source_q_collection.push_back(dealii::QGauss<dim>(fe_degree + 1));
   source_q_collection.push_back(dealii::QGauss<dim>(1));
@@ -241,11 +230,20 @@ evaluate_thermal_physics_impl(
     affine_constraints.distribute_local_to_global(cell_source,
                                                   local_dof_indices, source);
   }
-
   source.compress(dealii::VectorOperation::add);
 
-  return vmult_and_scale<dim, fe_degree, MemorySpaceType>(thermal_operator, y,
-                                                          source, timers);
+  // Add source
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> source_dev(
+      source.get_partitioner());
+  source_dev.import(source, dealii::VectorOperation::insert);
+  value_dev += source_dev;
+
+  // Multiply by the inverse of the mass matrix.
+  value_dev.scale(*thermal_operator->get_inverse_mass_matrix());
+
+  timers[evol_time_eval_th_ph].stop();
+
+  return value_dev;
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -367,7 +365,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   else
     _thermal_operator = std::make_shared<
         ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>>(
-        communicator, _material_properties);
+        communicator, _boundary_type, _material_properties);
 #endif
 
   // Create the time stepping scheme
@@ -837,13 +835,11 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 #endif
   if constexpr (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
   {
-    _thermal_operator->evaluate_material_properties(y);
     return evaluate_thermal_physics_impl<dim, fe_degree, MemorySpaceType>(
         _thermal_operator, t, _current_source_height, y, timers);
   }
   else
   {
-    _thermal_operator->evaluate_material_properties(y);
     return evaluate_thermal_physics_impl<dim, fe_degree, MemorySpaceType>(
         _thermal_operator, _fe_collection, t, _dof_handler, _heat_sources,
         _current_source_height, _boundary_type, _material_properties,

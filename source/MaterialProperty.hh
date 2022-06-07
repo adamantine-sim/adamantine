@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -47,6 +47,17 @@ public:
       boost::property_tree::ptree const &database);
 
   /**
+   * Return true if the material properties are given in table format. Return
+   * false if they are given in polynomial format.
+   */
+  bool properties_use_table() const;
+
+  /**
+   * Return the order of the polynomial used to set the material properties
+   */
+  unsigned int polynomial_order() const;
+
+  /**
    * Return the value of the given StateProperty for a given cell.
    */
   double get_cell_value(
@@ -64,6 +75,26 @@ public:
    * Return the value of a given Property for a given material id.
    */
   double get(dealii::types::material_id material_id, Property prop) const;
+
+  /**
+   * Return a MemoryBlockView of the properties of the material that are
+   * independent of the state of the material.
+   */
+  MemoryBlockView<double, MemorySpaceType> get_properties();
+
+  /**
+   * Return a MemoryBlockView of the properties of the material that are
+   * dependent of the state of the material and which have beese set using
+   * tables.
+   */
+  MemoryBlockView<double, MemorySpaceType> get_state_property_tables();
+
+  /**
+   * Return a MemoryBlockView of the properties of the material that are
+   * dependent of the state of the material and which have beese set using
+   * polynomials.
+   */
+  MemoryBlockView<double, MemorySpaceType> get_state_property_polynomials();
 
   /**
    * Reinitialize the DoFHandler associated with MaterialProperty and resize the
@@ -97,6 +128,9 @@ public:
                             dealii::VectorizedArray<double> const *state_ratios,
                             dealii::VectorizedArray<double> temperature) const;
 
+  /**
+   * Compute a material property at a quadrature point for a mix of states.
+   */
   ADAMANTINE_HOST_DEV
   double compute_material_property(StateProperty state_property,
                                    dealii::types::material_id const material_id,
@@ -137,6 +171,16 @@ public:
       dealii::DoFHandler<dim> const &dof_handler);
 
   /**
+   * Set the ratio of the material states from ThermalOperatorDevice.
+   */
+  void set_state_device(
+      MemoryBlock<double, MemorySpaceType> const &liquid_ratio,
+      MemoryBlock<double, MemorySpaceType> const &powder_ratio,
+      std::map<typename dealii::DoFHandler<dim>::cell_iterator,
+               std::vector<unsigned int>> const &_cell_it_to_mf_pos,
+      dealii::DoFHandler<dim> const &dof_handler);
+
+  /**
    * Return the underlying the DoFHandler.
    */
   dealii::DoFHandler<dim> const &get_dof_handler() const;
@@ -146,6 +190,15 @@ public:
   {
     return _dofs_map;
   }
+
+  /**
+   * Compute a property from a table given the temperature.
+   */
+  static ADAMANTINE_HOST_DEV double compute_property_from_table(
+      MemoryBlockView<double, MemorySpaceType> const
+          &state_property_tables_view,
+      unsigned int const material_id, unsigned int const material_state,
+      unsigned int const property, double const temperature);
 
 private:
   /**
@@ -199,15 +252,6 @@ private:
           &temperature) const;
 
   /**
-   * Compute a property from a table given the temperature.
-   */
-  ADAMANTINE_HOST_DEV double compute_property_from_table(
-      MemoryBlockView<double, MemorySpaceType> const
-          &state_property_tables_view,
-      unsigned int const material_id, unsigned int const material_state,
-      unsigned int const property, double const temperature) const;
-
-  /**
    * MPI communicator.
    */
   MPI_Comm _communicator;
@@ -231,6 +275,10 @@ private:
    * of the state of the material.
    */
   MemoryBlock<double, MemorySpaceType> _properties;
+  /**
+   * MemoryBlockView associated with _properties.
+   */
+  MemoryBlockView<double, MemorySpaceType> _properties_view;
   /**
    * MemoryBlock that stores the ratio of each in MaterarialState in each cell.
    */
@@ -256,8 +304,44 @@ template <int dim, typename MemorySpaceType>
 inline double MaterialProperty<dim, MemorySpaceType>::get(
     dealii::types::material_id material_id, Property property) const
 {
-  MemoryBlockView<double, MemorySpaceType> properties_view(_properties);
-  return properties_view(material_id, static_cast<unsigned int>(property));
+  // This function works only on the host because the MemoryBlockView needs to
+  // be created on the host. Using MemoryBlock directly doesn't work because the
+  // _data ptr is on the host.
+  return _properties_view(material_id, static_cast<unsigned int>(property));
+}
+
+template <int dim, typename MemorySpaceType>
+inline MemoryBlockView<double, MemorySpaceType>
+MaterialProperty<dim, MemorySpaceType>::get_properties()
+{
+  return _properties_view;
+}
+
+template <int dim, typename MemorySpaceType>
+inline bool MaterialProperty<dim, MemorySpaceType>::properties_use_table() const
+{
+  return _use_table;
+}
+
+template <int dim, typename MemorySpaceType>
+inline unsigned int
+MaterialProperty<dim, MemorySpaceType>::polynomial_order() const
+{
+  return _polynomial_order;
+}
+
+template <int dim, typename MemorySpaceType>
+inline MemoryBlockView<double, MemorySpaceType>
+MaterialProperty<dim, MemorySpaceType>::get_state_property_tables()
+{
+  return MemoryBlockView<double, MemorySpaceType>(_state_property_tables);
+}
+
+template <int dim, typename MemorySpaceType>
+inline MemoryBlockView<double, MemorySpaceType>
+MaterialProperty<dim, MemorySpaceType>::get_state_property_polynomials()
+{
+  return MemoryBlockView<double, MemorySpaceType>(_state_property_polynomials);
 }
 
 template <int dim, typename MemorySpaceType>
