@@ -607,9 +607,9 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree,
                            MemorySpaceType>::set_state_to_material_properties()
 {
-  _material_properties->set_state(_liquid_ratio, _powder_ratio,
-                                  _cell_it_to_mf_pos,
-                                  _matrix_free.get_dof_handler());
+  _material_properties->set_state_device(_liquid_ratio, _powder_ratio,
+                                         _cell_it_to_mf_pos,
+                                         _matrix_free.get_dof_handler());
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>

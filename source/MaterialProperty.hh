@@ -173,11 +173,12 @@ public:
   /**
    * Set the ratio of the material states from ThermalOperatorDevice.
    */
-  void set_state(MemoryBlock<double, MemorySpaceType> const &liquid_ratio,
-                 MemoryBlock<double, MemorySpaceType> const &powder_ratio,
-                 std::map<typename dealii::DoFHandler<dim>::cell_iterator,
-                          std::vector<unsigned int>> const &_cell_it_to_mf_pos,
-                 dealii::DoFHandler<dim> const &dof_handler);
+  void set_state_device(
+      MemoryBlock<double, MemorySpaceType> const &liquid_ratio,
+      MemoryBlock<double, MemorySpaceType> const &powder_ratio,
+      std::map<typename dealii::DoFHandler<dim>::cell_iterator,
+               std::vector<unsigned int>> const &_cell_it_to_mf_pos,
+      dealii::DoFHandler<dim> const &dof_handler);
 
   /**
    * Return the underlying the DoFHandler.

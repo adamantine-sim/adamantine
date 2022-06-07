@@ -597,7 +597,7 @@ void MaterialProperty<dim, MemorySpaceType>::set_state(
 }
 
 template <int dim, typename MemorySpaceType>
-void MaterialProperty<dim, MemorySpaceType>::set_state(
+void MaterialProperty<dim, MemorySpaceType>::set_state_device(
     MemoryBlock<double, MemorySpaceType> const &liquid_ratio,
     MemoryBlock<double, MemorySpaceType> const &powder_ratio,
     std::map<typename dealii::DoFHandler<dim>::cell_iterator,
