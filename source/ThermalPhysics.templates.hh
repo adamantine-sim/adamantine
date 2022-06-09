@@ -55,9 +55,9 @@ evaluate_thermal_physics_impl(
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
     std::vector<Timer> &timers)
 {
-  timers[evol_time_eval_mat_prop].start();
-  thermal_operator->evaluate_material_properties(y);
-  timers[evol_time_eval_mat_prop].stop();
+  timers[evol_time_update_bound_mat_prop].start();
+  thermal_operator->update_boundary_material_properties(y);
+  timers[evol_time_update_bound_mat_prop].stop();
 
   timers[evol_time_eval_th_ph].start();
   thermal_operator->set_time_and_source_height(t, current_source_height);
@@ -108,9 +108,9 @@ evaluate_thermal_physics_impl(
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
     std::vector<Timer> &timers)
 {
-  timers[evol_time_eval_mat_prop].start();
-  thermal_operator->evaluate_material_properties(y);
-  timers[evol_time_eval_mat_prop].stop();
+  timers[evol_time_update_bound_mat_prop].start();
+  thermal_operator->update_boundary_material_properties(y);
+  timers[evol_time_update_bound_mat_prop].stop();
 
   timers[evol_time_eval_th_ph].start();
 

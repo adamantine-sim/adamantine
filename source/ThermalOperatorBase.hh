@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -42,7 +42,7 @@ public:
       dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
       const = 0;
 
-  virtual void evaluate_material_properties(
+  virtual void update_boundary_material_properties(
       dealii::LA::distributed::Vector<double, MemorySpaceType> const
           &state) = 0;
 

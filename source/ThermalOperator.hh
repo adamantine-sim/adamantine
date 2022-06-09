@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -24,10 +24,11 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
-  ThermalOperator(MPI_Comm const &communicator, BoundaryType boundary_type,
-                  std::shared_ptr<MaterialProperty<dim, MemorySpaceType>>
-                      material_properties,
-                  std::vector<std::shared_ptr<HeatSource<dim>>> heat_sources);
+  ThermalOperator(
+      MPI_Comm const &communicator, BoundaryType boundary_type,
+      std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> const
+          &material_properties,
+      std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources);
 
   /**
    * Associate the AffineConstraints<double> and the MatrixFree objects to the
@@ -104,13 +105,12 @@ public:
       std::vector<double> const &deposition_sin) override;
 
   /**
-   * Evaluate the material properties for a given state field.
+   * Update the material properties used by non-adiabatic boundary conditiions
+   * for a given state field.
    */
-  // This function should be removed once the MaterialProperty for the device
-  // has been reworked and the material properties on the surface is computed
-  // correctly. The current name does not correctly explain what this
-  // function does but the name is still correct for the device.
-  void evaluate_material_properties(
+  // This function should be removed once the material properties on the surface
+  // is computed correctly.
+  void update_boundary_material_properties(
       dealii::LA::distributed::Vector<double, MemorySpaceType> const &state)
       override;
 

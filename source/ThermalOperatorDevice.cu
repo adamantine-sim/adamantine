@@ -403,7 +403,8 @@ namespace adamantine
 template <int dim, int fe_degree, typename MemorySpaceType>
 ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::ThermalOperatorDevice(
     MPI_Comm const &communicator, BoundaryType boundary_type,
-    std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> material_properties)
+    std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> const
+        &material_properties)
     : _communicator(communicator), _boundary_type(boundary_type), _m(0),
       _n_owned_cells(0), _material_properties(material_properties),
       _inverse_mass_matrix(
@@ -614,7 +615,7 @@ void ThermalOperatorDevice<dim, fe_degree,
 
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
-    evaluate_material_properties(
+    update_boundary_material_properties(
         dealii::LA::distributed::Vector<double, MemorySpaceType> const
             &temperature)
 {

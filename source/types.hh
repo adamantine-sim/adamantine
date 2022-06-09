@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -106,7 +106,7 @@ enum Timing
   evol_time,
   evol_time_eval_th_ph,
   evol_time_J_inv,
-  evol_time_eval_mat_prop,
+  evol_time_update_bound_mat_prop,
   output,
   n_timers
 };

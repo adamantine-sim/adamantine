@@ -596,6 +596,7 @@ void MaterialProperty<dim, MemorySpaceType>::set_state(
   }
 }
 
+#ifdef __CUDACC__
 template <int dim, typename MemorySpaceType>
 void MaterialProperty<dim, MemorySpaceType>::set_state_device(
     MemoryBlock<double, MemorySpaceType> const &liquid_ratio,
@@ -604,7 +605,6 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
              std::vector<unsigned int>> const &_cell_it_to_mf_pos,
     dealii::DoFHandler<dim> const &dof_handler)
 {
-#ifdef __CUDACC__
   // Create a mapping between the matrix free dofs and material property dofs
   std::vector<dealii::types::global_dof_index> mp_dof(1.);
   unsigned int const n_q_points = dof_handler.get_fe().tensor_degree() + 1;
@@ -663,8 +663,8 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
                               state_view(powder_state, mp_dof_view(i)),
                           0.);
            });
-#endif
 }
+#endif
 
 template <int dim, typename MemorySpaceType>
 void MaterialProperty<dim, MemorySpaceType>::set_initial_state()
