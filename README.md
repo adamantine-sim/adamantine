@@ -190,6 +190,7 @@ The following options are available:
 
 
 
+
     from each camera. (required)
     * first\_frame\_temporal\_offset: A uniform shift to the timestamps from all cameras to match 
     the simulation time (default value: 0.0)
