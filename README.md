@@ -186,6 +186,8 @@ The following options are available:
     * last\_camera\_id: number associated to the last camera (required)
     * data\_columns: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D) (required)
     * log\_filename: The (full) filename of the log file that lists the timestamp for each frame 
+
+
     from each camera. (required)
     * first\_frame\_temporal\_offset: A uniform shift to the timestamps from all cameras to match 
     the simulation time (default value: 0.0)
