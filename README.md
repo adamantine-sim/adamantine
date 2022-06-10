@@ -188,6 +188,7 @@ The following options are available:
     * log\_filename: The (full) filename of the log file that lists the timestamp for each frame 
 
 
+
     from each camera. (required)
     * first\_frame\_temporal\_offset: A uniform shift to the timestamps from all cameras to match 
     the simulation time (default value: 0.0)
