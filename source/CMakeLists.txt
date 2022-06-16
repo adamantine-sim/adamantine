@@ -51,10 +51,12 @@ if (ADAMANTINE_ENABLE_DEALII_WEAK_FORMS)
   set(Adamantine_HEADERS
       ${Adamantine_HEADERS}
       ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.hh
+      ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.hh
       )
   set(Adamantine_SOURCES
       ${Adamantine_SOURCES}
       ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.cc
+      ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.cc
      )
 endif()
 
