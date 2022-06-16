@@ -48,6 +48,7 @@ set(WEAK_FORMS_UNIT_TESTS "")
 list(APPEND
      WEAK_FORMS_UNIT_TESTS
      test_mechanical_operator
+     test_mechanical_physics
      )
 
 foreach(TEST_NAME ${UNIT_TESTS})
