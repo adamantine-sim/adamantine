@@ -12,6 +12,7 @@ list(APPEND
      test_heat_source
      test_implicit_operator
      test_material_property
+     test_mechanical_operator
      test_newton_solver
      test_post_processor
      test_scan_path
