@@ -311,7 +311,7 @@ RUN export ARBORX_HASH=dc372874ce4d1ec756de2503a30c293e2fd0776b && \
 ENV ARBORX_DIR=${INSTALL_DIR}/arborx
 
 # Install deal.II 
-RUN export DEAL_II_HASH=8197bc4197029df173581bc09c18030e9d824104 && \
+RUN export DEAL_II_HASH=410c81a9a1ca015a5c2a6f686c3ebe09b1ee89c4 && \
     export DEAL_II_URL=https://github.com/dealii/dealii/archive/${DEAL_II_HASH}.tar.gz && \
     export DEAL_II_ARCHIVE=${ARCHIVE_DIR}/dealii.tar.gz && \
     export DEAL_II_SOURCE_DIR=${SOURCE_DIR}/dealii && \
@@ -349,7 +349,7 @@ ENV DEAL_II_DIR=${INSTALL_DIR}/dealii
 ENV DEAL_II_NUM_THREADS=1
 
 # Install dealii-weak_forms
-RUN export DEALII_WEAK_FORMS_HASH=f5c7b185d8eb1aae7b7cb837e025a3636b6e11d2 && \
+RUN export DEALII_WEAK_FORMS_HASH=a11a0ca2cccc8d18f7c6b2a01856bae1e87be456 && \
     export DEALII_WEAK_FORMS_URL=https://github.com/jppelteret/dealii-weak_forms/archive/${DEALII_WEAK_FORMS_HASH}.tar.gz && \
     export DEALII_WEAK_FORMS_ARCHIVE=${ARCHIVE_DIR}/dealii-weak_forms.tar.gz && \
     export DEALII_WEAK_FORMS_SOURCE_DIR=${SOURCE_DIR}/dealii-weak_forms && \
