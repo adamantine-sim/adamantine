@@ -12,6 +12,10 @@
 #include <deal.II/base/cuda_size.h>
 #include <deal.II/base/exceptions.h>
 
+#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
+#include <weak_forms/symbolic_decorations.h>
+#endif
+
 #include <cassert>
 #include <cstring>
 #include <exception>
@@ -180,6 +184,26 @@ inline void ASSERT_THROW_NOT_IMPLEMENTED()
   NotImplementedExc exception;
   throw exception;
 }
+
+#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
+/**
+ * Customize latex output created by dealii-weak_forms.
+ */
+inline dealiiWeakForms::WeakForms::Decorations::Discretization
+symbolic_names(std::string const &test_function,
+               std::string const &trial_solution = "\\tilde")
+{
+  std::string const solution_field = "\\varphi";
+  std::string const shape_function = "N";
+  std::string const dof_value = "c";
+  std::string const JxW = "\\int";
+
+  return dealiiWeakForms::WeakForms::Decorations::Discretization(
+      solution_field, test_function, trial_solution, shape_function, dof_value,
+      JxW);
+}
+#endif
+
 } // namespace adamantine
 
 #endif
