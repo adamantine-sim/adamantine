@@ -141,12 +141,6 @@ public:
    * Return the AffineConstraints<double>.
    */
   virtual dealii::AffineConstraints<double> &get_affine_constraints() = 0;
-
-  /**
-   * Return a shared pointer of the MaterialProperty.
-   */
-  virtual std::shared_ptr<MaterialProperty<dim, MemorySpaceType>>
-  get_material_property() = 0;
 };
 } // namespace adamantine
 #endif

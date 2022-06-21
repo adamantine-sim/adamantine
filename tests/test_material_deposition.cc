@@ -5,6 +5,7 @@
  * for the text and further information on this license.
  */
 
+#include "MaterialProperty.hh"
 #define BOOST_TEST_MODULE MaterialDeposition
 
 #include <Geometry.hh>
@@ -255,7 +256,7 @@ BOOST_AUTO_TEST_CASE(material_deposition)
       database.get_child("geometry");
   adamantine::Geometry<dim> geometry(communicator, geometry_database);
 
-  // Material property
+  // MaterialProperty database
   database.put("materials.property_format", "polynomial");
   database.put("materials.initial_temperature", initial_temperature);
   database.put("materials.new_material_temperature", initial_temperature);
@@ -268,6 +269,13 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   database.put("materials.material_0.solid.thermal_conductivity_z", 1.);
   database.put("materials.material_0.liquid.thermal_conductivity_x", 1.);
   database.put("materials.material_0.liquid.thermal_conductivity_z", 1.);
+  // Build MaterialProperty
+  boost::property_tree::ptree material_property_database =
+      database.get_child("materials");
+  adamantine::MaterialProperty<dim, dealii::MemorySpace::Host>
+      material_properties(communicator, geometry.get_triangulation(),
+                          material_property_database);
+
   // Source database
   database.put("sources.n_beams", 0);
   // Time-stepping database
@@ -278,7 +286,7 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   // Build ThermalPhysics
   adamantine::ThermalPhysics<dim, dim, dealii::MemorySpace::Host,
                              dealii::QGauss<1>>
-      thermal_physics(communicator, database, geometry);
+      thermal_physics(communicator, database, geometry, material_properties);
   thermal_physics.setup_dofs();
   thermal_physics.update_material_deposition_orientation();
   thermal_physics.compute_inverse_mass_matrix();

@@ -39,6 +39,11 @@ public:
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solve();
 
+  /**
+   * Return the DoFHandler.
+   */
+  dealii::DoFHandler<dim> const &get_dof_handler() const;
+
 private:
   /**
    * Associated Geometry.
@@ -65,6 +70,14 @@ private:
    */
   std::unique_ptr<MechanicalOperator<dim>> _mechanical_operator;
 };
+
+template <int dim>
+inline dealii::DoFHandler<dim> const &
+MechanicalPhysics<dim>::get_dof_handler() const
+{
+  return _dof_handler;
+}
+
 } // namespace adamantine
 
 #endif

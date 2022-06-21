@@ -23,8 +23,7 @@ class ThermalOperatorDevice final
 public:
   ThermalOperatorDevice(
       MPI_Comm const &communicator, BoundaryType boundary_type,
-      std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> const
-          &material_properties);
+      MaterialProperty<dim, MemorySpaceType> &material_properties);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
@@ -107,13 +106,22 @@ public:
                  unsigned int q) const override;
 
 private:
+  /**
+   * MPI communicator.
+   */
   MPI_Comm const &_communicator;
+  /**
+   * Type of boundary.
+   */
   BoundaryType _boundary_type;
   dealii::types::global_dof_index _m;
   unsigned int _n_owned_cells;
   typename dealii::CUDAWrappers::MatrixFree<dim, double>::AdditionalData
       _matrix_free_data;
-  std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> _material_properties;
+  /**
+   * Material properties associated with the domain.
+   */
+  MaterialProperty<dim, MemorySpaceType> &_material_properties;
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
   MemoryBlock<double, dealii::MemorySpace::CUDA> _liquid_ratio;
   MemoryBlock<double, dealii::MemorySpace::CUDA> _powder_ratio;
