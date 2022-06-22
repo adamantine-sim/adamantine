@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -92,7 +92,7 @@ public:
    * augmented ensemble involving heat source parameters.
    */
   void update_physics_parameters(
-      boost::property_tree::ptree const &heat_source_database);
+      boost::property_tree::ptree const &heat_source_database) override;
 
   double evolve_one_time_step(
       double t, double delta_t,
