@@ -12,7 +12,6 @@ list(APPEND
      test_heat_source
      test_implicit_operator
      test_material_property
-     test_mechanical_operator
      test_newton_solver
      test_post_processor
      test_scan_path
@@ -45,6 +44,12 @@ list(APPEND
      test_thermal_physics_device
      )
 
+set(WEAK_FORMS_UNIT_TESTS "")
+list(APPEND
+     WEAK_FORMS_UNIT_TESTS
+     test_mechanical_operator
+     )
+
 foreach(TEST_NAME ${UNIT_TESTS})
   adamantine_ADD_BOOST_TEST(${TEST_NAME})
 endforeach()
@@ -56,6 +61,12 @@ endforeach()
 if (ADAMANTINE_ENABLE_CUDA)
   foreach(TEST_NAME ${CUDA_UNIT_TESTS})
     adamantine_ADD_BOOST_CUDA_TEST(${TEST_NAME})
+  endforeach()
+endif()
+
+if (ADAMANTINE_ENABLE_DEALII_WEAK_FORMS)
+  foreach(TEST_NAME ${WEAK_FORMS_UNIT_TESTS})
+    adamantine_ADD_BOOST_TEST(${TEST_NAME})
   endforeach()
 endif()
 
