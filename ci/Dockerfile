@@ -344,6 +344,7 @@ RUN export DEAL_II_HASH=00be141a1de735be9b5c54bba99af862077643da && \
         -DCMAKE_CUDA_FLAGS="-arch=sm_70 -std=c++17 --extended-lambda" \
         -DCMAKE_CXX_EXTENSIONS=OFF \
         -DCMAKE_CXX_STANDARD=17 \
+        -DDEAL_II_WITH_TBB=OFF \
         -DDEAL_II_WITH_64BIT_INDICES=ON \
         -DDEAL_II_WITH_COMPLEX_VALUES=OFF \
         -DDEAL_II_WITH_MPI=ON \
@@ -364,9 +365,6 @@ RUN export DEAL_II_HASH=00be141a1de735be9b5c54bba99af862077643da && \
     rm -rf ${DEAL_II_BUILD_DIR} 
 # We keep the source file for debugging purpose
 ENV DEAL_II_DIR=${INSTALL_DIR}/dealii
-
-# There is a bug when using multithreading. Disabling it for now.
-ENV DEAL_II_NUM_THREADS=1
 
 # Install dealii-weak_forms
 RUN export DEALII_WEAK_FORMS_HASH=a11a0ca2cccc8d18f7c6b2a01856bae1e87be456 && \
