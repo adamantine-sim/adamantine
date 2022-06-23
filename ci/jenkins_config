@@ -73,7 +73,7 @@ pipeline {
           stage('clang-sanitizer') {
             agent {
               docker {
-                image "rombur/adamantine-stack:latest"
+                image "rombur/adamantine-stack:clang-latest"
                   args '--cap-add SYS_PTRACE'
                   alwaysPull true
                   label 'docker'
