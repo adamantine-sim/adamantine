@@ -17,10 +17,6 @@
 #include <algorithm>
 #include <iostream>
 #include <tuple>
-// libc++ does not support parallel std library
-#ifdef __GLIBCXX__
-#include <execution>
-#endif
 
 namespace adamantine
 {
@@ -286,12 +282,8 @@ merge_deposition_paths(
   unsigned int const n_boxes = bounding_boxes.size();
   std::vector<int> permutation(n_boxes);
   std::iota(permutation.begin(), permutation.end(), 0);
-  std::sort(
-#ifdef __GLIBCXX__
-      std::execution::par,
-#endif
-      permutation.begin(), permutation.end(),
-      [&](int const &i, int const &j) { return time[i] < time[j]; });
+  std::sort(permutation.begin(), permutation.end(),
+            [&](int const &i, int const &j) { return time[i] < time[j]; });
 
   // Apply the permutation to all the vectors. This is not the most memory
   // efficient way to do it but I don't think it matters. We store a lot more

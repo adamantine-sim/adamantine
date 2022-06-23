@@ -19,7 +19,6 @@
 #include <cassert>
 #include <cstring>
 #include <exception>
-#include <execution>
 #include <numeric>
 #include <stdexcept>
 #include <string>

@@ -22,11 +22,6 @@
 #include <caliper/cali.h>
 #endif
 
-// libc++ does not support parallel std library
-#ifdef __GLIBCXX__
-#include <execution>
-#endif
-
 namespace adamantine
 {
 
@@ -217,9 +212,6 @@ DataAssimilator::apply_kalman_gain(
   // Apply the Kalman gain to the perturbed innovation for the ensemble
   // members in parallel
   std::transform(
-#ifdef __GLIBCXX__
-      std::execution::par,
-#endif
       perturbed_innovation.begin(), perturbed_innovation.end(), output.begin(),
       [&](dealii::Vector<double> entry) {
         dealii::SolverGMRES<dealii::Vector<double>> HPH_plus_R_inv_solver(
