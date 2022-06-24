@@ -7,8 +7,6 @@
 
 #include <ensemble_management.hh>
 
-#include <deal.II/base/mpi.h>
-
 #include <numeric>
 
 #define BOOST_TEST_MODULE EnsembleManagement
@@ -34,7 +32,8 @@ BOOST_AUTO_TEST_CASE(fill_and_sync_random_vector)
   BOOST_CHECK(vec.size() == ensemble_size);
 
   // Check vector mean
-  double mean_check = std::reduce(vec.cbegin(), vec.cend()) / ensemble_size;
+  double mean_check =
+      std::accumulate(vec.cbegin(), vec.cend(), 0.) / ensemble_size;
 
   BOOST_CHECK_CLOSE(mean, mean_check, tolerance);
 
