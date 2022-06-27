@@ -34,10 +34,6 @@
 #endif
 
 #include <algorithm>
-// libc++ does not support parallel std library
-#ifdef __GLIBCXX__
-#include <execution>
-#endif
 #include <memory>
 
 namespace adamantine
@@ -700,16 +696,12 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   // associated to the fine cell. The final value is decided by
   // AffineConstraints. Thus, we need to make sure that the newly activated
   // cells are at the same level than their neighbors.
-  std::for_each(
-#ifdef __GLIBCXX__
-      std::execution::par,
-#endif
-      solution.begin(), solution.end(), [&](double &val) {
-        if (val == std::numeric_limits<double>::infinity())
-        {
-          val = new_material_temperature;
-        }
-      });
+  std::for_each(solution.begin(), solution.end(), [&](double &val) {
+    if (val == std::numeric_limits<double>::infinity())
+    {
+      val = new_material_temperature;
+    }
+  });
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,

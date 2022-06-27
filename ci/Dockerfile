@@ -3,6 +3,7 @@ FROM $BASE
 
 ARG N_PROCS=8
 ARG CUDA=ON
+ARG CLANG=OFF
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
@@ -27,6 +28,12 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
       libgmp-dev \
       && \
       apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN if [ $CLANG = ON ]; \
+    then \
+    update-alternatives --install /usr/bin/cc cc /usr/bin/clang 100; \
+    update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++ 100; \
+    fi
 
 ENV PREFIX=/scratch
 ENV ARCHIVE_DIR=${PREFIX}/archive
@@ -56,6 +63,10 @@ RUN export CMAKE_VERSION=3.21.0 && \
 ENV PATH=${INSTALL_DIR}/cmake/bin:$PATH
 
 # Install OpenMPI
+# We would like to be able to compile OpenMPI with clang but it doesn't work
+# because LLVM does not have a working Fortran compiler. We need Fortran because
+# p4est checks at configure time that MPI Fortran works even tough it does not
+# use it. This should be fixed in p4est 3.0
 RUN export OPENMPI_VERSION=4.1.3 && \
     export OPENMPI_VERSION_SHORT=4.1 && \
     export OPENMPI_SHA256=3d81d04c54efb55d3871a465ffb098d8d72c1f48ff1cbaf2580eb058567c0a3b && \
@@ -70,7 +81,7 @@ RUN export OPENMPI_VERSION=4.1.3 && \
     tar -xf ${OPENMPI_ARCHIVE} -C ${OPENMPI_SOURCE_DIR} --strip-components=1 && \
     mkdir -p ${OPENMPI_BUILD_DIR} && \
     cd ${OPENMPI_BUILD_DIR} && \
-    if [ $CUDA ]; \
+    if [ $CUDA = ON ]; \
     then \
     ${OPENMPI_SOURCE_DIR}/configure --with-cuda=/usr/local/cuda --prefix=${OPENMPI_INSTALL_DIR};  \
     else \
@@ -84,6 +95,8 @@ ENV OMPI_ALLOW_RUN_AS_ROOT=1
 ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
 ENV OMPI_MCA_btl_vader_single_copy_mechanism=none
 ENV OMPI_MCA_btl_base_warn_component_unused='0'
+ENV OMPI_CC=cc
+ENV OMPI_CXX=c++
 ENV PATH=${INSTALL_DIR}/openmpi/bin:$PATH
 
 # Install Boost
@@ -100,9 +113,12 @@ RUN export BOOST_VERSION=1.76.0 && \
     mkdir -p ${BOOST_SOURCE_DIR} && \
     tar -xf ${BOOST_ARCHIVE} -C ${BOOST_SOURCE_DIR} --strip-components=1 && \
     cd ${BOOST_SOURCE_DIR} && \
-    ./bootstrap.sh \
-        --prefix=${BOOST_INSTALL_DIR} \
-        && \
+    if [ $CLANG = ON ]; \
+    then \
+    ./bootstrap.sh --with-toolset=clang --prefix=${BOOST_INSTALL_DIR}; \
+    else \
+    ./bootstrap.sh --prefix=${BOOST_INSTALL_DIR}; \
+    fi && \
     echo "using mpi ;" >> project-config.jam && \
     ./b2 -j${N_PROCS}\
         --build-dir=${BOOST_BUILD_DIR} \
@@ -159,6 +175,7 @@ RUN export HDF5_VERSION=1.12.0 && \
 ENV HDF5_DIR=/opt/hdf5
 
 # Install NetCDF
+# NetCDF does not like clang, so always set compiler to gcc
 RUN export NETCDF_VERSION=4.7.4 && \
     export NETCDF_URL=https://github.com/Unidata/netcdf-c/archive/v${NETCDF_VERSION}.tar.gz && \
     export NETCDF_ARCHIVE=${ARCHIVE_DIR}/netcdf.tar.gz && \
@@ -170,6 +187,7 @@ RUN export NETCDF_VERSION=4.7.4 && \
     tar -xf ${NETCDF_ARCHIVE} -C ${NETCDF_SOURCE_DIR} --strip-components=1 && \
     mkdir -p ${NETCDF_BUILD_DIR} && \
     cd ${NETCDF_BUILD_DIR} && \
+    OMPI_CC=gcc \
     ${NETCDF_SOURCE_DIR}/configure \
         --prefix=${NETCDF_INSTALL_DIR} \
         --enable-netcdf-4 \
@@ -311,7 +329,7 @@ RUN export ARBORX_HASH=dc372874ce4d1ec756de2503a30c293e2fd0776b && \
 ENV ARBORX_DIR=${INSTALL_DIR}/arborx
 
 # Install deal.II 
-RUN export DEAL_II_HASH=410c81a9a1ca015a5c2a6f686c3ebe09b1ee89c4 && \
+RUN export DEAL_II_HASH=00be141a1de735be9b5c54bba99af862077643da && \
     export DEAL_II_URL=https://github.com/dealii/dealii/archive/${DEAL_II_HASH}.tar.gz && \
     export DEAL_II_ARCHIVE=${ARCHIVE_DIR}/dealii.tar.gz && \
     export DEAL_II_SOURCE_DIR=${SOURCE_DIR}/dealii && \
@@ -324,8 +342,11 @@ RUN export DEAL_II_HASH=410c81a9a1ca015a5c2a6f686c3ebe09b1ee89c4 && \
     cmake -DCMAKE_BUILD_TYPE=DebugRelease \
         -DCMAKE_CXX_FLAGS="-std=c++17" \
         -DCMAKE_CUDA_FLAGS="-arch=sm_70 -std=c++17 --extended-lambda" \
+        -DCMAKE_CXX_EXTENSIONS=OFF \
         -DCMAKE_CXX_STANDARD=17 \
+        -DDEAL_II_WITH_TBB=OFF \
         -DDEAL_II_WITH_64BIT_INDICES=ON \
+        -DDEAL_II_WITH_COMPLEX_VALUES=OFF \
         -DDEAL_II_WITH_MPI=ON \
         -DDEAL_II_WITH_P4EST=ON \
         -DP4EST_DIR=${P4EST_DIR} \
@@ -344,9 +365,6 @@ RUN export DEAL_II_HASH=410c81a9a1ca015a5c2a6f686c3ebe09b1ee89c4 && \
     rm -rf ${DEAL_II_BUILD_DIR} 
 # We keep the source file for debugging purpose
 ENV DEAL_II_DIR=${INSTALL_DIR}/dealii
-
-# There is a bug when using multithreading. Disabling it for now.
-ENV DEAL_II_NUM_THREADS=1
 
 # Install dealii-weak_forms
 RUN export DEALII_WEAK_FORMS_HASH=a11a0ca2cccc8d18f7c6b2a01856bae1e87be456 && \

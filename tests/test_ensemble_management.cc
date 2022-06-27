@@ -7,12 +7,6 @@
 
 #include <ensemble_management.hh>
 
-#include <deal.II/base/mpi.h>
-
-// libc++ does not support parallel std library
-#ifdef __GLIBCXX__
-#include <execution>
-#endif
 #include <numeric>
 
 #define BOOST_TEST_MODULE EnsembleManagement
@@ -38,12 +32,8 @@ BOOST_AUTO_TEST_CASE(fill_and_sync_random_vector)
   BOOST_CHECK(vec.size() == ensemble_size);
 
   // Check vector mean
-  double mean_check = std::reduce(
-#ifdef __GLIBCXX__
-                          std::execution::par,
-#endif
-                          vec.cbegin(), vec.cend()) /
-                      ensemble_size;
+  double mean_check =
+      std::accumulate(vec.cbegin(), vec.cend(), 0.) / ensemble_size;
 
   BOOST_CHECK_CLOSE(mean, mean_check, tolerance);
 

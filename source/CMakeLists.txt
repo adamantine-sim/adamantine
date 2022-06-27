@@ -47,6 +47,17 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/validate_input_database.cc
   )
 
+if (ADAMANTINE_ENABLE_DEALII_WEAK_FORMS)
+  set(Adamantine_HEADERS
+      ${Adamantine_HEADERS}
+      ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.hh
+      )
+  set(Adamantine_SOURCES
+      ${Adamantine_SOURCES}
+      ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.cc
+     )
+endif()
+
 if (ADAMANTINE_ENABLE_CUDA)
   set(Adamantine_HEADERS
       ${Adamantine_HEADERS}
