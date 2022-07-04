@@ -16,6 +16,8 @@
 
 #include "main.cc"
 
+namespace utf = boost::unit_test;
+
 BOOST_AUTO_TEST_CASE(read_experimental_data_point_cloud_from_file)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
@@ -42,13 +44,13 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_point_cloud_from_file)
   points_ref.emplace_back(1., 0.5, 1.);
   points_ref.emplace_back(1., 1., 1.);
 
-  BOOST_CHECK(points_values.size() == 1);
-  BOOST_CHECK(points_values[0].points.size() == 9);
-  BOOST_CHECK(points_values[0].points.size() == points_values[0].values.size());
+  BOOST_TEST(points_values.size() == 1);
+  BOOST_TEST(points_values[0].points.size() == 9);
+  BOOST_TEST(points_values[0].points.size() == points_values[0].values.size());
   for (unsigned int i = 0; i < points_values[0].points.size(); ++i)
   {
-    BOOST_CHECK(points_values[0].values[i] == values_ref[i]);
-    BOOST_CHECK(points_values[0].points[i] == points_ref[i]);
+    BOOST_TEST(points_values[0].values[i] == values_ref[i]);
+    BOOST_TEST(points_values[0].points[i] == points_ref[i]);
   }
 }
 
@@ -102,8 +104,8 @@ BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data_point_cloud)
 
   for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
   {
-    BOOST_CHECK(temperature.local_element(i) ==
-                temperature_ref[locally_owned_dofs.nth_index_in_set(i)]);
+    BOOST_TEST(temperature.local_element(i) ==
+               temperature_ref[locally_owned_dofs.nth_index_in_set(i)]);
   }
 }
 
@@ -151,12 +153,12 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_ray_tracing_from_file)
   if (dealii::Utilities::MPI::this_mpi_process(communicator) == 0)
     for (unsigned int i = 0; i < values_ref.size(); ++i)
     {
-      BOOST_CHECK(points_values.values[i] == values_ref[i]);
-      BOOST_CHECK(points_values.points[i] == points_ref[i]);
+      BOOST_TEST(points_values.values[i] == values_ref[i]);
+      BOOST_TEST(points_values.points[i] == points_ref[i]);
     }
 }
 
-BOOST_AUTO_TEST_CASE(timestamp)
+BOOST_AUTO_TEST_CASE(timestamp, *utf::tolerance(1e-12))
 {
   boost::property_tree::ptree database;
   database.put("log_filename", "experiment_log_test.txt");
@@ -169,17 +171,15 @@ BOOST_AUTO_TEST_CASE(timestamp)
   std::vector<std::vector<double>> time_stamps =
       adamantine::read_frame_timestamps(database);
 
-  double tol = 1.0e-12;
+  BOOST_TEST(time_stamps.size() == 2);
+  BOOST_TEST(time_stamps[0].size() == 3);
+  BOOST_TEST(time_stamps[1].size() == 3);
 
-  BOOST_CHECK(time_stamps.size() == 2);
-  BOOST_CHECK(time_stamps[0].size() == 3);
-  BOOST_CHECK(time_stamps[1].size() == 3);
+  BOOST_TEST(time_stamps[0][0] == 0.1);
+  BOOST_TEST(time_stamps[0][1] == 0.1135);
+  BOOST_TEST(time_stamps[0][2] == 0.1345);
 
-  BOOST_CHECK_CLOSE(time_stamps[0][0], 0.1, tol);
-  BOOST_CHECK_CLOSE(time_stamps[0][1], 0.1135, tol);
-  BOOST_CHECK_CLOSE(time_stamps[0][2], 0.1345, tol);
-
-  BOOST_CHECK_CLOSE(time_stamps[1][0], 0.1, tol);
-  BOOST_CHECK_CLOSE(time_stamps[1][1], 0.1136, tol);
-  BOOST_CHECK_CLOSE(time_stamps[1][2], 0.1348, tol);
+  BOOST_TEST(time_stamps[1][0] == 0.1);
+  BOOST_TEST(time_stamps[1][1] == 0.1136);
+  BOOST_TEST(time_stamps[1][2] == 0.1348);
 }

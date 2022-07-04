@@ -25,7 +25,10 @@
 
 #include "main.cc"
 
-BOOST_AUTO_TEST_CASE(thermal_operator_dev)
+namespace tt = boost::test_tools;
+namespace utf = boost::unit_test;
+
+BOOST_AUTO_TEST_CASE(thermal_operator_dev, *utf::tolerance(1e-10))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -84,11 +87,10 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev)
   thermal_operator_dev.set_material_deposition_orientation(deposition_cos,
                                                            deposition_sin);
   thermal_operator_dev.get_state_from_material_properties();
-  BOOST_CHECK(thermal_operator_dev.m() == 99);
-  BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
+  BOOST_TEST(thermal_operator_dev.m() == 99);
+  BOOST_TEST(thermal_operator_dev.m() == thermal_operator_dev.n());
 
   // Check matrix-vector multiplications
-  double const tolerance = 1e-10;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> src;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_1;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_2;
@@ -100,23 +102,23 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev)
 
   src = 1.;
   thermal_operator_dev.vmult(dst_1, src);
-  BOOST_CHECK_CLOSE(dst_1.l1_norm() + 1, 1., tolerance);
+  BOOST_TEST(dst_1.l1_norm() == 0);
 
   thermal_operator_dev.Tvmult(dst_2, src);
-  BOOST_CHECK_CLOSE(dst_2.l1_norm(), dst_1.l1_norm(), tolerance);
+  BOOST_TEST(dst_2.l1_norm() == dst_1.l1_norm());
 
   dst_2 = 1.;
   thermal_operator_dev.vmult_add(dst_2, src);
   thermal_operator_dev.vmult(dst_1, src);
   dst_1 += src;
-  BOOST_CHECK_CLOSE(dst_1.l1_norm(), dst_2.l1_norm(), tolerance);
+  BOOST_TEST(dst_1.l1_norm() == dst_2.l1_norm());
 
   dst_1 = 1.;
   thermal_operator_dev.Tvmult_add(dst_1, src);
-  BOOST_CHECK_CLOSE(dst_1.l1_norm(), dst_2.l1_norm(), tolerance);
+  BOOST_TEST(dst_1.l1_norm() == dst_2.l1_norm());
 }
 
-BOOST_AUTO_TEST_CASE(spmv)
+BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -175,8 +177,8 @@ BOOST_AUTO_TEST_CASE(spmv)
   thermal_operator_dev.set_material_deposition_orientation(deposition_cos,
                                                            deposition_sin);
   thermal_operator_dev.get_state_from_material_properties();
-  BOOST_CHECK(thermal_operator_dev.m() == 99);
-  BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
+  BOOST_TEST(thermal_operator_dev.m() == 99);
+  BOOST_TEST(thermal_operator_dev.m() == thermal_operator_dev.n());
 
   // Build the matrix. This only works in serial.
   dealii::DynamicSparsityPattern dsp(dof_handler.n_dofs());
@@ -188,7 +190,6 @@ BOOST_AUTO_TEST_CASE(spmv)
       dof_handler, dealii::QGauss<2>(3), sparse_matrix);
 
   // Compare vmult using matrix free and building the matrix
-  double const tolerance = 1e-12;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> src_dev;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_dev;
 
@@ -216,11 +217,11 @@ BOOST_AUTO_TEST_CASE(spmv)
     src_host[i] = 1.;
     sparse_matrix.vmult(dst_host, src_host);
     for (unsigned int j = 0; j < thermal_operator_dev.m(); ++j)
-      BOOST_CHECK_CLOSE(rw_vector[j], -dst_host[j], tolerance);
+      BOOST_TEST(rw_vector[j] == -dst_host[j]);
   }
 }
 
-BOOST_AUTO_TEST_CASE(mf_spmv)
+BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -296,7 +297,7 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
   thermal_operator_dev.set_material_deposition_orientation(deposition_cos,
                                                            deposition_sin);
   thermal_operator_dev.get_state_from_material_properties();
-  BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
+  BOOST_TEST(thermal_operator_dev.m() == thermal_operator_dev.n());
 
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>
       thermal_operator_host(communicator, adamantine::BoundaryType::adiabatic,
@@ -309,7 +310,6 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
   thermal_operator_host.get_state_from_material_properties();
 
   // Compare vmult using matrix free and building the matrix
-  double const tolerance = 1.5e-12;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> src_dev;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_dev;
 
@@ -342,12 +342,12 @@ BOOST_AUTO_TEST_CASE(mf_spmv)
     {
       double rw_value = std::abs(rw_vector[j]) > 1e-15 ? rw_vector[j] : 0.;
       double dst_host_value = std::abs(dst_host[j]) > 1e-15 ? dst_host[j] : 0.;
-      BOOST_CHECK_CLOSE(rw_value, dst_host_value, tolerance);
+      BOOST_TEST(rw_value == dst_host_value);
     }
   }
 }
 
-BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle)
+BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -415,7 +415,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle)
   thermal_operator_dev.set_material_deposition_orientation(deposition_cos,
                                                            deposition_sin);
   thermal_operator_dev.get_state_from_material_properties();
-  BOOST_CHECK(thermal_operator_dev.m() == thermal_operator_dev.n());
+  BOOST_TEST(thermal_operator_dev.m() == thermal_operator_dev.n());
 
   // Build the matrix. This only works in serial.
   dealii::DynamicSparsityPattern dsp(dof_handler.n_dofs());
@@ -475,7 +475,6 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle)
   }
 
   // Compare vmult using matrix free and building the matrix
-  double const tolerance = 1e-10;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> src_dev;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_dev;
   thermal_operator_dev.initialize_dof_vector(src_dev);
@@ -497,6 +496,6 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle)
     sparse_matrix.vmult(dst_host, src_host);
     dst_dev_to_host.import(dst_dev, dealii::VectorOperation::insert);
     for (unsigned int j = 0; j < thermal_operator_dev.m(); ++j)
-      BOOST_CHECK_CLOSE(dst_dev_to_host[j], -dst_host[j], tolerance);
+      BOOST_TEST(dst_dev_to_host[j] == -dst_host[j]);
   }
 }

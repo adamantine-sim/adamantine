@@ -10,6 +10,8 @@
 
 #include <deal.II/base/quadrature_lib.h>
 
+namespace tt = boost::test_tools;
+
 template <typename MemorySpaceType>
 void thermal_2d(boost::property_tree::ptree &database, double time_step)
 {
@@ -70,11 +72,11 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   }
 
   double const tolerance = 1e-3;
-  BOOST_CHECK(time == 0.1);
-  BOOST_CHECK_CLOSE(solution.l2_norm(), 0.291705, tolerance);
+  BOOST_TEST(time == 0.1, tt::tolerance(tolerance));
+  BOOST_TEST(solution.l2_norm() == 0.291705, tt::tolerance(tolerance));
 
   physics.initialize_dof_vector(1000., solution);
-  BOOST_CHECK(solution.l1_norm() == 1000. * solution.size());
+  BOOST_TEST(solution.l1_norm() == 1000. * solution.size());
 }
 
 template <typename MemorySpaceType>
@@ -139,15 +141,15 @@ void thermal_2d_manufactured_solution()
 
   double const tolerance = 1e-5;
 
-  BOOST_CHECK(time == 0.1);
+  BOOST_TEST(time == 0.1);
 
-  BOOST_CHECK_SMALL(std::abs(physics.get_current_source_height() - 0.0),
-                    tolerance);
+  BOOST_TEST(physics.get_current_source_height() == 0.0,
+             tt::tolerance(tolerance));
 
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
   {
     for (unsigned int i = 0; i < solution.locally_owned_size(); ++i)
-      BOOST_CHECK_CLOSE(solution.local_element(i), 0.1, tolerance);
+      BOOST_TEST(solution.local_element(i) == 0.1, tt::tolerance(tolerance));
   }
   else
   {
@@ -155,7 +157,7 @@ void thermal_2d_manufactured_solution()
         solution_host(solution.get_partitioner());
     solution_host.import(solution, dealii::VectorOperation::insert);
     for (unsigned int i = 0; i < solution.size(); ++i)
-      BOOST_CHECK_CLOSE(solution_host[i], 0.1, tolerance);
+      BOOST_TEST(solution_host[i] == 0.1, tt::tolerance(tolerance));
   }
 }
 
@@ -215,7 +217,7 @@ void initial_temperature()
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(1000., solution);
   physics.get_state_from_material_properties();
-  BOOST_CHECK(solution.l1_norm() == 1000. * solution.size());
+  BOOST_TEST(solution.l1_norm() == 1000. * solution.size());
 }
 
 template <typename MemorySpaceType>
@@ -308,8 +310,9 @@ void energy_conservation()
   }
 
   double constexpr tolerance = 1e-9;
-  BOOST_CHECK_CLOSE(solution.mean_value(), final_temperature, tolerance);
-  BOOST_CHECK_CLOSE(min, max, tolerance);
+  BOOST_TEST(solution.mean_value() == final_temperature,
+             tt::tolerance(tolerance));
+  BOOST_TEST(min == max, tt::tolerance(tolerance));
 }
 
 template <typename MemorySpaceType>
@@ -403,8 +406,10 @@ void radiation_bcs()
     }
   }
 
-  BOOST_CHECK(min >= 10. && min <= 20.);
-  BOOST_CHECK(max > 10. && max <= 20.);
+  BOOST_TEST(min >= 10.);
+  BOOST_TEST(min <= 20.);
+  BOOST_TEST(max > 10.);
+  BOOST_TEST(max <= 20.);
 }
 
 template <typename MemorySpaceType>
@@ -498,6 +503,8 @@ void convection_bcs()
     }
   }
 
-  BOOST_CHECK(min >= 10. && min <= 20.);
-  BOOST_CHECK(max > 10. && max <= 20.);
+  BOOST_TEST(min >= 10.);
+  BOOST_TEST(min <= 20.);
+  BOOST_TEST(max > 10.);
+  BOOST_TEST(max <= 20.);
 }

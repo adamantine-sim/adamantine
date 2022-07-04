@@ -13,7 +13,9 @@
 
 #include "main.cc"
 
-BOOST_AUTO_TEST_CASE(intregation_2D_device)
+namespace utf = boost::unit_test;
+
+BOOST_AUTO_TEST_CASE(intregation_2D_device, *utf::tolerance(0.1))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -31,11 +33,10 @@ BOOST_AUTO_TEST_CASE(intregation_2D_device)
       run<2, dealii::MemorySpace::CUDA>(communicator, database, timers);
 
   std::ifstream gold_file("integration_2d_gold.txt");
-  double const tolerance = 0.1;
   for (unsigned int i = 0; i < result.locally_owned_size(); ++i)
   {
     double gold_value = -1.;
     gold_file >> gold_value;
-    BOOST_CHECK_CLOSE(result.local_element(i), gold_value, tolerance);
+    BOOST_TEST(result.local_element(i) == gold_value);
   }
 }

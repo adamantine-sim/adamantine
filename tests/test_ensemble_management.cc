@@ -16,10 +16,11 @@
 
 #include "main.cc"
 
-BOOST_AUTO_TEST_CASE(fill_and_sync_random_vector)
+namespace utf = boost::unit_test;
+
+// Fairly loose tolerance because this is a statistical check
+BOOST_AUTO_TEST_CASE(fill_and_sync_random_vector, *utf::tolerance(10.))
 {
-  // Fairly loose tolerance because this is a statistical check
-  double tolerance = 10.0;
 
   // Create the random vector
   double mean = -1.2;
@@ -29,13 +30,13 @@ BOOST_AUTO_TEST_CASE(fill_and_sync_random_vector)
       adamantine::fill_and_sync_random_vector(ensemble_size, mean, stddev);
 
   // Check vector size
-  BOOST_CHECK(vec.size() == ensemble_size);
+  BOOST_TEST(vec.size() == ensemble_size);
 
   // Check vector mean
   double mean_check =
       std::accumulate(vec.cbegin(), vec.cend(), 0.) / ensemble_size;
 
-  BOOST_CHECK_CLOSE(mean, mean_check, tolerance);
+  BOOST_TEST(mean == mean_check);
 
   // Check vector variance
   boost::accumulators::accumulator_set<
@@ -45,6 +46,5 @@ BOOST_AUTO_TEST_CASE(fill_and_sync_random_vector)
   {
     acc(vec[member]);
   }
-  BOOST_CHECK_CLOSE(stddev * stddev, boost::accumulators::variance(acc),
-                    tolerance);
+  BOOST_TEST(stddev * stddev == boost::accumulators::variance(acc));
 }

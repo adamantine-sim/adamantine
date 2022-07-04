@@ -15,6 +15,8 @@
 
 #include "main.cc"
 
+namespace tt = boost::test_tools;
+
 namespace adamantine
 {
 class DataAssimilatorTester
@@ -28,18 +30,20 @@ public:
     DataAssimilator da0(database);
 
     double tol = 1.0e-12;
-    BOOST_CHECK_SMALL(da0._solver_control.tolerance() - 1.0e-10, tol);
-    BOOST_CHECK(da0._solver_control.max_steps() == 100);
-    BOOST_CHECK(da0._additional_data.max_n_tmp_vectors == 30);
+    BOOST_TEST(da0._solver_control.tolerance() - 1.0e-10 == 0.,
+               tt::tolerance(tol));
+    BOOST_TEST(da0._solver_control.max_steps() == 100u);
+    BOOST_TEST(da0._additional_data.max_n_tmp_vectors == 30u);
 
     // Now explicitly setting them
     database.put("solver.convergence_tolerance", 1.0e-6);
     database.put("solver.max_iterations", 25);
     database.put("solver.max_number_of_temp_vectors", 4);
     DataAssimilator da1(database);
-    BOOST_CHECK_SMALL(da1._solver_control.tolerance() - 1.0e-6, tol);
-    BOOST_CHECK(da1._solver_control.max_steps() == 25);
-    BOOST_CHECK(da1._additional_data.max_n_tmp_vectors == 4);
+    BOOST_TEST(da1._solver_control.tolerance() - 1.0e-6 == 0.,
+               tt::tolerance(tol));
+    BOOST_TEST(da1._solver_control.max_steps() == 25u);
+    BOOST_TEST(da1._additional_data.max_n_tmp_vectors == 4u);
   };
 
   void test_calc_kalman_gain()
@@ -150,18 +154,18 @@ public:
     double tol = 1.0e-4;
 
     // Reference solution calculated using Python
-    BOOST_CHECK_CLOSE(forecast_shift[0][0], 0.21352564, tol);
-    BOOST_CHECK_CLOSE(forecast_shift[0][1], -0.14600986, tol);
-    BOOST_CHECK_CLOSE(forecast_shift[0][2], -0.02616469, tol);
-    BOOST_CHECK_CLOSE(forecast_shift[0][3], 0.45321598, tol);
-    BOOST_CHECK_CLOSE(forecast_shift[1][0], -0.27786325, tol);
-    BOOST_CHECK_CLOSE(forecast_shift[1][1], -0.32946285, tol);
-    BOOST_CHECK_CLOSE(forecast_shift[1][2], -0.31226298, tol);
-    BOOST_CHECK_CLOSE(forecast_shift[1][3], -0.24346351, tol);
-    BOOST_CHECK_CLOSE(forecast_shift[2][0], 0.12767094, tol);
-    BOOST_CHECK_CLOSE(forecast_shift[2][1], -0.20319395, tol);
-    BOOST_CHECK_CLOSE(forecast_shift[2][2], -0.09290565, tol);
-    BOOST_CHECK_CLOSE(forecast_shift[2][3], 0.34824753, tol);
+    BOOST_TEST(forecast_shift[0][0] == 0.21352564, tt::tolerance(tol));
+    BOOST_TEST(forecast_shift[0][1] == -0.14600986, tt::tolerance(tol));
+    BOOST_TEST(forecast_shift[0][2] == -0.02616469, tt::tolerance(tol));
+    BOOST_TEST(forecast_shift[0][3] == 0.45321598, tt::tolerance(tol));
+    BOOST_TEST(forecast_shift[1][0] == -0.27786325, tt::tolerance(tol));
+    BOOST_TEST(forecast_shift[1][1] == -0.32946285, tt::tolerance(tol));
+    BOOST_TEST(forecast_shift[1][2] == -0.31226298, tt::tolerance(tol));
+    BOOST_TEST(forecast_shift[1][3] == -0.24346351, tt::tolerance(tol));
+    BOOST_TEST(forecast_shift[2][0] == 0.12767094, tt::tolerance(tol));
+    BOOST_TEST(forecast_shift[2][1] == -0.20319395, tt::tolerance(tol));
+    BOOST_TEST(forecast_shift[2][2] == -0.09290565, tt::tolerance(tol));
+    BOOST_TEST(forecast_shift[2][3] == 0.34824753, tt::tolerance(tol));
   };
 
   void test_update_dof_mapping()
@@ -202,12 +206,12 @@ public:
     da._expt_size = expt_size;
     da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
 
-    BOOST_CHECK(da._expt_to_dof_mapping.first[0] == 0);
-    BOOST_CHECK(da._expt_to_dof_mapping.first[1] == 1);
-    BOOST_CHECK(da._expt_to_dof_mapping.first[2] == 2);
-    BOOST_CHECK(da._expt_to_dof_mapping.second[0] == 0);
-    BOOST_CHECK(da._expt_to_dof_mapping.second[1] == 1);
-    BOOST_CHECK(da._expt_to_dof_mapping.second[2] == 3);
+    BOOST_TEST(da._expt_to_dof_mapping.first[0] == 0);
+    BOOST_TEST(da._expt_to_dof_mapping.first[1] == 1);
+    BOOST_TEST(da._expt_to_dof_mapping.first[2] == 2);
+    BOOST_TEST(da._expt_to_dof_mapping.second[0] == 0);
+    BOOST_TEST(da._expt_to_dof_mapping.second[1] == 1);
+    BOOST_TEST(da._expt_to_dof_mapping.second[2] == 3);
   };
 
   void test_calc_H()
@@ -258,13 +262,13 @@ public:
       for (unsigned int j = 0; j < sim_size; ++j)
       {
         if (i == 0 && j == 0)
-          BOOST_CHECK_CLOSE(H(i, j), 1.0, tol);
+          BOOST_TEST(H(i, j) == 1.0, tt::tolerance(tol));
         else if (i == 1 && j == 1)
-          BOOST_CHECK_CLOSE(H(i, j), 1.0, tol);
+          BOOST_TEST(H(i, j) == 1.0, tt::tolerance(tol));
         else if (i == 2 && j == 3)
-          BOOST_CHECK_CLOSE(H(i, j), 1.0, tol);
+          BOOST_TEST(H(i, j) == 1.0, tt::tolerance(tol));
         else
-          BOOST_CHECK_CLOSE(H.el(i, j), 0.0, tol);
+          BOOST_TEST(H.el(i, j) == 0.0, tt::tolerance(tol));
       }
     }
   };
@@ -319,9 +323,9 @@ public:
     dealii::Vector<double> Hx = da.calc_Hx(sim_vec);
 
     double tol = 1e-10;
-    BOOST_CHECK_CLOSE(Hx(0), 2.0, tol);
-    BOOST_CHECK_CLOSE(Hx(1), 4.0, tol);
-    BOOST_CHECK_CLOSE(Hx(2), 7.0, tol);
+    BOOST_TEST(Hx(0) == 2.0, tt::tolerance(tol));
+    BOOST_TEST(Hx(1) == 4.0, tt::tolerance(tol));
+    BOOST_TEST(Hx(2) == 7.0, tt::tolerance(tol));
   };
 
   void test_update_covariance_sparsity_pattern()
@@ -348,26 +352,26 @@ public:
     da._localization_cutoff_distance = 100.0;
     da._localization_cutoff_function = LocalizationCutoff::step_function;
     da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
-    BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 81);
+    BOOST_TEST(da._covariance_sparsity_pattern.n_nonzero_elements() == 81u);
 
     // Sparse diagonal matrix
     da._localization_cutoff_distance = 1.0e-6;
     da._localization_cutoff_function = LocalizationCutoff::step_function;
     da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
-    BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 9);
+    BOOST_TEST(da._covariance_sparsity_pattern.n_nonzero_elements() == 9u);
 
     // More general sparse matrix, cuts off interactions between the corners
     // of the domain
     da._localization_cutoff_distance = 1.2;
     da._localization_cutoff_function = LocalizationCutoff::step_function;
     da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
-    BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 77);
+    BOOST_TEST(da._covariance_sparsity_pattern.n_nonzero_elements() == 77u);
 
     // Sparse diagonal matrix with two augmentation parameters
     da._localization_cutoff_distance = 1.0e-6;
     da._localization_cutoff_function = LocalizationCutoff::step_function;
     da.update_covariance_sparsity_pattern<2>(dof_handler, 2);
-    BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 49);
+    BOOST_TEST(da._covariance_sparsity_pattern.n_nonzero_elements() == 49u);
   }
 
   void test_calc_sample_covariance_sparse()
@@ -419,7 +423,7 @@ public:
     {
       for (unsigned int j = 0; j < 4; ++j)
       {
-        BOOST_CHECK_SMALL(std::abs(cov(i, j)), tol);
+        BOOST_TEST(cov(i, j) == 0., tt::tolerance(tol));
       }
     }
 
@@ -438,71 +442,83 @@ public:
     dealii::SparseMatrix<double> cov1 =
         da.calc_sample_covariance_sparse(vec_ensemble1);
 
-    BOOST_CHECK_CLOSE(cov1(0, 0), 0.005, tol);
-    BOOST_CHECK_CLOSE(cov1(0, 1), 0.015, tol);
-    BOOST_CHECK_CLOSE(cov1(0, 2), 0.01, tol);
-    BOOST_CHECK_CLOSE(cov1(0, 3), 0.02, tol);
-    BOOST_CHECK_CLOSE(cov1(1, 0), 0.015, tol);
-    BOOST_CHECK_CLOSE(cov1(1, 1), 0.045, tol);
-    BOOST_CHECK_CLOSE(cov1(1, 2), 0.03, tol);
-    BOOST_CHECK_CLOSE(cov1(1, 3), 0.06, tol);
-    BOOST_CHECK_CLOSE(cov1(2, 0), 0.01, tol);
-    BOOST_CHECK_CLOSE(cov1(2, 1), 0.03, tol);
-    BOOST_CHECK_CLOSE(cov1(2, 2), 0.02, tol);
-    BOOST_CHECK_CLOSE(cov1(2, 3), 0.04, tol);
-    BOOST_CHECK_CLOSE(cov1(3, 0), 0.02, tol);
-    BOOST_CHECK_CLOSE(cov1(3, 1), 0.06, tol);
-    BOOST_CHECK_CLOSE(cov1(3, 2), 0.04, tol);
-    BOOST_CHECK_CLOSE(cov1(3, 3), 0.08, tol);
+    BOOST_TEST(cov1(0, 0) == 0.005, tt::tolerance(tol));
+    BOOST_TEST(cov1(0, 1) == 0.015, tt::tolerance(tol));
+    BOOST_TEST(cov1(0, 2) == 0.01, tt::tolerance(tol));
+    BOOST_TEST(cov1(0, 3) == 0.02, tt::tolerance(tol));
+    BOOST_TEST(cov1(1, 0) == 0.015, tt::tolerance(tol));
+    BOOST_TEST(cov1(1, 1) == 0.045, tt::tolerance(tol));
+    BOOST_TEST(cov1(1, 2) == 0.03, tt::tolerance(tol));
+    BOOST_TEST(cov1(1, 3) == 0.06, tt::tolerance(tol));
+    BOOST_TEST(cov1(2, 0) == 0.01, tt::tolerance(tol));
+    BOOST_TEST(cov1(2, 1) == 0.03, tt::tolerance(tol));
+    BOOST_TEST(cov1(2, 2) == 0.02, tt::tolerance(tol));
+    BOOST_TEST(cov1(2, 3) == 0.04, tt::tolerance(tol));
+    BOOST_TEST(cov1(3, 0) == 0.02, tt::tolerance(tol));
+    BOOST_TEST(cov1(3, 1) == 0.06, tt::tolerance(tol));
+    BOOST_TEST(cov1(3, 2) == 0.04, tt::tolerance(tol));
+    BOOST_TEST(cov1(3, 3) == 0.08, tt::tolerance(tol));
 
     // Non-trivial case with step-function sparsity
     da._localization_cutoff_distance = 1.0e-6;
     da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
-    BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 4);
+    BOOST_TEST(da._covariance_sparsity_pattern.n_nonzero_elements() == 4);
     dealii::SparseMatrix<double> cov2 =
         da.calc_sample_covariance_sparse(vec_ensemble1);
 
-    BOOST_CHECK_CLOSE(cov2.el(0, 0), 0.005, tol);
-    BOOST_CHECK_CLOSE(cov2.el(0, 1), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov2.el(0, 2), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov2.el(0, 3), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov2.el(1, 0), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov2.el(1, 1), 0.045, tol);
-    BOOST_CHECK_CLOSE(cov2.el(1, 2), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov2.el(1, 3), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov2.el(2, 0), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov2.el(2, 1), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov2.el(2, 2), 0.02, tol);
-    BOOST_CHECK_CLOSE(cov2.el(2, 3), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov2.el(3, 0), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov2.el(3, 1), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov2.el(3, 2), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov2.el(3, 3), 0.08, tol);
+    BOOST_TEST(cov2.el(0, 0) == 0.005, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(0, 1) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(0, 2) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(0, 3) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(1, 0) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(1, 1) == 0.045, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(1, 2) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(1, 3) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(2, 0) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(2, 1) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(2, 2) == 0.02, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(2, 3) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(3, 0) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(3, 1) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(3, 2) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov2.el(3, 3) == 0.08, tt::tolerance(tol));
 
     // Non-trivial case with Gaspari-Cohn sparsity
     da._localization_cutoff_distance = 3.0;
     da._localization_cutoff_function = LocalizationCutoff::gaspari_cohn;
     da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
-    BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 16);
+    BOOST_TEST(da._covariance_sparsity_pattern.n_nonzero_elements() == 16);
     dealii::SparseMatrix<double> cov3 =
         da.calc_sample_covariance_sparse(vec_ensemble1);
 
-    BOOST_CHECK_CLOSE(cov3.el(0, 0), 0.005, tol);
-    BOOST_CHECK(cov3.el(0, 1) > 0.0 && cov3.el(0, 1) < 0.015);
-    BOOST_CHECK(cov3.el(0, 2) > 0.0 && cov3.el(0, 2) < 0.01);
-    BOOST_CHECK(cov3.el(0, 3) > 0.0 && cov3.el(0, 3) < 0.02);
-    BOOST_CHECK(cov3.el(1, 0) > 0.0 && cov3.el(1, 0) < 0.015);
-    BOOST_CHECK_CLOSE(cov3.el(1, 1), 0.045, tol);
-    BOOST_CHECK(cov3.el(1, 2) > 0.0 && cov3.el(1, 2) < 0.03);
-    BOOST_CHECK(cov3.el(1, 3) > 0.0 && cov3.el(1, 3) < 0.06);
-    BOOST_CHECK(cov3.el(2, 0) > 0.0 && cov3.el(2, 0) < 0.01);
-    BOOST_CHECK(cov3.el(2, 1) > 0.0 && cov3.el(2, 1) < 0.03);
-    BOOST_CHECK_CLOSE(cov3.el(2, 2), 0.02, tol);
-    BOOST_CHECK(cov3.el(2, 3) > 0.0 && cov3.el(2, 3) < 0.04);
-    BOOST_CHECK(cov3.el(3, 0) > 0.0 && cov3.el(3, 0) < 0.02);
-    BOOST_CHECK(cov3.el(3, 1) > 0.0 && cov3.el(3, 1) < 0.06);
-    BOOST_CHECK(cov3.el(3, 2) > 0.0 && cov3.el(3, 2) < 0.04);
-    BOOST_CHECK_CLOSE(cov3.el(3, 3), 0.08, tol);
+    BOOST_TEST(cov3.el(0, 0) == 0.005, tt::tolerance(tol));
+    BOOST_TEST(cov3.el(0, 1) > 0.0);
+    BOOST_TEST(cov3.el(0, 1) < 0.015);
+    BOOST_TEST(cov3.el(0, 2) > 0.0);
+    BOOST_TEST(cov3.el(0, 2) < 0.01);
+    BOOST_TEST(cov3.el(0, 3) > 0.0);
+    BOOST_TEST(cov3.el(0, 3) < 0.02);
+    BOOST_TEST(cov3.el(1, 0) > 0.0);
+    BOOST_TEST(cov3.el(1, 0) < 0.015);
+    BOOST_TEST(cov3.el(1, 1) == 0.045, tt::tolerance(tol));
+    BOOST_TEST(cov3.el(1, 2) > 0.0);
+    BOOST_TEST(cov3.el(1, 2) < 0.03);
+    BOOST_TEST(cov3.el(1, 3) > 0.0);
+    BOOST_TEST(cov3.el(1, 3) < 0.06);
+    BOOST_TEST(cov3.el(2, 0) > 0.0);
+    BOOST_TEST(cov3.el(2, 0) < 0.01);
+    BOOST_TEST(cov3.el(2, 1) > 0.0);
+    BOOST_TEST(cov3.el(2, 1) < 0.03);
+    BOOST_TEST(cov3.el(2, 2) == 0.02, tt::tolerance(tol));
+    BOOST_TEST(cov3.el(2, 3) > 0.0);
+    BOOST_TEST(cov3.el(2, 3) < 0.04);
+    BOOST_TEST(cov3.el(3, 0) > 0.0);
+    BOOST_TEST(cov3.el(3, 0) < 0.02);
+    BOOST_TEST(cov3.el(3, 1) > 0.0);
+    BOOST_TEST(cov3.el(3, 1) < 0.06);
+    BOOST_TEST(cov3.el(3, 2) > 0.0);
+    BOOST_TEST(cov3.el(3, 2) < 0.04);
+    BOOST_TEST(cov3.el(3, 3) == 0.08, tt::tolerance(tol));
 
     // Non-trivial case with step-function sparsity and two augmented parameters
     dealii::LA::distributed::Vector<double> sim_vec2(dof_handler.n_dofs() + 2);
@@ -527,40 +543,40 @@ public:
 
     da._localization_cutoff_distance = 1.0e-6;
     da.update_covariance_sparsity_pattern<2>(dof_handler, 2);
-    BOOST_CHECK(da._covariance_sparsity_pattern.n_nonzero_elements() == 24);
+    BOOST_TEST(da._covariance_sparsity_pattern.n_nonzero_elements() == 24u);
     dealii::SparseMatrix<double> cov4 =
         da.calc_sample_covariance_sparse(vec_ensemble2);
 
-    BOOST_CHECK_CLOSE(cov4.el(0, 0), 0.005, tol);
-    BOOST_CHECK_CLOSE(cov4.el(0, 1), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov4.el(0, 2), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov4.el(0, 3), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov4.el(1, 0), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov4.el(1, 1), 0.045, tol);
-    BOOST_CHECK_CLOSE(cov4.el(1, 2), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov4.el(1, 3), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov4.el(2, 0), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov4.el(2, 1), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov4.el(2, 2), 0.02, tol);
-    BOOST_CHECK_CLOSE(cov4.el(2, 3), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov4.el(3, 0), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov4.el(3, 1), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov4.el(3, 2), 0.0, tol);
-    BOOST_CHECK_CLOSE(cov4.el(3, 3), 0.08, tol);
+    BOOST_TEST(cov4.el(0, 0) == 0.005, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(0, 1) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(0, 2) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(0, 3) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(1, 0) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(1, 1) == 0.045, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(1, 2) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(1, 3) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(2, 0) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(2, 1) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(2, 2) == 0.02, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(2, 3) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(3, 0) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(3, 1) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(3, 2) == 0.0, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(3, 3) == 0.08, tt::tolerance(tol));
 
-    BOOST_CHECK_CLOSE(cov4.el(4, 0), 0.005, tol);
-    BOOST_CHECK_CLOSE(cov4.el(4, 1), 0.015, tol);
-    BOOST_CHECK_CLOSE(cov4.el(4, 2), 0.01, tol);
-    BOOST_CHECK_CLOSE(cov4.el(4, 3), 0.02, tol);
-    BOOST_CHECK_CLOSE(cov4.el(4, 4), 0.005, tol);
-    BOOST_CHECK_CLOSE(cov4.el(4, 5), -0.005, tol);
+    BOOST_TEST(cov4.el(4, 0) == 0.005, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(4, 1) == 0.015, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(4, 2) == 0.01, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(4, 3) == 0.02, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(4, 4) == 0.005, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(4, 5) == -0.005, tt::tolerance(tol));
 
-    BOOST_CHECK_CLOSE(cov4.el(5, 0), -0.005, tol);
-    BOOST_CHECK_CLOSE(cov4.el(5, 1), -0.015, tol);
-    BOOST_CHECK_CLOSE(cov4.el(5, 2), -0.01, tol);
-    BOOST_CHECK_CLOSE(cov4.el(5, 3), -0.02, tol);
-    BOOST_CHECK_CLOSE(cov4.el(5, 4), -0.005, tol);
-    BOOST_CHECK_CLOSE(cov4.el(5, 5), 0.005, tol);
+    BOOST_TEST(cov4.el(5, 0) == -0.005, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(5, 1) == -0.015, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(5, 2) == -0.01, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(5, 3) == -0.02, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(5, 4) == -0.005, tt::tolerance(tol));
+    BOOST_TEST(cov4.el(5, 5) == 0.005, tt::tolerance(tol));
   };
 
   void test_fill_noise_vector(bool R_is_diagonal)
@@ -594,9 +610,9 @@ public:
 
       double tol =
           20.; // Loose 20% tolerance because this is a statistical check
-      BOOST_CHECK_CLOSE(R(0, 0), Rtest(0, 0), tol);
-      BOOST_CHECK_CLOSE(R(1, 1), Rtest(1, 1), tol);
-      BOOST_CHECK_CLOSE(R(2, 2), Rtest(2, 2), tol);
+      BOOST_TEST(R(0, 0) == Rtest(0, 0), tt::tolerance(tol));
+      BOOST_TEST(R(1, 1) == Rtest(1, 1), tt::tolerance(tol));
+      BOOST_TEST(R(2, 2) == Rtest(2, 2), tt::tolerance(tol));
     }
     else
     {
@@ -631,11 +647,11 @@ public:
 
       double tol =
           20.; // Loose 20% tolerance because this is a statistical check
-      BOOST_CHECK_CLOSE(R(0, 0), Rtest(0, 0), tol);
-      BOOST_CHECK_CLOSE(R(1, 0), Rtest(1, 0), tol);
-      BOOST_CHECK_CLOSE(R(1, 1), Rtest(1, 1), tol);
-      BOOST_CHECK_CLOSE(R(0, 1), Rtest(0, 1), tol);
-      BOOST_CHECK_CLOSE(R(2, 2), Rtest(2, 2), tol);
+      BOOST_TEST(R(0, 0) == Rtest(0, 0), tt::tolerance(tol));
+      BOOST_TEST(R(1, 0) == Rtest(1, 0), tt::tolerance(tol));
+      BOOST_TEST(R(1, 1) == Rtest(1, 1), tt::tolerance(tol));
+      BOOST_TEST(R(0, 1) == Rtest(0, 1), tt::tolerance(tol));
+      BOOST_TEST(R(2, 2) == Rtest(2, 2), tt::tolerance(tol));
     }
   }; // namespace adamantine
 
@@ -750,10 +766,10 @@ public:
     // Large entries in R could make these fail spuriously
     for (int member = 0; member < 3; ++member)
     {
-      BOOST_CHECK(std::abs(expt_vec[0] - sim_at_expt_pt_1_after[member]) <=
-                  std::abs(expt_vec[0] - sim_at_expt_pt_1_before[member]));
-      BOOST_CHECK(std::abs(expt_vec[1] - sim_at_expt_pt_2_after[member]) <=
-                  std::abs(expt_vec[1] - sim_at_expt_pt_2_before[member]));
+      BOOST_TEST(std::abs(expt_vec[0] - sim_at_expt_pt_1_after[member]) <=
+                 std::abs(expt_vec[0] - sim_at_expt_pt_1_before[member]));
+      BOOST_TEST(std::abs(expt_vec[1] - sim_at_expt_pt_2_after[member]) <=
+                 std::abs(expt_vec[1] - sim_at_expt_pt_2_before[member]));
     }
   };
 
@@ -880,10 +896,10 @@ public:
     // Large entries in R could make these fail spuriously
     for (int member = 0; member < 3; ++member)
     {
-      BOOST_CHECK(std::abs(expt_vec[0] - sim_at_expt_pt_1_after[member]) <=
-                  std::abs(expt_vec[0] - sim_at_expt_pt_1_before[member]));
-      BOOST_CHECK(std::abs(expt_vec[1] - sim_at_expt_pt_2_after[member]) <=
-                  std::abs(expt_vec[1] - sim_at_expt_pt_2_before[member]));
+      BOOST_TEST(std::abs(expt_vec[0] - sim_at_expt_pt_1_after[member]) <=
+                 std::abs(expt_vec[0] - sim_at_expt_pt_1_before[member]));
+      BOOST_TEST(std::abs(expt_vec[1] - sim_at_expt_pt_2_after[member]) <=
+                 std::abs(expt_vec[1] - sim_at_expt_pt_2_before[member]));
     }
   };
 

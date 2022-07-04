@@ -25,6 +25,8 @@
 
 #include "main.cc"
 
+namespace utf = boost::unit_test;
+
 template <int dim>
 void right_hand_side(const std::vector<dealii::Point<dim>> &points,
                      std::vector<dealii::Tensor<1, dim>> &values)
@@ -48,7 +50,7 @@ void right_hand_side(const std::vector<dealii::Point<dim>> &points,
   }
 }
 
-BOOST_AUTO_TEST_CASE(elastostatic)
+BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
   int constexpr dim = 3;
@@ -195,7 +197,6 @@ BOOST_AUTO_TEST_CASE(elastostatic)
     }
   }
   // Compare the results
-  double const tolerance = 1e-12;
   unsigned int const n_dofs = system_matrix.m();
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src(
       n_dofs);
@@ -210,6 +211,6 @@ BOOST_AUTO_TEST_CASE(elastostatic)
     mechanical_operator.vmult(dst_1, src);
     system_matrix.vmult(dst_2, src);
     for (unsigned int j = 0; j < n_dofs; ++j)
-      BOOST_CHECK_SMALL(dst_1[j] - dst_2[j], tolerance);
+      BOOST_TEST(dst_1[j] - dst_2[j] == 0.);
   }
 }
