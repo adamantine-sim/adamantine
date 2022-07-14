@@ -34,19 +34,20 @@ void check_material_id(
         if ((cell->face(i)->at_boundary()) &&
             (cell->face(i)->boundary_id() == top_boundary))
         {
-          BOOST_CHECK(cell->user_index() ==
-                      static_cast<int>(adamantine::MaterialState::powder));
+          BOOST_TEST(
+              cell->user_index() ==
+              static_cast<unsigned int>(adamantine::MaterialState::powder));
           powder = true;
           break;
         }
       }
       if (powder == false)
-        BOOST_CHECK(cell->user_index() ==
-                    static_cast<int>(adamantine::MaterialState::solid));
+        BOOST_TEST(cell->user_index() ==
+                   static_cast<unsigned int>(adamantine::MaterialState::solid));
     }
     else
-      BOOST_CHECK(cell->user_index() ==
-                  static_cast<int>(adamantine::MaterialState::solid));
+      BOOST_TEST(cell->user_index() ==
+                 static_cast<unsigned int>(adamantine::MaterialState::solid));
   }
 }
 
@@ -67,7 +68,7 @@ BOOST_AUTO_TEST_CASE(geometry_2D)
   dealii::parallel::distributed::Triangulation<2> const &tria =
       geometry.get_triangulation();
 
-  BOOST_CHECK(tria.n_active_cells() == 20);
+  BOOST_TEST(tria.n_active_cells() == 20);
 
   dealii::types::boundary_id const top_boundary = 3;
   check_material_id(tria, top_boundary);
@@ -92,7 +93,7 @@ BOOST_AUTO_TEST_CASE(geometry_3D)
   dealii::parallel::distributed::Triangulation<3> const &tria =
       geometry.get_triangulation();
 
-  BOOST_CHECK(tria.n_active_cells() == 40);
+  BOOST_TEST(tria.n_active_cells() == 40);
 
   dealii::types::boundary_id const top_boundary = 5;
   check_material_id(tria, top_boundary);
@@ -113,7 +114,7 @@ BOOST_AUTO_TEST_CASE(gmsh)
   dealii::parallel::distributed::Triangulation<3> const &tria =
       geometry.get_triangulation();
 
-  BOOST_CHECK(tria.n_active_cells() == 320);
+  BOOST_TEST(tria.n_active_cells() == 320);
 
   dealii::types::boundary_id const top_boundary = 1;
   check_material_id(tria, top_boundary);

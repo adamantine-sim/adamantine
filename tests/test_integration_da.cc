@@ -33,7 +33,7 @@ BOOST_AUTO_TEST_CASE(integration_data_assimilation)
                                                            database, timers);
 
   // Three ensemble members expected
-  BOOST_CHECK(result.size() == 3);
+  BOOST_TEST(result.size() == 3);
 
   // Get the average minimum value for each ensemble member, which is very close
   // to the initial temperature
@@ -52,6 +52,6 @@ BOOST_AUTO_TEST_CASE(integration_data_assimilation)
   double average_minimum_value = sum / result.size();
 
   // Based on the experimental data, the expected temperature is ~200.0
-  BOOST_CHECK((average_minimum_value >= 200.0) &&
-              (average_minimum_value < 300.0));
+  BOOST_TEST(average_minimum_value >= 200.0);
+  BOOST_TEST(average_minimum_value < 300.0);
 }

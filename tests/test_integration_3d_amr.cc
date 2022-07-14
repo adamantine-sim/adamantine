@@ -13,7 +13,9 @@
 
 #include "main.cc"
 
-BOOST_AUTO_TEST_CASE(integration_3D_amr)
+namespace utf = boost::unit_test;
+
+BOOST_AUTO_TEST_CASE(integration_3D_amr, *utf::tolerance(0.1))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -49,8 +51,6 @@ BOOST_AUTO_TEST_CASE(integration_3D_amr)
   double expected_max = 329.5;
   double expected_min = 296.1;
 
-  double const tolerance = 0.1;
-
-  BOOST_CHECK_CLOSE(expected_max, global_max, tolerance);
-  BOOST_CHECK_CLOSE(expected_min, global_min, tolerance);
+  BOOST_TEST(expected_max == global_max);
+  BOOST_TEST(expected_min == global_min);
 }

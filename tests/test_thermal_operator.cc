@@ -24,7 +24,10 @@
 
 #include "main.cc"
 
-BOOST_AUTO_TEST_CASE(thermal_operator)
+namespace tt = boost::test_tools;
+namespace utf = boost::unit_test;
+
+BOOST_AUTO_TEST_CASE(thermal_operator, *utf::tolerance(1e-15))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -97,11 +100,10 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
                                                fe_collection);
   thermal_operator.get_state_from_material_properties();
 
-  BOOST_CHECK(thermal_operator.m() == 99);
-  BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
+  BOOST_TEST(thermal_operator.m() == 99);
+  BOOST_TEST(thermal_operator.m() == thermal_operator.n());
 
   // Check matrix-vector multiplications
-  double const tolerance = 1e-15;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_1;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_2;
@@ -114,23 +116,23 @@ BOOST_AUTO_TEST_CASE(thermal_operator)
 
   src = 1.;
   thermal_operator.vmult(dst_1, src);
-  BOOST_CHECK_CLOSE(dst_1.l1_norm(), 0., tolerance);
+  BOOST_TEST(dst_1.l1_norm() == 0.);
 
   thermal_operator.Tvmult(dst_2, src);
-  BOOST_CHECK_CLOSE(dst_2.l1_norm(), dst_1.l1_norm(), tolerance);
+  BOOST_TEST(dst_2.l1_norm() == dst_1.l1_norm());
 
   dst_2 = 1.;
   thermal_operator.vmult_add(dst_2, src);
   thermal_operator.vmult(dst_1, src);
   dst_1 += src;
-  BOOST_CHECK_CLOSE(dst_1.l1_norm(), dst_2.l1_norm(), tolerance);
+  BOOST_TEST(dst_1.l1_norm() == dst_2.l1_norm());
 
   dst_1 = 1.;
   thermal_operator.Tvmult_add(dst_1, src);
-  BOOST_CHECK_CLOSE(dst_1.l1_norm(), dst_2.l1_norm(), tolerance);
+  BOOST_TEST(dst_1.l1_norm() == dst_2.l1_norm());
 }
 
-BOOST_AUTO_TEST_CASE(spmv)
+BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -202,8 +204,8 @@ BOOST_AUTO_TEST_CASE(spmv)
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
   thermal_operator.get_state_from_material_properties();
-  BOOST_CHECK(thermal_operator.m() == 99);
-  BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
+  BOOST_TEST(thermal_operator.m() == 99);
+  BOOST_TEST(thermal_operator.m() == thermal_operator.n());
 
   // Build the matrix. This only works in serial.
   dealii::DynamicSparsityPattern dsp(dof_handler.n_dofs());
@@ -215,29 +217,31 @@ BOOST_AUTO_TEST_CASE(spmv)
       dof_handler, dealii::QGauss<2>(3), sparse_matrix);
 
   // Compare vmult using matrix free and building the matrix
-  double const tolerance = 1e-12;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src_1;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src_2;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_1;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_2;
 
   dealii::MatrixFree<2, double> const &matrix_free =
       thermal_operator.get_matrix_free();
-  matrix_free.initialize_dof_vector(src);
+  matrix_free.initialize_dof_vector(src_1);
+  matrix_free.initialize_dof_vector(src_2);
   matrix_free.initialize_dof_vector(dst_1);
   matrix_free.initialize_dof_vector(dst_2);
 
   for (unsigned int i = 0; i < thermal_operator.m(); ++i)
   {
-    src = 0.;
-    src[i] = 1;
-    thermal_operator.vmult(dst_1, src);
-    sparse_matrix.vmult(dst_2, src);
-    for (unsigned int j = 0; j < thermal_operator.m(); ++j)
-      BOOST_CHECK_CLOSE(dst_1[j], -dst_2[j], tolerance);
+    src_1 = 0.;
+    src_2 = 0.;
+    src_1[i] = 1;
+    src_2[i] = -1;
+    thermal_operator.vmult(dst_1, src_1);
+    sparse_matrix.vmult(dst_2, src_2);
+    BOOST_TEST(dst_1 == dst_2, tt::per_element());
   }
 }
 
-BOOST_AUTO_TEST_CASE(spmv_anisotropic)
+BOOST_AUTO_TEST_CASE(spmv_anisotropic, *utf::tolerance(1e-12))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -309,8 +313,8 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic)
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
   thermal_operator.get_state_from_material_properties();
-  BOOST_CHECK(thermal_operator.m() == 99);
-  BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
+  BOOST_TEST(thermal_operator.m() == 99);
+  BOOST_TEST(thermal_operator.m() == thermal_operator.n());
 
   // Build the matrix. This only works in serial.
   dealii::DynamicSparsityPattern dsp(dof_handler.n_dofs());
@@ -354,29 +358,31 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic)
   }
 
   // Compare vmult using matrix free and building the matrix
-  double const tolerance = 1e-12;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src_1;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src_2;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_1;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_2;
 
   dealii::MatrixFree<2, double> const &matrix_free =
       thermal_operator.get_matrix_free();
-  matrix_free.initialize_dof_vector(src);
+  matrix_free.initialize_dof_vector(src_1);
+  matrix_free.initialize_dof_vector(src_2);
   matrix_free.initialize_dof_vector(dst_1);
   matrix_free.initialize_dof_vector(dst_2);
 
   for (unsigned int i = 0; i < thermal_operator.m(); ++i)
   {
-    src = 0.;
-    src[i] = 1;
-    thermal_operator.vmult(dst_1, src);
-    sparse_matrix.vmult(dst_2, src);
-    for (unsigned int j = 0; j < thermal_operator.m(); ++j)
-      BOOST_CHECK_CLOSE(dst_1[j], -dst_2[j], tolerance);
+    src_1 = 0.;
+    src_2 = 0.;
+    src_1[i] = 1;
+    src_2[i] = -1;
+    thermal_operator.vmult(dst_1, src_1);
+    sparse_matrix.vmult(dst_2, src_2);
+    BOOST_TEST(dst_1 == dst_2, tt::per_element());
   }
 }
 
-BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle)
+BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -449,7 +455,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle)
   thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
                                                fe_collection);
   thermal_operator.get_state_from_material_properties();
-  BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
+  BOOST_TEST(thermal_operator.m() == thermal_operator.n());
 
   // Build the matrix. This only works in serial.
   dealii::DynamicSparsityPattern dsp(dof_handler.n_dofs());
@@ -509,29 +515,31 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle)
   }
 
   // Compare vmult using matrix free and building the matrix
-  double const tolerance = 1e-10;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src_1;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src_2;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_1;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_2;
 
   dealii::MatrixFree<3, double> const &matrix_free =
       thermal_operator.get_matrix_free();
-  matrix_free.initialize_dof_vector(src);
+  matrix_free.initialize_dof_vector(src_1);
+  matrix_free.initialize_dof_vector(src_2);
   matrix_free.initialize_dof_vector(dst_1);
   matrix_free.initialize_dof_vector(dst_2);
 
   for (unsigned int i = 0; i < thermal_operator.m(); ++i)
   {
-    src = 0.;
-    src[i] = 1;
-    thermal_operator.vmult(dst_1, src);
-    sparse_matrix.vmult(dst_2, src);
-    for (unsigned int j = 0; j < thermal_operator.m(); ++j)
-      BOOST_CHECK_CLOSE(dst_1[j], -dst_2[j], tolerance);
+    src_1 = 0.;
+    src_2 = 0.;
+    src_1[i] = 1;
+    src_2[i] = -1;
+    thermal_operator.vmult(dst_1, src_1);
+    sparse_matrix.vmult(dst_2, src_2);
+    BOOST_TEST(dst_1 == dst_2, tt::per_element());
   }
 }
 
-BOOST_AUTO_TEST_CASE(spmv_rad)
+BOOST_AUTO_TEST_CASE(spmv_rad, *utf::tolerance(1e-12))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -621,8 +629,8 @@ BOOST_AUTO_TEST_CASE(spmv_rad)
   }
   thermal_operator.update_boundary_material_properties(temperature);
   thermal_operator.get_state_from_material_properties();
-  BOOST_CHECK(thermal_operator.m() == 99);
-  BOOST_CHECK(thermal_operator.m() == thermal_operator.n());
+  BOOST_TEST(thermal_operator.m() == 99);
+  BOOST_TEST(thermal_operator.m() == thermal_operator.n());
 
   // Build the matrix. This only works in serial.
   dealii::DynamicSparsityPattern dsp(dof_handler.n_dofs());
@@ -673,24 +681,26 @@ BOOST_AUTO_TEST_CASE(spmv_rad)
   }
 
   // Compare vmult using matrix free and building the matrix
-  double const tolerance = 1e-12;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src_1;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src_2;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_1;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_2;
 
   dealii::MatrixFree<2, double> const &matrix_free =
       thermal_operator.get_matrix_free();
-  matrix_free.initialize_dof_vector(src);
+  matrix_free.initialize_dof_vector(src_1);
+  matrix_free.initialize_dof_vector(src_2);
   matrix_free.initialize_dof_vector(dst_1);
   matrix_free.initialize_dof_vector(dst_2);
 
   for (unsigned int i = 0; i < thermal_operator.m(); ++i)
   {
-    src = 0.;
-    src[i] = 1;
-    thermal_operator.vmult(dst_1, src);
-    sparse_matrix.vmult(dst_2, src);
-    for (unsigned int j = 0; j < thermal_operator.m(); ++j)
-      BOOST_CHECK_CLOSE(dst_1[j], -dst_2[j], tolerance);
+    src_1 = 0.;
+    src_2 = 0.;
+    src_1[i] = 1;
+    src_2[i] = -1;
+    thermal_operator.vmult(dst_1, src_1);
+    sparse_matrix.vmult(dst_2, src_2);
+    BOOST_TEST(dst_1 == dst_2, tt::per_element());
   }
 }

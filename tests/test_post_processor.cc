@@ -115,13 +115,13 @@ BOOST_AUTO_TEST_CASE(post_processor)
   post_processor.output_pvd();
 
   // Check that the files exist
-  BOOST_CHECK(boost::filesystem::exists("test.pvd"));
-  BOOST_CHECK(boost::filesystem::exists("test.01.000000.pvtu"));
-  BOOST_CHECK(boost::filesystem::exists("test.01.000001.pvtu"));
-  BOOST_CHECK(boost::filesystem::exists("test.01.000002.pvtu"));
-  BOOST_CHECK(boost::filesystem::exists("test.01.000000.000000.vtu"));
-  BOOST_CHECK(boost::filesystem::exists("test.01.000001.000000.vtu"));
-  BOOST_CHECK(boost::filesystem::exists("test.01.000002.000000.vtu"));
+  BOOST_TEST(boost::filesystem::exists("test.pvd"));
+  BOOST_TEST(boost::filesystem::exists("test.01.000000.pvtu"));
+  BOOST_TEST(boost::filesystem::exists("test.01.000001.pvtu"));
+  BOOST_TEST(boost::filesystem::exists("test.01.000002.pvtu"));
+  BOOST_TEST(boost::filesystem::exists("test.01.000000.000000.vtu"));
+  BOOST_TEST(boost::filesystem::exists("test.01.000001.000000.vtu"));
+  BOOST_TEST(boost::filesystem::exists("test.01.000002.000000.vtu"));
 
   // Delete the files
   std::remove("test.pvd");

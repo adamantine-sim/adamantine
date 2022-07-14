@@ -13,7 +13,10 @@
 
 #include "main.cc"
 
-BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation_augmented)
+namespace utf = boost::unit_test;
+
+BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation_augmented,
+                     *utf::tolerance(5.))
 {
 
   MPI_Comm communicator = MPI_COMM_WORLD;
@@ -33,7 +36,7 @@ BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation_augmented)
                                                            database, timers);
 
   // Three ensemble members expected
-  BOOST_CHECK(result.size() == 3);
+  BOOST_TEST(result.size() == 3);
 
   // Get the average absorption value for each ensemble member
   double sum = 0.0;
@@ -45,11 +48,10 @@ BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation_augmented)
 
   // Based on the reference solution, the expected absorption efficiency is 0.3
   double gold_solution = 0.3;
-  double tolerance = 5.0;
-  BOOST_CHECK_CLOSE(average_value, gold_solution, tolerance);
+  BOOST_TEST(average_value == gold_solution);
 }
 
-BOOST_AUTO_TEST_CASE(integration_3D)
+BOOST_AUTO_TEST_CASE(integration_3D, *utf::tolerance(0.1))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -67,11 +69,10 @@ BOOST_AUTO_TEST_CASE(integration_3D)
       run<3, dealii::MemorySpace::Host>(communicator, database, timers);
 
   std::ifstream gold_file("integration_3d_gold.txt");
-  double const tolerance = 0.1;
   for (unsigned int i = 0; i < result.locally_owned_size(); ++i)
   {
     double gold_value = -1.;
     gold_file >> gold_value;
-    BOOST_CHECK_CLOSE(result.local_element(i), gold_value, tolerance);
+    BOOST_TEST(result.local_element(i) == gold_value);
   }
 }

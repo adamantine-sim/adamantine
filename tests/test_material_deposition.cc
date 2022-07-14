@@ -18,7 +18,9 @@
 
 #include "main.cc"
 
-BOOST_AUTO_TEST_CASE(read_material_deposition_file_2d)
+namespace utf = boost::unit_test;
+
+BOOST_AUTO_TEST_CASE(read_material_deposition_file_2d, *utf::tolerance(1e-13))
 {
   // Geometry database
   boost::property_tree::ptree geometry_database;
@@ -44,24 +46,23 @@ BOOST_AUTO_TEST_CASE(read_material_deposition_file_2d)
   auto [bounding_boxes, time, deposition_cos, deposition_sin] =
       adamantine::read_material_deposition<2>(geometry_database);
 
-  BOOST_CHECK(time == time_ref);
-  BOOST_CHECK(deposition_cos == cos_ref);
-  BOOST_CHECK(deposition_sin == sin_ref);
-  BOOST_CHECK(bounding_boxes.size() == bounding_boxes_ref.size());
-  double const tolerance = 1e-13;
+  BOOST_TEST(time == time_ref);
+  BOOST_TEST(deposition_cos == cos_ref);
+  BOOST_TEST(deposition_sin == sin_ref);
+  BOOST_TEST(bounding_boxes.size() == bounding_boxes_ref.size());
   for (unsigned int i = 0; i < bounding_boxes_ref.size(); ++i)
   {
     auto points = bounding_boxes[i].get_boundary_points();
     auto points_ref = bounding_boxes_ref[i].get_boundary_points();
     for (int d = 0; d < 2; ++d)
     {
-      BOOST_CHECK_CLOSE(points.first[d], points_ref.first[d], tolerance);
-      BOOST_CHECK_CLOSE(points.second[d], points_ref.second[d], tolerance);
+      BOOST_TEST(points.first[d] == points_ref.first[d]);
+      BOOST_TEST(points.second[d] == points_ref.second[d]);
     }
   }
 }
 
-BOOST_AUTO_TEST_CASE(read_material_deposition_file_3d)
+BOOST_AUTO_TEST_CASE(read_material_deposition_file_3d, *utf::tolerance(1e-13))
 {
   // Geometry database
   boost::property_tree::ptree geometry_database;
@@ -87,19 +88,18 @@ BOOST_AUTO_TEST_CASE(read_material_deposition_file_3d)
   auto [bounding_boxes, time, deposition_cos, deposition_sin] =
       adamantine::read_material_deposition<3>(geometry_database);
 
-  BOOST_CHECK(time == time_ref);
-  BOOST_CHECK(deposition_cos == cos_ref);
-  BOOST_CHECK(deposition_sin == sin_ref);
-  BOOST_CHECK(bounding_boxes.size() == bounding_boxes_ref.size());
-  double const tolerance = 1e-13;
+  BOOST_TEST(time == time_ref);
+  BOOST_TEST(deposition_cos == cos_ref);
+  BOOST_TEST(deposition_sin == sin_ref);
+  BOOST_TEST(bounding_boxes.size() == bounding_boxes_ref.size());
   for (unsigned int i = 0; i < bounding_boxes_ref.size(); ++i)
   {
     auto points = bounding_boxes[i].get_boundary_points();
     auto points_ref = bounding_boxes_ref[i].get_boundary_points();
     for (int d = 0; d < 2; ++d)
     {
-      BOOST_CHECK_CLOSE(points.first[d], points_ref.first[d], tolerance);
-      BOOST_CHECK_CLOSE(points.second[d], points_ref.second[d], tolerance);
+      BOOST_TEST(points.first[d] == points_ref.first[d]);
+      BOOST_TEST(points.second[d] == points_ref.second[d]);
     }
   }
 }
@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE(get_elements_to_activate_2d)
     auto elements_to_activate =
         adamantine::get_elements_to_activate(dof_handler, bounding_boxes);
 
-    BOOST_CHECK(elements_to_activate.size() == bounding_boxes.size());
+    BOOST_TEST(elements_to_activate.size() == bounding_boxes.size());
 
     std::vector<std::vector<dealii::CellId>> cell_id_ref(3);
     cell_id_ref[0].push_back(dealii::CellId("0_0:"));
@@ -155,10 +155,10 @@ BOOST_AUTO_TEST_CASE(get_elements_to_activate_2d)
 
     for (unsigned int i = 0; i < cell_id_ref.size(); ++i)
     {
-      BOOST_CHECK(elements_to_activate[i].size() == cell_id_ref[i].size());
+      BOOST_TEST(elements_to_activate[i].size() == cell_id_ref[i].size());
       for (unsigned int j = 0; j < cell_id_ref[i].size(); ++j)
       {
-        BOOST_CHECK(elements_to_activate[i][j]->id() == cell_id_ref[i][j]);
+        BOOST_TEST(elements_to_activate[i][j]->id() == cell_id_ref[i][j]);
       }
     }
   }
@@ -204,7 +204,7 @@ BOOST_AUTO_TEST_CASE(get_elements_to_activate_3d)
     auto elements_to_activate =
         adamantine::get_elements_to_activate(dof_handler, bounding_boxes);
 
-    BOOST_CHECK(elements_to_activate.size() == bounding_boxes.size());
+    BOOST_TEST(elements_to_activate.size() == bounding_boxes.size());
 
     std::vector<std::vector<dealii::CellId>> cell_id_ref(3);
     cell_id_ref[0].push_back(dealii::CellId("0_0:"));
@@ -221,10 +221,10 @@ BOOST_AUTO_TEST_CASE(get_elements_to_activate_3d)
 
     for (unsigned int i = 0; i < cell_id_ref.size(); ++i)
     {
-      BOOST_CHECK(elements_to_activate[i].size() == cell_id_ref[i].size());
+      BOOST_TEST(elements_to_activate[i].size() == cell_id_ref[i].size());
       for (unsigned int j = 0; j < cell_id_ref[i].size(); ++j)
       {
-        BOOST_CHECK(elements_to_activate[i][j]->id() == cell_id_ref[i][j]);
+        BOOST_TEST(elements_to_activate[i][j]->id() == cell_id_ref[i][j]);
       }
     }
   }
@@ -333,12 +333,12 @@ BOOST_AUTO_TEST_CASE(material_deposition)
       (void)cell;
       ++n_cells;
     }
-    BOOST_CHECK(dealii::Utilities::MPI::sum(n_cells, communicator) ==
-                n_cells_ref[i]);
+    BOOST_TEST(dealii::Utilities::MPI::sum(n_cells, communicator) ==
+               n_cells_ref[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE(deposition_from_scan_path_2d)
+BOOST_AUTO_TEST_CASE(deposition_from_scan_path_2d, *utf::tolerance(1e-13))
 {
   adamantine::ScanPath scan_path("scan_path.txt", "segment");
 
@@ -351,50 +351,42 @@ BOOST_AUTO_TEST_CASE(deposition_from_scan_path_2d)
   auto [bounding_boxes, deposition_times, deposition_cos, deposition_sin] =
       adamantine::deposition_along_scan_path<2>(database, scan_path);
 
-  double const tolerance = 1e-13;
-
   // Check the first and last boxes
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().first(0),
-                    -0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().first(1), 0.0,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().second(0),
-                    0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().second(1), 0.1,
-                    tolerance);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(0) == -0.00025);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(1) == 0.0);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(0) == 0.00025);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(1) == 0.1);
 
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().first(0),
-                    0.002 - 0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().first(1), 0.0,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().second(0),
-                    0.002 + 0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().second(1), 0.1,
-                    tolerance);
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().first(0) ==
+             (0.002 - 0.00025));
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().first(1) == 0.0);
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().second(0) ==
+             (0.002 + 0.00025));
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().second(1) == 0.1);
 
   // Check the times
-  BOOST_CHECK_CLOSE(deposition_times.at(0), 1.0e-6, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(1), 6.26e-4, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(2), 1.251e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(3), 1.876e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(4), 2.501e-3, tolerance);
+  BOOST_TEST(deposition_times.at(0) == 1.0e-6);
+  BOOST_TEST(deposition_times.at(1) == 6.26e-4);
+  BOOST_TEST(deposition_times.at(2) == 1.251e-3);
+  BOOST_TEST(deposition_times.at(3) == 1.876e-3);
+  BOOST_TEST(deposition_times.at(4) == 2.501e-3);
 
   // Check the deposition cosines
-  BOOST_CHECK_CLOSE(deposition_cos.at(0), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(1), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(2), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(3), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(4), 1., tolerance);
+  BOOST_TEST(deposition_cos.at(0) == 1.);
+  BOOST_TEST(deposition_cos.at(1) == 1.);
+  BOOST_TEST(deposition_cos.at(2) == 1.);
+  BOOST_TEST(deposition_cos.at(3) == 1.);
+  BOOST_TEST(deposition_cos.at(4) == 1.);
 
   // Check the deposition sines
-  BOOST_CHECK_CLOSE(deposition_sin.at(0), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(1), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(2), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(3), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(4), 0., tolerance);
+  BOOST_TEST(deposition_sin.at(0) == 0.);
+  BOOST_TEST(deposition_sin.at(1) == 0.);
+  BOOST_TEST(deposition_sin.at(2) == 0.);
+  BOOST_TEST(deposition_sin.at(3) == 0.);
+  BOOST_TEST(deposition_sin.at(4) == 0.);
 }
 
-BOOST_AUTO_TEST_CASE(deposition_from_scan_path_3d)
+BOOST_AUTO_TEST_CASE(deposition_from_scan_path_3d, *utf::tolerance(1e-13))
 {
   adamantine::ScanPath scan_path("scan_path.txt", "segment");
 
@@ -407,58 +399,46 @@ BOOST_AUTO_TEST_CASE(deposition_from_scan_path_3d)
   auto [bounding_boxes, deposition_times, deposition_cos, deposition_sin] =
       adamantine::deposition_along_scan_path<3>(database, scan_path);
 
-  double const tolerance = 1e-13;
-
   // Check the first and last boxes
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().first(0),
-                    -0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().first(1), -0.05,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().first(2), 0.0,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().second(0),
-                    0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().second(1), 0.05,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().second(2), 0.1,
-                    tolerance);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(0) == -0.00025);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(1) == -0.05);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(2) == 0.0);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(0) == 0.00025);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(1) == 0.05);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(2) == 0.1);
 
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().first(0),
-                    0.002 - 0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().first(1), -0.05,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().first(2), 0.0,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().second(0),
-                    0.002 + 0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().second(1), 0.05,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().second(2), 0.1,
-                    tolerance);
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().first(0) ==
+             (0.002 - 0.00025));
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().first(1) == -0.05);
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().first(2) == 0.0);
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().second(0) ==
+             (0.002 + 0.00025));
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().second(1) == 0.05);
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().second(2) == 0.1);
 
   // Check the times
-  BOOST_CHECK_CLOSE(deposition_times.at(0), 1.0e-6, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(1), 6.26e-4, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(2), 1.251e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(3), 1.876e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(4), 2.501e-3, tolerance);
+  BOOST_TEST(deposition_times.at(0) == 1.0e-6);
+  BOOST_TEST(deposition_times.at(1) == 6.26e-4);
+  BOOST_TEST(deposition_times.at(2) == 1.251e-3);
+  BOOST_TEST(deposition_times.at(3) == 1.876e-3);
+  BOOST_TEST(deposition_times.at(4) == 2.501e-3);
 
   // Check the deposition cosines
-  BOOST_CHECK_CLOSE(deposition_cos.at(0), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(1), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(2), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(3), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(4), 1., tolerance);
+  BOOST_TEST(deposition_cos.at(0) == 1.);
+  BOOST_TEST(deposition_cos.at(1) == 1.);
+  BOOST_TEST(deposition_cos.at(2) == 1.);
+  BOOST_TEST(deposition_cos.at(3) == 1.);
+  BOOST_TEST(deposition_cos.at(4) == 1.);
 
   // Check the deposition sines
-  BOOST_CHECK_CLOSE(deposition_sin.at(0), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(1), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(2), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(3), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(4), 0., tolerance);
+  BOOST_TEST(deposition_sin.at(0) == 0.);
+  BOOST_TEST(deposition_sin.at(1) == 0.);
+  BOOST_TEST(deposition_sin.at(2) == 0.);
+  BOOST_TEST(deposition_sin.at(3) == 0.);
+  BOOST_TEST(deposition_sin.at(4) == 0.);
 }
 
-BOOST_AUTO_TEST_CASE(deposition_from_L_scan_path_3d)
+BOOST_AUTO_TEST_CASE(deposition_from_L_scan_path_3d, *utf::tolerance(1e-13))
 {
   adamantine::ScanPath scan_path("scan_path_L.txt", "segment");
 
@@ -471,99 +451,80 @@ BOOST_AUTO_TEST_CASE(deposition_from_L_scan_path_3d)
   auto [bounding_boxes, deposition_times, deposition_cos, deposition_sin] =
       adamantine::deposition_along_scan_path<3>(database, scan_path);
 
-  double const tolerance = 1e-13;
-
   // Check the first and last boxes for each segment
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().first(0),
-                    -0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().first(1), -0.05,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().first(2), 0.0,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().second(0),
-                    0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().second(1), 0.05,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().second(2), 0.1,
-                    tolerance);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(0) == -0.00025);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(1) == -0.05);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(2) == 0.0);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(0) == 0.00025);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(1) == 0.05);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(2) == 0.1);
 
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().first(0),
-                    0.002 - 0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().first(1), -0.05,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().first(2), 0.0,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().second(0),
-                    0.002 + 0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().second(1), 0.05,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(4).get_boundary_points().second(2), 0.1,
-                    tolerance);
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().first(0) ==
+             (0.002 - 0.00025));
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().first(1) == -0.05);
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().first(2) == 0.0);
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().second(0) ==
+             (0.002 + 0.00025));
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().second(1) == 0.05);
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().second(2) == 0.1);
 
-  BOOST_CHECK_CLOSE(bounding_boxes.at(5).get_boundary_points().first(0),
-                    0.002 - 0.05, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(5).get_boundary_points().first(1),
-                    -0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(5).get_boundary_points().first(2), 0.0,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(5).get_boundary_points().second(0),
-                    0.002 + 0.05, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(5).get_boundary_points().second(1),
-                    0.00025, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(5).get_boundary_points().second(2), 0.1,
-                    tolerance);
+  BOOST_TEST(bounding_boxes.at(5).get_boundary_points().first(0) ==
+             (0.002 - 0.05));
+  BOOST_TEST(bounding_boxes.at(5).get_boundary_points().first(1) == -0.00025);
+  BOOST_TEST(bounding_boxes.at(5).get_boundary_points().first(2) == 0.0);
+  BOOST_TEST(bounding_boxes.at(5).get_boundary_points().second(0) ==
+             (0.002 + 0.05));
+  BOOST_TEST(bounding_boxes.at(5).get_boundary_points().second(1) == 0.00025);
+  BOOST_TEST(bounding_boxes.at(5).get_boundary_points().second(2) == 0.1);
 
-  BOOST_CHECK_CLOSE(bounding_boxes.at(9).get_boundary_points().first(0),
-                    0.002 - 0.05, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(9).get_boundary_points().first(1),
-                    0.00175, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(9).get_boundary_points().first(2), 0.0,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(9).get_boundary_points().second(0),
-                    0.002 + 0.05, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(9).get_boundary_points().second(1),
-                    0.00205, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(9).get_boundary_points().second(2), 0.1,
-                    tolerance);
+  BOOST_TEST(bounding_boxes.at(9).get_boundary_points().first(0) ==
+             (0.002 - 0.05));
+  BOOST_TEST(bounding_boxes.at(9).get_boundary_points().first(1) == 0.00175);
+  BOOST_TEST(bounding_boxes.at(9).get_boundary_points().first(2) == 0.0);
+  BOOST_TEST(bounding_boxes.at(9).get_boundary_points().second(0) ==
+             0.002 + 0.05);
+  BOOST_TEST(bounding_boxes.at(9).get_boundary_points().second(1) == 0.00205);
+  BOOST_TEST(bounding_boxes.at(9).get_boundary_points().second(2) == 0.1);
 
   // Check the times
-  BOOST_CHECK_CLOSE(deposition_times.at(0), 1.0e-6, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(1), 6.26e-4, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(2), 1.251e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(3), 1.876e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(4), 2.501e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(5), 2.501e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(6), 3.126e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(7), 3.751e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(8), 4.376e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(9), 4.876e-3, tolerance);
+  BOOST_TEST(deposition_times.at(0) == 1.0e-6);
+  BOOST_TEST(deposition_times.at(1) == 6.26e-4);
+  BOOST_TEST(deposition_times.at(2) == 1.251e-3);
+  BOOST_TEST(deposition_times.at(3) == 1.876e-3);
+  BOOST_TEST(deposition_times.at(4) == 2.501e-3);
+  BOOST_TEST(deposition_times.at(5) == 2.501e-3);
+  BOOST_TEST(deposition_times.at(6) == 3.126e-3);
+  BOOST_TEST(deposition_times.at(7) == 3.751e-3);
+  BOOST_TEST(deposition_times.at(8) == 4.376e-3);
+  BOOST_TEST(deposition_times.at(9) == 4.876e-3);
 
   // Check the deposition cosines
-  BOOST_CHECK_CLOSE(deposition_cos.at(0), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(1), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(2), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(3), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(4), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(5), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(6), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(7), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(8), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_cos.at(9), 0., tolerance);
+  BOOST_TEST(deposition_cos.at(0) == 1.);
+  BOOST_TEST(deposition_cos.at(1) == 1.);
+  BOOST_TEST(deposition_cos.at(2) == 1.);
+  BOOST_TEST(deposition_cos.at(3) == 1.);
+  BOOST_TEST(deposition_cos.at(4) == 1.);
+  BOOST_TEST(deposition_cos.at(5) == 0.);
+  BOOST_TEST(deposition_cos.at(6) == 0.);
+  BOOST_TEST(deposition_cos.at(7) == 0.);
+  BOOST_TEST(deposition_cos.at(8) == 0.);
+  BOOST_TEST(deposition_cos.at(9) == 0.);
 
   // Check the deposition sines
-  BOOST_CHECK_CLOSE(deposition_sin.at(0), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(1), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(2), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(3), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(4), 0., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(5), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(6), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(7), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(8), 1., tolerance);
-  BOOST_CHECK_CLOSE(deposition_sin.at(8), 1., tolerance);
+  BOOST_TEST(deposition_sin.at(0) == 0.);
+  BOOST_TEST(deposition_sin.at(1) == 0.);
+  BOOST_TEST(deposition_sin.at(2) == 0.);
+  BOOST_TEST(deposition_sin.at(3) == 0.);
+  BOOST_TEST(deposition_sin.at(4) == 0.);
+  BOOST_TEST(deposition_sin.at(5) == 1.);
+  BOOST_TEST(deposition_sin.at(6) == 1.);
+  BOOST_TEST(deposition_sin.at(7) == 1.);
+  BOOST_TEST(deposition_sin.at(8) == 1.);
+  BOOST_TEST(deposition_sin.at(8) == 1.);
 }
 
-BOOST_AUTO_TEST_CASE(deposition_from_diagonal_scan_path_3d)
+BOOST_AUTO_TEST_CASE(deposition_from_diagonal_scan_path_3d,
+                     *utf::tolerance(1e-10))
 {
   adamantine::ScanPath scan_path("scan_path_diagonal.txt", "segment");
 
@@ -576,51 +537,45 @@ BOOST_AUTO_TEST_CASE(deposition_from_diagonal_scan_path_3d)
   auto [bounding_boxes, deposition_times, deposition_cos, deposition_sin] =
       adamantine::deposition_along_scan_path<3>(database, scan_path);
 
-  double const tolerance = 1e-10;
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(0) ==
+             -0.00022360679775);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(1) ==
+             -0.050111803398874992);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(2) == 0);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(0) ==
+             0.00022360679775);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(1) ==
+             0.050111803398874992);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(2) == 0.1);
 
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().first(0),
-                    -0.00022360679775, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().first(1),
-                    -0.050111803398874992, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().first(2), 0,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().second(0),
-                    0.00022360679775, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().second(1),
-                    0.050111803398874992, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(0).get_boundary_points().second(2), 0.1,
-                    tolerance);
-
-  BOOST_CHECK_CLOSE(bounding_boxes.at(5).get_boundary_points().first(0),
-                    0.00201246117975, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(5).get_boundary_points().first(1),
-                    -0.0489937694101251, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(5).get_boundary_points().first(2), 0.,
-                    tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(5).get_boundary_points().second(0),
-                    0.00222360679775, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(5).get_boundary_points().second(1),
-                    0.051111803398874993, tolerance);
-  BOOST_CHECK_CLOSE(bounding_boxes.at(5).get_boundary_points().second(2), 0.1,
-                    tolerance);
+  BOOST_TEST(bounding_boxes.at(5).get_boundary_points().first(0) ==
+             0.00201246117975);
+  BOOST_TEST(bounding_boxes.at(5).get_boundary_points().first(1) ==
+             -0.0489937694101251);
+  BOOST_TEST(bounding_boxes.at(5).get_boundary_points().first(2) == 0.);
+  BOOST_TEST(bounding_boxes.at(5).get_boundary_points().second(0) ==
+             0.00222360679775);
+  BOOST_TEST(bounding_boxes.at(5).get_boundary_points().second(1) ==
+             0.051111803398874993);
+  BOOST_TEST(bounding_boxes.at(5).get_boundary_points().second(2) == 0.1);
 
   // Check the times
-  BOOST_CHECK_CLOSE(deposition_times.at(0), 1.0e-6, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(1), 6.26e-4, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(2), 1.251e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(3), 1.876e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(4), 2.501e-3, tolerance);
-  BOOST_CHECK_CLOSE(deposition_times.at(5), 0.002961042485937369, tolerance);
+  BOOST_TEST(deposition_times.at(0) == 1.0e-6);
+  BOOST_TEST(deposition_times.at(1) == 6.26e-4);
+  BOOST_TEST(deposition_times.at(2) == 1.251e-3);
+  BOOST_TEST(deposition_times.at(3) == 1.876e-3);
+  BOOST_TEST(deposition_times.at(4) == 2.501e-3);
+  BOOST_TEST(deposition_times.at(5) == 0.002961042485937369);
 
   // Check the deposition cosines and sines
   for (unsigned int i = 0; i < 6; ++i)
   {
-    BOOST_CHECK_CLOSE(deposition_cos.at(0), 2. / std::sqrt(5.), tolerance);
-    BOOST_CHECK_CLOSE(deposition_sin.at(0), 1. / std::sqrt(5.), tolerance);
+    BOOST_TEST(deposition_cos.at(0) == 2. / std::sqrt(5.));
+    BOOST_TEST(deposition_sin.at(0) == 1. / std::sqrt(5.));
   }
 }
 
-BOOST_AUTO_TEST_CASE(merge_multiple_deposition_paths)
+BOOST_AUTO_TEST_CASE(merge_multiple_deposition_paths, *utf::tolerance(1e-10))
 {
   dealii::BoundingBox<2> box_0(
       std::make_pair(dealii::Point<2>(0., 0.), dealii::Point<2>(1., 1.)));
@@ -658,22 +613,21 @@ BOOST_AUTO_TEST_CASE(merge_multiple_deposition_paths)
   auto [bounding_boxes, time, cos, sin] =
       adamantine::merge_deposition_paths(multiple_paths);
 
-  double const tolerance = 1e-10;
   for (unsigned int i = 0; i < 4; ++i)
   {
-    BOOST_CHECK_CLOSE(bounding_boxes[i].get_boundary_points().first(0),
-                      bb_ref[i].get_boundary_points().first(0), tolerance);
-    BOOST_CHECK_CLOSE(bounding_boxes[i].get_boundary_points().first(1),
-                      bb_ref[i].get_boundary_points().first(1), tolerance);
-    BOOST_CHECK_CLOSE(bounding_boxes[i].get_boundary_points().second(0),
-                      bb_ref[i].get_boundary_points().second(0), tolerance);
-    BOOST_CHECK_CLOSE(bounding_boxes[i].get_boundary_points().second(1),
-                      bb_ref[i].get_boundary_points().second(1), tolerance);
+    BOOST_TEST(bounding_boxes[i].get_boundary_points().first(0) ==
+               bb_ref[i].get_boundary_points().first(0));
+    BOOST_TEST(bounding_boxes[i].get_boundary_points().first(1) ==
+               bb_ref[i].get_boundary_points().first(1));
+    BOOST_TEST(bounding_boxes[i].get_boundary_points().second(0) ==
+               bb_ref[i].get_boundary_points().second(0));
+    BOOST_TEST(bounding_boxes[i].get_boundary_points().second(1) ==
+               bb_ref[i].get_boundary_points().second(1));
 
-    BOOST_CHECK_CLOSE(time[i], time_ref[i], tolerance);
+    BOOST_TEST(time[i] == time_ref[i]);
 
-    BOOST_CHECK_CLOSE(cos[i], cos_ref[i], tolerance);
+    BOOST_TEST(cos[i] == cos_ref[i]);
 
-    BOOST_CHECK_CLOSE(sin[i], sin_ref[i], tolerance);
+    BOOST_TEST(sin[i] == sin_ref[i]);
   }
 }

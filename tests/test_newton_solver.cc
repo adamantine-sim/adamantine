@@ -11,6 +11,8 @@
 
 #include "main.cc"
 
+namespace utf = boost::unit_test;
+
 dealii::LA::distributed::Vector<double>
 compute_residual(dealii::LA::distributed::Vector<double> const &x)
 {
@@ -31,7 +33,7 @@ compute_inv_jacobian(dealii::LA::distributed::Vector<double> const &x)
   return inv_jacobian;
 }
 
-BOOST_AUTO_TEST_CASE(newton_solver)
+BOOST_AUTO_TEST_CASE(newton_solver, *utf::tolerance(1e-5))
 {
   dealii::LA::distributed::Vector<double> src(2);
   src[0] = 2.;
@@ -40,7 +42,6 @@ BOOST_AUTO_TEST_CASE(newton_solver)
   adamantine::NewtonSolver newton_solver(10, 1e-7);
   newton_solver.solve(&compute_residual, &compute_inv_jacobian, src);
 
-  double const tolerance = 1e-5;
-  BOOST_CHECK_CLOSE(1., src[0], tolerance);
-  BOOST_CHECK_CLOSE(1., src[1], tolerance);
+  BOOST_TEST(1. == src[0]);
+  BOOST_TEST(1. == src[1]);
 }

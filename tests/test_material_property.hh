@@ -15,6 +15,8 @@
 
 #include <boost/property_tree/ptree.hpp>
 
+namespace tt = boost::test_tools;
+
 template <typename MemorySpaceType>
 void material_property()
 {
@@ -62,16 +64,16 @@ void material_property()
   {
     double const density =
         mat_prop.get_cell_value(cell, adamantine::StateProperty::density);
-    BOOST_CHECK(density == 1.);
+    BOOST_TEST(density == 1.);
     double const th_conduc_x = mat_prop.get_cell_value(
         cell, adamantine::StateProperty::thermal_conductivity_x);
-    BOOST_CHECK(th_conduc_x == 10.);
+    BOOST_TEST(th_conduc_x == 10.);
     double const th_conduc_z = mat_prop.get_cell_value(
         cell, adamantine::StateProperty::thermal_conductivity_z);
-    BOOST_CHECK(th_conduc_z == 10.);
+    BOOST_TEST(th_conduc_z == 10.);
     double const liquidus =
         mat_prop.get_cell_value(cell, adamantine::Property::liquidus);
-    BOOST_CHECK(liquidus == 100.);
+    BOOST_TEST(liquidus == 100.);
   }
 }
 
@@ -129,35 +131,35 @@ void ratios()
   {
     double powder_ratio =
         mat_prop.get_state_ratio(cell, adamantine::MaterialState::powder);
-    BOOST_CHECK(powder_ratio == 1.);
+    BOOST_TEST(powder_ratio == 1.);
     double solid_ratio =
         mat_prop.get_state_ratio(cell, adamantine::MaterialState::solid);
-    BOOST_CHECK(solid_ratio == 0.);
+    BOOST_TEST(solid_ratio == 0.);
     double liquid_ratio =
         mat_prop.get_state_ratio(cell, adamantine::MaterialState::liquid);
-    BOOST_CHECK(liquid_ratio == 0.);
+    BOOST_TEST(liquid_ratio == 0.);
 
     double const density =
         mat_prop.get_cell_value(cell, adamantine::StateProperty::density);
-    BOOST_CHECK(density == 1.);
+    BOOST_TEST(density == 1.);
     double const th_conduc_x = mat_prop.get_cell_value(
         cell, adamantine::StateProperty::thermal_conductivity_x);
-    BOOST_CHECK(th_conduc_x == 1.);
+    BOOST_TEST(th_conduc_x == 1.);
     double const th_conduc_z = mat_prop.get_cell_value(
         cell, adamantine::StateProperty::thermal_conductivity_z);
-    BOOST_CHECK(th_conduc_z == 1.);
+    BOOST_TEST(th_conduc_z == 1.);
     double const liquidus =
         mat_prop.get_cell_value(cell, adamantine::Property::liquidus);
-    BOOST_CHECK(liquidus == 100.);
+    BOOST_TEST(liquidus == 100.);
     double const solidus =
         mat_prop.get_cell_value(cell, adamantine::Property::solidus);
-    BOOST_CHECK(solidus == 50.);
+    BOOST_TEST(solidus == 50.);
     double const latent_heat =
         mat_prop.get_cell_value(cell, adamantine::Property::latent_heat);
-    BOOST_CHECK(latent_heat == 1000.);
+    BOOST_TEST(latent_heat == 1000.);
     double const specific_heat =
         mat_prop.get_cell_value(cell, adamantine::StateProperty::specific_heat);
-    BOOST_CHECK(specific_heat == 1.);
+    BOOST_TEST(specific_heat == 1.);
   }
 
   // Check the material properties of the liquid
@@ -173,35 +175,35 @@ void ratios()
   {
     double powder_ratio =
         mat_prop.get_state_ratio(cell, adamantine::MaterialState::powder);
-    BOOST_CHECK(powder_ratio == 0.);
+    BOOST_TEST(powder_ratio == 0.);
     double solid_ratio =
         mat_prop.get_state_ratio(cell, adamantine::MaterialState::solid);
-    BOOST_CHECK(solid_ratio == 0.);
+    BOOST_TEST(solid_ratio == 0.);
     double liquid_ratio =
         mat_prop.get_state_ratio(cell, adamantine::MaterialState::liquid);
-    BOOST_CHECK(liquid_ratio == 1.);
+    BOOST_TEST(liquid_ratio == 1.);
 
     double const density =
         mat_prop.get_cell_value(cell, adamantine::StateProperty::density);
-    BOOST_CHECK(density == 1.);
+    BOOST_TEST(density == 1.);
     double const th_conduc_x = mat_prop.get_cell_value(
         cell, adamantine::StateProperty::thermal_conductivity_x);
-    BOOST_CHECK(th_conduc_x == 20.);
+    BOOST_TEST(th_conduc_x == 20.);
     double const th_conduc_z = mat_prop.get_cell_value(
         cell, adamantine::StateProperty::thermal_conductivity_z);
-    BOOST_CHECK(th_conduc_z == 20.);
+    BOOST_TEST(th_conduc_z == 20.);
     double const liquidus =
         mat_prop.get_cell_value(cell, adamantine::Property::liquidus);
-    BOOST_CHECK(liquidus == 100.);
+    BOOST_TEST(liquidus == 100.);
     double const solidus =
         mat_prop.get_cell_value(cell, adamantine::Property::solidus);
-    BOOST_CHECK(solidus == 50.);
+    BOOST_TEST(solidus == 50.);
     double const latent_heat =
         mat_prop.get_cell_value(cell, adamantine::Property::latent_heat);
-    BOOST_CHECK(latent_heat == 1000.);
+    BOOST_TEST(latent_heat == 1000.);
     double const specific_heat =
         mat_prop.get_cell_value(cell, adamantine::StateProperty::specific_heat);
-    BOOST_CHECK(specific_heat == 20.);
+    BOOST_TEST(specific_heat == 20.);
   }
 
   // Check the material properties of the solid
@@ -211,35 +213,35 @@ void ratios()
   {
     double powder_ratio =
         mat_prop.get_state_ratio(cell, adamantine::MaterialState::powder);
-    BOOST_CHECK(powder_ratio == 0.);
+    BOOST_TEST(powder_ratio == 0.);
     double solid_ratio =
         mat_prop.get_state_ratio(cell, adamantine::MaterialState::solid);
-    BOOST_CHECK(solid_ratio == 1.);
+    BOOST_TEST(solid_ratio == 1.);
     double liquid_ratio =
         mat_prop.get_state_ratio(cell, adamantine::MaterialState::liquid);
-    BOOST_CHECK(liquid_ratio == 0.);
+    BOOST_TEST(liquid_ratio == 0.);
 
     double const density =
         mat_prop.get_cell_value(cell, adamantine::StateProperty::density);
-    BOOST_CHECK(density == 10.);
+    BOOST_TEST(density == 10.);
     double const th_conduc_x = mat_prop.get_cell_value(
         cell, adamantine::StateProperty::thermal_conductivity_x);
-    BOOST_CHECK(th_conduc_x == 10.);
+    BOOST_TEST(th_conduc_x == 10.);
     double const th_conduc_z = mat_prop.get_cell_value(
         cell, adamantine::StateProperty::thermal_conductivity_z);
-    BOOST_CHECK(th_conduc_z == 10.);
+    BOOST_TEST(th_conduc_z == 10.);
     double const liquidus =
         mat_prop.get_cell_value(cell, adamantine::Property::liquidus);
-    BOOST_CHECK(liquidus == 100.);
+    BOOST_TEST(liquidus == 100.);
     double const solidus =
         mat_prop.get_cell_value(cell, adamantine::Property::solidus);
-    BOOST_CHECK(solidus == 50.);
+    BOOST_TEST(solidus == 50.);
     double const latent_heat =
         mat_prop.get_cell_value(cell, adamantine::Property::latent_heat);
-    BOOST_CHECK(latent_heat == 1000.);
+    BOOST_TEST(latent_heat == 1000.);
     double const specific_heat =
         mat_prop.get_cell_value(cell, adamantine::StateProperty::specific_heat);
-    BOOST_CHECK(specific_heat == 10.);
+    BOOST_TEST(specific_heat == 10.);
   }
 }
 
@@ -312,45 +314,45 @@ void material_property_table()
   {
     if (n < 10)
     {
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(cell, adamantine::StateProperty::density), 1.,
-          tolerance);
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity_x),
-          100., tolerance);
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity_z),
-          100., tolerance);
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::density) == 1.,
+                 tt::tolerance(tolerance));
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::thermal_conductivity_x) ==
+                     100.,
+                 tt::tolerance(tolerance));
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::thermal_conductivity_z) ==
+                     100.,
+                 tt::tolerance(tolerance));
     }
     else if (n < 15)
     {
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(cell, adamantine::StateProperty::density),
-          1.75, tolerance);
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity_x),
-          150., tolerance);
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity_z),
-          150., tolerance);
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::density) == 1.75,
+                 tt::tolerance(tolerance));
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::thermal_conductivity_x) ==
+                     150.,
+                 tt::tolerance(tolerance));
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::thermal_conductivity_z) ==
+                     150.,
+                 tt::tolerance(tolerance));
     }
     else
     {
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(cell, adamantine::StateProperty::density), 2.,
-          tolerance);
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity_x),
-          162.5, tolerance);
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity_z),
-          162.5, tolerance);
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::density) == 2.,
+                 tt::tolerance(tolerance));
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::thermal_conductivity_x) ==
+                     162.5,
+                 tt::tolerance(tolerance));
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::thermal_conductivity_z) ==
+                     162.5,
+                 tt::tolerance(tolerance));
     }
     ++n;
   }
@@ -423,45 +425,45 @@ void material_property_polynomials()
   {
     if (n < 10)
     {
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(cell, adamantine::StateProperty::density),
-          15., tolerance);
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity_x),
-          465., tolerance);
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity_z),
-          465., tolerance);
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::density) == 15.,
+                 tt::tolerance(tolerance));
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::thermal_conductivity_x) ==
+                     465.,
+                 tt::tolerance(tolerance));
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::thermal_conductivity_z) ==
+                     465.,
+                 tt::tolerance(tolerance));
     }
     else if (n < 15)
     {
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(cell, adamantine::StateProperty::density),
-          706., tolerance);
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity_x),
-          681001., tolerance);
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity_z),
-          681001., tolerance);
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::density) == 706.,
+                 tt::tolerance(tolerance));
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::thermal_conductivity_x) ==
+                     681001.,
+                 tt::tolerance(tolerance));
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::thermal_conductivity_z) ==
+                     681001.,
+                 tt::tolerance(tolerance));
     }
     else
     {
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(cell, adamantine::StateProperty::density),
-          720., tolerance);
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity_x),
-          45280., tolerance);
-      BOOST_CHECK_CLOSE(
-          mat_prop.get_cell_value(
-              cell, adamantine::StateProperty::thermal_conductivity_z),
-          45280., tolerance);
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::density) == 720.,
+                 tt::tolerance(tolerance));
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::thermal_conductivity_x) ==
+                     45280.,
+                 tt::tolerance(tolerance));
+      BOOST_TEST(mat_prop.get_cell_value(
+                     cell, adamantine::StateProperty::thermal_conductivity_z) ==
+                     45280.,
+                 tt::tolerance(tolerance));
     }
     ++n;
   }

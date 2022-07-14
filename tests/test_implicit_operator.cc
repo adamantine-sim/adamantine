@@ -24,6 +24,8 @@
 
 #include "main.cc"
 
+namespace tt = boost::test_tools;
+
 BOOST_AUTO_TEST_CASE(implicit_operator)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
@@ -103,8 +105,8 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   // Initialize the ImplicitOperator
   adamantine::ImplicitOperator<dealii::MemorySpace::Host> implicit_operator(
       thermal_operator, false);
-  BOOST_CHECK(implicit_operator.m() == 99);
-  BOOST_CHECK(implicit_operator.n() == 99);
+  BOOST_TEST(implicit_operator.m() == 99);
+  BOOST_TEST(implicit_operator.n() == 99);
   BOOST_CHECK_THROW(implicit_operator.Tvmult(dummy, dummy),
                     adamantine::NotImplementedExc);
   BOOST_CHECK_THROW(implicit_operator.vmult_add(dummy, dummy),
@@ -144,5 +146,5 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   implicit_operator_jfnk.vmult(dst_jfnk, source);
 
   double const tolerance = 1e-7;
-  BOOST_CHECK_CLOSE(dst.l2_norm(), dst_jfnk.l2_norm(), tolerance);
+  BOOST_TEST(dst.l2_norm() == dst_jfnk.l2_norm(), tt::tolerance(tolerance));
 }

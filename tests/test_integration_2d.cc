@@ -13,7 +13,9 @@
 
 #include "main.cc"
 
-BOOST_AUTO_TEST_CASE(integration_2D)
+namespace utf = boost::unit_test;
+
+BOOST_AUTO_TEST_CASE(integration_2D, *utf::tolerance(0.1))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -31,16 +33,17 @@ BOOST_AUTO_TEST_CASE(integration_2D)
       run<2, dealii::MemorySpace::Host>(communicator, database, timers);
 
   std::ifstream gold_file("integration_2d_gold.txt");
-  double const tolerance = 0.1;
   for (unsigned int i = 0; i < result.locally_owned_size(); ++i)
   {
     double gold_value = -1.;
     gold_file >> gold_value;
-    BOOST_CHECK_CLOSE(result.local_element(i), gold_value, tolerance);
+    BOOST_TEST(result.local_element(i) == gold_value);
   }
-}
+} // namespace
+  // boost::unit_testBOOST_AUTO_TEST_CASE(integration_2D,*utf::tolerance(0.1))
+  // boost::unit_testBOOST_AUTO_TEST_CASE(integration_2D,*utf::tolerance(0.1))
 
-BOOST_AUTO_TEST_CASE(integration_2D_ensemble)
+BOOST_AUTO_TEST_CASE(integration_2D_ensemble, *utf::tolerance(0.1))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -57,7 +60,6 @@ BOOST_AUTO_TEST_CASE(integration_2D_ensemble)
   auto result = run_ensemble<2, dealii::MemorySpace::Host>(communicator,
                                                            database, timers);
 
-  double const tolerance = 0.1;
   for (unsigned int member = 0; member < 3; ++member)
   {
     std::ifstream gold_file("integration_2d_gold.txt");
@@ -66,8 +68,7 @@ BOOST_AUTO_TEST_CASE(integration_2D_ensemble)
     {
       double gold_value = -1.;
       gold_file >> gold_value;
-      BOOST_CHECK_CLOSE(result[member].block(0).local_element(i), gold_value,
-                        tolerance);
+      BOOST_TEST(result[member].block(0).local_element(i) == gold_value);
     }
   }
 }
