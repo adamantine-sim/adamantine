@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_ray_tracing_from_file)
   points_ref.emplace_back(0., 0.1, 0.2);
   points_ref.emplace_back(1., 0.1, 0.);
   points_ref.emplace_back(1., 0.5, 0.);
-  points_ref.emplace_back(1., 0.5, 0.5);
+  points_ref.emplace_back(1., 0.5, 0.4999);
 
   if (dealii::Utilities::MPI::this_mpi_process(communicator) == 0)
     for (unsigned int i = 0; i < values_ref.size(); ++i)
