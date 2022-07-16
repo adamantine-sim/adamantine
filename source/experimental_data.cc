@@ -458,6 +458,11 @@ RayTracing::get_intersection(dealii::DoFHandler<3> const &dof_handler,
       ++n_intersections;
     }
   }
+
+  // If there are no intersections, leave early
+  if (n_intersections == 0)
+    return points_values;
+
   std::vector<double> distances(n_intersections,
                                 std::numeric_limits<double>::max());
   points_values.points.resize(n_intersections);
