@@ -1,4 +1,4 @@
-/* Copyright (c) 2021, the adamantine authors.
+/* Copyright (c) 2021-2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -34,17 +34,18 @@
 namespace adamantine
 {
 /**
- * This class implements a predicate for the intersection of Ray and
- * BoundingBox
+ * This class implements a predicate for the intersection of Ray and the first
+ * BoundingBox. In ArborX, this is a nearest search between a Ray and the
+ * BoundingBoxes.
  */
-class RayIntersectPredicate
+class RayNearestPredicate
 {
 public:
   /**
    * Constructor. @p points is a list of points which we are interested in
    * knowing if they intersect ArborXWrappers::BVH bounding boxes.
    */
-  RayIntersectPredicate(std::vector<Ray<3>> const &rays) : _rays(rays) {}
+  RayNearestPredicate(std::vector<Ray<3>> const &rays) : _rays(rays) {}
 
   /**
    * Number of rays stored in the structure.
@@ -64,27 +65,26 @@ private:
 namespace ArborX
 {
 template <>
-struct AccessTraits<adamantine::RayIntersectPredicate, PredicatesTag>
+struct AccessTraits<adamantine::RayNearestPredicate, PredicatesTag>
 {
   using memory_space = Kokkos::HostSpace;
 
-  static std::size_t
-  size(adamantine::RayIntersectPredicate const &ray_intersect)
+  static std::size_t size(adamantine::RayNearestPredicate const &ray_nearest)
   {
-    return ray_intersect.size();
+    return ray_nearest.size();
   }
 
-  static auto get(adamantine::RayIntersectPredicate const &ray_intersect,
+  static auto get(adamantine::RayNearestPredicate const &ray_nearest,
                   std::size_t i)
   {
-    auto const &ray = ray_intersect.get(i);
+    auto const &ray = ray_nearest.get(i);
     auto const &origin = ray.origin;
     auto const &direction = ray.direction;
     ArborX::Experimental::Ray arborx_ray = {
         ArborX::Point{(float)origin[0], (float)origin[1], (float)origin[2]},
         ArborX::Experimental::Vector{(float)direction[0], (float)direction[1],
                                      (float)direction[2]}};
-    return intersects(arborx_ray);
+    return nearest(arborx_ray, 1);
   }
 };
 } // namespace ArborX
@@ -442,8 +442,8 @@ RayTracing::get_intersection(dealii::DoFHandler<3> const &dof_handler,
   }
 
   dealii::ArborXWrappers::BVH bvh(bounding_boxes);
-  RayIntersectPredicate ray_intersect(_rays_all_frames[frame]);
-  auto [indices, offset] = bvh.query(ray_intersect);
+  RayNearestPredicate ray_nearest(_rays_all_frames[frame]);
+  auto [indices, offset] = bvh.query(ray_nearest);
 
   // Find the exact intersections points
   // See https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
@@ -458,6 +458,11 @@ RayTracing::get_intersection(dealii::DoFHandler<3> const &dof_handler,
       ++n_intersections;
     }
   }
+
+  // If there are no intersections, leave early
+  if (n_intersections == 0)
+    return points_values;
+
   std::vector<double> distances(n_intersections,
                                 std::numeric_limits<double>::max());
   points_values.points.resize(n_intersections);

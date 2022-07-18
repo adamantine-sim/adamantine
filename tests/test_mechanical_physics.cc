@@ -224,7 +224,7 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   elasto_staticity.assemble_system();
   auto reference_solution = elasto_staticity.solve();
 
-  double const tolerance = 5e-10;
+  double const tolerance = 1e-9;
   BOOST_TEST(solution.size() == reference_solution.size());
   for (unsigned int i = 0; i < reference_solution.size(); ++i)
     BOOST_TEST(solution[i] == reference_solution[i], tt::tolerance(tolerance));
