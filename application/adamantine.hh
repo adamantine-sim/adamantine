@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -63,8 +63,8 @@ void output_pvtu(
 #endif
   timers[adamantine::output].start();
   affine_constraints.distribute(solution);
-  post_processor.output_pvtu(cycle, n_time_step, time, solution, state,
-                             dofs_map, material_dof_handler);
+  post_processor.write_thermal_output(cycle, n_time_step, time, solution, state,
+                                      dofs_map, material_dof_handler);
   timers[adamantine::output].stop();
 }
 
@@ -98,8 +98,9 @@ void output_pvtu(
   adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
       state_host_view(state_host);
   adamantine::deep_copy(state_host_view, state);
-  post_processor.output_pvtu(cycle, n_time_step, time, solution_host,
-                             state_host_view, dofs_map, material_dof_handler);
+  post_processor.write_thermal_output(cycle, n_time_step, time, solution_host,
+                                      state_host_view, dofs_map,
+                                      material_dof_handler);
   timers[adamantine::output].stop();
 }
 #endif
@@ -777,6 +778,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       initialize_thermal_physics<dim>(fe_degree, quadrature_type, communicator,
                                       database, geometry, thermal_physics);
 
+  // For now we only output temperature
+  post_processor_database.put("thermal_output", true);
   adamantine::PostProcessor<dim> post_processor(
       communicator, post_processor_database,
       thermal_physics->get_dof_handler());
@@ -947,7 +950,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   CALI_CXX_MARK_LOOP_END(main_loop_id);
 #endif
 
-  post_processor.output_pvd();
+  post_processor.write_pvd();
 
   // This is only used for integration test
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
@@ -1197,6 +1200,8 @@ run_ensemble(MPI_Comm const &communicator,
 
     thermal_physics_ensemble[member]->get_state_from_material_properties();
 
+    // For now we only output temperature
+    post_processor_database.put("thermal_output", true);
     post_processor_ensemble.push_back(
         std::make_unique<adamantine::PostProcessor<dim>>(
             communicator, post_processor_database,
@@ -1668,7 +1673,7 @@ run_ensemble(MPI_Comm const &communicator,
 
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
-    post_processor_ensemble[member]->output_pvd();
+    post_processor_ensemble[member]->write_pvd();
   }
 
   // This is only used for integration test
