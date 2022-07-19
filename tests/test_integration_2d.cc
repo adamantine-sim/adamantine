@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -39,9 +39,7 @@ BOOST_AUTO_TEST_CASE(integration_2D, *utf::tolerance(0.1))
     gold_file >> gold_value;
     BOOST_TEST(result.local_element(i) == gold_value);
   }
-} // namespace
-  // boost::unit_testBOOST_AUTO_TEST_CASE(integration_2D,*utf::tolerance(0.1))
-  // boost::unit_testBOOST_AUTO_TEST_CASE(integration_2D,*utf::tolerance(0.1))
+}
 
 BOOST_AUTO_TEST_CASE(integration_2D_ensemble, *utf::tolerance(0.1))
 {
