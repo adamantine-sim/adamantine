@@ -77,6 +77,13 @@ public:
   double get(dealii::types::material_id material_id, Property prop) const;
 
   /**
+   * Return the values of the given mechanical StateProperty for a given cell.
+   */
+  double get_mechanical_property(
+      typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
+      StateProperty prop) const;
+
+  /**
    * Return a MemoryBlockView of the properties of the material that are
    * independent of the state of the material.
    */
@@ -185,6 +192,10 @@ public:
    */
   dealii::DoFHandler<dim> const &get_dof_handler() const;
 
+  /**
+   * Return the mapping between the degrees of freedom and the local index of
+   * the cells.
+   */
   std::unordered_map<dealii::types::global_dof_index, unsigned int>
   get_dofs_map() const
   {
@@ -208,13 +219,25 @@ private:
       static_cast<unsigned int>(MaterialState::SIZE);
 
   /**
-   * Number of Stateproperty defined.
+   * Number of StateProperty defined.
    */
   static unsigned int constexpr _n_state_properties =
       static_cast<unsigned int>(StateProperty::SIZE);
 
   /**
-   * Number of Stateproperty defined.
+   * Number of mechanical StateProperty.
+   */
+  static unsigned int constexpr _n_mechanical_state_properties =
+      static_cast<unsigned int>(2);
+
+  /**
+   * Number of thermal StateProperty..
+   */
+  static unsigned int constexpr _n_thermal_state_properties =
+      _n_state_properties - _n_mechanical_state_properties;
+
+  /**
+   * Number of Property defined.
    */
   static unsigned int constexpr _n_properties =
       static_cast<unsigned int>(Property::SIZE);
@@ -261,13 +284,13 @@ private:
    */
   bool _use_table;
   /**
-   * MemoryBlock that stores the material properties which have been set using
-   * tables.
+   * MemoryBlock that stores the thermal material properties which have been set
+   * using tables.
    */
   MemoryBlock<double, MemorySpaceType> _state_property_tables;
   /**
-   * MemoryBlock that stores the material properties which have been set using
-   * polynomials.
+   * MemoryBlock that stores the thermal material properties which have been set
+   * using polynomials.
    */
   MemoryBlock<double, MemorySpaceType> _state_property_polynomials;
   /**
@@ -284,10 +307,29 @@ private:
    */
   MemoryBlock<double, MemorySpaceType> _state;
   /**
-   * MemoryBlock that stores the properties of the material that are dependent
-   * of the state of the material.
+   * MemoryBlock that stores the thermal properties of the material that are
+   * dependent of the state of the material.
    */
   MemoryBlock<double, MemorySpaceType> _property_values;
+  /**
+   * MemoryBlock that stores the mechanical properties which have been set using
+   * tables.
+   */
+  // We cannot put the mechanical properties with the thermal properties because
+  // the mechanical properties can only exist on the host while the thermal ones
+  // can be on the host or the device.
+  MemoryBlock<double, dealii::MemorySpace::Host>
+      _mechanical_properties_tables_host;
+  /**
+   * MemoryBlock that stores the mechanical properties which have been set using
+   * polynomials.
+   */
+  MemoryBlock<double, dealii::MemorySpace::Host>
+      _mechanical_properties_polynomials_host;
+  /**
+   * MemoryBlock that stores the mechanical properties.
+   */
+  MemoryBlock<double, dealii::MemorySpace::Host> _mechanical_properties_host;
   /**
    * Discontinuous piecewise constant finite element.
    */
@@ -296,7 +338,9 @@ private:
    * DoFHandler associated to the _state array.
    */
   dealii::DoFHandler<dim> _mp_dof_handler;
-
+  /**
+   * Mapping between the degrees of freedom and the local index of the cells.
+   */
   std::unordered_map<dealii::types::global_dof_index, unsigned int> _dofs_map;
 };
 

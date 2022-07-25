@@ -207,14 +207,27 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   geometry_database.put("width_divisions", 3);
   // Build Geometry
   adamantine::Geometry<3> geometry(communicator, geometry_database);
+  auto const &triangulation = geometry.get_triangulation();
+  for (auto cell : triangulation.cell_iterators())
+  {
+    cell->set_material_id(0);
+    cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
+  }
+  // Create the MaterialProperty
+  boost::property_tree::ptree material_database;
+  material_database.put("property_format", "polynomial");
+  material_database.put("n_materials", 1);
+  material_database.put("material_0.solid.lame_first_parameter", 2.);
+  material_database.put("material_0.solid.lame_second_parameter", 3.);
+  adamantine::MaterialProperty<3, dealii::MemorySpace::Host>
+      material_properties(communicator, triangulation, material_database);
   // Mechanical database
   boost::property_tree::ptree mechanical_database;
   mechanical_database.put("fe_degree", 1);
-  mechanical_database.put("lame_first_param", 2);
-  mechanical_database.put("lame_second_param", 3);
   // Build MechanicalPhysics
-  adamantine::MechanicalPhysics<3> mechanical_physics(
-      communicator, mechanical_database, geometry);
+  adamantine::MechanicalPhysics<3, dealii::MemorySpace::Host>
+      mechanical_physics(communicator, mechanical_database, geometry,
+                         material_properties);
   mechanical_physics.setup_dofs();
   auto solution = mechanical_physics.solve();
 

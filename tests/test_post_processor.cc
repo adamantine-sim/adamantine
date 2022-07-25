@@ -185,17 +185,13 @@ BOOST_AUTO_TEST_CASE(mechanical_post_processor)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
+  mat_prop_database.put("material_0.solid.lame_first_parameter", 2.);
+  mat_prop_database.put("material_0.solid.lame_second_parameter", 3.);
   adamantine::MaterialProperty<dim, dealii::MemorySpace::Host> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
-  // Create the mechanical database
-  boost::property_tree::ptree mechanical_database;
-  double const lame_first = 2.;
-  double const lame_second = 3.;
-  mechanical_database.put("lame_first_param", lame_first);
-  mechanical_database.put("lame_second_param", lame_second);
 
-  adamantine::MechanicalOperator<dim> mechanical_operator(communicator,
-                                                          mechanical_database);
+  adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
+      mechanical_operator(communicator, mat_properties);
   mechanical_operator.reinit(dof_handler, affine_constraints, q_collection);
 
   // Create the PostProcessor

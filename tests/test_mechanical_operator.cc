@@ -65,6 +65,22 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
   geometry_database.put("width", 6);
   geometry_database.put("width_divisions", 3);
   adamantine::Geometry<dim> geometry(communicator, geometry_database);
+  auto const &triangulation = geometry.get_triangulation();
+  for (auto cell : triangulation.cell_iterators())
+  {
+    cell->set_material_id(0);
+    cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
+  }
+  // Create the MaterialProperty
+  boost::property_tree::ptree material_database;
+  material_database.put("property_format", "polynomial");
+  material_database.put("n_materials", 1);
+  double const lame_first = 2.;
+  double const lame_second = 3.;
+  material_database.put("material_0.solid.lame_first_parameter", lame_first);
+  material_database.put("material_0.solid.lame_second_parameter", lame_second);
+  adamantine::MaterialProperty<dim, dealii::MemorySpace::Host>
+      material_properties(communicator, triangulation, material_database);
   // Create the DoFHandler
   dealii::hp::FECollection<dim> fe_collection;
   fe_collection.push_back(dealii::FESystem<dim>(dealii::FE_Q<dim>(2) ^ dim));
@@ -82,15 +98,9 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
   dealii::hp::QCollection<dim> q_collection;
   q_collection.push_back(dealii::QGauss<dim>(3));
   q_collection.push_back(dealii::QGauss<dim>(1));
-  // Create the mechanical database
-  boost::property_tree::ptree mechanical_database;
-  double const lame_first = 2.;
-  double const lame_second = 3.;
-  mechanical_database.put("lame_first_param", lame_first);
-  mechanical_database.put("lame_second_param", lame_second);
 
-  adamantine::MechanicalOperator<dim> mechanical_operator(communicator,
-                                                          mechanical_database);
+  adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
+      mechanical_operator(communicator, material_properties);
   mechanical_operator.reinit(dof_handler, affine_constraints, q_collection);
 
   // deal.II reference implementation

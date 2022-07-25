@@ -49,6 +49,8 @@ void material_property()
   database.put("material_0.powder.thermal_conductivity_z", 10.);
   database.put("material_0.liquid", "");
   database.put("material_0.liquidus", "100");
+  database.put("material_0.solid.lame_first_parameter", 2.);
+  database.put("material_0.solid.lame_second_parameter", 3.);
   adamantine::MaterialProperty<2, MemorySpaceType> mat_prop(
       communicator, triangulation, database);
   // Evaluate the material property at the given temperature
@@ -74,6 +76,12 @@ void material_property()
     double const liquidus =
         mat_prop.get_cell_value(cell, adamantine::Property::liquidus);
     BOOST_TEST(liquidus == 100.);
+    double const lambda = mat_prop.get_mechanical_property(
+        cell, adamantine::StateProperty::lame_first_parameter);
+    BOOST_TEST(lambda == 2.);
+    double const mu = mat_prop.get_mechanical_property(
+        cell, adamantine::StateProperty::lame_second_parameter);
+    BOOST_TEST(mu == 3.);
   }
 }
 

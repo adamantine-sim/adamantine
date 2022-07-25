@@ -17,10 +17,11 @@
 
 namespace adamantine
 {
-template <int dim>
-MechanicalPhysics<dim>::MechanicalPhysics(
+template <int dim, typename MemorySpaceType>
+MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
-    Geometry<dim> &geometry)
+    Geometry<dim> &geometry,
+    MaterialProperty<dim, MemorySpaceType> &material_properties)
     : _geometry(geometry), _dof_handler(_geometry.get_triangulation())
 {
   unsigned int fe_degree = database.get<unsigned int>("fe_degree");
@@ -37,11 +38,12 @@ MechanicalPhysics<dim>::MechanicalPhysics(
 
   // Create the mechanical operator
   _mechanical_operator =
-      std::make_unique<MechanicalOperator<dim>>(communicator, database);
+      std::make_unique<MechanicalOperator<dim, MemorySpaceType>>(
+          communicator, material_properties);
 }
 
-template <int dim>
-void MechanicalPhysics<dim>::setup_dofs()
+template <int dim, typename MemorySpaceType>
+void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs()
 {
   _dof_handler.distribute_dofs(_fe_collection);
   dealii::IndexSet locally_relevant_dofs;
@@ -61,9 +63,9 @@ void MechanicalPhysics<dim>::setup_dofs()
                                _q_collection);
 }
 
-template <int dim>
+template <int dim, typename MemorySpaceType>
 dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-MechanicalPhysics<dim>::solve()
+MechanicalPhysics<dim, MemorySpaceType>::solve()
 {
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution(
       _mechanical_operator->rhs().get_partitioner());
@@ -86,4 +88,4 @@ MechanicalPhysics<dim>::solve()
 
 } // namespace adamantine
 
-INSTANTIATE_DIM(MechanicalPhysics)
+INSTANTIATE_DIM_HOST(MechanicalPhysics)
