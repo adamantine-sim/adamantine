@@ -49,6 +49,10 @@ enum class StateProperty
   emissivity,
   radiation_heat_transfer_coef,
   convection_heat_transfer_coef,
+  // Mechanical properties only make sense for the solid state. They do not make
+  // sense for the powder and the liquid state
+  lame_first_parameter,
+  lame_second_parameter,
   SIZE
 };
 
@@ -73,21 +77,22 @@ static std::array<std::string, 3> material_state_names = {
     {"powder", "solid", "liquid"}};
 
 /**
- * Array continaing the possible material properties that depend on the state of
- * the material.
+ * Array continaing the possible material properties that do not depend on the
+ * state of the material.
  */
 static std::array<std::string, 5> property_names = {
     {"liquidus", "solidus", "latent_heat", "radiation_temperature_infty",
      "convection_temperature_infty"}};
 
 /**
- * Array containing the possible material properties that do not depend on the
+ * Array containing the possible material properties that depend on the
  * state of the material.
  */
-static std::array<std::string, 8> state_property_names = {
+static std::array<std::string, 10> state_property_names = {
     {"density", "specific_heat", "thermal_conductivity_x",
      "thermal_conductivity_y", "thermal_conductivity_z", "emissivity",
-     "radiation_heat_transfer_coef", "convection_heat_transfer_coef"}};
+     "radiation_heat_transfer_coef", "convection_heat_transfer_coef",
+     "lame_first_parameter", "lame_second_parameter"}};
 
 /**
  * Enum on the possible timers.

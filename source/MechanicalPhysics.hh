@@ -18,16 +18,17 @@
 namespace adamantine
 {
 // TODO Inherit from Physics or remove Physics entirely?
-template <int dim>
+template <int dim, typename MemorySpaceType>
 class MechanicalPhysics
 {
 public:
   /**
    * Constructor.
    */
-  MechanicalPhysics(MPI_Comm const &communicator,
-                    boost::property_tree::ptree const &database,
-                    Geometry<dim> &geometry);
+  MechanicalPhysics(
+      MPI_Comm const &communicator, boost::property_tree::ptree const &database,
+      Geometry<dim> &geometry,
+      MaterialProperty<dim, MemorySpaceType> &material_properties);
 
   /**
    * Setup the DoFHandler, the AffineConstraints, and the MechanicalOperator.
@@ -38,6 +39,11 @@ public:
    * Solve the mechanical problem and return the solution.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solve();
+
+  /**
+   * Return the DoFHandler.
+   */
+  dealii::DoFHandler<dim> &get_dof_handler();
 
 private:
   /**
@@ -63,8 +69,17 @@ private:
   /**
    * Pointer to the MechanicalOperator
    */
-  std::unique_ptr<MechanicalOperator<dim>> _mechanical_operator;
+  std::unique_ptr<MechanicalOperator<dim, MemorySpaceType>>
+      _mechanical_operator;
 };
+
+template <int dim, typename MemorySpaceType>
+inline dealii::DoFHandler<dim> &
+MechanicalPhysics<dim, MemorySpaceType>::get_dof_handler()
+{
+  return _dof_handler;
+}
+
 } // namespace adamantine
 
 #endif

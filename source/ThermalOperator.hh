@@ -26,8 +26,7 @@ class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 public:
   ThermalOperator(
       MPI_Comm const &communicator, BoundaryType boundary_type,
-      std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> const
-          &material_properties,
+      MaterialProperty<dim, MemorySpaceType> &material_properties,
       std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources);
 
   /**
@@ -184,7 +183,7 @@ private:
   /**
    * Material properties associated with the domain.
    */
-  std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> _material_properties;
+  MaterialProperty<dim, MemorySpaceType> &_material_properties;
   /**
    * Vector of heat sources.
    */

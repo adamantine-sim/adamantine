@@ -23,8 +23,7 @@ namespace adamantine
 template <int dim, int fe_degree, typename MemorySpaceType>
 ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
     MPI_Comm const &communicator, BoundaryType boundary_type,
-    std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> const
-        &material_properties,
+    MaterialProperty<dim, MemorySpaceType> &material_properties,
     std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources)
     : _communicator(communicator), _boundary_type(boundary_type),
       _material_properties(material_properties), _heat_sources(heat_sources),
@@ -202,16 +201,16 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::vmult_add(
           double rad_heat_transfer_coef = 0.;
           if (_boundary_type & BoundaryType::convective)
           {
-            conv_temperature_infty = _material_properties->get_cell_value(
+            conv_temperature_infty = _material_properties.get_cell_value(
                 cell, Property::convection_temperature_infty);
-            conv_heat_transfer_coef = _material_properties->get_cell_value(
+            conv_heat_transfer_coef = _material_properties.get_cell_value(
                 cell, StateProperty::convection_heat_transfer_coef);
           }
           if (_boundary_type & BoundaryType::radiative)
           {
-            rad_temperature_infty = _material_properties->get_cell_value(
+            rad_temperature_infty = _material_properties.get_cell_value(
                 cell, Property::radiation_temperature_infty);
-            rad_heat_transfer_coef = _material_properties->get_cell_value(
+            rad_heat_transfer_coef = _material_properties.get_cell_value(
                 cell, StateProperty::radiation_heat_transfer_coef);
           }
 
@@ -294,9 +293,9 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::update_state_ratios(
 
     // Get the material thermodynamic properties
     double const solidus =
-        _material_properties->get(material_id, Property::solidus);
+        _material_properties.get(material_id, Property::solidus);
     double const liquidus =
-        _material_properties->get(material_id, Property::liquidus);
+        _material_properties.get(material_id, Property::liquidus);
 
     // Update the state ratios
     state_ratios[powder] = _powder_ratio(cell, q);
@@ -342,20 +341,20 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
   dealii::VectorizedArray<double> solidus, liquidus, latent_heat;
   for (unsigned int n = 0; n < solidus.size(); ++n)
   {
-    solidus[n] = _material_properties->get(material_id[n], Property::solidus);
-    liquidus[n] = _material_properties->get(material_id[n], Property::liquidus);
+    solidus[n] = _material_properties.get(material_id[n], Property::solidus);
+    liquidus[n] = _material_properties.get(material_id[n], Property::liquidus);
     latent_heat[n] =
-        _material_properties->get(material_id[n], Property::latent_heat);
+        _material_properties.get(material_id[n], Property::latent_heat);
   }
 
   // Now compute the state-dependent properties
   dealii::VectorizedArray<double> density =
-      _material_properties->compute_material_property(
+      _material_properties.compute_material_property(
           StateProperty::density, material_id.data(), state_ratios.data(),
           temperature);
 
   dealii::VectorizedArray<double> specific_heat =
-      _material_properties->compute_material_property(
+      _material_properties.compute_material_property(
           StateProperty::specific_heat, material_id.data(), state_ratios.data(),
           temperature);
 
@@ -426,11 +425,11 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
       if constexpr (dim == 2)
       {
         th_conductivity_grad[axis<dim>::x] *=
-            _material_properties->compute_material_property(
+            _material_properties.compute_material_property(
                 StateProperty::thermal_conductivity_x, mat_id.data(),
                 state_ratios.data(), temperature);
         th_conductivity_grad[axis<dim>::z] *=
-            _material_properties->compute_material_property(
+            _material_properties.compute_material_property(
                 StateProperty::thermal_conductivity_z, mat_id.data(),
                 state_ratios.data(), temperature);
       }
@@ -440,11 +439,11 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
         auto const th_conductivity_grad_x = th_conductivity_grad[axis<dim>::x];
         auto const th_conductivity_grad_y = th_conductivity_grad[axis<dim>::y];
         auto const thermal_conductivity_x =
-            _material_properties->compute_material_property(
+            _material_properties.compute_material_property(
                 StateProperty::thermal_conductivity_x, mat_id.data(),
                 state_ratios.data(), temperature);
         auto const thermal_conductivity_y =
-            _material_properties->compute_material_property(
+            _material_properties.compute_material_property(
                 StateProperty::thermal_conductivity_y, mat_id.data(),
                 state_ratios.data(), temperature);
 
@@ -474,7 +473,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
 
         // There is no deposition angle for the z axis
         th_conductivity_grad[axis<dim>::z] *=
-            _material_properties->compute_material_property(
+            _material_properties.compute_material_property(
                 StateProperty::thermal_conductivity_z, mat_id.data(),
                 state_ratios.data(), temperature);
       }
@@ -532,9 +531,9 @@ void ThermalOperator<dim, fe_degree,
         typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
             cell_it);
 
-        _liquid_ratio(cell, q)[i] = _material_properties->get_state_ratio(
+        _liquid_ratio(cell, q)[i] = _material_properties.get_state_ratio(
             cell_tria, MaterialState::liquid);
-        _powder_ratio(cell, q)[i] = _material_properties->get_state_ratio(
+        _powder_ratio(cell, q)[i] = _material_properties.get_state_ratio(
             cell_tria, MaterialState::powder);
         _material_id(cell, q)[i] = cell_tria->material_id();
       }
@@ -544,9 +543,9 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree,
                      MemorySpaceType>::set_state_to_material_properties()
 {
-  _material_properties->set_state(_liquid_ratio, _powder_ratio,
-                                  _cell_it_to_mf_cell_map,
-                                  _matrix_free.get_dof_handler());
+  _material_properties.set_state(_liquid_ratio, _powder_ratio,
+                                 _cell_it_to_mf_cell_map,
+                                 _matrix_free.get_dof_handler());
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -556,7 +555,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
             &temperature)
 {
   if (!(_boundary_type & BoundaryType::adiabatic))
-    _material_properties->update_boundary_material_properties(
+    _material_properties.update_boundary_material_properties(
         _matrix_free.get_dof_handler(), temperature);
 }
 

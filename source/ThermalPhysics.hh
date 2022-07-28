@@ -20,6 +20,8 @@
 
 #include <boost/property_tree/ptree.hpp>
 
+#include <memory>
+
 namespace adamantine
 {
 /**
@@ -33,43 +35,11 @@ class ThermalPhysics : public Physics<dim, MemorySpaceType>
 public:
   /**
    * Constructor.
-   * \param[in] communicator: MPI communicator
-   * \param[in] database requires the following entries:
-   *   - <B>materials</B>: property tree
-   *   - <B>sources</B>: property tree
-   *   - <B>sources.n_beams</B>: unsigned int in \f$[0,\infty)\f$
-   *   - <B>sources.beam_X</B>: property tree with X the number associated to
-   *   the heat source
-   *   - <B>time_stepping</B>: property tree
-   *   - <B>time_stepping.method</B>: string
-   *   - <B>time_stepping.coarsening_parameter</B>: double in \f$[0,\infty)\f$
-   *   [optional, default value of 1.2]
-   *   - <B>time_stepping.refining_parameter</B>: double in \f$(0,1)\f$
-   *   [optional, default value of 0.8]
-   *   - <B>time_stepping.min_time_step</B>: double in \f$[0,\infty)\f$
-   *   [optional, default value of 1e-14]
-   *   - <B>time_stepping.max_time_step</B>: double in \f$(0,\infty)\f$
-   *   [optional, default value of 1e100]
-   *   - <B>time_stepping.refining_tolerance</B>: double in \f$(0,\infty)\f$
-   *   [optional, default value of 1e-8]
-   *   - <B>time_stepping.coarsening_tolerance</B>: double in \f$(0, \infty)\f$
-   *   [optional, default value of 1e-12]
-   *   - <B>time_stepping.max_iteration</B>: unsigned int \f$[0,\infty)\f$
-   *   [optional, default value of 1000]
-   *   - <B>time_stepping.right_preconditioning</B>: boolean [optional, default
-   *   value is false]
-   *   - <B>time_stepping.n_tmp_vectors</B>: unsigned int in \f$[0,\infty)\f$
-   *   [optional, default of 30]
-   *   - <B>time_stepping.newton_max_iteration</B>: unsigned int in
-   *   \f$[0,\infty)\f$ [optional, default valie of 100]
-   *   - <B>time_stepping.newton_tolerance</B>: double in \f$(0,\infty)\f$
-   *   [optional, default of 1e-6]
-   *   - <B>time_stepping.jfnk</B>: boolean [optional, default value of false]
-   * \param[in] geometry: Triangulation of the domain
    */
   ThermalPhysics(MPI_Comm const &communicator,
                  boost::property_tree::ptree const &database,
-                 Geometry<dim> &geometry);
+                 Geometry<dim> &geometry,
+                 MaterialProperty<dim, MemorySpaceType> &material_properties);
 
   void setup_dofs() override;
 
@@ -130,9 +100,6 @@ public:
   dealii::DoFHandler<dim> &get_dof_handler() override;
 
   dealii::AffineConstraints<double> &get_affine_constraints() override;
-
-  std::shared_ptr<MaterialProperty<dim, MemorySpaceType>>
-  get_material_property() override;
 
   /**
    * Return the heat sources.
@@ -227,9 +194,9 @@ private:
    */
   std::vector<double> _deposition_sin;
   /**
-   * Shared pointer to the material properties associated to the domain.
+   * Associated material properties.
    */
-  std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> _material_properties;
+  MaterialProperty<dim, MemorySpaceType> &_material_properties;
   /**
    * Vector of heat sources.
    */
@@ -312,15 +279,6 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_affine_constraints()
 {
   return _affine_constraints;
-}
-
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
-inline std::shared_ptr<MaterialProperty<dim, MemorySpaceType>>
-ThermalPhysics<dim, fe_degree, MemorySpaceType,
-               QuadratureType>::get_material_property()
-{
-  return _material_properties;
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,

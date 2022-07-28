@@ -64,10 +64,8 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  std::shared_ptr<adamantine::MaterialProperty<2, dealii::MemorySpace::Host>>
-      mat_properties(
-          new adamantine::MaterialProperty<2, dealii::MemorySpace::Host>(
-              communicator, geometry.get_triangulation(), mat_prop_database));
+  adamantine::MaterialProperty<2, dealii::MemorySpace::Host> mat_properties(
+      communicator, geometry.get_triangulation(), mat_prop_database);
 
   boost::property_tree::ptree beam_database;
   beam_database.put("depth", 0.1);
@@ -108,15 +106,15 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
   for (unsigned int i = 0; i < src.size(); ++i)
     src[i] = 1.;
 
+  post_processor.write_thermal_output(1, 0, 0., src, mat_properties.get_state(),
+                                      mat_properties.get_dofs_map(),
+                                      mat_properties.get_dof_handler());
   post_processor.write_thermal_output(
-      1, 0, 0., src, mat_properties->get_state(),
-      mat_properties->get_dofs_map(), mat_properties->get_dof_handler());
+      1, 1, 0.1, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
+      mat_properties.get_dof_handler());
   post_processor.write_thermal_output(
-      1, 1, 0.1, src, mat_properties->get_state(),
-      mat_properties->get_dofs_map(), mat_properties->get_dof_handler());
-  post_processor.write_thermal_output(
-      1, 2, 0.2, src, mat_properties->get_state(),
-      mat_properties->get_dofs_map(), mat_properties->get_dof_handler());
+      1, 2, 0.2, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
+      mat_properties.get_dof_handler());
   post_processor.write_pvd();
 
   // Check that the files exist
@@ -187,19 +185,13 @@ BOOST_AUTO_TEST_CASE(mechanical_post_processor)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  std::shared_ptr<adamantine::MaterialProperty<dim, dealii::MemorySpace::Host>>
-      mat_properties(
-          new adamantine::MaterialProperty<dim, dealii::MemorySpace::Host>(
-              communicator, geometry.get_triangulation(), mat_prop_database));
-  // Create the mechanical database
-  boost::property_tree::ptree mechanical_database;
-  double const lame_first = 2.;
-  double const lame_second = 3.;
-  mechanical_database.put("lame_first_param", lame_first);
-  mechanical_database.put("lame_second_param", lame_second);
+  mat_prop_database.put("material_0.solid.lame_first_parameter", 2.);
+  mat_prop_database.put("material_0.solid.lame_second_parameter", 3.);
+  adamantine::MaterialProperty<dim, dealii::MemorySpace::Host> mat_properties(
+      communicator, geometry.get_triangulation(), mat_prop_database);
 
-  adamantine::MechanicalOperator<dim> mechanical_operator(communicator,
-                                                          mechanical_database);
+  adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
+      mechanical_operator(communicator, mat_properties);
   mechanical_operator.reinit(dof_handler, affine_constraints, q_collection);
 
   // Create the PostProcessor
@@ -214,14 +206,14 @@ BOOST_AUTO_TEST_CASE(mechanical_post_processor)
     src[i] = i % (dim + 1);
 
   post_processor.write_mechanical_output(
-      1, 0, 0., src, mat_properties->get_state(),
-      mat_properties->get_dofs_map(), mat_properties->get_dof_handler());
+      1, 0, 0., src, mat_properties.get_state(), mat_properties.get_dofs_map(),
+      mat_properties.get_dof_handler());
   post_processor.write_mechanical_output(
-      1, 1, 0.1, src, mat_properties->get_state(),
-      mat_properties->get_dofs_map(), mat_properties->get_dof_handler());
+      1, 1, 0.1, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
+      mat_properties.get_dof_handler());
   post_processor.write_mechanical_output(
-      1, 2, 0.2, src, mat_properties->get_state(),
-      mat_properties->get_dofs_map(), mat_properties->get_dof_handler());
+      1, 2, 0.2, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
+      mat_properties.get_dof_handler());
   post_processor.write_pvd();
 
   // Check that the files exist

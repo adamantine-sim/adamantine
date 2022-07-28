@@ -98,8 +98,7 @@ evaluate_thermal_physics_impl(
     dealii::DoFHandler<dim> const &dof_handler,
     std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources,
     double current_source_height, BoundaryType boundary_type,
-    std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> const
-        &material_properties,
+    MaterialProperty<dim, MemorySpaceType> &material_properties,
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
     std::vector<Timer> &timers)
@@ -192,16 +191,16 @@ evaluate_thermal_physics_impl(
           double rad_heat_transfer_coef = 0.;
           if (boundary_type & BoundaryType::convective)
           {
-            conv_temperature_infty = material_properties->get_cell_value(
+            conv_temperature_infty = material_properties.get_cell_value(
                 cell, Property::convection_temperature_infty);
-            conv_heat_transfer_coef = material_properties->get_cell_value(
+            conv_heat_transfer_coef = material_properties.get_cell_value(
                 cell, StateProperty::convection_heat_transfer_coef);
           }
           if (boundary_type & BoundaryType::radiative)
           {
-            rad_temperature_infty = material_properties->get_cell_value(
+            rad_temperature_infty = material_properties.get_cell_value(
                 cell, Property::radiation_temperature_infty);
-            rad_heat_transfer_coef = material_properties->get_cell_value(
+            rad_heat_transfer_coef = material_properties.get_cell_value(
                 cell, StateProperty::radiation_heat_transfer_coef);
           }
 
@@ -265,9 +264,11 @@ template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
 ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
-    Geometry<dim> &geometry)
+    Geometry<dim> &geometry,
+    MaterialProperty<dim, MemorySpaceType> &material_properties)
     : _boundary_type(BoundaryType::invalid), _geometry(geometry),
-      _dof_handler(_geometry.get_triangulation())
+      _dof_handler(_geometry.get_triangulation()),
+      _material_properties(material_properties)
 {
   // Create the FECollection
   _fe_collection.push_back(dealii::FE_Q<dim>(fe_degree));
@@ -276,12 +277,6 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   // Create the QCollection
   _q_collection.push_back(QuadratureType(fe_degree + 1));
   _q_collection.push_back(QuadratureType(1));
-
-  // Create the material properties
-  boost::property_tree::ptree const &material_database =
-      database.get_child("materials");
-  _material_properties.reset(new MaterialProperty<dim, MemorySpaceType>(
-      communicator, _geometry.get_triangulation(), material_database));
 
   // Create the heat sources
   boost::property_tree::ptree const &source_database =
@@ -648,7 +643,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   setup_dofs();
 
   // Update MaterialProperty DoFHandler and resize the state vectors
-  _material_properties->reinit_dofs();
+  _material_properties.reinit_dofs();
 
   // Recompute the inverse of the mass matrix
   compute_inverse_mass_matrix();

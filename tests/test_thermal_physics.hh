@@ -5,6 +5,7 @@
  * for the text and further information on this license.
  */
 
+#include "MaterialProperty.hh"
 #include <Geometry.hh>
 #include <ThermalPhysics.hh>
 
@@ -26,21 +27,29 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   geometry_database.put("height_divisions", 5);
   // Build Geometry
   adamantine::Geometry<2> geometry(communicator, geometry_database);
-  // Material property
-  database.put("materials.property_format", "polynomial");
-  database.put("materials.n_materials", 1);
-  database.put("materials.material_0.solid.density", 1.);
-  database.put("materials.material_0.powder.density", 1.);
-  database.put("materials.material_0.liquid.density", 1.);
-  database.put("materials.material_0.solid.specific_heat", 1.);
-  database.put("materials.material_0.powder.specific_heat", 1.);
-  database.put("materials.material_0.liquid.specific_heat", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity_z", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity_z", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity_z", 1.);
+  // MaterialProperty database
+  boost::property_tree::ptree material_property_database;
+  material_property_database.put("property_format", "polynomial");
+  material_property_database.put("n_materials", 1);
+  material_property_database.put("material_0.solid.density", 1.);
+  material_property_database.put("material_0.powder.density", 1.);
+  material_property_database.put("material_0.liquid.density", 1.);
+  material_property_database.put("material_0.solid.specific_heat", 1.);
+  material_property_database.put("material_0.powder.specific_heat", 1.);
+  material_property_database.put("material_0.liquid.specific_heat", 1.);
+  material_property_database.put("material_0.solid.thermal_conductivity_x", 1.);
+  material_property_database.put("material_0.solid.thermal_conductivity_z", 1.);
+  material_property_database.put("material_0.powder.thermal_conductivity_x",
+                                 1.);
+  material_property_database.put("material_0.powder.thermal_conductivity_z",
+                                 1.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_x",
+                                 1.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_z",
+                                 1.);
+  // Build MaterialProperty
+  adamantine::MaterialProperty<2, MemorySpaceType> material_properties(
+      communicator, geometry.get_triangulation(), material_property_database);
   // Source database
   database.put("sources.n_beams", 1);
   database.put("sources.beam_0.depth", 1e100);
@@ -56,7 +65,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
 
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
-      communicator, database, geometry);
+      communicator, database, geometry, material_properties);
   physics.setup_dofs();
   physics.update_material_deposition_orientation();
   physics.compute_inverse_mass_matrix();
@@ -94,22 +103,31 @@ void thermal_2d_manufactured_solution()
   // Build Geometry
   adamantine::Geometry<2> geometry(communicator, geometry_database);
 
+  // MaterialProperty database
+  boost::property_tree::ptree material_property_database;
+  material_property_database.put("property_format", "polynomial");
+  material_property_database.put("n_materials", 1);
+  material_property_database.put("material_0.solid.density", 1.);
+  material_property_database.put("material_0.powder.density", 1.);
+  material_property_database.put("material_0.liquid.density", 1.);
+  material_property_database.put("material_0.solid.specific_heat", 1.);
+  material_property_database.put("material_0.powder.specific_heat", 1.);
+  material_property_database.put("material_0.liquid.specific_heat", 1.);
+  material_property_database.put("material_0.solid.thermal_conductivity_x", 1.);
+  material_property_database.put("material_0.solid.thermal_conductivity_z", 1.);
+  material_property_database.put("material_0.powder.thermal_conductivity_x",
+                                 1.);
+  material_property_database.put("material_0.powder.thermal_conductivity_z",
+                                 1.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_x",
+                                 1.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_z",
+                                 1.);
+  // Build MaterialProperty
+  adamantine::MaterialProperty<2, MemorySpaceType> material_properties(
+      communicator, geometry.get_triangulation(), material_property_database);
+
   boost::property_tree::ptree database;
-  // Material property
-  database.put("materials.property_format", "polynomial");
-  database.put("materials.n_materials", 1);
-  database.put("materials.material_0.solid.density", 1.);
-  database.put("materials.material_0.powder.density", 1.);
-  database.put("materials.material_0.liquid.density", 1.);
-  database.put("materials.material_0.solid.specific_heat", 1.);
-  database.put("materials.material_0.powder.specific_heat", 1.);
-  database.put("materials.material_0.liquid.specific_heat", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity_z", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity_z", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity_z", 1.);
   // Source database
   database.put("sources.n_beams", 1);
   database.put("sources.beam_0.depth", 1e100);
@@ -128,7 +146,7 @@ void thermal_2d_manufactured_solution()
   database.put("time_stepping.method", "rk_fourth_order");
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
-      communicator, database, geometry);
+      communicator, database, geometry, material_properties);
   physics.setup_dofs();
   physics.update_material_deposition_orientation();
   physics.compute_inverse_mass_matrix();
@@ -175,22 +193,30 @@ void initial_temperature()
   geometry_database.put("height_divisions", 1);
   // Build Geometry
   adamantine::Geometry<2> geometry(communicator, geometry_database);
+  // MaterialProperty database
+  boost::property_tree::ptree material_property_database;
+  material_property_database.put("property_format", "polynomial");
+  material_property_database.put("n_materials", 1);
+  material_property_database.put("material_0.solid.density", 1.);
+  material_property_database.put("material_0.powder.density", 10.);
+  material_property_database.put("material_0.liquid.density", 1.);
+  material_property_database.put("material_0.solid.specific_heat", 1.);
+  material_property_database.put("material_0.powder.specific_heat", 2.);
+  material_property_database.put("material_0.liquid.specific_heat", 1.);
+  material_property_database.put("material_0.solid.thermal_conductivity_x", 1.);
+  material_property_database.put("material_0.solid.thermal_conductivity_z", 1.);
+  material_property_database.put("material_0.powder.thermal_conductivity_x",
+                                 1.);
+  material_property_database.put("material_0.powder.thermal_conductivity_z",
+                                 1.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_x",
+                                 1.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_z",
+                                 1.);
+  // Build MaterialProperty
+  adamantine::MaterialProperty<2, MemorySpaceType> material_properties(
+      communicator, geometry.get_triangulation(), material_property_database);
   boost::property_tree::ptree database;
-  // Material property
-  database.put("materials.property_format", "polynomial");
-  database.put("materials.n_materials", 1);
-  database.put("materials.material_0.solid.density", 1.);
-  database.put("materials.material_0.powder.density", 10.);
-  database.put("materials.material_0.liquid.density", 1.);
-  database.put("materials.material_0.solid.specific_heat", 1.);
-  database.put("materials.material_0.powder.specific_heat", 2.);
-  database.put("materials.material_0.liquid.specific_heat", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity_z", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity_z", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity_z", 1.);
   // Source database
   database.put("sources.n_beams", 1);
   database.put("sources.beam_0.depth", 1e100);
@@ -209,7 +235,7 @@ void initial_temperature()
   database.put("time_stepping.method", "rk_fourth_order");
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
-      communicator, database, geometry);
+      communicator, database, geometry, material_properties);
   physics.setup_dofs();
   physics.update_material_deposition_orientation();
   physics.compute_inverse_mass_matrix();
@@ -234,22 +260,30 @@ void energy_conservation()
   geometry_database.put("height_divisions", 10);
   // Build Geometry
   adamantine::Geometry<2> geometry(communicator, geometry_database);
+  boost::property_tree::ptree material_property_database;
+  // MaterialProperty database
+  material_property_database.put("property_format", "polynomial");
+  material_property_database.put("n_materials", 1);
+  material_property_database.put("material_0.solid.density", 0.5);
+  material_property_database.put("material_0.powder.density", 0.5);
+  material_property_database.put("material_0.liquid.density", 0.5);
+  material_property_database.put("material_0.solid.specific_heat", 4.);
+  material_property_database.put("material_0.powder.specific_heat", 4.);
+  material_property_database.put("material_0.liquid.specific_heat", 4.);
+  material_property_database.put("material_0.solid.thermal_conductivity_x", 2.);
+  material_property_database.put("material_0.solid.thermal_conductivity_z", 2.);
+  material_property_database.put("material_0.powder.thermal_conductivity_x",
+                                 2.);
+  material_property_database.put("material_0.powder.thermal_conductivity_z",
+                                 2.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_x",
+                                 2.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_z",
+                                 2.);
+  // Build MaterialProperty
+  adamantine::MaterialProperty<2, MemorySpaceType> material_properties(
+      communicator, geometry.get_triangulation(), material_property_database);
   boost::property_tree::ptree database;
-  // Material property
-  database.put("materials.property_format", "polynomial");
-  database.put("materials.n_materials", 1);
-  database.put("materials.material_0.solid.density", 0.5);
-  database.put("materials.material_0.powder.density", 0.5);
-  database.put("materials.material_0.liquid.density", 0.5);
-  database.put("materials.material_0.solid.specific_heat", 4.);
-  database.put("materials.material_0.powder.specific_heat", 4.);
-  database.put("materials.material_0.liquid.specific_heat", 4.);
-  database.put("materials.material_0.solid.thermal_conductivity_x", 2.);
-  database.put("materials.material_0.solid.thermal_conductivity_z", 2.);
-  database.put("materials.material_0.powder.thermal_conductivity_x", 2.);
-  database.put("materials.material_0.powder.thermal_conductivity_z", 2.);
-  database.put("materials.material_0.liquid.thermal_conductivity_x", 2.);
-  database.put("materials.material_0.liquid.thermal_conductivity_z", 2.);
   // Source database
   database.put("sources.n_beams", 1);
   database.put("sources.beam_0.type", "cube");
@@ -265,13 +299,13 @@ void energy_conservation()
   // Boundary database
   database.put("boundary.type", "adiabatic");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
-      physics(communicator, database, geometry);
+  adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
+      communicator, database, geometry, material_properties);
   physics.setup_dofs();
   physics.update_material_deposition_orientation();
   physics.compute_inverse_mass_matrix();
 
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
+  dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   double constexpr initial_temperature = 10;
   double constexpr final_temperature = 10.5;
   physics.initialize_dof_vector(initial_temperature, solution);
@@ -329,33 +363,49 @@ void radiation_bcs()
   geometry_database.put("height_divisions", 5);
   // Build Geometry
   adamantine::Geometry<2> geometry(communicator, geometry_database);
+  // MaterialProperty database
+  boost::property_tree::ptree material_property_database;
+  material_property_database.put("property_format", "polynomial");
+  material_property_database.put("n_materials", 1);
+  material_property_database.put("material_0.solid.density", 1.);
+  material_property_database.put("material_0.powder.density", 1.);
+  material_property_database.put("material_0.liquid.density", 1.);
+  material_property_database.put("material_0.solid.specific_heat", 1.);
+  material_property_database.put("material_0.powder.specific_heat", 1.);
+  material_property_database.put("material_0.liquid.specific_heat", 1.);
+  material_property_database.put("material_0.solid.thermal_conductivity_x", 1.);
+  material_property_database.put("material_0.solid.thermal_conductivity_z", 1.);
+  material_property_database.put("material_0.powder.thermal_conductivity_x",
+                                 1.);
+  material_property_database.put("material_0.powder.thermal_conductivity_z",
+                                 1.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_x",
+                                 1.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_z",
+                                 1.);
+  material_property_database.put("material_0.solid.emissivity", 1.);
+  material_property_database.put("material_0.powder.emissivity", 1.);
+  material_property_database.put("material_0.liquid.emissivity", 1.);
+  material_property_database.put(
+      "material_0.solid.radiation_heat_transfer_coef", 1.);
+  material_property_database.put(
+      "material_0.powder.radiation_heat_transfer_coef", 1.);
+  material_property_database.put(
+      "material_0.liquid.radiation_heat_transfer_coef", 1.);
+  material_property_database.put(
+      "material_0.solid.convection_heat_transfer_coef", 1.);
+  material_property_database.put(
+      "material_0.powder.convection_heat_transfer_coef", 1.);
+  material_property_database.put(
+      "material_0.liquid.convection_heat_transfer_coef", 1.);
+  material_property_database.put("material_0.radiation_temperature_infty",
+                                 20.0);
+  material_property_database.put("material_0.convection_temperature_infty",
+                                 0.0);
+  // Build MaterialProperty
+  adamantine::MaterialProperty<2, MemorySpaceType> material_properties(
+      communicator, geometry.get_triangulation(), material_property_database);
   boost::property_tree::ptree database;
-  // Material property
-  database.put("materials.property_format", "polynomial");
-  database.put("materials.n_materials", 1);
-  database.put("materials.material_0.solid.density", 1.);
-  database.put("materials.material_0.powder.density", 1.);
-  database.put("materials.material_0.liquid.density", 1.);
-  database.put("materials.material_0.solid.specific_heat", 1.);
-  database.put("materials.material_0.powder.specific_heat", 1.);
-  database.put("materials.material_0.liquid.specific_heat", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity_z", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity_z", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity_z", 1.);
-  database.put("materials.material_0.solid.emissivity", 1.);
-  database.put("materials.material_0.powder.emissivity", 1.);
-  database.put("materials.material_0.liquid.emissivity", 1.);
-  database.put("materials.material_0.solid.radiation_heat_transfer_coef", 1.);
-  database.put("materials.material_0.powder.radiation_heat_transfer_coef", 1.);
-  database.put("materials.material_0.liquid.radiation_heat_transfer_coef", 1.);
-  database.put("materials.material_0.solid.convection_heat_transfer_coef", 1.);
-  database.put("materials.material_0.powder.convection_heat_transfer_coef", 1.);
-  database.put("materials.material_0.liquid.convection_heat_transfer_coef", 1.);
-  database.put("materials.material_0.radiation_temperature_infty", 20.0);
-  database.put("materials.material_0.convection_temperature_infty", 0.0);
   // Source database
   database.put("sources.n_beams", 0);
   // Time-stepping database
@@ -364,7 +414,7 @@ void radiation_bcs()
   database.put("boundary.type", "radiative");
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
-      physics(communicator, database, geometry);
+      physics(communicator, database, geometry, material_properties);
   physics.setup_dofs();
   physics.update_material_deposition_orientation();
   physics.compute_inverse_mass_matrix();
@@ -426,33 +476,48 @@ void convection_bcs()
   geometry_database.put("height_divisions", 5);
   // Build Geometry
   adamantine::Geometry<2> geometry(communicator, geometry_database);
+  boost::property_tree::ptree material_property_database;
+  // MaterialProperty database
+  material_property_database.put("property_format", "polynomial");
+  material_property_database.put("n_materials", 1);
+  material_property_database.put("material_0.solid.density", 1.);
+  material_property_database.put("material_0.powder.density", 1.);
+  material_property_database.put("material_0.liquid.density", 1.);
+  material_property_database.put("material_0.solid.specific_heat", 1.);
+  material_property_database.put("material_0.powder.specific_heat", 1.);
+  material_property_database.put("material_0.liquid.specific_heat", 1.);
+  material_property_database.put("material_0.solid.thermal_conductivity_x", 1.);
+  material_property_database.put("material_0.solid.thermal_conductivity_z", 1.);
+  material_property_database.put("material_0.powder.thermal_conductivity_x",
+                                 1.);
+  material_property_database.put("material_0.powder.thermal_conductivity_z",
+                                 1.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_x",
+                                 1.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_z",
+                                 1.);
+  material_property_database.put("material_0.solid.emissivity", 1.);
+  material_property_database.put("material_0.powder.emissivity", 1.);
+  material_property_database.put("material_0.liquid.emissivity", 1.);
+  material_property_database.put(
+      "material_0.solid.radiation_heat_transfer_coef", 1.);
+  material_property_database.put(
+      "material_0.powder.radiation_heat_transfer_coef", 1.);
+  material_property_database.put(
+      "material_0.liquid.radiation_heat_transfer_coef", 1.);
+  material_property_database.put(
+      "material_0.solid.convection_heat_transfer_coef", 1.);
+  material_property_database.put(
+      "material_0.powder.convection_heat_transfer_coef", 1.);
+  material_property_database.put(
+      "material_0.liquid.convection_heat_transfer_coef", 1.);
+  material_property_database.put("material_0.radiation_temperature_infty", 0.0);
+  material_property_database.put("material_0.convection_temperature_infty",
+                                 20.0);
+  // Build MaterialProperty
+  adamantine::MaterialProperty<2, MemorySpaceType> material_properties(
+      communicator, geometry.get_triangulation(), material_property_database);
   boost::property_tree::ptree database;
-  // Material property
-  database.put("materials.property_format", "polynomial");
-  database.put("materials.n_materials", 1);
-  database.put("materials.material_0.solid.density", 1.);
-  database.put("materials.material_0.powder.density", 1.);
-  database.put("materials.material_0.liquid.density", 1.);
-  database.put("materials.material_0.solid.specific_heat", 1.);
-  database.put("materials.material_0.powder.specific_heat", 1.);
-  database.put("materials.material_0.liquid.specific_heat", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.solid.thermal_conductivity_z", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.powder.thermal_conductivity_z", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity_x", 1.);
-  database.put("materials.material_0.liquid.thermal_conductivity_z", 1.);
-  database.put("materials.material_0.solid.emissivity", 1.);
-  database.put("materials.material_0.powder.emissivity", 1.);
-  database.put("materials.material_0.liquid.emissivity", 1.);
-  database.put("materials.material_0.solid.radiation_heat_transfer_coef", 1.);
-  database.put("materials.material_0.powder.radiation_heat_transfer_coef", 1.);
-  database.put("materials.material_0.liquid.radiation_heat_transfer_coef", 1.);
-  database.put("materials.material_0.solid.convection_heat_transfer_coef", 1.);
-  database.put("materials.material_0.powder.convection_heat_transfer_coef", 1.);
-  database.put("materials.material_0.liquid.convection_heat_transfer_coef", 1.);
-  database.put("materials.material_0.radiation_temperature_infty", 0.0);
-  database.put("materials.material_0.convection_temperature_infty", 20.0);
   // Source database
   database.put("sources.n_beams", 0);
   // Time-stepping database
@@ -461,7 +526,7 @@ void convection_bcs()
   database.put("boundary.type", "convective");
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
-      physics(communicator, database, geometry);
+      physics(communicator, database, geometry, material_properties);
   physics.setup_dofs();
   physics.update_material_deposition_orientation();
   physics.compute_inverse_mass_matrix();

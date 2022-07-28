@@ -403,8 +403,7 @@ namespace adamantine
 template <int dim, int fe_degree, typename MemorySpaceType>
 ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::ThermalOperatorDevice(
     MPI_Comm const &communicator, BoundaryType boundary_type,
-    std::shared_ptr<MaterialProperty<dim, MemorySpaceType>> const
-        &material_properties)
+    MaterialProperty<dim, MemorySpaceType> &material_properties)
     : _communicator(communicator), _boundary_type(boundary_type), _m(0),
       _n_owned_cells(0), _material_properties(material_properties),
       _inverse_mass_matrix(
@@ -537,12 +536,12 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::vmult_add(
   ASSERT(material_id_view.extent(0), "material_id has not been initialized");
 
   LocalThermalOperatorDevice<dim, fe_degree> local_operator(
-      _material_properties->properties_use_table(),
-      _material_properties->polynomial_order(), _deposition_cos.get_values(),
+      _material_properties.properties_use_table(),
+      _material_properties.polynomial_order(), _deposition_cos.get_values(),
       _deposition_sin.get_values(), powder_ratio_view, liquid_ratio_view,
-      material_id_view, _inv_rho_cp, _material_properties->get_properties(),
-      _material_properties->get_state_property_tables(),
-      _material_properties->get_state_property_polynomials());
+      material_id_view, _inv_rho_cp, _material_properties.get_properties(),
+      _material_properties.get_state_property_tables(),
+      _material_properties.get_state_property_polynomials());
   _matrix_free.cell_loop(local_operator, src, dst);
   _matrix_free.copy_constrained_values(src, dst);
 }
@@ -584,9 +583,9 @@ void ThermalOperatorDevice<
     // Cast to Triangulation<dim>::cell_iterator to access the material_id
     typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
     double const cell_liquid_ratio =
-        _material_properties->get_state_ratio(cell_tria, MaterialState::liquid);
+        _material_properties.get_state_ratio(cell_tria, MaterialState::liquid);
     double const cell_powder_ratio =
-        _material_properties->get_state_ratio(cell_tria, MaterialState::powder);
+        _material_properties.get_state_ratio(cell_tria, MaterialState::powder);
     double const cell_material_id = cell_tria->material_id();
 
     for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
@@ -608,9 +607,9 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree,
                            MemorySpaceType>::set_state_to_material_properties()
 {
-  _material_properties->set_state_device(_liquid_ratio, _powder_ratio,
-                                         _cell_it_to_mf_pos,
-                                         _matrix_free.get_dof_handler());
+  _material_properties.set_state_device(_liquid_ratio, _powder_ratio,
+                                        _cell_it_to_mf_pos,
+                                        _matrix_free.get_dof_handler());
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -620,7 +619,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
             &temperature)
 {
   if (!(_boundary_type & BoundaryType::adiabatic))
-    _material_properties->update_boundary_material_properties(
+    _material_properties.update_boundary_material_properties(
         _matrix_free.get_dof_handler(), temperature);
 }
 

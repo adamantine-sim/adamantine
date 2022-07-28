@@ -8,6 +8,7 @@
 #ifndef MECHANICAL_OPERATOR_HH
 #define MECHANICAL_OPERATOR_HH
 
+#include <MaterialProperty.hh>
 #include <Operator.hh>
 
 #include <deal.II/base/memory_space.h>
@@ -22,12 +23,18 @@
 
 namespace adamantine
 {
-template <int dim>
+/**
+ * This class is the operator associated with the solid mechanics equations.
+ * The class is templated on the MemorySpace because it use MaterialProperty
+ * which itself is templated on the MemorySpace but the operator is CPU only.
+ */
+template <int dim, typename MemorySpaceType>
 class MechanicalOperator : public Operator<dealii::MemorySpace::Host>
 {
 public:
-  MechanicalOperator(MPI_Comm const &communicator,
-                     boost::property_tree::ptree const &database);
+  MechanicalOperator(
+      MPI_Comm const &communicator,
+      MaterialProperty<dim, MemorySpaceType> &material_properties);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
@@ -79,9 +86,9 @@ private:
    */
   bool _bilinear_form_output = true;
   /**
-   *
+   * Reference to the MaterialProperty from MechanicalPhysics.
    */
-  boost::property_tree::ptree const &_database;
+  MaterialProperty<dim, MemorySpaceType> &_material_properties;
   /**
    * Non-owning pointer to the DoFHandler from MechanicalPhysics
    */
@@ -105,29 +112,31 @@ private:
   dealii::TrilinosWrappers::SparseMatrix _system_matrix;
 };
 
-template <int dim>
-inline dealii::types::global_dof_index MechanicalOperator<dim>::m() const
+template <int dim, typename MemorySpaceType>
+inline dealii::types::global_dof_index
+MechanicalOperator<dim, MemorySpaceType>::m() const
 {
   return _system_matrix.m();
 }
 
-template <int dim>
-inline dealii::types::global_dof_index MechanicalOperator<dim>::n() const
+template <int dim, typename MemorySpaceType>
+inline dealii::types::global_dof_index
+MechanicalOperator<dim, MemorySpaceType>::n() const
 {
   return _system_matrix.n();
 }
 
-template <int dim>
+template <int dim, typename MemorySpaceType>
 inline dealii::LA::distributed::Vector<double,
                                        dealii::MemorySpace::Host> const &
-MechanicalOperator<dim>::rhs() const
+MechanicalOperator<dim, MemorySpaceType>::rhs() const
 {
   return _system_rhs;
 }
 
-template <int dim>
+template <int dim, typename MemorySpaceType>
 inline dealii::TrilinosWrappers::SparseMatrix const &
-MechanicalOperator<dim>::system_matrix() const
+MechanicalOperator<dim, MemorySpaceType>::system_matrix() const
 {
   return _system_matrix;
 }
