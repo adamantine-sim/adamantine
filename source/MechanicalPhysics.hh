@@ -25,15 +25,24 @@ public:
   /**
    * Constructor.
    */
-  MechanicalPhysics(
-      MPI_Comm const &communicator, boost::property_tree::ptree const &database,
-      Geometry<dim> &geometry,
-      MaterialProperty<dim, MemorySpaceType> &material_properties);
+  MechanicalPhysics(MPI_Comm const &communicator,
+                    boost::property_tree::ptree const &database,
+                    Geometry<dim> &geometry,
+                    MaterialProperty<dim, MemorySpaceType> &material_properties,
+                    double initial_temperature = -1.);
 
   /**
    * Setup the DoFHandler, the AffineConstraints, and the MechanicalOperator.
    */
   void setup_dofs();
+
+  /**
+   * Same as above when solving a thermo-mechanical problem.
+   */
+  void setup_dofs(
+      dealii::DoFHandler<dim> const &thermal_dof_handler,
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+          &temperature);
 
   /**
    * Solve the mechanical problem and return the solution.

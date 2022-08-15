@@ -21,7 +21,8 @@ template <int dim, typename MemorySpaceType>
 MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     Geometry<dim> &geometry,
-    MaterialProperty<dim, MemorySpaceType> &material_properties)
+    MaterialProperty<dim, MemorySpaceType> &material_properties,
+    double initial_temperature)
     : _geometry(geometry), _dof_handler(_geometry.get_triangulation())
 {
   unsigned int fe_degree = database.get<unsigned int>("fe_degree");
@@ -39,7 +40,7 @@ MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
   // Create the mechanical operator
   _mechanical_operator =
       std::make_unique<MechanicalOperator<dim, MemorySpaceType>>(
-          communicator, material_properties);
+          communicator, material_properties, initial_temperature);
 }
 
 template <int dim, typename MemorySpaceType>
@@ -61,6 +62,16 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs()
 
   _mechanical_operator->reinit(_dof_handler, _affine_constraints,
                                _q_collection);
+}
+
+template <int dim, typename MemorySpaceType>
+void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
+    dealii::DoFHandler<dim> const &thermal_dof_handler,
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+        &temperature)
+{
+  setup_dofs();
+  _mechanical_operator->update_temperature(thermal_dof_handler, temperature);
 }
 
 template <int dim, typename MemorySpaceType>
