@@ -14,6 +14,7 @@
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/hp/q_collection.h>
 #include <deal.II/lac/affine_constraints.h>
+#include <deal.II/physics/elasticity/standard_tensors.h>
 
 #include <weak_forms/bilinear_forms.h>
 #include <weak_forms/weak_forms.h>
@@ -41,8 +42,10 @@ public:
 template <int dim, typename MemorySpaceType>
 MechanicalOperator<dim, MemorySpaceType>::MechanicalOperator(
     MPI_Comm const &communicator,
-    MaterialProperty<dim, MemorySpaceType> &material_properties)
-    : _communicator(communicator), _material_properties(material_properties)
+    MaterialProperty<dim, MemorySpaceType> &material_properties,
+    double const initial_temperature)
+    : _communicator(communicator), _initial_temperature(initial_temperature),
+      _material_properties(material_properties)
 {
 }
 
@@ -55,7 +58,7 @@ void MechanicalOperator<dim, MemorySpaceType>::reinit(
   _dof_handler = &dof_handler;
   _affine_constraints = &affine_constraints;
   _q_collection = &q_collection;
-  assemble_elastostatic_system();
+  assemble_system();
 }
 
 template <int dim, typename MemorySpaceType>
@@ -95,7 +98,17 @@ void MechanicalOperator<dim, MemorySpaceType>::Tvmult_add(
 }
 
 template <int dim, typename MemorySpaceType>
-void MechanicalOperator<dim, MemorySpaceType>::assemble_elastostatic_system()
+void MechanicalOperator<dim, MemorySpaceType>::update_temperature(
+    dealii::DoFHandler<dim> const &thermal_dof_handler,
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+        &temperature)
+{
+  _thermal_dof_handler = &thermal_dof_handler;
+  _temperature = temperature;
+}
+
+template <int dim, typename MemorySpaceType>
+void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
 {
   // Create the sparsity pattern. Since we use a Trilinos matrix we don't need
   // the sparsity pattern to outlive the sparse matrix.
@@ -163,11 +176,66 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_elastostatic_system()
   //     dealiiWeakForms::WeakForms::bilinear_form(test_grad, mu, trial_grad)
   //         .delta_IJ()
   //         .dV() -
-  //     linear_form(test_val, rhs_coeff.value(rhs)).dV();
-  assembler += dealiiWeakForms::WeakForms::bilinear_form(
-                   test_grad, stiffness_tensor, trial_grad)
-                   .dV() -
-               linear_form(test_val, rhs_coeff.value(rhs)).dV();
+  //     dealiiWeakForms::WeakForms::linear_form(test_val,
+  //     rhs_coeff.value(rhs)).dV();
+  assembler +=
+      dealiiWeakForms::WeakForms::bilinear_form(test_grad, stiffness_tensor,
+                                                trial_grad)
+          .dV() -
+      dealiiWeakForms::WeakForms::linear_form(test_val, rhs_coeff.value(rhs))
+          .dV();
+
+  std::unique_ptr<dealii::hp::FEValues<dim>> temperature_hp_fe_values;
+  // If the initial temperature is positive, we solve the thermoelastic problem.
+  if (_initial_temperature >= 0.)
+  {
+    // Create a functor to evaluate the thermal expansion
+    temperature_hp_fe_values = std::make_unique<dealii::hp::FEValues<dim>>(
+        _thermal_dof_handler->get_fe_collection(), *_q_collection,
+        dealii::update_values);
+
+    dealiiWeakForms::WeakForms::TensorFunctor<2, dim> const expansion_coeff(
+        "B", "\\mathcal{B}");
+    auto expansion_tensor = expansion_coeff.template value<double, dim>(
+        [&](dealii::FEValuesBase<dim> const &fe_values,
+            unsigned int const q_point) {
+          // fe_values is associated with the mechanical DoFHandler. We use it
+          // to get the cell and then we evaluate the temperature at the
+          // quadrature point using the temperature DoFHandler.
+          auto const &cell = fe_values.get_cell();
+          // Since we use a Triangulation cell to reinitialize the hp::FEValues,
+          // it will automatically choose the zero-th finite element.
+          temperature_hp_fe_values->reinit(cell);
+          auto &temperature_fe_values =
+              temperature_hp_fe_values->get_present_fe_values();
+          double delta_T = -_initial_temperature;
+          for (unsigned int i = 0; i < temperature_fe_values.dofs_per_cell; ++i)
+          {
+            delta_T += temperature_fe_values.shape_value(i, q_point);
+          }
+
+          double alpha = this->_material_properties.get_mechanical_property(
+              cell, StateProperty::thermal_expansion_coef);
+          double lambda = this->_material_properties.get_mechanical_property(
+              cell, StateProperty::lame_first_parameter);
+          double mu = this->_material_properties.get_mechanical_property(
+              cell, StateProperty::lame_second_parameter);
+
+          // Get the identity 2nd-order tensor
+          auto B = dealii::Physics::Elasticity::StandardTensors<dim>::I;
+          B *= (3. * lambda + 2 * mu) * alpha * delta_T;
+
+          return B;
+        });
+    // Need to think if it's really a linear form or a bilinear form and where
+    // the grad is supposed to apply. We could use a bilinear form because the
+    // temperature is also dependent on the position but then, we would
+    // need to use petrov-galerkin formulation.
+    assembler -=
+        dealiiWeakForms::WeakForms::linear_form(test_grad, expansion_tensor)
+            .dV();
+  }
+
   // Now we pass in concrete objects to get data from and assemble into.
   assembler.assemble_system(_system_matrix, _system_rhs, *_affine_constraints,
                             *_dof_handler, *_q_collection);

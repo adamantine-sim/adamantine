@@ -32,9 +32,14 @@ template <int dim, typename MemorySpaceType>
 class MechanicalOperator : public Operator<dealii::MemorySpace::Host>
 {
 public:
+  /**
+   * Constructor. If the initial temperature is negative, the simulation is
+   * mechanical only. Otherwise, we solve a thermo-mechanical problem.
+   */
   MechanicalOperator(
       MPI_Comm const &communicator,
-      MaterialProperty<dim, MemorySpaceType> &material_properties);
+      MaterialProperty<dim, MemorySpaceType> &material_properties,
+      double initial_temperature = -1.);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
@@ -63,6 +68,13 @@ public:
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &dst,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &src) const override;
+  /**
+   * Update the DoFHandler used by ThermalPhysics and update the temperature.
+   */
+  void update_temperature(
+      dealii::DoFHandler<dim> const &thermal_dof_handler,
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+          &temperature);
 
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const &
   rhs() const;
@@ -71,11 +83,11 @@ public:
 
 private:
   /**
-   * Assemble the matrix and the right-hand-side for an elastostatic system.
+   * Assemble the matrix and the right-hand-side.
    * @Note The 2D case does not represent any physical model but it is
    * convenient for testing.
    */
-  void assemble_elastostatic_system();
+  void assemble_system();
 
   /**
    * MPI communicator.
@@ -86,6 +98,12 @@ private:
    */
   bool _bilinear_form_output = true;
   /**
+   * Initial temperature of the material. If the temperature is positive, we
+   * solve a themo-mechanical problem. Otherwise, we solve a mechanical only
+   * problem.
+   */
+  double _initial_temperature = -1.;
+  /**
    * Reference to the MaterialProperty from MechanicalPhysics.
    */
   MaterialProperty<dim, MemorySpaceType> &_material_properties;
@@ -93,6 +111,10 @@ private:
    * Non-owning pointer to the DoFHandler from MechanicalPhysics
    */
   dealii::DoFHandler<dim> const *_dof_handler = nullptr;
+  /**
+   * Non-owning pointer to the DoFHandler from ThermalPhysics
+   */
+  dealii::DoFHandler<dim> const *_thermal_dof_handler = nullptr;
   /**
    * Non-owning pointer to the AffineConstraints from MechanicalPhysics
    */
@@ -110,6 +132,11 @@ private:
    * Matrix of the mechanical problem.
    */
   dealii::TrilinosWrappers::SparseMatrix _system_matrix;
+  /**
+   * Temperature of the material.
+   */
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      _temperature;
 };
 
 template <int dim, typename MemorySpaceType>
