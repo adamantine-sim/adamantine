@@ -17,7 +17,6 @@
 
 namespace adamantine
 {
-// TODO Inherit from Physics or remove Physics entirely?
 template <int dim, typename MemorySpaceType>
 class MechanicalPhysics
 {

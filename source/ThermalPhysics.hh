@@ -11,8 +11,8 @@
 #include <Geometry.hh>
 #include <HeatSource.hh>
 #include <ImplicitOperator.hh>
-#include <Physics.hh>
 #include <ThermalOperatorBase.hh>
+#include <ThermalPhysicsInterface.hh>
 
 #include <deal.II/base/time_stepping.h>
 #include <deal.II/base/time_stepping.templates.h>
@@ -30,7 +30,7 @@ namespace adamantine
  */
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-class ThermalPhysics : public Physics<dim, MemorySpaceType>
+class ThermalPhysics : public ThermalPhysicsInterface<dim, MemorySpaceType>
 {
 public:
   /**

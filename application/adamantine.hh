@@ -187,7 +187,8 @@ std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &initialize(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
     adamantine::MaterialProperty<dim, MemorySpaceType> &material_properties,
-    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
+    std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
+        &thermal_physics)
 {
   thermal_physics.reset(
       new adamantine::ThermalPhysics<dim, fe_degree, MemorySpaceType,
@@ -206,7 +207,8 @@ initialize_quadrature(
     boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
     adamantine::MaterialProperty<dim, MemorySpaceType> &material_properties,
-    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
+    std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
+        &thermal_physics)
 {
   if (quadrature_type.compare("gauss") == 0)
     return initialize<dim, fe_degree, MemorySpaceType, dealii::QGauss<1>>(
@@ -228,7 +230,8 @@ initialize_thermal_physics(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
     adamantine::MaterialProperty<dim, MemorySpaceType> &material_properties,
-    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics)
+    std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
+        &thermal_physics)
 {
   switch (fe_degree)
   {
@@ -299,7 +302,8 @@ initialize_thermal_physics(
 
 template <int dim, typename MemorySpaceType>
 void refine_and_transfer(
-    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
+    std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
+        &thermal_physics,
     adamantine::MaterialProperty<dim, MemorySpaceType> &material_properties,
     dealii::DoFHandler<dim> &dof_handler,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
@@ -539,7 +543,8 @@ compute_cells_to_refine(
 
 template <int dim, int fe_degree, typename MemorySpaceType>
 void refine_mesh(
-    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
+    std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
+        &thermal_physics,
     adamantine::MaterialProperty<dim, MemorySpaceType> &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
     std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
@@ -661,7 +666,8 @@ void refine_mesh(
 
 template <int dim, typename MemorySpaceType>
 void refine_mesh(
-    std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> &thermal_physics,
+    std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
+        &thermal_physics,
     adamantine::MaterialProperty<dim, MemorySpaceType> &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
     std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
@@ -792,7 +798,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // Create the material properties
   adamantine::MaterialProperty<dim, MemorySpaceType> material_properties(
       communicator, geometry.get_triangulation(), material_database);
-  std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>> thermal_physics;
+  std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
+      thermal_physics;
   std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources =
       initialize_thermal_physics<dim>(fe_degree, quadrature_type, communicator,
                                       database, geometry, material_properties,
@@ -1101,7 +1108,8 @@ run_ensemble(MPI_Comm const &communicator,
   std::vector<boost::property_tree::ptree> database_ensemble(ensemble_size,
                                                              database);
 
-  std::vector<std::unique_ptr<adamantine::Physics<dim, MemorySpaceType>>>
+  std::vector<std::unique_ptr<
+      adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>>
       thermal_physics_ensemble(ensemble_size);
 
   std::vector<std::vector<std::shared_ptr<adamantine::HeatSource<dim>>>>

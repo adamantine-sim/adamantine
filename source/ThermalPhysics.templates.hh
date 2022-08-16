@@ -16,6 +16,7 @@
 #include <ElectronBeamHeatSource.hh>
 #include <GoldakHeatSource.hh>
 #include <ThermalPhysics.hh>
+#include <Timer.hh>
 
 #include <deal.II/base/geometry_info.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
