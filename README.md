@@ -64,13 +64,14 @@ If you use our Docker image, the variable is already set.
 
 ### Input file
 The following options are available:
-* boundary:
+* boundary (required):
   * type: type of boundary: adiabatic, radiative, or convective. Multiple types
   can be chosen simultaneously by separating them by comma (required)
 * discretization:
-  * fe\_degree: degree of the finite element used (required)
-  * quadrature: quadrature used: gauss or lobatto (default value: gauss)
-* geometry:
+  * thermal:
+    * fe\_degree: degree of the finite element used (required)
+    * quadrature: quadrature used: gauss or lobatto (default value: gauss)
+* geometry (required):
   * dim: the dimension of the problem (2 or 3, required)
   * material\_height: below this height the domain contains material. Above this
   height the domain is empty (default value: 1e9)
@@ -102,7 +103,7 @@ The following options are available:
     * length\_divisions: number of cell layers in length (default value: 10)
     * height\_divisions: number of cell layers in the height (default value: 10)
     * width\_divisions: number of cell layers in width (only in 3D) (default value: 10)
-* materials:
+* materials (required):
   * n\_materials: number of materials (required)
   * property\_format: format of the material property: table or polynomial (required)
   * initial\_temperature: initial temperature of all the materials (default value: 300)
@@ -116,7 +117,11 @@ The following options are available:
   * material\_X.A: A is either solidus in kelvin, liquidus in kelvin, latent\_heat
   in J/kg, radiation\_temperature\_infty in kelvin, or convection\_temperature\_infty
   in kelvin (optional)
-* memory\_space: device (use GPU) or host (use CPU) (default value: host)
+* memory\_space (optional): device (use GPU) or host (use CPU) (default value: host)
+* physics (required):
+  * thermal: thermal simulation: true or false (required)
+  * mechanical: mechanical simulation; if both thermal and mechanical parameters
+   are true so : true or false (required)
 * post\_processor (required):
   * filename\_prefix: prefix of output files (required)
   * time\_steps\_between\_output: number of time steps between the
