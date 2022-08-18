@@ -101,10 +101,9 @@ public:
 
   dealii::AffineConstraints<double> &get_affine_constraints() override;
 
-  /**
-   * Return the heat sources.
-   */
-  std::vector<std::shared_ptr<HeatSource<dim>>> &get_heat_sources();
+  std::vector<std::shared_ptr<HeatSource<dim>>> &get_heat_sources() override;
+
+  unsigned int get_fe_degree() const override;
 
   /**
    * Return the current height of the heat source.
@@ -288,6 +287,15 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_heat_sources()
 {
   return _heat_sources;
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline unsigned int
+ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::get_fe_degree()
+    const
+{
+  return fe_degree;
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,

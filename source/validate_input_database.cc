@@ -64,15 +64,15 @@ void validate_input_database(boost::property_tree::ptree &database)
   parse_boundary_type(boundary_type_str);
 
   // Tree: discretization
-  // PropertyTreeInput discretization.fe_degree
+  // PropertyTreeInput discretization.thermal.fe_degree
   unsigned int const fe_degree =
-      database.get<unsigned int>("discretization.fe_degree");
+      database.get<unsigned int>("discretization.thermal.fe_degree");
   ASSERT_THROW(fe_degree > 0 && fe_degree < 11,
                "Error: fe_degree should be between 1 and 10.");
 
-  // PropertyTreeInput discretization.quadrature
+  // PropertyTreeInput discretization.thermal.quadrature
   boost::optional<std::string> quadrature_type_optional =
-      database.get_optional<std::string>("discretization.quadrature");
+      database.get_optional<std::string>("discretization.thermal.quadrature");
 
   if (quadrature_type_optional)
   {

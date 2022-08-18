@@ -150,7 +150,7 @@ public:
    * correspond to a cell in the mesh and has a value between 0 and 1. The sum
    * of the states for a given cell is equal to 1.
    */
-  MemoryBlockView<double, MemorySpaceType> get_state();
+  MemoryBlockView<double, MemorySpaceType> get_state() const;
 
   /**
    * Get the ratio of a given MaterialState for a given cell. The sum
@@ -390,7 +390,7 @@ MaterialProperty<dim, MemorySpaceType>::get_state_property_polynomials()
 
 template <int dim, typename MemorySpaceType>
 inline MemoryBlockView<double, MemorySpaceType>
-MaterialProperty<dim, MemorySpaceType>::get_state()
+MaterialProperty<dim, MemorySpaceType>::get_state() const
 {
   return MemoryBlockView<double, MemorySpaceType>(_state);
 }

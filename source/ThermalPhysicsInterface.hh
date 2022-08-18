@@ -20,8 +20,8 @@ namespace adamantine
 // Forward declarations
 class Timer;
 
-template <int dim, typename MemorySpaceType>
-class MaterialProperty;
+template <int dim>
+class HeatSource;
 
 /**
  * This class defines the interface for ThermalPhysics used in run(). The
@@ -146,6 +146,16 @@ public:
    * Return the AffineConstraints<double>.
    */
   virtual dealii::AffineConstraints<double> &get_affine_constraints() = 0;
+
+  /**
+   * Return the heat sources.
+   */
+  virtual std::vector<std::shared_ptr<HeatSource<dim>>> &get_heat_sources() = 0;
+
+  /**
+   * Return the degree of the finite element.
+   */
+  virtual unsigned int get_fe_degree() const = 0;
 };
 } // namespace adamantine
 #endif

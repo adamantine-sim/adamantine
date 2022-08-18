@@ -8,6 +8,13 @@ geometry
   height_divisions 10 ; Number of cell layers in the height direction
 }
 
+physics
+{
+  thermal    true  ; Thermal simulation
+  mechanical false ; Mechanical simulation. If both thermal and mechanical are
+                   ; true, solve a coupled thermo-mechanical problem
+}
+
 boundary
 {
   type adiabatic
@@ -97,8 +104,11 @@ post_processor
 
 discretization
 {
-  fe_degree 3
-  quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+  thermal 
+  {
+    fe_degree 3
+    quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+  }
 }
 
 memory_space device ; If compiled with CUDA support, run on the device

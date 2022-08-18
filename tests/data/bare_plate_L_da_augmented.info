@@ -29,6 +29,11 @@ data_assimilation
     convergence_tolerance 1.0e-8
   }
 }
+physic
+{
+  thermal true
+  mechanical false
+}
 geometry
 {
   import_mesh false ; Use built-in mesh generator
@@ -136,8 +141,11 @@ post_processor
 
 discretization
 {
-  fe_degree 3
-  quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+  thermal
+  {
+    fe_degree 3
+    quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+  }
 }
 
 profiling
