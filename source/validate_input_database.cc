@@ -17,6 +17,13 @@ namespace adamantine
 {
 void validate_input_database(boost::property_tree::ptree &database)
 {
+  // Tree: physics
+  // PropertyTreeInput physics.thermal
+  bool const use_thermal_physics = database.get<bool>("physics.thermal");
+  // PropertyTreeInput physics.mechanical
+  bool const use_mechanical_physics = database.get<bool>("physics.mechanical");
+  ASSERT_THROW(use_thermal_physics || use_mechanical_physics,
+               "Error: both thermal and mechanical physics are disabled");
 
   // Tree: boundary
   // Read the boundary condition type and check for disallowed combinations
@@ -63,24 +70,27 @@ void validate_input_database(boost::property_tree::ptree &database)
   }
   parse_boundary_type(boundary_type_str);
 
-  // Tree: discretization
-  // PropertyTreeInput discretization.thermal.fe_degree
-  unsigned int const fe_degree =
-      database.get<unsigned int>("discretization.thermal.fe_degree");
-  ASSERT_THROW(fe_degree > 0 && fe_degree < 11,
-               "Error: fe_degree should be between 1 and 10.");
-
-  // PropertyTreeInput discretization.thermal.quadrature
-  boost::optional<std::string> quadrature_type_optional =
-      database.get_optional<std::string>("discretization.thermal.quadrature");
-
-  if (quadrature_type_optional)
+  // Tree: discretization.thermal
+  if (use_thermal_physics)
   {
-    std::string quadrature_type = quadrature_type_optional.get();
-    if (!((boost::iequals(quadrature_type, "gauss") ||
-           (boost::iequals(quadrature_type, "lobatto")))))
+    // PropertyTreeInput discretization.thermal.fe_degree
+    unsigned int const fe_degree =
+        database.get<unsigned int>("discretization.thermal.fe_degree");
+    ASSERT_THROW(fe_degree > 0 && fe_degree < 11,
+                 "Error: fe_degree should be between 1 and 10.");
+
+    // PropertyTreeInput discretization.thermal.quadrature
+    boost::optional<std::string> quadrature_type_optional =
+        database.get_optional<std::string>("discretization.thermal.quadrature");
+
+    if (quadrature_type_optional)
     {
-      ASSERT_THROW(false, "Error: Unknown quadrature type.");
+      std::string quadrature_type = quadrature_type_optional.get();
+      if (!((boost::iequals(quadrature_type, "gauss") ||
+             (boost::iequals(quadrature_type, "lobatto")))))
+      {
+        ASSERT_THROW(false, "Error: Unknown quadrature type.");
+      }
     }
   }
 
