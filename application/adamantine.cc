@@ -124,18 +124,20 @@ int main(int argc, char *argv[])
     int const dim = geometry_database.get<int>("dim");
 
     unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
-    if (rank == 0)
-      std::cout << "Starting simulation" << std::endl;
 
     if (dim == 2)
     {
       if (ensemble_calc)
       {
+        if (rank == 0)
+          std::cout << "Starting ensemble simulation" << std::endl;
         run_ensemble<2, dealii::MemorySpace::Host>(communicator, database,
                                                    timers);
       }
       else
       {
+        if (rank == 0)
+          std::cout << "Starting non-ensemble simulation" << std::endl;
         run<2, dealii::MemorySpace::Host>(communicator, database, timers);
       }
     }
@@ -143,11 +145,15 @@ int main(int argc, char *argv[])
     {
       if (ensemble_calc)
       {
+        if (rank == 0)
+          std::cout << "Starting ensemble simulation" << std::endl;
         run_ensemble<3, dealii::MemorySpace::Host>(communicator, database,
                                                    timers);
       }
       else
       {
+        if (rank == 0)
+          std::cout << "Starting non-ensemble simulation" << std::endl;
         run<3, dealii::MemorySpace::Host>(communicator, database, timers);
       }
     }

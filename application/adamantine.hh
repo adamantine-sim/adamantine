@@ -171,8 +171,6 @@ inline void initialize_timers(MPI_Comm const &communicator,
       adamantine::Timer(communicator, "Data Assimilation, Exp. Cov."));
   timers.push_back(
       adamantine::Timer(communicator, "Data Assimilation, Update Ensemble"));
-  timers.push_back(
-      adamantine::Timer(communicator, "Data Assimilation, Exp. Data"));
   timers.push_back(adamantine::Timer(communicator, "Evolve One Time Step"));
   timers.push_back(adamantine::Timer(
       communicator, "Evolve One Time Step: evaluate_thermal_physics"));
