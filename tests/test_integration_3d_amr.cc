@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -29,24 +29,24 @@ BOOST_AUTO_TEST_CASE(integration_3D_amr, *utf::tolerance(0.1))
   boost::property_tree::ptree database;
   boost::property_tree::info_parser::read_info(filename, database);
 
-  auto result =
+  auto [temperature, displacement] =
       run<3, dealii::MemorySpace::Host>(communicator, database, timers);
 
   double min_val = std::numeric_limits<double>::max();
   double max_val = std::numeric_limits<double>::min();
-  for (unsigned int i = 0; i < result.locally_owned_size(); ++i)
+  for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
   {
-    if (result.local_element(i) < min_val)
-      min_val = result.local_element(i);
+    if (temperature.local_element(i) < min_val)
+      min_val = temperature.local_element(i);
 
-    if (result.local_element(i) > max_val)
-      max_val = result.local_element(i);
+    if (temperature.local_element(i) > max_val)
+      max_val = temperature.local_element(i);
   }
 
   double global_max =
-      dealii::Utilities::MPI::max(max_val, result.get_mpi_communicator());
+      dealii::Utilities::MPI::max(max_val, temperature.get_mpi_communicator());
   double global_min =
-      dealii::Utilities::MPI::min(min_val, result.get_mpi_communicator());
+      dealii::Utilities::MPI::min(min_val, temperature.get_mpi_communicator());
 
   double expected_max = 329.5;
   double expected_min = 296.1;

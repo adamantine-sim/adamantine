@@ -24,8 +24,7 @@ public:
   /**
    * Constructor.
    */
-  MechanicalPhysics(MPI_Comm const &communicator,
-                    boost::property_tree::ptree const &database,
+  MechanicalPhysics(MPI_Comm const &communicator, unsigned int fe_degree,
                     Geometry<dim> &geometry,
                     MaterialProperty<dim, MemorySpaceType> &material_properties,
                     double initial_temperature = -1.);
@@ -52,6 +51,11 @@ public:
    * Return the DoFHandler.
    */
   dealii::DoFHandler<dim> &get_dof_handler();
+
+  /**
+   * Return the AffineConstraints<double>.
+   */
+  dealii::AffineConstraints<double> &get_affine_constraints();
 
 private:
   /**
@@ -86,6 +90,13 @@ inline dealii::DoFHandler<dim> &
 MechanicalPhysics<dim, MemorySpaceType>::get_dof_handler()
 {
   return _dof_handler;
+}
+
+template <int dim, typename MemorySpaceType>
+inline dealii::AffineConstraints<double> &
+MechanicalPhysics<dim, MemorySpaceType>::get_affine_constraints()
+{
+  return _affine_constraints;
 }
 
 } // namespace adamantine

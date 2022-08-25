@@ -19,14 +19,12 @@ namespace adamantine
 {
 template <int dim, typename MemorySpaceType>
 MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
-    MPI_Comm const &communicator, boost::property_tree::ptree const &database,
+    MPI_Comm const &communicator, unsigned int fe_degree,
     Geometry<dim> &geometry,
     MaterialProperty<dim, MemorySpaceType> &material_properties,
     double initial_temperature)
     : _geometry(geometry), _dof_handler(_geometry.get_triangulation())
 {
-  unsigned int fe_degree = database.get<unsigned int>("fe_degree");
-
   // Create the FECollection
   _fe_collection.push_back(
       dealii::FESystem<dim>(dealii::FE_Q<dim>(fe_degree) ^ dim));

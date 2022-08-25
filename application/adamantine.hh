@@ -8,6 +8,7 @@
 #ifndef ADAMANTINE_HH
 #define ADAMANTINE_HH
 
+#include "MechanicalPhysics.hh"
 #include "ThermalPhysicsInterface.hh"
 #include <DataAssimilator.hh>
 #include <Geometry.hh>
@@ -57,6 +58,11 @@ void output_pvtu(
         &thermal_physics,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
         &temperature,
+    std::unique_ptr<
+        adamantine::MechanicalPhysics<dim, dealii::MemorySpace::Host>> const
+        &mechanical_physics,
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+        &displacement,
     adamantine::MaterialProperty<dim, MemorySpaceType> const
         &material_properties,
     std::vector<adamantine::Timer> &timers)
@@ -68,10 +74,29 @@ void output_pvtu(
   if (thermal_physics)
   {
     thermal_physics->get_affine_constraints().distribute(temperature);
-    post_processor.write_thermal_output(cycle, n_time_step, time, temperature,
-                                        material_properties.get_state(),
-                                        material_properties.get_dofs_map(),
-                                        material_properties.get_dof_handler());
+    if (mechanical_physics)
+    {
+      mechanical_physics->get_affine_constraints().distribute(displacement);
+      post_processor.write_output(cycle, n_time_step, time, temperature,
+                                  displacement, material_properties.get_state(),
+                                  material_properties.get_dofs_map(),
+                                  material_properties.get_dof_handler());
+    }
+    else
+    {
+      post_processor.write_thermal_output(
+          cycle, n_time_step, time, temperature,
+          material_properties.get_state(), material_properties.get_dofs_map(),
+          material_properties.get_dof_handler());
+    }
+  }
+  else
+  {
+    mechanical_physics->get_affine_constraints().distribute(displacement);
+    post_processor.write_mechanical_output(
+        cycle, n_time_step, time, displacement, material_properties.get_state(),
+        material_properties.get_dofs_map(),
+        material_properties.get_dof_handler());
   }
   timers[adamantine::output].stop();
 }
@@ -89,6 +114,11 @@ void output_pvtu(
         &thermal_physics,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
         &temperature,
+    std::unique_ptr<
+        adamantine::MechanicalPhysics<dim, dealii::MemorySpace::Host>> const
+        &mechanical_physics,
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+        &displacement,
     adamantine::MemoryBlockView<double, MemorySpaceType> state,
     std::unordered_map<dealii::types::global_dof_index, unsigned int> const
         &dofs_map,
@@ -99,6 +129,12 @@ void output_pvtu(
   CALI_CXX_MARK_FUNCTION;
 #endif
   timers[adamantine::output].start();
+  auto state = material_properties.get_state();
+  adamantine::MemoryBlock<double, dealii::MemorySpace::Host> state_host(
+      state.extent(0), state.extent(1));
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
+      state_host_view(state_host);
+  adamantine::deep_copy(state_host_view, state);
   if (thermal_physics)
   {
     dealii::LinearAlgebra::distributed::Vector<double,
@@ -106,16 +142,29 @@ void output_pvtu(
         temperature_host(temperature.get_partitioner());
     temperature_host.import(temperature, dealii::VectorOperation::insert);
     thermal_physics->get_affine_constraints().distribute(temperature_host);
-    auto state = material_properties.get_state();
-    adamantine::MemoryBlock<double, dealii::MemorySpace::Host> state_host(
-        state.extent(0), state.extent(1));
-    adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
-        state_host_view(state_host);
-    adamantine::deep_copy(state_host_view, state);
-    post_processor.write_thermal_output(cycle, n_time_step, time,
-                                        temperature_host, state_host_view,
-                                        material_properties.get_dofs_map(),
-                                        material_properties.get_dof_handler());
+    if (mechanical_physics)
+    {
+      mechanical_physics->get_affine_constraints().distribute(displacement);
+      post_processor.write_output(cycle, n_time_step, time, temperature,
+                                  displacement, material_properties.get_state(),
+                                  material_properties.get_dofs_map(),
+                                  material_properties.get_dof_handler());
+    }
+    else
+    {
+      post_processor.write_thermal_output(
+          cycle, n_time_step, time, temperature_host, state_host_view,
+          material_properties.get_dofs_map(),
+          material_properties.get_dof_handler());
+    }
+  }
+  else
+  {
+    mechanical_physics->get_affine_constraints().distribute(displacement);
+    post_processor.write_mechanical_output(
+        cycle, n_time_step, time, displacement, material_properties.get_state(),
+        material_properties.get_dofs_map(),
+        material_properties.get_dof_handler());
   }
   timers[adamantine::output].stop();
 }
@@ -753,7 +802,10 @@ void refine_mesh(
 }
 
 template <int dim, typename MemorySpaceType>
-dealii::LinearAlgebra::distributed::Vector<double, dealii::MemorySpace::Host>
+std::pair<dealii::LinearAlgebra::distributed::Vector<double,
+                                                     dealii::MemorySpace::Host>,
+          dealii::LinearAlgebra::distributed::Vector<double,
+                                                     dealii::MemorySpace::Host>>
 run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     std::vector<adamantine::Timer> &timers)
 {
@@ -775,17 +827,20 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // Extract the physics property tree
   boost::property_tree::ptree physics_database = database.get_child("physics");
   bool const use_thermal_physics = physics_database.get<bool>("thermal");
+  bool const use_mechanical_physics = physics_database.get<bool>("mechanical");
 
   // Extract the discretization property tree
   boost::property_tree::ptree discretization_database =
       database.get_child("discretization");
 
-  // Create the ThermalPhysics if necessary
+  // Extract the post-processor property tree
+  boost::property_tree::ptree post_processor_database =
+      database.get_child("post_processor");
+
+  // Create ThermalPhysics if necessary
   std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
       thermal_physics;
   std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> heat_sources;
-  boost::property_tree::ptree post_processor_database =
-      database.get_child("post_processor");
   if (use_thermal_physics)
   {
     // PropertyTreeInput discretization.thermal.fe_degree
@@ -801,15 +856,32 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     post_processor_database.put("thermal_output", true);
   }
 
-  // Create the PostProcessor
+  // PropertyTreeInput materials.initial_temperature
+  double const initial_temperature =
+      material_database.get("initial_temperature", 300.);
+
+  // Create MechanicalPhysics if necessary
+  std::unique_ptr<adamantine::MechanicalPhysics<dim, dealii::MemorySpace::Host>>
+      mechanical_physics;
+  if (use_mechanical_physics)
+  {
+    // PropertyTreeInput discretization.mechanical.fe_degree
+    unsigned int const fe_degree =
+        discretization_database.get<unsigned int>("mechanial.fe_degree");
+    mechanical_physics = std::make_unique<
+        adamantine::MechanicalPhysics<dim, dealii::MemorySpace::Host>>(
+        communicator, fe_degree, geometry, material_properties,
+        initial_temperature);
+    post_processor_database.put("mechanical_output", true);
+  }
+
   adamantine::PostProcessor<dim> post_processor(
       communicator, post_processor_database,
       thermal_physics->get_dof_handler());
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> temperature;
-  // PropertyTreeInput materials.initial_temperature
-  double const initial_temperature =
-      material_database.get("initial_temperature", 300.);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      displacement;
   if (use_thermal_physics)
   {
     thermal_physics->setup_dofs();
@@ -819,13 +891,30 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     thermal_physics->get_state_from_material_properties();
   }
 
+  if (use_mechanical_physics)
+  {
+    if (use_thermal_physics)
+    {
+      // Thermo-mechanical simulation
+      mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
+                                     temperature);
+    }
+    else
+    {
+      // Mechanical only simulation
+      mechanical_physics->setup_dofs();
+    }
+    displacement = mechanical_physics->solve();
+  }
+
   unsigned int progress = 0;
   unsigned int cycle = 0;
   unsigned int n_time_step = 0;
   double time = 0.;
   // Output the initial solution
   output_pvtu(post_processor, cycle, n_time_step, time, thermal_physics,
-              temperature, material_properties, timers);
+              temperature, mechanical_physics, displacement,
+              material_properties, timers);
   ++n_time_step;
 
   // Create the bounding boxes used for material deposition
@@ -949,10 +1038,26 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 #endif
     timers[adamantine::evol_time].start();
 
+    // Solve the thermal problem
     if (use_thermal_physics)
     {
       time = thermal_physics->evolve_one_time_step(time, time_step, temperature,
                                                    timers);
+    }
+
+    // Solve the (thermo-)mechanical problem
+    if (use_mechanical_physics)
+    {
+      if (use_thermal_physics)
+      {
+        mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
+                                       temperature);
+      }
+      else
+      {
+        mechanical_physics->setup_dofs();
+      }
+      displacement = mechanical_physics->solve();
     }
 
 #if ADAMANTINE_DEBUG
@@ -992,7 +1097,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         thermal_physics->set_state_to_material_properties();
       }
       output_pvtu(post_processor, cycle, n_time_step, time, thermal_physics,
-                  temperature, material_properties, timers);
+                  temperature, mechanical_physics, displacement,
+                  material_properties, timers);
     }
     ++n_time_step;
   }
@@ -1009,7 +1115,12 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     {
       thermal_physics->get_affine_constraints().distribute(temperature);
     }
-    return temperature;
+    if (use_mechanical_physics)
+    {
+      mechanical_physics->get_affine_constraints().distribute(displacement);
+    }
+
+    return std::make_pair(temperature, displacement);
   }
   else
   {
@@ -1021,7 +1132,11 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     {
       thermal_physics->get_affine_constraints().distribute(temperature_host);
     }
-    return temperature_host;
+    if (use_mechanical_physics)
+    {
+      mechanical_physics->get_affine_constraints().distribute(displacement);
+    }
+    return std::make_pair(temperature_host, displacement);
   }
 }
 
@@ -1341,11 +1456,16 @@ run_ensemble(MPI_Comm const &communicator,
   double time = 0.;
 
   // ----- Output the initial solution -----
+  std::unique_ptr<adamantine::MechanicalPhysics<dim, dealii::MemorySpace::Host>>
+      mechanical_physics;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      displacement;
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
     output_pvtu(*post_processor_ensemble[member], cycle, n_time_step, time,
                 thermal_physics_ensemble[member],
                 solution_augmented_ensemble[member].block(base_state),
+                mechanical_physics, displacement,
                 *material_properties_ensemble[member], timers);
   }
 
@@ -1713,6 +1833,7 @@ run_ensemble(MPI_Comm const &communicator,
         output_pvtu(*post_processor_ensemble[member], cycle, n_time_step, time,
                     thermal_physics_ensemble[member],
                     solution_augmented_ensemble[member].block(base_state),
+                    mechanical_physics, displacement,
                     *material_properties_ensemble[member], timers);
       }
     }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -29,14 +29,14 @@ BOOST_AUTO_TEST_CASE(integration_3D, *utf::tolerance(0.1))
   boost::property_tree::ptree database;
   boost::property_tree::info_parser::read_info(filename, database);
 
-  auto result =
+  auto [temperature, displacement] =
       run<3, dealii::MemorySpace::Host>(communicator, database, timers);
 
   std::ifstream gold_file("integration_3d_gold.txt");
-  for (unsigned int i = 0; i < result.locally_owned_size(); ++i)
+  for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
   {
     double gold_value = -1.;
     gold_file >> gold_value;
-    BOOST_TEST(result.local_element(i) == gold_value);
+    BOOST_TEST(temperature.local_element(i) == gold_value);
   }
 }
