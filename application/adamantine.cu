@@ -141,8 +141,9 @@ int main(int argc, char *argv[])
         if (rank == 0)
           std::cout << "Starting ensemble simulation" << std::endl;
         // TODO: Add device version of run_ensemble and call it here
-        ASSERT_THROW(false, "Error: Device version of ensemble simulations not "
-                            "yet implemented.");
+        adamantine::ASSERT_THROW(
+            false, "Error: Device version of ensemble simulations not "
+                   "yet implemented.");
       }
       else
       {
@@ -166,8 +167,9 @@ int main(int argc, char *argv[])
         if (rank == 0)
           std::cout << "Starting ensemble simulation" << std::endl;
         // TODO: Add device version of run_ensemble and call it here
-        ASSERT_THROW(false, "Error: Device version of ensemble simulations not "
-                            "yet implemented.");
+        adamantine::ASSERT_THROW(
+            false, "Error: Device version of ensemble simulations not "
+                   "yet implemented.");
       }
       else
       {
