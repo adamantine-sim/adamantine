@@ -53,7 +53,9 @@ enum class StateProperty
   // sense for the powder and the liquid state
   lame_first_parameter,
   lame_second_parameter,
-  SIZE
+  thermal_expansion_coef,
+  SIZE,
+  SIZE_MECHANICAL = 3
 };
 
 /**
@@ -88,11 +90,12 @@ static std::array<std::string, 5> property_names = {
  * Array containing the possible material properties that depend on the
  * state of the material.
  */
-static std::array<std::string, 10> state_property_names = {
+static std::array<std::string, 11> state_property_names = {
     {"density", "specific_heat", "thermal_conductivity_x",
      "thermal_conductivity_y", "thermal_conductivity_z", "emissivity",
      "radiation_heat_transfer_coef", "convection_heat_transfer_coef",
-     "lame_first_parameter", "lame_second_parameter"}};
+     "lame_first_parameter", "lame_second_parameter",
+     "thermal_expansion_coef"}};
 
 /**
  * Enum on the possible timers.

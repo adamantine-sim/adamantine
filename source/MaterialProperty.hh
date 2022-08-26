@@ -228,7 +228,7 @@ private:
    * Number of mechanical StateProperty.
    */
   static unsigned int constexpr _n_mechanical_state_properties =
-      static_cast<unsigned int>(2);
+      static_cast<unsigned int>(StateProperty::SIZE_MECHANICAL);
 
   /**
    * Number of thermal StateProperty..

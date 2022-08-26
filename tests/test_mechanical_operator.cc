@@ -224,3 +224,78 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
       BOOST_TEST(dst_1[j] - dst_2[j] == 0.);
   }
 }
+
+BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+  int constexpr dim = 3;
+
+  // Create the Geometry
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 6);
+  geometry_database.put("length_divisions", 3);
+  geometry_database.put("height", 6);
+  geometry_database.put("height_divisions", 3);
+  geometry_database.put("width", 6);
+  geometry_database.put("width_divisions", 3);
+  adamantine::Geometry<dim> geometry(communicator, geometry_database);
+  auto const &triangulation = geometry.get_triangulation();
+  for (auto cell : triangulation.cell_iterators())
+  {
+    cell->set_material_id(0);
+    cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
+  }
+  // Create the MaterialProperty
+  boost::property_tree::ptree material_database;
+  material_database.put("property_format", "polynomial");
+  material_database.put("n_materials", 1);
+  double const lame_first = 2.;
+  double const lame_second = 3.;
+  material_database.put("material_0.solid.lame_first_parameter", lame_first);
+  material_database.put("material_0.solid.lame_second_parameter", lame_second);
+  adamantine::MaterialProperty<dim, dealii::MemorySpace::Host>
+      material_properties(communicator, triangulation, material_database);
+  // Create the thermal DoFHandler
+  dealii::hp::FECollection<dim> thermal_fe_collection;
+  thermal_fe_collection.push_back(dealii::FE_Q<dim>(3));
+  thermal_fe_collection.push_back(dealii::FE_Nothing<dim>());
+  dealii::DoFHandler<dim> thermal_dof_handler(geometry.get_triangulation());
+  thermal_dof_handler.distribute_dofs(thermal_fe_collection);
+  dealii::AffineConstraints<double> thermal_affine_constraints;
+  thermal_affine_constraints.close();
+  dealii::hp::QCollection<1> thermal_q_collection;
+  thermal_q_collection.push_back(dealii::QGauss<1>(4));
+  thermal_q_collection.push_back(dealii::QGauss<1>(1));
+  // Create the mechanical DoFHandler
+  dealii::hp::FECollection<dim> mechanical_fe_collection;
+  mechanical_fe_collection.push_back(
+      dealii::FESystem<dim>(dealii::FE_Q<dim>(2) ^ dim));
+  mechanical_fe_collection.push_back(
+      dealii::FESystem<dim>(dealii::FE_Nothing<dim>() ^ dim));
+  dealii::DoFHandler<dim> mechanical_dof_handler(geometry.get_triangulation());
+  mechanical_dof_handler.distribute_dofs(mechanical_fe_collection);
+  dealii::AffineConstraints<double> mechanical_affine_constraints;
+  dealii::DoFTools::make_hanging_node_constraints(
+      mechanical_dof_handler, mechanical_affine_constraints);
+  dealii::VectorTools::interpolate_boundary_values(
+      mechanical_dof_handler, 0, dealii::Functions::ZeroFunction<dim>(dim),
+      mechanical_affine_constraints);
+  mechanical_affine_constraints.close();
+  dealii::hp::QCollection<dim> mechanical_q_collection;
+  mechanical_q_collection.push_back(dealii::QGauss<dim>(3));
+  mechanical_q_collection.push_back(dealii::QGauss<dim>(1));
+  // Create the temperature vector
+  dealii::LinearAlgebra::distributed::Vector<double> temperature(
+      thermal_dof_handler.locally_owned_dofs(), communicator);
+  temperature = 1.;
+  // Create the MechanicalOperator
+  adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
+      mechanical_operator(communicator, material_properties, 0.);
+  mechanical_operator.update_temperature(thermal_dof_handler, temperature);
+  mechanical_operator.reinit(mechanical_dof_handler,
+                             mechanical_affine_constraints,
+                             mechanical_q_collection);
+
+  // TODO Need to check the result
+}
