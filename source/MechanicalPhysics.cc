@@ -98,3 +98,6 @@ MechanicalPhysics<dim, MemorySpaceType>::solve()
 } // namespace adamantine
 
 INSTANTIATE_DIM_HOST(MechanicalPhysics)
+#ifdef ADAMANTINE_HAVE_CUDA
+INSTANTIATE_DIM_DEVICE(MechanicalPhysics)
+#endif
