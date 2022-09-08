@@ -67,10 +67,18 @@ The following options are available:
 * boundary (required):
   * type: type of boundary: adiabatic, radiative, or convective. Multiple types
   can be chosen simultaneously by separating them by comma (required)
-* discretization:
+* physics (required):
+  * thermal: thermal simulation: true or false (required)
+  * mechanical: mechanical simulation; if both thermal and mechanical parameters
+   are true, solve a coupled thermo-mechanics problem : true or false (required)
+* discretization (required):
   * thermal:
-    * fe\_degree: degree of the finite element used (required)
+    * fe\_degree: degree of the finite element used (required if physics.thermal
+    is true)
     * quadrature: quadrature used: gauss or lobatto (default value: gauss)
+  * mechanical:
+    * fe\_degree: degree of the finite element used (required if
+    physics.mechanical is true)
 * geometry (required):
   * dim: the dimension of the problem (2 or 3, required)
   * material\_height: below this height the domain contains material. Above this
@@ -118,10 +126,6 @@ The following options are available:
   in J/kg, radiation\_temperature\_infty in kelvin, or convection\_temperature\_infty
   in kelvin (optional)
 * memory\_space (optional): device (use GPU) or host (use CPU) (default value: host)
-* physics (required):
-  * thermal: thermal simulation: true or false (required)
-  * mechanical: mechanical simulation; if both thermal and mechanical parameters
-   are true so : true or false (required)
 * post\_processor (required):
   * filename\_prefix: prefix of output files (required)
   * time\_steps\_between\_output: number of time steps between the
