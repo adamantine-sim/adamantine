@@ -14,6 +14,12 @@ geometry
   height_divisions 10 ; Number of cell layers in the height direction
 }
 
+physics
+{
+  thermal true
+  mechanical false
+}
+
 refinement
 {
   n_heat_refinements 0 ; Number of coarsening/refinement executed (uses Kelly's
@@ -97,8 +103,11 @@ post_processor
 
 discretization
 {
-  fe_degree 3
-  quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+  thermal
+  {
+    fe_degree 3
+    quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+  }
 }
 
 boundary

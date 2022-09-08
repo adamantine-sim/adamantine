@@ -20,9 +20,9 @@ BOOST_AUTO_TEST_CASE(expected_passes)
 
   // Bare-bones required inputs
   database.put("boundary.type", "adiabatic");
-  database.put("discretization.fe_degree", "1");
+  database.put("discretization.thermal.fe_degree", "1");
   database.put("geometry.dim", "3");
-  database.put("discretization.quadrature", "gauss");
+  database.put("discretization.thermal.quadrature", "gauss");
   database.put("geometry.import_mesh", "false");
   database.put("geometry.length", 1.0);
   database.put("geometry.height", 1.0);
@@ -34,6 +34,8 @@ BOOST_AUTO_TEST_CASE(expected_passes)
   database.put("materials.material_0.solid.thermal_conductivity_z", 10.);
   database.put("materials.material_0.solid.density", 10.);
   database.put("materials.material_0.solid.specific_heat", 10.);
+  database.put("physics.thermal", true);
+  database.put("physics.mechanical", true);
   database.put("post_processor.filename_prefix", "output");
   database.put("refinement.n_heat_refinements", 0);
   database.put("sources.n_beams", 1);
@@ -75,9 +77,9 @@ BOOST_AUTO_TEST_CASE(expected_failures)
 
   // Start with a valid set of bare-bones inputs
   database.put("boundary.type", "adiabatic");
-  database.put("discretization.fe_degree", "1");
+  database.put("discretization.thermal.fe_degree", "1");
   database.put("geometry.dim", "3");
-  database.put("discretization.quadrature", "gauss");
+  database.put("discretization.thermal.quadrature", "gauss");
   database.put("geometry.import_mesh", "false");
   database.put("geometry.length", 1.0);
   database.put("geometry.height", 1.0);
@@ -89,6 +91,8 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   database.put("materials.material_0.solid.thermal_conductivity_z", 10.);
   database.put("materials.material_0.solid.density", 10.);
   database.put("materials.material_0.solid.specific_heat", 10.);
+  database.put("physics.thermal", true);
+  database.put("physics.mechanical", true);
   database.put("post_processor.filename_prefix", "output");
   database.put("refinement.n_heat_refinements", 0);
   database.put("sources.n_beams", 1);
@@ -116,18 +120,18 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   database.put("boundary.type", "adiabatic");
 
   // Check 2: Invalid fe degree
-  database.get_child("discretization").erase("fe_degree");
-  database.put("discretization.fe_degree", 11);
+  database.get_child("discretization").erase("thermal.fe_degree");
+  database.put("discretization.thermal.fe_degree", 11);
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
-  database.get_child("discretization").erase("fe_degree");
-  database.put("discretization.fe_degree", 1);
+  database.get_child("discretization").erase("thermal.fe_degree");
+  database.put("discretization.thermal.fe_degree", 1);
 
   // Check 3: Invalid quadrature type
-  database.get_child("discretization").erase("quadrature");
-  database.put("discretization.quadrature", "gass");
+  database.get_child("discretization").erase("thermal.quadrature");
+  database.put("discretization.thermal.quadrature", "gass");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
-  database.get_child("discretization").erase("quadrature");
-  database.put("discretization.quadrature", "gauss");
+  database.get_child("discretization").erase("thermal.quadrature");
+  database.put("discretization.thermal.quadrature", "gauss");
 
   // Check 4: Invalid number of dimensions
   database.get_child("geometry").erase("dim");
@@ -359,6 +363,8 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   database.put("memory_space", "hhost");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.erase("memory_space");
+
+  // TODO check physics
 
   // Check 19: Missing postprocessor filename
   database.get_child("post_processor").erase("filename_prefix");

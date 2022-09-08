@@ -8,8 +8,8 @@
 #ifndef POST_PROCESSOR_HH
 #define POST_PROCESSOR_HH
 
-#include "MaterialProperty.hh"
-#include "types.hh"
+#include <MaterialProperty.hh>
+#include <types.hh>
 
 #include <deal.II/base/types.h>
 #include <deal.II/dofs/dof_handler.h>

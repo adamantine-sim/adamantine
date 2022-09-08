@@ -221,12 +221,10 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   material_database.put("material_0.solid.lame_second_parameter", 3.);
   adamantine::MaterialProperty<3, dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
-  // Mechanical database
-  boost::property_tree::ptree mechanical_database;
-  mechanical_database.put("fe_degree", 1);
   // Build MechanicalPhysics
+  unsigned int const fe_degree = 1;
   adamantine::MechanicalPhysics<3, dealii::MemorySpace::Host>
-      mechanical_physics(communicator, mechanical_database, geometry,
+      mechanical_physics(communicator, fe_degree, geometry,
                          material_properties);
   mechanical_physics.setup_dofs();
   auto solution = mechanical_physics.solve();

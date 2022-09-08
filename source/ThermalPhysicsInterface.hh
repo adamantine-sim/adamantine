@@ -1,15 +1,14 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
  * for the text and further information on this license.
  */
 
-#ifndef PHYSICS_HH
-#define PHYSICS_HH
+#ifndef THERMAL_PHYSICS_INTERFACE_HH
+#define THERMAL_PHYSICS_INTERFACE_HH
 
 #include <MaterialProperty.hh>
-#include <Timer.hh>
 #include <types.hh>
 
 #include <deal.II/dofs/dof_handler.h>
@@ -18,18 +17,24 @@
 
 namespace adamantine
 {
+// Forward declarations
+class Timer;
+
+template <int dim>
+class HeatSource;
+
 /**
- * This class defines the interface that every physics needs to implement.
+ * This class defines the interface for ThermalPhysics used in run(). The
+ * objective of this class is to simplify code in run() by reducing the number
+ * of template parameters from four to two.
  */
-// FIXME If we have more than one class derived from Physics, we should
-// revisit the interface.
 template <int dim, typename MemorySpaceType>
-class Physics
+class ThermalPhysicsInterface
 {
 public:
-  Physics() = default;
+  ThermalPhysicsInterface() = default;
 
-  virtual ~Physics() = default;
+  virtual ~ThermalPhysicsInterface() = default;
 
   /**
    * Associate the AffineConstraints<double> and the MatrixFree objects to the
@@ -141,6 +146,16 @@ public:
    * Return the AffineConstraints<double>.
    */
   virtual dealii::AffineConstraints<double> &get_affine_constraints() = 0;
+
+  /**
+   * Return the heat sources.
+   */
+  virtual std::vector<std::shared_ptr<HeatSource<dim>>> &get_heat_sources() = 0;
+
+  /**
+   * Return the degree of the finite element.
+   */
+  virtual unsigned int get_fe_degree() const = 0;
 };
 } // namespace adamantine
 #endif

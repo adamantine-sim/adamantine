@@ -10,6 +10,12 @@ geometry
   width_divisions  4
 }
 
+physics
+{
+  thermal true
+  mechanical false
+}
+
 boundary
 {
   type adiabatic ; convective,radiative
@@ -105,8 +111,11 @@ post_processor
 
 discretization
 {
-  fe_degree 3
-  quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+  thermal 
+  {
+    fe_degree 3
+    quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+  }
 }
 
 profiling

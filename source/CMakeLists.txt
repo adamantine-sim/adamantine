@@ -13,10 +13,11 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/MemoryBlockView.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Operator.hh
-    ${CMAKE_CURRENT_SOURCE_DIR}/Physics.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ScanPath.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorBase.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysicsInterface.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.templates.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.hh
