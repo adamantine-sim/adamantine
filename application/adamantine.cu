@@ -106,14 +106,22 @@ int main(int argc, char *argv[])
     caliper_manager.start();
 #endif
 
+    boost::optional<boost::property_tree::ptree &> ensemble_optional_database =
+        database.get_child_optional("ensemble");
+    bool ensemble_calc = false;
+    if (ensemble_optional_database)
+    {
+      auto ensemble_database = ensemble_optional_database.get();
+      // PropertyTreeInput ensemble.ensemble_simulation
+      ensemble_calc = ensemble_database.get<bool>("ensemble_simulation", false);
+    }
+
     boost::property_tree::ptree geometry_database =
         database.get_child("geometry");
     // PropertyTreeInput geometry.dim
     int const dim = geometry_database.get<int>("dim");
 
     unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
-    if (rank == 0)
-      std::cout << "Starting simulation" << std::endl;
 
     // PropertyTreeInput memory_space
     std::string memory_space =
@@ -128,24 +136,54 @@ int main(int argc, char *argv[])
 
     if (dim == 2)
     {
-      if (memory_space == "device")
+      if (ensemble_calc)
       {
-        run<2, dealii::MemorySpace::CUDA>(communicator, database, timers);
+        if (rank == 0)
+          std::cout << "Starting ensemble simulation" << std::endl;
+        // TODO: Add device version of run_ensemble and call it here
+        adamantine::ASSERT_THROW(
+            false, "Error: Device version of ensemble simulations not "
+                   "yet implemented.");
       }
       else
       {
-        run<2, dealii::MemorySpace::Host>(communicator, database, timers);
+        if (rank == 0)
+          std::cout << "Starting non-ensemble simulation" << std::endl;
+
+        if (memory_space == "device")
+        {
+          run<2, dealii::MemorySpace::CUDA>(communicator, database, timers);
+        }
+        else
+        {
+          run<2, dealii::MemorySpace::Host>(communicator, database, timers);
+        }
       }
     }
     else
     {
-      if (memory_space == "device")
+      if (ensemble_calc)
       {
-        run<3, dealii::MemorySpace::CUDA>(communicator, database, timers);
+        if (rank == 0)
+          std::cout << "Starting ensemble simulation" << std::endl;
+        // TODO: Add device version of run_ensemble and call it here
+        adamantine::ASSERT_THROW(
+            false, "Error: Device version of ensemble simulations not "
+                   "yet implemented.");
       }
       else
       {
-        run<3, dealii::MemorySpace::Host>(communicator, database, timers);
+        if (rank == 0)
+          std::cout << "Starting non-ensemble simulation" << std::endl;
+
+        if (memory_space == "device")
+        {
+          run<3, dealii::MemorySpace::CUDA>(communicator, database, timers);
+        }
+        else
+        {
+          run<3, dealii::MemorySpace::Host>(communicator, database, timers);
+        }
       }
     }
 
