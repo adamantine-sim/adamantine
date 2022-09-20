@@ -15,6 +15,9 @@
 #define INST_DIM(z, dim, class_name) template class adamantine::class_name<dim>;
 #define INSTANTIATE_DIM(class_name) BOOST_PP_REPEAT_FROM_TO(2, 4, INST_DIM, class_name)
 
+#define INST_DIM_DEVICE(z, dim, class_name) template class adamantine::class_name<dim, dealii::MemorySpace::CUDA>;
+#define INSTANTIATE_DIM_DEVICE(class_name) BOOST_PP_REPEAT_FROM_TO(2, 4, INST_DIM_DEVICE, class_name)
+
 #define INST_DIM_HOST(z, dim, class_name) template class adamantine::class_name<dim, dealii::MemorySpace::Host>;
 #define INSTANTIATE_DIM_HOST(class_name) BOOST_PP_REPEAT_FROM_TO(2, 4, INST_DIM_HOST, class_name)
 
