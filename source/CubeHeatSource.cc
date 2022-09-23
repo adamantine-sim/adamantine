@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 - 2021, the adamantine authors.
+/* Copyright (c) 2020 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -30,11 +30,16 @@ CubeHeatSource<dim>::CubeHeatSource(boost::property_tree::ptree const &database)
 }
 
 template <int dim>
+void CubeHeatSource<dim>::update_time(double time)
+{
+  _source_on = ((time > _start_time) && (time < _end_time));
+}
+
+template <int dim>
 double CubeHeatSource<dim>::value(dealii::Point<dim> const &point,
-                                  double const time,
                                   double const /*height*/) const
 {
-  if ((time > _start_time) && (time < _end_time))
+  if (_source_on)
   {
     bool in_source = true;
     for (int i = 0; i < dim; ++i)

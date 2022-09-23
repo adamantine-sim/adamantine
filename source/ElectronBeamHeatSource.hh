@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 - 2021, the adamantine authors.
+/* Copyright (c) 2020 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -18,7 +18,7 @@ namespace adamantine
  * Raghavan et al, Acta Materilia, 112, 2016, pp 303-314.
  */
 template <int dim>
-class ElectronBeamHeatSource : public HeatSource<dim>
+class ElectronBeamHeatSource final : public HeatSource<dim>
 {
 public:
   /**
@@ -34,11 +34,21 @@ public:
   ElectronBeamHeatSource(boost::property_tree::ptree const &database);
 
   /**
+   * Set the time variable.
+   */
+  void update_time(double time) final;
+
+  /**
    * Returns the value of an electron beam heat source at a specified point and
    * time.
    */
-  double value(dealii::Point<dim> const &point, double const time,
-               double const height) const override;
+  double value(dealii::Point<dim> const &point,
+               double const height) const final;
+
+private:
+  dealii::Point<3> _beam_center;
+  double _alpha;
+  double const _log_01 = std::log(0.1);
 };
 } // namespace adamantine
 

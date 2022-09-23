@@ -17,7 +17,7 @@ namespace adamantine
  * used for verification purpose.
  */
 template <int dim>
-class CubeHeatSource : public HeatSource<dim>
+class CubeHeatSource final : public HeatSource<dim>
 {
 public:
   /**
@@ -36,17 +36,23 @@ public:
   CubeHeatSource(boost::property_tree::ptree const &database);
 
   /**
+   * Set the time variable.
+   */
+  void update_time(double time) final;
+
+  /**
    * Return the value of the source for a given point and time.
    */
-  double value(dealii::Point<dim> const &point, double const time,
-               double const /*height*/) const override;
+  double value(dealii::Point<dim> const &point,
+               double const /*height*/) const final;
   /**
    * Compute the current height of the where the heat source meets the material
    * (i.e. the current scan path height).
    */
-  virtual double get_current_height(double const time) const override;
+  double get_current_height(double const time) const final;
 
 private:
+  bool _source_on = false;
   double _start_time;
   double _end_time;
   double _value;

@@ -493,8 +493,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
           q_point_loc(d) = q_point(d)[i];
 
         for (auto &beam : _heat_sources)
-          quad_pt_source[i] +=
-              beam->value(q_point_loc, _time, _current_source_height);
+          quad_pt_source[i] += beam->value(q_point_loc, _current_source_height);
       }
       quad_pt_source *= inv_rho_cp;
 

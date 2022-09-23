@@ -161,10 +161,6 @@ private:
    */
   BoundaryType _boundary_type;
   /**
-   * Current time of the simulation.
-   */
-  double _time = 0.;
-  /**
    * Current height of the heat sources.
    */
   double _current_source_height = 0.;
@@ -298,8 +294,9 @@ inline void
 ThermalOperator<dim, fe_degree, MemorySpaceType>::set_time_and_source_height(
     double t, double height)
 {
-  _time = t;
   _current_source_height = height;
+  for (auto &beam : _heat_sources)
+    beam->update_time(t);
 }
 } // namespace adamantine
 

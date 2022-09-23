@@ -64,10 +64,15 @@ public:
   virtual ~HeatSource() = default;
 
   /**
+   * Set the time variable.
+   */
+  virtual void update_time(double time) = 0;
+
+  /**
    * Compute the heat source at a given point at a given time given the current
    * height of the object being manufactured.
    */
-  virtual double value(dealii::Point<dim> const &point, double const time,
+  virtual double value(dealii::Point<dim> const &point,
                        double const height) const = 0;
   /**
    * Return the scan path for the heat source.
