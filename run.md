@@ -21,13 +21,20 @@ If you use our Docker image, the variable is already set.
 
 ## Input file
 The following options are available:
-* **boundary**:
+* **boundary** (required):
   * **type**: type of boundary: `adiabatic`, `radiative`, or `convective`. Multiple types
   can be chosen simultaneously by separating them by comma (required)
-* **discretization**:
-  * **fe\_degree**: degree of the finite element used (required)
-  * **quadrature**: quadrature used: `gauss` or `lobatto` (default value: `gauss`)
-* **geometry**:
+* **physics** (required):
+  * **thermal**: thermal simulation: true or false (required)
+  * **mechanical**: mechanical simulation: true or fase (required)
+  * if both thermal and mechanical parameters are true, solve a coupled thermo-mechanics problem
+* **discretization** (required):
+  * **thermal** (required if *physics.thermal* is true):
+    * **fe\_degree**: degree of the finite element used (required)
+    * **quadrature**: quadrature used: `gauss` or `lobatto` (default value: `gauss`)
+  * **mechanical** (required if *physics.mechanical* is true):
+    * **fe\_degree**: degree of the finite element used (required)
+* **geometry** (required):
   * **dim**: the dimension of the problem (2 or 3, required)
   * **material\_height**: below this height the domain contains material. Above this
   height the domain is empty (default value: 1e9)
@@ -59,7 +66,7 @@ The following options are available:
     * **length\_divisions**: number of cell layers in length (default value: 10)
     * **height\_divisions**: number of cell layers in the height (default value: 10)
     * **width\_divisions**: number of cell layers in width (only in 3D) (default value: 10)
-* **materials**:
+* **materials** (required):
   * **n\_materials**: number of materials (required)
   * **property\_format**: format of the material property: table or polynomial (required)
   * **initial\_temperature**: initial temperature of all the materials (default value: 300)
@@ -73,7 +80,7 @@ The following options are available:
   * **material\_X.A**: A is either `solidus` in kelvin, `liquidus` in kelvin, `latent_heat`
   in `J/kg`, `radiation_temperature_infty` in kelvin, or `convection_temperature_infty`
   in kelvin (optional)
-* **memory\_space**: `device` (use GPU) or `host` (use CPU) (default value: host)
+* **memory\_space** (optional): `device` (use GPU) or `host` (use CPU) (default value: host)
 * **post\_processor** (required):
   * **filename\_prefix**: prefix of output files (required)
   * **time\_steps\_between\_output**: number of time steps between the
@@ -133,7 +140,7 @@ The following options are available:
     * **newton\_tolerance**: tolerance of the Newton solver (default value: 1e-6)
     * **jfnk**: use Jacobian-Free Newton Krylov method (default value: false)
 * **experiment**: (optional)
-  * *read\_in\_experimental\_data*: whether to read in experimental data (default: false)
+  * **read\_in\_experimental\_data**: whether to read in experimental data (default: false)
   * **file**: format of the file names. The format is pretty arbitrary, the keywords \#frame
   and \#camera are replaced by the frame and the camera number. The format of
   the file itself should be csv. (required)
@@ -160,9 +167,9 @@ The following options are available:
   * **augment\_with\_beam\_0\_absorption**: whether to augment the state vector with the beam 0 absorption efficiency (default: false)
   * **augment\_with\_beam\_0\_max_power**: whether to augment the state vector with the beam 0 max power (default: false)
   * **solver**:
-    * **max\_number\_of\_temp\_vectors**: Maximum number of temporary vectors for the GMRES solve (optional)
-    * **max\_iterations**: Maximum number of iterations for the GMRES solve (optional)
-    * **convergence\_tolerance**: Convergence tolerance for the GMRES solve (optional)
+    * **max\_number\_of\_temp\_vectors**: maximum number of temporary vectors for the GMRES solve (optional)
+    * **max\_iterations**: maximum number of iterations for the GMRES solve (optional)
+    * **convergence\_tolerance**: convergence tolerance for the GMRES solve (optional)
 * **profiling** (optional):
   * **timer**: output timing information (default value: false)
   * **caliper**: configuration string for Caliper (optional)
