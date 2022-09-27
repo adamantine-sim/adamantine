@@ -68,8 +68,8 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
         &temperature)
 {
-  setup_dofs();
   _mechanical_operator->update_temperature(thermal_dof_handler, temperature);
+  setup_dofs();
 }
 
 template <int dim, typename MemorySpaceType>
