@@ -91,7 +91,7 @@ public:
 
   /**
    * Return a MemoryBlockView of the properties of the material that are
-   * dependent of the state of the material and which have beese set using
+   * dependent of the state of the material and which have been set using
    * tables.
    */
   MemoryBlockView<double, MemorySpaceType> get_state_property_tables();
