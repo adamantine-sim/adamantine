@@ -68,7 +68,7 @@ void right_hand_side(const std::vector<dealii::Point<3>> &points,
 {
   for (unsigned int point_n = 0; point_n < points.size(); ++point_n)
   {
-    values[point_n][2] = -10.0;
+    values[point_n][2] = -9.80665;
   }
 }
 
@@ -220,6 +220,7 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   boost::property_tree::ptree material_database;
   material_database.put("property_format", "polynomial");
   material_database.put("n_materials", 1);
+  material_database.put("material_0.solid.density", 1.);
   material_database.put("material_0.solid.lame_first_parameter", 2.);
   material_database.put("material_0.solid.lame_second_parameter", 3.);
   adamantine::MaterialProperty<3, dealii::MemorySpace::Host>

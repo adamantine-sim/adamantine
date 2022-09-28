@@ -54,8 +54,11 @@ enum class StateProperty
   lame_first_parameter,
   lame_second_parameter,
   thermal_expansion_coef,
+  density_s, // density is used both by the thermal and the mechanical
+             // simulation. We need to duplicate the property because the
+             // mechanical code cannot run on the GPU.
   SIZE,
-  SIZE_MECHANICAL = 3
+  SIZE_MECHANICAL = 4
 };
 
 /**
@@ -90,12 +93,12 @@ static std::array<std::string, 5> property_names = {
  * Array containing the possible material properties that depend on the
  * state of the material.
  */
-static std::array<std::string, 11> state_property_names = {
+static std::array<std::string, 12> state_property_names = {
     {"density", "specific_heat", "thermal_conductivity_x",
      "thermal_conductivity_y", "thermal_conductivity_z", "emissivity",
      "radiation_heat_transfer_coef", "convection_heat_transfer_coef",
-     "lame_first_parameter", "lame_second_parameter",
-     "thermal_expansion_coef"}};
+     "lame_first_parameter", "lame_second_parameter", "thermal_expansion_coef",
+     "density"}};
 
 /**
  * Enum on the possible timers.
