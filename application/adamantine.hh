@@ -571,6 +571,7 @@ compute_cells_to_refine(
                                            (next_refinement_time - time);
     for (auto &beam : heat_sources)
     {
+      beam->update_time(current_time);
       for (auto cell : dealii::filter_iterators(
                triangulation.active_cell_iterators(),
                dealii::IteratorFilters::LocallyOwnedCell()))
@@ -581,8 +582,8 @@ compute_cells_to_refine(
         // quadrature points, vertices).
         for (unsigned int f = 0; f < cell->reference_cell().n_faces(); ++f)
         {
-          if (beam->value(cell->face(f)->center(), current_time,
-                          current_source_height) > refinement_beam_cutoff)
+          if (beam->value(cell->face(f)->center(), current_source_height) >
+              refinement_beam_cutoff)
           {
             cells_to_refine.push_back(cell);
             break;

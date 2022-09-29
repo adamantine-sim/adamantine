@@ -118,6 +118,8 @@ evaluate_thermal_physics_impl(
 
   // Compute the source term.
   // TODO do this on the GPU
+  for (auto &beam : heat_sources)
+    beam->update_time(t);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> source(
       y.get_partitioner());
   source = 0.;
@@ -165,7 +167,7 @@ evaluate_thermal_physics_impl(
         double quad_pt_source = 0.;
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
         for (auto &beam : heat_sources)
-          quad_pt_source += beam->value(q_point, t, current_source_height);
+          quad_pt_source += beam->value(q_point, current_source_height);
 
         cell_source[i] += inv_rho_cp * quad_pt_source *
                           fe_values.shape_value(i, q) * fe_values.JxW(q);

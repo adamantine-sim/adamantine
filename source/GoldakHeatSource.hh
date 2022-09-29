@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 - 2021, the adamantine authors.
+/* Copyright (c) 2020 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -18,7 +18,7 @@ namespace adamantine
  * Coleman et al, Journal of Heat Transfer, (in press, 2020).
  */
 template <int dim>
-class GoldakHeatSource : public HeatSource<dim>
+class GoldakHeatSource final : public HeatSource<dim>
 {
 public:
   /**
@@ -34,10 +34,21 @@ public:
   GoldakHeatSource(boost::property_tree::ptree const &database);
 
   /**
-   * Returns the value of a Goldak heat source at a specified point and time.
+   * Set the time variable.
    */
-  double value(dealii::Point<dim> const &point, double const time,
-               double const height) const override;
+  void update_time(double time) final;
+
+  /**
+   * Returns the value of a Goldak heat source at a specified point and
+   * time.
+   */
+  double value(dealii::Point<dim> const &point,
+               double const height) const final;
+
+private:
+  dealii::Point<3> _beam_center;
+  double _alpha;
+  double const _pi_over_3_to_1p5 = std::pow(dealii::numbers::PI / 3.0, 1.5);
 };
 } // namespace adamantine
 
