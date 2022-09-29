@@ -1,4 +1,4 @@
-ARG BASE=nvidia/cuda:11.6.1-devel-ubuntu20.04
+ARG BASE=nvidia/cuda:11.7.1-devel-ubuntu22.04
 FROM $BASE
 
 ARG N_PROCS=8
@@ -48,8 +48,8 @@ RUN mkdir -p ${PREFIX} && \
     mkdir build
 
 # Install CMake
-RUN export CMAKE_VERSION=3.21.0 && \
-    export CMAKE_SHA256=d54ef6909f519740bc85cec07ff54574cd1e061f9f17357d9ace69f61c6291ce && \
+RUN export CMAKE_VERSION=3.24.2 && \
+    export CMAKE_SHA256=71a776b6a08135092b5beb00a603b60ca39f8231c01a0356e205e0b4631747d9 && \
     export CMAKE_URL=https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz && \
     export CMAKE_ARCHIVE=${ARCHIVE_DIR}/cmake.tar.gz && \
     export CMAKE_BUILD_DIR=${BUILD_DIR}/cmake && \
@@ -67,9 +67,9 @@ ENV PATH=${INSTALL_DIR}/cmake/bin:$PATH
 # because LLVM does not have a working Fortran compiler. We need Fortran because
 # p4est checks at configure time that MPI Fortran works even tough it does not
 # use it. This should be fixed in p4est 3.0
-RUN export OPENMPI_VERSION=4.1.3 && \
+RUN export OPENMPI_VERSION=4.1.4 && \
     export OPENMPI_VERSION_SHORT=4.1 && \
-    export OPENMPI_SHA256=3d81d04c54efb55d3871a465ffb098d8d72c1f48ff1cbaf2580eb058567c0a3b && \
+    export OPENMPI_SHA256=92912e175fd1234368c8730c03f4996fe5942e7479bb1d10059405e7f2b3930d && \
     export OPENMPI_URL=https://www.open-mpi.org/software/ompi/v${OPENMPI_VERSION_SHORT}/downloads/openmpi-${OPENMPI_VERSION}.tar.bz2 && \
     export OPENMPI_ARCHIVE=${ARCHIVE_DIR}/openmpi.tar.bz2 && \
     export OPENMPI_SOURCE_DIR=${SOURCE_DIR}/openmpi && \
@@ -100,10 +100,10 @@ ENV OMPI_CXX=c++
 ENV PATH=${INSTALL_DIR}/openmpi/bin:$PATH
 
 # Install Boost
-RUN export BOOST_VERSION=1.76.0 && \
-    export BOOST_VERSION_U=1_76_0 && \
+RUN export BOOST_VERSION=1.80.0 && \
+    export BOOST_VERSION_U=1_80_0 && \
     export BOOST_URL=https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_U}.tar.bz2 && \
-    export BOOST_SHA256=f0397ba6e982c4450f27bf32a2a83292aba035b827a5623a14636ea583318c41 && \
+    export BOOST_SHA256=1e19565d82e43bc59209a168f5ac899d3ba471d55c7610c677d4ccf2c9c500c0 && \
     export BOOST_ARCHIVE=${ARCHIVE_DIR}/boost_${BOOST_VERSION_U}.tar.bz2 && \
     export BOOST_SOURCE_DIR=${SOURCE_DIR}/boost && \
     export BOOST_BUILD_DIR=${BUILD_DIR}/boost && \
@@ -133,7 +133,7 @@ RUN export BOOST_VERSION=1.76.0 && \
 ENV BOOST_DIR=${INSTALL_DIR}/boost
 
 # Install p4est
-RUN export P4EST_VERSION=2.3.2 && \
+RUN export P4EST_VERSION=2.3.3 && \
     export P4EST_URL=http://p4est.github.io/release/p4est-${P4EST_VERSION}.tar.gz && \
     export P4EST_ARCHIVE=${ARCHIVE_DIR}/p4est-${P4EST_VERSION}.tar.gz && \
     export P4EST_SOURCE_DIR=${SOURCE_DIR}/p4est && \
@@ -203,8 +203,8 @@ RUN export NETCDF_VERSION=4.7.4 && \
     rm -rf ${NETCDF_SOURCE_DIR}
 ENV NETCDF_DIR=/opt/netcdf
 
-# Install Trilinos 13.2.0
-RUN export TRILINOS_HASH=4a5f7906a6420ee2f9450367e9cc95b28c00d744 && \
+# Install Trilinos 13.4.0
+RUN export TRILINOS_HASH=0976cf2a8f9ee2991f4fb479f1056ca569eb22b9 && \
     export TRILINOS_URL=https://github.com/trilinos/Trilinos/archive/${TRILINOS_HASH}.tar.gz && \
     export TRILINOS_ARCHIVE=${ARCHIVE_DIR}/trilinos.tar.gz && \
     export TRILINOS_SOURCE_DIR=${SOURCE_DIR}/trilinos && \
@@ -276,8 +276,8 @@ RUN export ADIAK_VERSION=0.2.1 && \
     rm -rf ${ADIAK_SOURCE_DIR}
 ENV ADIAK_DIR=${INSTALL_DIR}/adiak
 
-# Install Caliper 2.7.0
-RUN export CALIPER_HASH=1b7943f1854a5c285793c350339f31a9f2959bb0 && \
+# Install Caliper 2.8.0
+RUN export CALIPER_HASH=bd59b8073beac49d9928c14efec8989c7fff4cb8 && \
     export CALIPER_URL=https://github.com/LLNL/caliper/archive/${CALIPER_HASH}.tar.gz && \
     export CALIPER_ARCHIVE=${ARCHIVE_DIR}/caliper.tar.gz && \
     export CALIPER_SOURCE_DIR=${SOURCE_DIR}/caliper && \
@@ -329,7 +329,7 @@ RUN export ARBORX_HASH=dc372874ce4d1ec756de2503a30c293e2fd0776b && \
 ENV ARBORX_DIR=${INSTALL_DIR}/arborx
 
 # Install deal.II 
-RUN export DEAL_II_HASH=00be141a1de735be9b5c54bba99af862077643da && \
+RUN export DEAL_II_HASH=89664dc696d6e5d6d15f40b26fcb902a5baa2d7e && \
     export DEAL_II_URL=https://github.com/dealii/dealii/archive/${DEAL_II_HASH}.tar.gz && \
     export DEAL_II_ARCHIVE=${ARCHIVE_DIR}/dealii.tar.gz && \
     export DEAL_II_SOURCE_DIR=${SOURCE_DIR}/dealii && \
@@ -344,6 +344,7 @@ RUN export DEAL_II_HASH=00be141a1de735be9b5c54bba99af862077643da && \
         -DCMAKE_CUDA_FLAGS="-arch=sm_70 -std=c++17 --extended-lambda" \
         -DCMAKE_CXX_EXTENSIONS=OFF \
         -DCMAKE_CXX_STANDARD=17 \
+        -DDEAL_II_CXX_FLAGS_RELEASE="-Ofast" \
         -DDEAL_II_WITH_TBB=OFF \
         -DDEAL_II_WITH_64BIT_INDICES=ON \
         -DDEAL_II_WITH_COMPLEX_VALUES=OFF \
@@ -366,13 +367,15 @@ RUN export DEAL_II_HASH=00be141a1de735be9b5c54bba99af862077643da && \
 # We keep the source file for debugging purpose
 ENV DEAL_II_DIR=${INSTALL_DIR}/dealii
 
-# Install dealii-weak_forms
-RUN export DEALII_WEAK_FORMS_HASH=a11a0ca2cccc8d18f7c6b2a01856bae1e87be456 && \
+# Install dealii-weak_forms. Install both the release and the debug version of
+# dealii-weak_forms to avoid clash from debug/release deal.II flags.
+RUN export DEALII_WEAK_FORMS_HASH=13e1861cc1449c07304112ea8680b8d2f966b511 && \
     export DEALII_WEAK_FORMS_URL=https://github.com/jppelteret/dealii-weak_forms/archive/${DEALII_WEAK_FORMS_HASH}.tar.gz && \
     export DEALII_WEAK_FORMS_ARCHIVE=${ARCHIVE_DIR}/dealii-weak_forms.tar.gz && \
     export DEALII_WEAK_FORMS_SOURCE_DIR=${SOURCE_DIR}/dealii-weak_forms && \
     export DEALII_WEAK_FORMS_BUILD_DIR=${BUILD_DIR}/dealii-weak_forms && \
     export DEALII_WEAK_FORMS_INSTALL_DIR=${INSTALL_DIR}/dealii-weak_forms && \
+    export DEALII_WEAK_FORMS_DEBUG_INSTALL_DIR=${INSTALL_DIR}/dealii-weak_forms-debug && \
     wget --quiet ${DEALII_WEAK_FORMS_URL} --output-document=${DEALII_WEAK_FORMS_ARCHIVE} && \
     mkdir -p ${DEALII_WEAK_FORMS_SOURCE_DIR} && \
     tar -xf ${DEALII_WEAK_FORMS_ARCHIVE} -C ${DEALII_WEAK_FORMS_SOURCE_DIR} --strip-components=1 && \
@@ -387,6 +390,18 @@ RUN export DEALII_WEAK_FORMS_HASH=a11a0ca2cccc8d18f7c6b2a01856bae1e87be456 && \
       ${DEALII_WEAK_FORMS_SOURCE_DIR} && \
     make -j${N_PROCS} install && \
     rm -rf ${DEALII_WEAK_FORMS_ARCHIVE} && \
+    rm -rf ${DEALII_WEAK_FORMS_BUILD_DIR}  && \
+    mkdir -p ${DEALII_WEAK_FORMS_BUILD_DIR} && cd ${DEALII_WEAK_FORMS_BUILD_DIR} && \
+    cmake \
+      -DCMAKE_BUILD_TYPE=Debug \
+      -DCMAKE_INSTALL_PREFIX=${DEALII_WEAK_FORMS_DEBUG_INSTALL_DIR} \
+      -DBUILD_BENCHMARKS=OFF \
+      -DBUILD_DOCUMENTATION=OFF \
+      -DBUILD_TESTS=OFF \
+      -DDEAL_II_DIR=${DEAL_II_DIR} \
+      ${DEALII_WEAK_FORMS_SOURCE_DIR} && \
+    make -j${N_PROCS} install && \
     rm -rf ${DEALII_WEAK_FORMS_BUILD_DIR} 
 # We keep the source file for debugging purpose
 ENV DEALII_WEAK_FORMS_DIR=${INSTALL_DIR}/dealii-weak_forms
+ENV DEALII_WEAK_FORMS_DEBUG_DIR=${INSTALL_DIR}/dealii-weak_forms-debug
