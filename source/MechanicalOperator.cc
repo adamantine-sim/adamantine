@@ -43,9 +43,10 @@ template <int dim, typename MemorySpaceType>
 MechanicalOperator<dim, MemorySpaceType>::MechanicalOperator(
     MPI_Comm const &communicator,
     MaterialProperty<dim, MemorySpaceType> &material_properties,
-    double const initial_temperature)
+    double const initial_temperature, bool include_gravity)
     : _communicator(communicator), _initial_temperature(initial_temperature),
-      _material_properties(material_properties)
+      _material_properties(material_properties),
+      _include_gravity(include_gravity)
 {
 }
 
@@ -169,6 +170,7 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
   dealiiWeakForms::WeakForms::MatrixBasedAssembler<dim> assembler;
 
   std::unique_ptr<dealii::hp::FEValues<dim>> temperature_hp_fe_values;
+
   // If the initial temperature is positive, we solve the thermoelastic problem.
   if (_initial_temperature >= 0.)
   {
@@ -235,7 +237,8 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
         dealiiWeakForms::WeakForms::linear_form(test_grad, expansion_tensor)
             .dV();
   }
-  else
+
+  if (_include_gravity)
   {
     // FIXME the formulation below is more widespread but it doesn't work in
     // dealii-weak_forms yet. Keeping the implementation to use it in the

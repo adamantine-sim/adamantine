@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
   q_collection.push_back(dealii::QGauss<dim>(1));
 
   adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
-      mechanical_operator(communicator, material_properties);
+      mechanical_operator(communicator, material_properties, -1, true);
   mechanical_operator.reinit(dof_handler, affine_constraints, q_collection);
 
   // deal.II reference implementation
@@ -291,7 +291,7 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
   temperature = 1.;
   // Create the MechanicalOperator
   adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
-      mechanical_operator(communicator, material_properties, 0.);
+      mechanical_operator(communicator, material_properties, 0., true);
   mechanical_operator.update_temperature(thermal_dof_handler, temperature);
   mechanical_operator.reinit(mechanical_dof_handler,
                              mechanical_affine_constraints,

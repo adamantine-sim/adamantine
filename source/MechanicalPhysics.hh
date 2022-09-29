@@ -27,7 +27,8 @@ public:
   MechanicalPhysics(MPI_Comm const &communicator, unsigned int fe_degree,
                     Geometry<dim> &geometry,
                     MaterialProperty<dim, MemorySpaceType> &material_properties,
-                    double initial_temperature = -1.);
+                    double initial_temperature = -1.,
+                    bool include_gravity = false);
 
   /**
    * Setup the DoFHandler, the AffineConstraints, and the MechanicalOperator.
@@ -83,6 +84,10 @@ private:
    */
   std::unique_ptr<MechanicalOperator<dim, MemorySpaceType>>
       _mechanical_operator;
+  /**
+   * Whether to include a gravitional body force in the calculation.
+   */
+  bool _include_gravity;
 };
 
 template <int dim, typename MemorySpaceType>
