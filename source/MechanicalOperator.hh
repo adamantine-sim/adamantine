@@ -39,7 +39,7 @@ public:
   MechanicalOperator(
       MPI_Comm const &communicator,
       MaterialProperty<dim, MemorySpaceType> &material_properties,
-      double initial_temperature = -1.);
+      double initial_temperature = -1., bool include_gravity = false);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
@@ -103,6 +103,10 @@ private:
    * problem.
    */
   double _initial_temperature = -1.;
+  /**
+   * Whether to include a gravitional body force in the calculation.
+   */
+  bool _include_gravity;
   /**
    * Reference to the MaterialProperty from MechanicalPhysics.
    */

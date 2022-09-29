@@ -22,8 +22,9 @@ MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
     MPI_Comm const &communicator, unsigned int fe_degree,
     Geometry<dim> &geometry,
     MaterialProperty<dim, MemorySpaceType> &material_properties,
-    double initial_temperature)
-    : _geometry(geometry), _dof_handler(_geometry.get_triangulation())
+    double initial_temperature, bool include_gravity)
+    : _geometry(geometry), _dof_handler(_geometry.get_triangulation()),
+      _include_gravity(include_gravity)
 {
   // Create the FECollection
   _fe_collection.push_back(
@@ -38,7 +39,8 @@ MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
   // Create the mechanical operator
   _mechanical_operator =
       std::make_unique<MechanicalOperator<dim, MemorySpaceType>>(
-          communicator, material_properties, initial_temperature);
+          communicator, material_properties, initial_temperature,
+          include_gravity);
 }
 
 template <int dim, typename MemorySpaceType>
@@ -68,8 +70,8 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
         &temperature)
 {
-  setup_dofs();
   _mechanical_operator->update_temperature(thermal_dof_handler, temperature);
+  setup_dofs();
 }
 
 template <int dim, typename MemorySpaceType>

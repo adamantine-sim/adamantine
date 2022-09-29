@@ -9,12 +9,15 @@
 
 #include <Geometry.hh>
 #include <MechanicalPhysics.hh>
+#include <PostProcessor.hh>
+#include <ThermalPhysics.hh>
 
 #include <deal.II/base/function.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/tensor.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_values.h>
@@ -224,8 +227,8 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   // Build MechanicalPhysics
   unsigned int const fe_degree = 1;
   adamantine::MechanicalPhysics<3, dealii::MemorySpace::Host>
-      mechanical_physics(communicator, fe_degree, geometry,
-                         material_properties);
+      mechanical_physics(communicator, fe_degree, geometry, material_properties,
+                         -1, true);
   mechanical_physics.setup_dofs();
   auto solution = mechanical_physics.solve();
 
@@ -239,4 +242,194 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   BOOST_TEST(solution.size() == reference_solution.size());
   for (unsigned int i = 0; i < reference_solution.size(); ++i)
     BOOST_TEST(solution[i] == reference_solution[i], tt::tolerance(tolerance));
+}
+
+template <int dim>
+class InitialValueT : public dealii::Function<dim>
+{
+public:
+  double value(const dealii::Point<dim> &p,
+               const unsigned int /*component = 0*/) const override
+  {
+    dealii::Point<dim> center = {2.0e-5, 2.0e-5, 2.0e-5};
+    const double a = 1.0e-6;
+    const double T0 = 3.0;
+    double dist = center.distance(p);
+    if (dist < a)
+    {
+      return T0;
+    }
+    else
+    {
+      return 2.0;
+    }
+  }
+};
+
+namespace utf = boost::unit_test;
+
+/*
+ * This unit test uses the analytic solution for the displacement around a
+ * spherical inclusion as a test case. As a result of the boundary conditions
+ * (fixed on one face) and the need to keep the test computationally
+ * inexpensive, a loose tolerance has been chosen. Also for simplicity, the
+ * analytic solution is being calculated externally and the values at only two
+ * points are being checked.
+ *
+ * Less than 5% deviation from analytic solution achieved with
+ * refinement_cyles=5.
+ */
+BOOST_AUTO_TEST_CASE(thermoelastic_eshelby, *utf::tolerance(0.12))
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+  int constexpr dim = 3;
+
+  // Create the Geometry
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 4.0e-5); // m
+  geometry_database.put("length_divisions", 16);
+  geometry_database.put("height", 4.0e-5); // m
+  geometry_database.put("height_divisions", 16);
+  geometry_database.put("width", 4.0e-5); // m
+  geometry_database.put("width_divisions", 16);
+  adamantine::Geometry<dim> geometry(communicator, geometry_database);
+  auto &triangulation = geometry.get_triangulation();
+
+  const dealii::Point<dim> center = {2.0e-5, 2.0e-5, 2.0e-5};
+
+  const unsigned int refinement_cycles = 3;
+  for (unsigned int cycle = 0; cycle < refinement_cycles; ++cycle)
+  {
+    for (auto cell :
+         dealii::filter_iterators(triangulation.active_cell_iterators(),
+                                  dealii::IteratorFilters::LocallyOwnedCell()))
+    {
+      cell->set_material_id(0);
+      cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
+      auto dist_from_center = center.distance(cell->center());
+      auto rad = 3.0e-6;
+      if (cycle == 0)
+      {
+        rad = 4.0e-6;
+      }
+
+      if (dist_from_center < rad)
+      {
+        cell->set_refine_flag();
+      }
+    }
+    triangulation.prepare_coarsening_and_refinement();
+    triangulation.execute_coarsening_and_refinement();
+  }
+
+  // Create the MaterialProperty
+  boost::property_tree::ptree material_database;
+  material_database.put("property_format", "polynomial");
+  material_database.put("n_materials", 1);
+
+  double const bulk_modulus = 160.0e9; // Pa
+  double const shear_modulus = 79.0e9; // Pa
+
+  double const lame_first = bulk_modulus - 2. / 3. * shear_modulus;
+  double const lame_second = shear_modulus;
+
+  material_database.put("material_0.solid.lame_first_parameter", lame_first);
+  material_database.put("material_0.solid.lame_second_parameter", lame_second);
+
+  double const alpha = 0.01;
+  material_database.put("material_0.solid.thermal_expansion_coef", alpha);
+  adamantine::MaterialProperty<dim, dealii::MemorySpace::Host>
+      material_properties(communicator, triangulation, material_database);
+
+  // Build ThermalPhysics
+  boost::property_tree::ptree database;
+  database.put("time_stepping.method", "backward_euler");
+  database.put("time_stepping.max_iteration", 100);
+  database.put("time_stepping.tolerance", 1e-6);
+  database.put("time_stepping.n_tmp_vectors", 100);
+  database.put("sources.beam_0.scan_path_file",
+               "scan_path_test_thermal_physics.txt");
+  database.put("sources.beam_0.type", "electron_beam");
+  database.put("sources.beam_0.scan_path_file_format", "segment");
+  database.put("sources.n_beams", 1);
+  database.put("sources.beam_0.depth", 1e100);
+  database.put("sources.beam_0.diameter", 1e100);
+  database.put("sources.beam_0.max_power", 1e300);
+  database.put("sources.beam_0.absorption_efficiency", 0.1);
+  database.put("sources.beam_0.type", "electron_beam");
+  database.put("sources.beam_0.scan_path_file",
+               "scan_path_test_thermal_physics.txt");
+  database.put("sources.beam_0.scan_path_file_format", "segment");
+  database.put("boundary.type", "adiabatic");
+  adamantine::ThermalPhysics<dim, 1, dealii::MemorySpace::Host,
+                             dealii::QGauss<1>>
+      thermal_physics(communicator, database, geometry, material_properties);
+  thermal_physics.setup_dofs();
+  thermal_physics.update_material_deposition_orientation();
+  thermal_physics.compute_inverse_mass_matrix();
+  thermal_physics.get_state_from_material_properties();
+
+  dealii::LinearAlgebra::distributed::Vector<double> temperature;
+  thermal_physics.initialize_dof_vector(100.0, temperature);
+
+  dealii::VectorTools::interpolate(thermal_physics.get_dof_handler(),
+                                   InitialValueT<3>(), temperature);
+
+  // Check the initial temperature
+  const dealii::Point<dim> pt1 = {2.08e-5, 2.0e-5, 2.0e-5};
+  auto temperature_value = dealii::VectorTools::point_value(
+      thermal_physics.get_dof_handler(), temperature, pt1);
+  BOOST_TEST(temperature_value == 3.0);
+  const dealii::Point<dim> pt2 = {2.3e-5, 2.2e-5, 1.9e-5};
+  temperature_value = dealii::VectorTools::point_value(
+      thermal_physics.get_dof_handler(), temperature, pt2);
+  BOOST_TEST(temperature_value == 2.0);
+
+  // Build MechanicalPhysics
+  unsigned int const fe_degree = 1;
+  adamantine::MechanicalPhysics<3, dealii::MemorySpace::Host>
+      mechanical_physics(communicator, fe_degree, geometry, material_properties,
+                         2.0);
+
+  boost::property_tree::ptree post_processor_database;
+  post_processor_database.put("filename_prefix", "mech_phys_test");
+  post_processor_database.put("thermal_output", true);
+  post_processor_database.put("mechanical_output", true);
+
+  adamantine::PostProcessor<dim> post_processor(
+      communicator, post_processor_database, thermal_physics.get_dof_handler(),
+      mechanical_physics.get_dof_handler());
+
+  mechanical_physics.setup_dofs(thermal_physics.get_dof_handler(), temperature);
+
+  auto solution = mechanical_physics.solve();
+
+  // Output (for debugging)
+  mechanical_physics.get_affine_constraints().distribute(solution);
+  post_processor.write_output(0, 0, 0, temperature, solution,
+                              material_properties.get_state(),
+                              material_properties.get_dofs_map(),
+                              material_properties.get_dof_handler());
+
+  std::vector<double> ref_u_pt1 = {4.8241206e-09, 0.0, 0.0};
+  std::vector<double> ref_u_pt2 = {3.45348338e-10, 2.30232226e-10,
+                                   -1.15116113e-10};
+
+  dealii::Vector<double> displacement_value(3);
+  dealii::VectorTools::point_value(mechanical_physics.get_dof_handler(),
+                                   solution, pt1, displacement_value);
+
+  for (unsigned int i = 0; i < dim; ++i)
+  {
+    BOOST_TEST(displacement_value[i] == ref_u_pt1[i]);
+  }
+
+  dealii::VectorTools::point_value(mechanical_physics.get_dof_handler(),
+                                   solution, pt2, displacement_value);
+
+  for (unsigned int i = 0; i < dim; ++i)
+  {
+    BOOST_TEST(displacement_value[i] == ref_u_pt2[i]);
+  }
 }
