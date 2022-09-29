@@ -18,5 +18,12 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 RUN cd /home && git clone https://github.com/adamantine-sim/adamantine && \
     cd adamantine && \
     mkdir build && cd build && \
-    cmake -DDEAL_II_DIR=${DEAL_II_DIR} -DCMAKE_BUILD_TYPE=Release ../ && \
+    cmake \
+      -DDEAL_II_DIR=${DEAL_II_DIR} \
+      -DCMAKE_BUILD_TYPE=Release\
+      -DCMAKE_CXX_FLAGS="-g" \
+      -DADAMANTINE_ENABLE_ADIAK=ON \
+      -DADAMANTINE_ENABLE_CALIPER=ON \
+      -DADAMANTINE_ENABLE_DEALII_WEAK_FORMS=ON \
+    ../ && \
     make && mv bin ../ && cd ../ && rm -r build
