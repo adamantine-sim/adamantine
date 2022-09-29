@@ -166,17 +166,20 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
       "f", "\\mathbf{f}");
   RightHandSide<dim> const rhs;
 
-  // Assemble the bilinear from
+  // Assemble the bilinear form
   dealiiWeakForms::WeakForms::MatrixBasedAssembler<dim> assembler;
 
   std::unique_ptr<dealii::hp::FEValues<dim>> temperature_hp_fe_values;
 
+  assembler += dealiiWeakForms::WeakForms::bilinear_form(
+                   test_grad, stiffness_tensor, trial_grad)
+                   .dV();
+
+  // Now add the appropriate linear form(s) (ie RHS)
+
   // If the initial temperature is positive, we solve the thermoelastic problem.
   if (_initial_temperature >= 0.)
   {
-    assembler += dealiiWeakForms::WeakForms::bilinear_form(
-                     test_grad, stiffness_tensor, trial_grad)
-                     .dV();
 
     // Create a functor to evaluate the thermal expansion
     temperature_hp_fe_values = std::make_unique<dealii::hp::FEValues<dim>>(
@@ -229,6 +232,7 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
 
           return B;
         });
+
     // Need to think if it's really a linear form or a bilinear form and where
     // the grad is supposed to apply. We could use a bilinear form because the
     // temperature is also dependent on the position but then, we would
@@ -238,6 +242,7 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
             .dV();
   }
 
+  // If gravity is included, add a gravitational body force
   if (_include_gravity)
   {
     // FIXME the formulation below is more widespread but it doesn't work in
@@ -251,10 +256,7 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
     //         .dV() -
     //     dealiiWeakForms::WeakForms::linear_form(test_val,
     //     rhs_coeff.value(rhs)).dV();
-    assembler +=
-        dealiiWeakForms::WeakForms::bilinear_form(test_grad, stiffness_tensor,
-                                                  trial_grad)
-            .dV() -
+    assembler -=
         dealiiWeakForms::WeakForms::linear_form(test_val, rhs_coeff.value(rhs))
             .dV();
   }
