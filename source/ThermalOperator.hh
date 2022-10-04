@@ -38,12 +38,11 @@ public:
               dealii::hp::QCollection<1> const &quad) override;
 
   /**
-   * Compute the inverse of the mass matrix and update the material properties.
+   * Compute the inverse of the mass matrix.
    */
   void compute_inverse_mass_matrix(
       dealii::DoFHandler<dim> const &dof_handler,
-      dealii::AffineConstraints<double> const &affine_constraints,
-      dealii::hp::FECollection<dim> const &fe_collection) override;
+      dealii::AffineConstraints<double> const &affine_constraints) override;
 
   /**
    * Clear the MatrixFree object and resize the inverse of the mass matrix to
@@ -147,6 +146,15 @@ private:
    * Apply the operator on a given set of quadrature points.
    */
   void cell_local_apply(
+      dealii::MatrixFree<dim, double> const &data,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
+      std::pair<unsigned int, unsigned int> const &cell_range) const;
+
+  /**
+   * Apply the mass operator on a given set of quadrature points.
+   */
+  void cell_local_mass(
       dealii::MatrixFree<dim, double> const &data,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
       dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,

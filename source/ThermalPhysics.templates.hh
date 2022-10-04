@@ -554,8 +554,8 @@ template <int dim, int fe_degree, typename MemorySpaceType,
 void ThermalPhysics<dim, fe_degree, MemorySpaceType,
                     QuadratureType>::compute_inverse_mass_matrix()
 {
-  _thermal_operator->compute_inverse_mass_matrix(
-      _dof_handler, _affine_constraints, _fe_collection);
+  _thermal_operator->compute_inverse_mass_matrix(_dof_handler,
+                                                 _affine_constraints);
   if (_implicit_method == true)
     _implicit_operator->set_inverse_mass_matrix(
         _thermal_operator->get_inverse_mass_matrix());

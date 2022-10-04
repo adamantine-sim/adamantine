@@ -467,8 +467,7 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
     compute_inverse_mass_matrix(
         dealii::DoFHandler<dim> const &dof_handler,
-        dealii::AffineConstraints<double> const &affine_constraints,
-        dealii::hp::FECollection<dim> const & /*fe_collection*/)
+        dealii::AffineConstraints<double> const &affine_constraints)
 {
   // Compute the inverse of the mass matrix
   dealii::QGaussLobatto<1> mass_matrix_quad(fe_degree + 1);
@@ -476,10 +475,8 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
 
   typename dealii::CUDAWrappers::MatrixFree<dim, double>::AdditionalData
       mf_data;
-  // FIXME update_gradients is necessary because of a bug in deal.II
   mf_data.mapping_update_flags =
-      dealii::update_values | dealii::update_gradients |
-      dealii::update_JxW_values | dealii::update_quadrature_points;
+      dealii::update_values | dealii::update_JxW_values;
   mass_matrix_free.reinit(dof_handler, affine_constraints, mass_matrix_quad,
                           mf_data);
   mass_matrix_free.initialize_dof_vector(*_inverse_mass_matrix);

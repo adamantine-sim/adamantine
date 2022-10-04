@@ -94,8 +94,7 @@ BOOST_AUTO_TEST_CASE(thermal_operator, *utf::tolerance(1e-15))
   thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator.set_material_deposition_orientation(deposition_cos,
                                                        deposition_sin);
-  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
-                                               fe_collection);
+  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints);
   thermal_operator.get_state_from_material_properties();
 
   BOOST_TEST(thermal_operator.m() == 99);
@@ -197,8 +196,7 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator.set_material_deposition_orientation(deposition_cos,
                                                        deposition_sin);
-  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
-                                               fe_collection);
+  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints);
   thermal_operator.get_state_from_material_properties();
   BOOST_TEST(thermal_operator.m() == 99);
   BOOST_TEST(thermal_operator.m() == thermal_operator.n());
@@ -304,8 +302,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic, *utf::tolerance(1e-12))
   thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator.set_material_deposition_orientation(deposition_cos,
                                                        deposition_sin);
-  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
-                                               fe_collection);
+  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints);
   thermal_operator.get_state_from_material_properties();
   BOOST_TEST(thermal_operator.m() == 99);
   BOOST_TEST(thermal_operator.m() == thermal_operator.n());
@@ -444,8 +441,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
   thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator.set_material_deposition_orientation(deposition_cos,
                                                        deposition_sin);
-  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
-                                               fe_collection);
+  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints);
   thermal_operator.get_state_from_material_properties();
   BOOST_TEST(thermal_operator.m() == thermal_operator.n());
 
@@ -609,8 +605,7 @@ BOOST_AUTO_TEST_CASE(spmv_rad, *utf::tolerance(1e-12))
   thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator.set_material_deposition_orientation(deposition_cos,
                                                        deposition_sin);
-  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
-                                               fe_collection);
+  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       temperature(thermal_operator.m());
   for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)

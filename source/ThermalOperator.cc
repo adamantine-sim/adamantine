@@ -61,56 +61,75 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::reinit(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_mass(
+    dealii::MatrixFree<dim, double> const &data,
+    dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+    dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
+    std::pair<unsigned int, unsigned int> const &cell_range) const
+{
+  // Get the subrange of cells associated with the fe index 0
+  std::pair<unsigned int, unsigned int> cell_subrange =
+      data.create_cell_subrange_hp_by_index(cell_range, 0);
+  dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(data);
+
+  // Loop over the "cells". Note that we don't really work on a cell but on a
+  // set of quadrature point.
+  for (unsigned int cell = cell_subrange.first; cell < cell_subrange.second;
+       ++cell)
+  {
+    // Reinit fe_eval on the current cell
+    fe_eval.reinit(cell);
+    // Store in a local vector the local values of src
+    fe_eval.read_dof_values(src);
+    // Evaluate the shape function on the reference cell
+    fe_eval.evaluate(dealii::EvaluationFlags::values);
+    // Apply the Jacobian of the transformation
+    for (unsigned int q = 0; q < fe_eval.n_q_points; ++q)
+    {
+      fe_eval.submit_value(fe_eval.get_value(q), q);
+    }
+    // Sum over the quadrature points.
+    fe_eval.integrate(dealii::EvaluationFlags::values);
+    fe_eval.distribute_local_to_global(dst);
+  }
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::
     compute_inverse_mass_matrix(
         dealii::DoFHandler<dim> const &dof_handler,
-        dealii::AffineConstraints<double> const &affine_constraints,
-        dealii::hp::FECollection<dim> const &fe_collection)
+        dealii::AffineConstraints<double> const &affine_constraints)
 {
   // Compute the inverse of the mass matrix
-  dealii::hp::QCollection<dim> mass_matrix_q_collection;
-  mass_matrix_q_collection.push_back(dealii::QGaussLobatto<dim>(fe_degree + 1));
-  mass_matrix_q_collection.push_back(dealii::QGaussLobatto<dim>(2));
-  auto locally_owned_dofs = dof_handler.locally_owned_dofs();
-  dealii::IndexSet locally_relevant_dofs;
-  dealii::DoFTools::extract_locally_relevant_dofs(dof_handler,
-                                                  locally_relevant_dofs);
-  _inverse_mass_matrix->reinit(locally_owned_dofs, locally_relevant_dofs,
-                               _communicator);
-  dealii::hp::FEValues<dim> hp_fe_values(
-      fe_collection, mass_matrix_q_collection,
-      dealii::update_quadrature_points | dealii::update_values |
-          dealii::update_JxW_values);
-  unsigned int const dofs_per_cell = fe_collection.max_dofs_per_cell();
-  unsigned int const n_q_points =
-      mass_matrix_q_collection.max_n_quadrature_points();
-  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
-  dealii::Vector<double> cell_mass(dofs_per_cell);
-  for (auto const &cell : dealii::filter_iterators(
-           dof_handler.active_cell_iterators(),
-           dealii::IteratorFilters::LocallyOwnedCell(),
-           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
-  {
-    cell_mass = 0.;
-    hp_fe_values.reinit(cell);
-    dealii::FEValues<dim> const &fe_values =
-        hp_fe_values.get_present_fe_values();
-    for (unsigned int i = 0; i < dofs_per_cell; ++i)
-    {
-      for (unsigned int q = 0; q < n_q_points; ++q)
-      {
-        for (unsigned int j = 0; j < dofs_per_cell; ++j)
-        {
+  dealii::hp::QCollection<dim> mass_q_collection;
+  mass_q_collection.push_back(dealii::QGaussLobatto<dim>(fe_degree + 1));
+  mass_q_collection.push_back(dealii::QGaussLobatto<dim>(2));
 
-          cell_mass[i] += fe_values.shape_value(j, q) *
-                          fe_values.shape_value(i, q) * fe_values.JxW(q);
-        }
-      }
-    }
-    cell->get_dof_indices(local_dof_indices);
-    affine_constraints.distribute_local_to_global(cell_mass, local_dof_indices,
-                                                  *_inverse_mass_matrix);
-  }
+  typename dealii::MatrixFree<dim, double>::AdditionalData
+      mass_matrix_free_data;
+  mass_matrix_free_data.tasks_parallel_scheme =
+      dealii::MatrixFree<dim, double>::AdditionalData::partition_color;
+  mass_matrix_free_data.mapping_update_flags =
+      dealii::update_values | dealii::update_JxW_values;
+
+  dealii::MatrixFree<dim, double> mass_matrix_free;
+  mass_matrix_free.reinit(dealii::StaticMappingQ1<dim>::mapping, dof_handler,
+                          affine_constraints, mass_q_collection,
+                          mass_matrix_free_data);
+  mass_matrix_free.initialize_dof_vector(*_inverse_mass_matrix);
+  dealii::LA::distributed::Vector<double, MemorySpaceType> unit_vector;
+  mass_matrix_free.initialize_dof_vector(unit_vector);
+  unit_vector = 1.;
+  mass_matrix_free.cell_loop(&ThermalOperator::cell_local_mass, this,
+                             *_inverse_mass_matrix, unit_vector);
+  // Because cell_loop resolves the constraints, the constrained dofs are not
+  // called they stay at zero. Thus, we need to force the value on the
+  // constrained dofs by hand.
+  std::vector<unsigned int> const &constrained_dofs =
+      mass_matrix_free.get_constrained_dofs();
+  for (auto &dof : constrained_dofs)
+    _inverse_mass_matrix->local_element(dof) += 1.;
+
   _inverse_mass_matrix->compress(dealii::VectorOperation::add);
 
   unsigned int const local_size = _inverse_mass_matrix->locally_owned_size();

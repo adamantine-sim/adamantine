@@ -75,8 +75,8 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev, *utf::tolerance(1e-10))
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
       thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
                            mat_properties);
-  thermal_operator_dev.compute_inverse_mass_matrix(
-      dof_handler, affine_constraints, fe_collection);
+  thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
+                                                   affine_constraints);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
@@ -163,8 +163,8 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
       thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
                            mat_properties);
-  thermal_operator_dev.compute_inverse_mass_matrix(
-      dof_handler, affine_constraints, fe_collection);
+  thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
+                                                   affine_constraints);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
@@ -280,8 +280,8 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
       thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
                            mat_properties);
-  thermal_operator_dev.compute_inverse_mass_matrix(
-      dof_handler, affine_constraints, fe_collection);
+  thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
+                                                   affine_constraints);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
@@ -295,8 +295,8 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>
       thermal_operator_host(communicator, adamantine::BoundaryType::adiabatic,
                             mat_properties_host, heat_sources);
-  thermal_operator_host.compute_inverse_mass_matrix(
-      dof_handler, affine_constraints, fe_collection);
+  thermal_operator_host.compute_inverse_mass_matrix(dof_handler,
+                                                    affine_constraints);
   thermal_operator_host.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator_host.set_material_deposition_orientation(deposition_cos,
                                                             deposition_sin);

@@ -90,8 +90,7 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
   thermal_operator.reinit(dof_handler, affine_constraints, q_collection);
   thermal_operator.set_material_deposition_orientation(deposition_cos,
                                                        deposition_sin);
-  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints,
-                                               fe_collection);
+  thermal_operator.compute_inverse_mass_matrix(dof_handler, affine_constraints);
 
   // Create the PostProcessor
   boost::property_tree::ptree post_processor_database;
