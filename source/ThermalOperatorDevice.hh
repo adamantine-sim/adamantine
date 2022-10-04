@@ -31,8 +31,7 @@ public:
 
   void compute_inverse_mass_matrix(
       dealii::DoFHandler<dim> const &dof_handler,
-      dealii::AffineConstraints<double> const &affine_constraints,
-      dealii::hp::FECollection<dim> const &fe_collection) override;
+      dealii::AffineConstraints<double> const &affine_constraints) override;
 
   void clear() override;
 

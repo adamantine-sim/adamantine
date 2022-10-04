@@ -31,8 +31,7 @@ public:
 
   virtual void compute_inverse_mass_matrix(
       dealii::DoFHandler<dim> const &dof_handler,
-      dealii::AffineConstraints<double> const &affine_constraints,
-      dealii::hp::FECollection<dim> const &fe_collection) = 0;
+      dealii::AffineConstraints<double> const &affine_constraints) = 0;
 
   virtual std::shared_ptr<
       dealii::LA::distributed::Vector<double, MemorySpaceType>>
