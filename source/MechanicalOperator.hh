@@ -98,15 +98,15 @@ private:
    */
   bool _bilinear_form_output = true;
   /**
+   * Whether to include a gravitional body force in the calculation.
+   */
+  bool _include_gravity = false;
+  /**
    * Initial temperature of the material. If the temperature is positive, we
    * solve a themo-mechanical problem. Otherwise, we solve a mechanical only
    * problem.
    */
   double _initial_temperature = -1.;
-  /**
-   * Whether to include a gravitional body force in the calculation.
-   */
-  bool _include_gravity;
   /**
    * Reference to the MaterialProperty from MechanicalPhysics.
    */

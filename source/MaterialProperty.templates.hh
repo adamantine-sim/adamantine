@@ -864,12 +864,14 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
                 {
                   mechanical_property_tables_host_view(
                       material_id, p - _n_thermal_state_properties, i, 0) =
-                      state_property_tables_host_view(material_id, state, p,
-                                                      i - 1, 0);
+                      mechanical_property_tables_host_view(
+                          material_id, p - _n_thermal_state_properties, i - 1,
+                          0);
                   mechanical_property_tables_host_view(
                       material_id, p - _n_thermal_state_properties, i, 1) =
-                      state_property_tables_host_view(material_id, state, p,
-                                                      i - 1, 1);
+                      mechanical_property_tables_host_view(
+                          material_id, p - _n_thermal_state_properties, i - 1,
+                          1);
                 }
               }
             }
