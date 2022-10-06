@@ -64,8 +64,8 @@ void output_pvtu(
     std::unique_ptr<adamantine::MechanicalPhysics<dim, MemorySpaceType>> const
         &mechanical_physics,
 #endif
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-        &displacement,
+    [[maybe_unused]] dealii::LA::distributed::Vector<
+        double, dealii::MemorySpace::Host> &displacement,
     adamantine::MaterialProperty<dim, MemorySpaceType> const
         &material_properties,
     std::vector<adamantine::Timer> &timers)
@@ -838,7 +838,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // Extract the physics property tree
   boost::property_tree::ptree physics_database = database.get_child("physics");
   bool const use_thermal_physics = physics_database.get<bool>("thermal");
-  bool const use_mechanical_physics = physics_database.get<bool>("mechanical");
+  [[maybe_unused]] bool const use_mechanical_physics =
+      physics_database.get<bool>("mechanical");
 
   // Extract the discretization property tree
   boost::property_tree::ptree discretization_database =
