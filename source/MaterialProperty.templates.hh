@@ -9,11 +9,13 @@
 #include <MemoryBlock.hh>
 #include <MemoryBlockView.hh>
 
+#include <deal.II/base/aligned_vector.h>
 #include <deal.II/base/array_view.h>
 #include <deal.II/base/cuda.h>
 #include <deal.II/base/point.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/types.h>
+#include <deal.II/base/vectorization.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/mapping.h>
@@ -476,7 +478,9 @@ dealii::VectorizedArray<double>
 MaterialProperty<dim, MemorySpaceType>::compute_material_property(
     StateProperty state_property, dealii::types::material_id const *material_id,
     dealii::VectorizedArray<double> const *state_ratios,
-    dealii::VectorizedArray<double> temperature) const
+    dealii::VectorizedArray<double> const &temperature,
+    dealii::AlignedVector<dealii::VectorizedArray<double>> const
+        &temperature_powers) const
 {
   dealii::VectorizedArray<double> value = 0.0;
   unsigned int const property_index = static_cast<unsigned int>(state_property);
@@ -515,7 +519,7 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
           value[n] += state_ratios[material_state][n] *
                       state_property_polynomials_view(m_id, material_state,
                                                       property_index, i) *
-                      std::pow(temperature[n], i);
+                      temperature_powers[i][n];
         }
       }
     }

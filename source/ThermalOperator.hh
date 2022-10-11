@@ -12,6 +12,7 @@
 #include <MaterialProperty.hh>
 #include <ThermalOperatorBase.hh>
 
+#include <deal.II/base/aligned_vector.h>
 #include <deal.II/matrix_free/matrix_free.h>
 
 namespace adamantine
@@ -135,12 +136,14 @@ private:
    * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given matrix-free cell
    * and quadrature point.
    */
-  dealii::VectorizedArray<double>
-  get_inv_rho_cp(unsigned int cell, unsigned int q,
-                 std::array<dealii::VectorizedArray<double>,
-                            static_cast<unsigned int>(MaterialState::SIZE)>
-                     state_ratios,
-                 dealii::VectorizedArray<double> temperature) const;
+  dealii::VectorizedArray<double> get_inv_rho_cp(
+      unsigned int cell, unsigned int q,
+      std::array<dealii::VectorizedArray<double>,
+                 static_cast<unsigned int>(MaterialState::SIZE)> const
+          &state_ratios,
+      dealii::VectorizedArray<double> const &temperature,
+      dealii::AlignedVector<dealii::VectorizedArray<double>> const
+          &temperature_powers) const;
 
   /**
    * Apply the operator on a given set of quadrature points.

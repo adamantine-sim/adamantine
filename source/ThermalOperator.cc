@@ -9,8 +9,10 @@
 #include <instantiation.hh>
 #include <utils.hh>
 
+#include <deal.II/base/aligned_vector.h>
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/types.h>
+#include <deal.II/base/vectorization.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/mapping_q1.h>
 #include <deal.II/grid/filtered_iterator.h>
@@ -348,9 +350,11 @@ dealii::VectorizedArray<double>
 ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
     unsigned int cell, unsigned int q,
     std::array<dealii::VectorizedArray<double>,
-               static_cast<unsigned int>(MaterialState::SIZE)>
-        state_ratios,
-    dealii::VectorizedArray<double> temperature) const
+               static_cast<unsigned int>(MaterialState::SIZE)> const
+        &state_ratios,
+    dealii::VectorizedArray<double> const &temperature,
+    dealii::AlignedVector<dealii::VectorizedArray<double>> const
+        &temperature_powers) const
 {
   // Here we need the specific heat (including the latent heat contribution)
   // and the density
@@ -370,12 +374,12 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
   dealii::VectorizedArray<double> density =
       _material_properties.compute_material_property(
           StateProperty::density, material_id.data(), state_ratios.data(),
-          temperature);
+          temperature, temperature_powers);
 
   dealii::VectorizedArray<double> specific_heat =
       _material_properties.compute_material_property(
           StateProperty::specific_heat, material_id.data(), state_ratios.data(),
-          temperature);
+          temperature, temperature_powers);
 
   // Add in the latent heat contribution
   unsigned int constexpr liquid =
@@ -434,9 +438,24 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
     {
       auto temperature = fe_eval.get_value(q);
 
+      // We need powers of temperature to compute the material properties. We
+      // could compute it in MaterialProperty but because it's in a hot loop.
+      // It's really worth to compute it once and pass it when we compute a
+      // material property
+      // Precompute the powers of temperature.
+      unsigned int polynomial_order = _material_properties.polynomial_order();
+      dealii::AlignedVector<dealii::VectorizedArray<double>> temperature_powers(
+          polynomial_order + 1);
+      for (unsigned int i = 0; i <= polynomial_order; ++i)
+      {
+        // FIXME Need to cast i to double due to a limitation in deal.II 9.5
+        temperature_powers[i] = std::pow(temperature, static_cast<double>(i));
+      }
+
       // Calculate the local material properties
       update_state_ratios(cell, q, temperature, state_ratios);
-      auto inv_rho_cp = get_inv_rho_cp(cell, q, state_ratios, temperature);
+      auto inv_rho_cp = get_inv_rho_cp(cell, q, state_ratios, temperature,
+                                       temperature_powers);
       auto mat_id = _material_id(cell, q);
       auto th_conductivity_grad = fe_eval.get_gradient(q);
 
@@ -446,11 +465,11 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
         th_conductivity_grad[axis<dim>::x] *=
             _material_properties.compute_material_property(
                 StateProperty::thermal_conductivity_x, mat_id.data(),
-                state_ratios.data(), temperature);
+                state_ratios.data(), temperature, temperature_powers);
         th_conductivity_grad[axis<dim>::z] *=
             _material_properties.compute_material_property(
                 StateProperty::thermal_conductivity_z, mat_id.data(),
-                state_ratios.data(), temperature);
+                state_ratios.data(), temperature, temperature_powers);
       }
 
       if constexpr (dim == 3)
@@ -460,11 +479,11 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
         auto const thermal_conductivity_x =
             _material_properties.compute_material_property(
                 StateProperty::thermal_conductivity_x, mat_id.data(),
-                state_ratios.data(), temperature);
+                state_ratios.data(), temperature, temperature_powers);
         auto const thermal_conductivity_y =
             _material_properties.compute_material_property(
                 StateProperty::thermal_conductivity_y, mat_id.data(),
-                state_ratios.data(), temperature);
+                state_ratios.data(), temperature, temperature_powers);
 
         auto cos = _deposition_cos(cell, q);
         auto sin = _deposition_sin(cell, q);
@@ -494,7 +513,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
         th_conductivity_grad[axis<dim>::z] *=
             _material_properties.compute_material_property(
                 StateProperty::thermal_conductivity_z, mat_id.data(),
-                state_ratios.data(), temperature);
+                state_ratios.data(), temperature, temperature_powers);
       }
 
       fe_eval.submit_gradient(-inv_rho_cp * th_conductivity_grad, q);

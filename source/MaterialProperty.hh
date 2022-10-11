@@ -13,6 +13,7 @@
 #include <types.hh>
 #include <utils.hh>
 
+#include <deal.II/base/aligned_vector.h>
 #include <deal.II/base/memory_space.h>
 #include <deal.II/base/types.h>
 #include <deal.II/distributed/tria.h>
@@ -129,11 +130,13 @@ public:
   /**
    * Compute a material property at a quadrature point for a mix of states.
    */
-  dealii::VectorizedArray<double>
-  compute_material_property(StateProperty state_property,
-                            dealii::types::material_id const *material_id,
-                            dealii::VectorizedArray<double> const *state_ratios,
-                            dealii::VectorizedArray<double> temperature) const;
+  dealii::VectorizedArray<double> compute_material_property(
+      StateProperty state_property,
+      dealii::types::material_id const *material_id,
+      dealii::VectorizedArray<double> const *state_ratios,
+      dealii::VectorizedArray<double> const &temperature,
+      dealii::AlignedVector<dealii::VectorizedArray<double>> const
+          &temperature_powers) const;
 
   /**
    * Compute a material property at a quadrature point for a mix of states.
