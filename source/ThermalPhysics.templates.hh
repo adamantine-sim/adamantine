@@ -321,7 +321,8 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   size_t pos_str = 0;
   std::string boundary;
   std::string delimiter = ",";
-  auto parse_boundary_type = [&](std::string const &boundary) {
+  auto parse_boundary_type = [&](std::string const &boundary)
+  {
     if (boundary == "adiabatic")
     {
       _boundary_type = BoundaryType::adiabatic;
@@ -694,12 +695,14 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   // associated to the fine cell. The final value is decided by
   // AffineConstraints. Thus, we need to make sure that the newly activated
   // cells are at the same level than their neighbors.
-  std::for_each(solution.begin(), solution.end(), [&](double &val) {
-    if (val == std::numeric_limits<double>::infinity())
-    {
-      val = new_material_temperature;
-    }
-  });
+  std::for_each(solution.begin(), solution.end(),
+                [&](double &val)
+                {
+                  if (val == std::numeric_limits<double>::infinity())
+                  {
+                    val = new_material_temperature;
+                  }
+                });
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -745,12 +748,10 @@ double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   }
   _current_source_height = temp_height;
 
-  auto eval = [&](double const t, LA_Vector const &y) {
-    return evaluate_thermal_physics(t, y, timers);
-  };
-  auto id_m_Jinv = [&](double const t, double const tau, LA_Vector const &y) {
-    return id_minus_tau_J_inverse(t, tau, y, timers);
-  };
+  auto eval = [&](double const t, LA_Vector const &y)
+  { return evaluate_thermal_physics(t, y, timers); };
+  auto id_m_Jinv = [&](double const t, double const tau, LA_Vector const &y)
+  { return id_minus_tau_J_inverse(t, tau, y, timers); };
 
   double time = _time_stepping->evolve_one_time_step(eval, id_m_Jinv, t,
                                                      delta_t, solution);
