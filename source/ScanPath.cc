@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2022, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -10,6 +10,8 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
+
+#include <fstream>
 
 namespace adamantine
 {

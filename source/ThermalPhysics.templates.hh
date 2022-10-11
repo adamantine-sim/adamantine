@@ -19,6 +19,7 @@
 #include <Timer.hh>
 
 #include <deal.II/base/geometry_info.h>
+#include <deal.II/base/quadrature_lib.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_nothing.h>

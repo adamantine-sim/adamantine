@@ -9,6 +9,7 @@
 #define TYPES_HH
 
 #include <array>
+#include <string>
 
 namespace dealii
 {
