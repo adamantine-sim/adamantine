@@ -33,7 +33,7 @@ public:
   /**
    * Setup the DoFHandler, the AffineConstraints, and the MechanicalOperator.
    */
-  void setup_dofs(std::vector<unsigned int> const fixed_faces);
+  void setup_dofs();
 
   /**
    * Same as above when solving a thermo-mechanical problem.
@@ -41,8 +41,7 @@ public:
   void setup_dofs(
       dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &temperature,
-      std::vector<unsigned int> const fixed_faces);
+          &temperature);
 
   /**
    * Solve the mechanical problem and return the solution.

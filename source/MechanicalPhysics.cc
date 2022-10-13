@@ -44,8 +44,7 @@ MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
 }
 
 template <int dim, typename MemorySpaceType>
-void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
-    std::vector<unsigned int> const fixed_faces)
+void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs()
 {
   _dof_handler.distribute_dofs(_fe_collection);
   dealii::IndexSet locally_relevant_dofs;
@@ -56,13 +55,14 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
   dealii::DoFTools::make_hanging_node_constraints(_dof_handler,
                                                   _affine_constraints);
   // TODO For now only Dirichlet boundary condition
-  for (auto face : fixed_faces)
-  {
-    dealii::VectorTools::interpolate_boundary_values(
-        _dof_handler, face, dealii::Functions::ZeroFunction<dim>(dim),
-        _affine_constraints);
-    _affine_constraints.close();
-  }
+  // FIXME For now this is only a Dirichlet boundary condition. It is also
+  // manually set to be what is the bottom face for a dealii hyper-rectangle. We
+  // need to decide how we want to expose BC control to the user more generally
+  // (including for user-supplied meshes).
+  dealii::VectorTools::interpolate_boundary_values(
+      _dof_handler, 4, dealii::Functions::ZeroFunction<dim>(dim),
+      _affine_constraints);
+  _affine_constraints.close();
 
   _mechanical_operator->reinit(_dof_handler, _affine_constraints,
                                _q_collection);
@@ -72,11 +72,10 @@ template <int dim, typename MemorySpaceType>
 void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
     dealii::DoFHandler<dim> const &thermal_dof_handler,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-        &temperature,
-    std::vector<unsigned int> const fixed_faces)
+        &temperature)
 {
   _mechanical_operator->update_temperature(thermal_dof_handler, temperature);
-  setup_dofs(fixed_faces);
+  setup_dofs();
 }
 
 template <int dim, typename MemorySpaceType>

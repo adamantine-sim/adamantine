@@ -89,7 +89,7 @@ void ElastoStaticity::setup_system()
   _constraints.clear();
   dealii::DoFTools::make_hanging_node_constraints(_dof_handler, _constraints);
   dealii::VectorTools::interpolate_boundary_values(
-      _dof_handler, 0, dealii::Functions::ZeroFunction<3>(3), _constraints);
+      _dof_handler, 4, dealii::Functions::ZeroFunction<3>(3), _constraints);
   _constraints.close();
 
   dealii::DynamicSparsityPattern dsp(_dof_handler.n_dofs(),
@@ -230,8 +230,7 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   adamantine::MechanicalPhysics<3, dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, material_properties,
                          -1, true);
-  std::vector<unsigned int> fixed_faces = {0};
-  mechanical_physics.setup_dofs(fixed_faces);
+  mechanical_physics.setup_dofs();
   auto solution = mechanical_physics.solve();
 
   // Reference computation
@@ -283,8 +282,7 @@ namespace utf = boost::unit_test;
  */
 template <unsigned int dim>
 std::vector<dealii::Vector<double>>
-run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles,
-            std::vector<unsigned int> fixed_faces)
+run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
@@ -394,8 +392,7 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles,
       communicator, post_processor_database, thermal_physics.get_dof_handler(),
       mechanical_physics.get_dof_handler());
 
-  mechanical_physics.setup_dofs(thermal_physics.get_dof_handler(), temperature,
-                                fixed_faces);
+  mechanical_physics.setup_dofs(thermal_physics.get_dof_handler(), temperature);
 
   auto solution = mechanical_physics.solve();
 
@@ -421,7 +418,7 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles,
   return pt_values;
 };
 
-BOOST_AUTO_TEST_CASE(thermoelastic_eshelby, *utf::tolerance(0.12))
+BOOST_AUTO_TEST_CASE(thermoelastic_eshelby, *utf::tolerance(0.16))
 {
 
   int constexpr dim = 3;
@@ -430,11 +427,9 @@ BOOST_AUTO_TEST_CASE(thermoelastic_eshelby, *utf::tolerance(0.12))
   const dealii::Point<dim> pt2 = {2.3e-5, 2.2e-5, 1.9e-5};
   std::vector<dealii::Point<dim>> pts = {pt1, pt2};
 
-  std::vector<unsigned int> fixed_faces = {0};
-
   unsigned int refinement_cyles = 3;
 
-  auto pt_values = run_eshelby<dim>(pts, refinement_cyles, fixed_faces);
+  auto pt_values = run_eshelby<dim>(pts, refinement_cyles);
 
   std::vector<double> ref_u_pt1 = {4.8241206e-09, 0.0, 0.0};
   std::vector<double> ref_u_pt2 = {3.45348338e-10, 2.30232226e-10,
@@ -448,48 +443,5 @@ BOOST_AUTO_TEST_CASE(thermoelastic_eshelby, *utf::tolerance(0.12))
   for (unsigned int i = 0; i < dim; ++i)
   {
     BOOST_TEST(pt_values[1][i] == ref_u_pt2[i]);
-  }
-}
-
-BOOST_AUTO_TEST_CASE(fixed_faces)
-{
-
-  int constexpr dim = 3;
-
-  std::vector<unsigned int> fixed_faces = {1, 3};
-
-  // Choose points on all six faces and in the interior of the domain
-  // Displacement should be zero on fixed faces and nonzero elsewhere
-  const dealii::Point<dim> f0 = {0.0, 3.0e-5, 3.0e-5};
-  const dealii::Point<dim> f1 = {4.0e-5, 3.0e-5, 3.0e-5};
-  const dealii::Point<dim> f2 = {3.0e-5, 0.0, 3.0e-5};
-  const dealii::Point<dim> f3 = {3.0e-5, 4.0e-5, 3.0e-5};
-  const dealii::Point<dim> f4 = {3.0e-5, 3.0e-5, 0.0};
-  const dealii::Point<dim> f5 = {3.0e-5, 3.0e-5, 4.0e-5};
-  const dealii::Point<dim> interior = {3.0e-5, 3.0e-5, 3.0e-5};
-
-  std::vector<dealii::Point<dim>> pts = {f1, f3, f0, f2, f4, f5, interior};
-
-  unsigned int refinement_cyles = 2;
-
-  auto pt_values = run_eshelby<dim>(pts, refinement_cyles, fixed_faces);
-
-  // Points on fixed faces
-  for (unsigned int p = 0; p < 2; ++p)
-  {
-    for (unsigned int i = 0; i < dim; ++i)
-    {
-      BOOST_CHECK_SMALL(pt_values[p][i], 1.0e-12);
-    }
-  }
-
-  // Other points
-  for (unsigned int p = 2; p < 7; ++p)
-  {
-    for (unsigned int i = 0; i < dim; ++i)
-    {
-      BOOST_TEST(std::abs(pt_values[p][i]) > 1.0e-12);
-    }
-    std::cout << std::endl;
   }
 }
