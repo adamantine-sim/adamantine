@@ -44,7 +44,8 @@ MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
 }
 
 template <int dim, typename MemorySpaceType>
-void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs()
+void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
+    std::vector<unsigned int> const fixed_faces)
 {
   _dof_handler.distribute_dofs(_fe_collection);
   dealii::IndexSet locally_relevant_dofs;
@@ -55,10 +56,13 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs()
   dealii::DoFTools::make_hanging_node_constraints(_dof_handler,
                                                   _affine_constraints);
   // TODO For now only Dirichlet boundary condition
-  dealii::VectorTools::interpolate_boundary_values(
-      _dof_handler, 0, dealii::Functions::ZeroFunction<dim>(dim),
-      _affine_constraints);
-  _affine_constraints.close();
+  for (auto face : fixed_faces)
+  {
+    dealii::VectorTools::interpolate_boundary_values(
+        _dof_handler, face, dealii::Functions::ZeroFunction<dim>(dim),
+        _affine_constraints);
+    _affine_constraints.close();
+  }
 
   _mechanical_operator->reinit(_dof_handler, _affine_constraints,
                                _q_collection);
@@ -68,10 +72,11 @@ template <int dim, typename MemorySpaceType>
 void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
     dealii::DoFHandler<dim> const &thermal_dof_handler,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-        &temperature)
+        &temperature,
+    std::vector<unsigned int> const fixed_faces)
 {
   _mechanical_operator->update_temperature(thermal_dof_handler, temperature);
-  setup_dofs();
+  setup_dofs(fixed_faces);
 }
 
 template <int dim, typename MemorySpaceType>
