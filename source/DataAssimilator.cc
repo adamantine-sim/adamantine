@@ -10,6 +10,7 @@
 
 #include <deal.II/arborx/bvh.h>
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/fe/mapping_q1.h>
 #include <deal.II/lac/block_vector.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/linear_operator_tools.h>
@@ -213,7 +214,8 @@ DataAssimilator::apply_kalman_gain(
   // members in parallel
   std::transform(
       perturbed_innovation.begin(), perturbed_innovation.end(), output.begin(),
-      [&](dealii::Vector<double> entry) {
+      [&](dealii::Vector<double> entry)
+      {
         dealii::SolverGMRES<dealii::Vector<double>> HPH_plus_R_inv_solver(
             solver_control, additional_data);
 

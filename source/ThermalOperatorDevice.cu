@@ -487,7 +487,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
   LocalMassMatrixOperator<dim, fe_degree> local_operator;
   mass_matrix_free.cell_loop(local_operator, dummy, *_inverse_mass_matrix);
   _inverse_mass_matrix->compress(dealii::VectorOperation::add);
-  unsigned int const local_size = _inverse_mass_matrix->local_size();
+  unsigned int const local_size = _inverse_mass_matrix->locally_owned_size();
   const int n_blocks = 1 + local_size / dealii::CUDAWrappers::block_size;
   invert_mass_matrix<<<n_blocks, dealii::CUDAWrappers::block_size>>>(
       _inverse_mass_matrix->get_values(), local_size);

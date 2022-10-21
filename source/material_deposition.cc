@@ -15,7 +15,7 @@
 #include <boost/filesystem.hpp>
 
 #include <algorithm>
-#include <iostream>
+#include <fstream>
 #include <tuple>
 
 namespace adamantine

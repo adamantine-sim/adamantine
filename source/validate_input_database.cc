@@ -34,7 +34,8 @@ void validate_input_database(boost::property_tree::ptree &database)
   size_t pos_str = 0;
   std::string boundary;
   std::string delimiter = ",";
-  auto parse_boundary_type = [&](std::string const &boundary) {
+  auto parse_boundary_type = [&](std::string const &boundary)
+  {
     if (boundary == "adiabatic")
     {
       ASSERT_THROW(

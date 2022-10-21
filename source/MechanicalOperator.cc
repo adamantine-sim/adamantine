@@ -121,7 +121,8 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
       "C", "\\mathcal{C}");
   auto stiffness_tensor = stiffness_coeff.template value<double, dim>(
       [this](dealii::FEValuesBase<dim> const &fe_values,
-             unsigned int const /* q_point */) {
+             unsigned int const /* q_point */)
+      {
         auto const &cell = fe_values.get_cell();
 
         dealii::Tensor<4, dim, double> C;
@@ -180,7 +181,8 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
 
     auto expansion_tensor = expansion_coeff.template value<double, dim>(
         [&](dealii::FEValuesBase<dim> const &fe_values,
-            unsigned int const q_point) {
+            unsigned int const q_point)
+        {
           // fe_values is associated with the mechanical DoFHandler. We use it
           // to get the cell and then we evaluate the temperature at the
           // quadrature point using the temperature DoFHandler.
@@ -239,7 +241,8 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
         "f", "\\mathbf{f}");
     auto body_force_vector = body_force_coeff.template value<double, dim>(
         [this](dealii::FEValuesBase<dim> const &fe_values,
-               unsigned int const /*q_point */) {
+               unsigned int const /*q_point */)
+        {
           auto const &cell = fe_values.get_cell();
           // Note that that the density is independent of the temperature
           double density = this->_material_properties.get_mechanical_property(
