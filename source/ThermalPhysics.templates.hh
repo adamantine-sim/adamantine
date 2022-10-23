@@ -272,6 +272,9 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     MaterialProperty<dim, MemorySpaceType> &material_properties)
     : _boundary_type(BoundaryType::invalid), _geometry(geometry),
       _dof_handler(_geometry.get_triangulation()),
+      _cell_weights(
+          _dof_handler,
+          dealii::parallel::CellWeights<dim>::ndofs_weighting({1, 1})),
       _material_properties(material_properties)
 {
   // Create the FECollection
