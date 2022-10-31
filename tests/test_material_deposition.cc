@@ -296,8 +296,6 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   auto [material_deposition_boxes, deposition_times, deposition_cos,
         deposition_sin] =
       adamantine::read_material_deposition<dim>(geometry_database);
-  auto elements_to_activate = adamantine::get_elements_to_activate(
-      dof_handler, material_deposition_boxes);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   thermal_physics.initialize_dof_vector(solution);
@@ -326,9 +324,13 @@ BOOST_AUTO_TEST_CASE(material_deposition)
                          time + time_step - eps) -
         deposition_times.begin();
     if (activation_start < activation_end)
+    {
+      auto elements_to_activate = adamantine::get_elements_to_activate(
+          dof_handler, material_deposition_boxes);
       thermal_physics.add_material(
           elements_to_activate, deposition_cos, deposition_sin,
           activation_start, activation_end, initial_temperature, solution);
+    }
 
     time =
         thermal_physics.evolve_one_time_step(time, time_step, solution, timers);
