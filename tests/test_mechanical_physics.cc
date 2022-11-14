@@ -241,8 +241,12 @@ BOOST_AUTO_TEST_CASE(elastostatic)
 
   double const tolerance = 1e-9;
   BOOST_TEST(solution.size() == reference_solution.size());
+
+  // Use BOOST_CHECK_SMALL so that minor deviations from zero related to finite
+  // solver tolerances don't trigger failures. The largest solution values are
+  // O(1), so the tolerance is strict enough to catch meaningful differences.
   for (unsigned int i = 0; i < reference_solution.size(); ++i)
-    BOOST_TEST(solution[i] == reference_solution[i], tt::tolerance(tolerance));
+    BOOST_CHECK_SMALL(solution[i] - reference_solution[i], tolerance);
 }
 
 template <int dim>
