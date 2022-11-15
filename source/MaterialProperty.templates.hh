@@ -382,6 +382,8 @@ void MaterialProperty<dim, MemorySpaceType>::update(
       });
 }
 
+// TODO When we can get rid of this function, we can remove
+// StateProperty::radiation_heat_transfer_coef
 template <int dim, typename MemorySpaceType>
 void MaterialProperty<dim, MemorySpaceType>::
     update_boundary_material_properties(
