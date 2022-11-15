@@ -41,10 +41,6 @@ public:
       dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
       const = 0;
 
-  virtual void update_boundary_material_properties(
-      dealii::LA::distributed::Vector<double, MemorySpaceType> const
-          &state) = 0;
-
   virtual void clear() = 0;
 
   virtual void get_state_from_material_properties() = 0;
@@ -56,10 +52,6 @@ public:
       std::vector<double> const &deposition_sin) = 0;
 
   virtual void set_time_and_source_height(double, double) = 0;
-
-  virtual double
-  get_inv_rho_cp(typename dealii::DoFHandler<dim>::cell_iterator const &,
-                 unsigned int) const = 0;
 };
 } // namespace adamantine
 #endif

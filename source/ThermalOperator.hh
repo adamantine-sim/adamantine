@@ -103,23 +103,6 @@ public:
       std::vector<double> const &deposition_cos,
       std::vector<double> const &deposition_sin) override;
 
-  /**
-   * Update the material properties used by non-adiabatic boundary conditiions
-   * for a given state field.
-   */
-  // This function should be removed once the material properties on the surface
-  // is computed correctly.
-  void update_boundary_material_properties(
-      dealii::LA::distributed::Vector<double, MemorySpaceType> const &state)
-      override;
-
-  /**
-   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given cell.
-   */
-  double
-  get_inv_rho_cp(typename dealii::DoFHandler<dim>::cell_iterator const &cell,
-                 unsigned int q) const override;
-
   void set_time_and_source_height(double t, double height) override;
 
 private:
@@ -132,6 +115,16 @@ private:
                       std::array<dealii::VectorizedArray<double>,
                                  static_cast<unsigned int>(MaterialState::SIZE)>
                           &state_ratios) const;
+
+  /**
+   * Update the ratios of the material state at the face quadrature points.
+   */
+  void update_face_state_ratios(
+      unsigned int face, unsigned int q,
+      dealii::VectorizedArray<double> temperature,
+      std::array<dealii::VectorizedArray<double>,
+                 static_cast<unsigned int>(MaterialState::SIZE)> &state_ratios)
+      const;
   /**
    * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given matrix-free cell
    * and quadrature point.
@@ -146,13 +139,35 @@ private:
           &temperature_powers) const;
 
   /**
-   * Apply the operator on a given set of quadrature points.
+   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given matrix-free face
+   * and quadrature point.
+   */
+  dealii::VectorizedArray<double> get_face_inv_rho_cp(
+      unsigned int cell, unsigned int q,
+      std::array<dealii::VectorizedArray<double>,
+                 static_cast<unsigned int>(MaterialState::SIZE)> const
+          &state_ratios,
+      dealii::VectorizedArray<double> const &temperature,
+      dealii::AlignedVector<dealii::VectorizedArray<double>> const
+          &temperature_powers) const;
+
+  /**
+   * Apply the operator on a given set of quadrature points inside each cell.
    */
   void cell_local_apply(
       dealii::MatrixFree<dim, double> const &data,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
       dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
       std::pair<unsigned int, unsigned int> const &cell_range) const;
+
+  /**
+   * Apply the operator on a given set of quadrature points on each face.
+   */
+  void face_local_apply(
+      dealii::MatrixFree<dim, double> const &data,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
+      std::pair<unsigned int, unsigned int> const &face_range) const;
 
   /**
    * Apply the mass operator on a given set of quadrature points.
@@ -179,10 +194,6 @@ private:
    * Data to configure the MatrixFree object.
    */
   typename dealii::MatrixFree<dim, double>::AdditionalData _matrix_free_data;
-  /**
-   * Store the \f$ \frac{1}{\rho C_p}\f$ coefficient.
-   */
-  mutable dealii::Table<2, dealii::VectorizedArray<double>> _inv_rho_cp;
   /**
    * Table of thermal conductivity coefficient.
    */
@@ -217,22 +228,34 @@ private:
            std::pair<unsigned int, unsigned int>>
       _cell_it_to_mf_cell_map;
   /**
-   * Table of the powder fraction, mutable so that it can be changed in
-   * local_apply, which is const.
+   * Table of the powder fraction inside cells; mutable so that it can be
+   * changed in cell_local_apply which is const.
    */
   mutable dealii::Table<2, dealii::VectorizedArray<double>> _liquid_ratio;
   /**
-   * Table of the powder fraction, mutable so that it can be changed in
-   * local_apply, which is const.
+   * Table of the powder fraction inside cells; mutable so that it can be
+   * changed in cell_local_apply which is const.
    */
   mutable dealii::Table<2, dealii::VectorizedArray<double>> _powder_ratio;
   /**
-   * Table of the material index, mutable so that it can be changed in
-   * local_apply, which is const.
+   * Table of the powder fraction on faces; mutable so that it can be changed in
+   * face_local apply which is const.
+   */
+  mutable dealii::Table<2, dealii::VectorizedArray<double>> _face_powder_ratio;
+  /**
+   * Table of the material index inside cells; mutable so that it can be changed
+   * in cell_local_apply which is const.
    */
   mutable dealii::Table<2, std::array<dealii::types::material_id,
                                       dealii::VectorizedArray<double>::size()>>
       _material_id;
+  /**
+   * Table of the material index on faces; mutable so that it can be changed in
+   * face_local_apply which is const.
+   */
+  mutable dealii::Table<2, std::array<dealii::types::material_id,
+                                      dealii::VectorizedArray<double>::size()>>
+      _face_material_id;
   /**
    * Table of the material deposition cosine angles.
    */
@@ -242,18 +265,6 @@ private:
    */
   dealii::Table<2, dealii::VectorizedArray<double>> _deposition_sin;
 };
-
-template <int dim, int fe_degree, typename MemorySpaceType>
-inline double ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
-    typename dealii::DoFHandler<dim>::cell_iterator const &cell,
-    unsigned int q) const
-{
-  auto cell_comp_pair = _cell_it_to_mf_cell_map.find(cell);
-  ASSERT(cell_comp_pair != _cell_it_to_mf_cell_map.end(), "Internal error");
-
-  return _inv_rho_cp(cell_comp_pair->second.first,
-                     q)[cell_comp_pair->second.second];
-}
 
 template <int dim, int fe_degree, typename MemorySpaceType>
 inline dealii::types::global_dof_index

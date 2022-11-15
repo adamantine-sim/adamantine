@@ -70,8 +70,7 @@ public:
       const override;
 
   void update_boundary_material_properties(
-      dealii::LA::distributed::Vector<double, MemorySpaceType> const &state)
-      override;
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const &state);
 
   void get_state_from_material_properties() override;
 
@@ -102,7 +101,7 @@ public:
    */
   double
   get_inv_rho_cp(typename dealii::DoFHandler<dim>::cell_iterator const &cell,
-                 unsigned int q) const override;
+                 unsigned int q) const;
 
 private:
   /**
