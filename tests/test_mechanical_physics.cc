@@ -239,7 +239,7 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   elasto_staticity.assemble_system();
   auto reference_solution = elasto_staticity.solve();
 
-  double const tolerance = 1e-9;
+  double const tolerance = 2e-9;
   BOOST_TEST(solution.size() == reference_solution.size());
 
   // Use BOOST_CHECK_SMALL so that minor deviations from zero related to finite
