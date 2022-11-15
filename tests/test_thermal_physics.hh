@@ -501,12 +501,6 @@ void convection_bcs()
   material_property_database.put("material_0.powder.emissivity", 1.);
   material_property_database.put("material_0.liquid.emissivity", 1.);
   material_property_database.put(
-      "material_0.solid.radiation_heat_transfer_coef", 1.);
-  material_property_database.put(
-      "material_0.powder.radiation_heat_transfer_coef", 1.);
-  material_property_database.put(
-      "material_0.liquid.radiation_heat_transfer_coef", 1.);
-  material_property_database.put(
       "material_0.solid.convection_heat_transfer_coef", 1.);
   material_property_database.put(
       "material_0.powder.convection_heat_transfer_coef", 1.);
@@ -538,9 +532,9 @@ void convection_bcs()
   physics.get_state_from_material_properties();
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
-  while (time < 10)
+  while (time < 100)
   {
-    time = physics.evolve_one_time_step(time, 0.05, solution, timers);
+    time = physics.evolve_one_time_step(time, 0.005, solution, timers);
   }
 
   double max = -1;
