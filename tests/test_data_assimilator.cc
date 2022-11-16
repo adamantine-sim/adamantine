@@ -423,7 +423,7 @@ public:
     {
       for (unsigned int j = 0; j < 4; ++j)
       {
-        BOOST_TEST(cov(i, j) == 0., tt::tolerance(tol));
+        BOOST_TEST(cov.el(i, j) == 0., tt::tolerance(tol));
       }
     }
 
@@ -442,22 +442,22 @@ public:
     dealii::SparseMatrix<double> cov1 =
         da.calc_sample_covariance_sparse(vec_ensemble1);
 
-    BOOST_TEST(cov1(0, 0) == 0.005, tt::tolerance(tol));
-    BOOST_TEST(cov1(0, 1) == 0.015, tt::tolerance(tol));
-    BOOST_TEST(cov1(0, 2) == 0.01, tt::tolerance(tol));
-    BOOST_TEST(cov1(0, 3) == 0.02, tt::tolerance(tol));
-    BOOST_TEST(cov1(1, 0) == 0.015, tt::tolerance(tol));
-    BOOST_TEST(cov1(1, 1) == 0.045, tt::tolerance(tol));
-    BOOST_TEST(cov1(1, 2) == 0.03, tt::tolerance(tol));
-    BOOST_TEST(cov1(1, 3) == 0.06, tt::tolerance(tol));
-    BOOST_TEST(cov1(2, 0) == 0.01, tt::tolerance(tol));
-    BOOST_TEST(cov1(2, 1) == 0.03, tt::tolerance(tol));
-    BOOST_TEST(cov1(2, 2) == 0.02, tt::tolerance(tol));
-    BOOST_TEST(cov1(2, 3) == 0.04, tt::tolerance(tol));
-    BOOST_TEST(cov1(3, 0) == 0.02, tt::tolerance(tol));
-    BOOST_TEST(cov1(3, 1) == 0.06, tt::tolerance(tol));
-    BOOST_TEST(cov1(3, 2) == 0.04, tt::tolerance(tol));
-    BOOST_TEST(cov1(3, 3) == 0.08, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(0, 0) == 0.005, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(0, 1) == 0.015, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(0, 2) == 0.01, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(0, 3) == 0.02, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(1, 0) == 0.015, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(1, 1) == 0.045, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(1, 2) == 0.03, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(1, 3) == 0.06, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(2, 0) == 0.01, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(2, 1) == 0.03, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(2, 2) == 0.02, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(2, 3) == 0.04, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(3, 0) == 0.02, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(3, 1) == 0.06, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(3, 2) == 0.04, tt::tolerance(tol));
+    BOOST_TEST(cov1.el(3, 3) == 0.08, tt::tolerance(tol));
 
     // Non-trivial case with step-function sparsity
     da._localization_cutoff_distance = 1.0e-6;

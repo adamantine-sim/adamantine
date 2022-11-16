@@ -350,18 +350,23 @@ void DataAssimilator::update_covariance_sparsity_pattern(
       spheres.push_back({{pt[0], pt[1], pt[2]}, _localization_cutoff_distance});
   dealii::ArborXWrappers::SphereIntersectPredicate sph_intersect(spheres);
   auto [indices, offsets] = bvh.query(sph_intersect);
+  ASSERT(offsets.size() == spheres.size() + 1,
+         "There was a problem in ArborX.");
 
-  for (unsigned int i = 0; i < offsets.size() - 1; ++i)
+  if (offsets.size() != 0)
   {
-    for (int j = offsets[i]; j < offsets[i + 1]; ++j)
+    for (unsigned int i = 0; i < offsets.size() - 1; ++i)
     {
-      int k = indices[j];
-      _covariance_distance_map[std::make_pair(i, k)] =
-          support_points[i].distance(support_points[k]);
-      // We would like to use the add_entries functions but we cannot because
-      // deal.II only accepts unsigned int but ArborX returns int.
-      // Note that the entries are unique but not sorted.
-      dsp.add(i, k);
+      for (int j = offsets[i]; j < offsets[i + 1]; ++j)
+      {
+        int k = indices[j];
+        _covariance_distance_map[std::make_pair(i, k)] =
+            support_points[i].distance(support_points[k]);
+        // We would like to use the add_entries functions but we cannot because
+        // deal.II only accepts unsigned int but ArborX returns int.
+        // Note that the entries are unique but not sorted.
+        dsp.add(i, k);
+      }
     }
   }
 
