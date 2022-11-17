@@ -160,7 +160,7 @@ evaluate_thermal_physics_impl(
     {
       for (unsigned int q = 0; q < n_q_points; ++q)
       {
-        double const inv_rho_cp = thermal_operator->get_inv_rho_cp(cell, q);
+        double const inv_rho_cp = thermal_operator_dev->get_inv_rho_cp(cell, q);
         double quad_pt_source = 0.;
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
         for (auto &beam : heat_sources)
@@ -210,7 +210,7 @@ evaluate_thermal_physics_impl(
             for (unsigned int q = 0; q < n_face_q_points; ++q)
             {
               double const inv_rho_cp =
-                  thermal_operator->get_inv_rho_cp(cell, q);
+                  thermal_operator_dev->get_inv_rho_cp(cell, q);
               cell_source[i] +=
                   inv_rho_cp *
                   (conv_heat_transfer_coef * conv_temperature_infty +
@@ -234,7 +234,7 @@ evaluate_thermal_physics_impl(
   value_dev += source_dev;
 
   // Multiply by the inverse of the mass matrix.
-  value_dev.scale(*thermal_operator->get_inverse_mass_matrix());
+  value_dev.scale(*thermal_operator_dev->get_inverse_mass_matrix());
 
   timers[evol_time_eval_th_ph].stop();
 
