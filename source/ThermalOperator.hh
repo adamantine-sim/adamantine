@@ -13,6 +13,7 @@
 #include <ThermalOperatorBase.hh>
 
 #include <deal.II/base/aligned_vector.h>
+#include <deal.II/base/vectorization.h>
 #include <deal.II/matrix_free/matrix_free.h>
 
 namespace adamantine
@@ -126,24 +127,12 @@ private:
                  static_cast<unsigned int>(MaterialState::SIZE)> &state_ratios)
       const;
   /**
-   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given matrix-free cell
-   * and quadrature point.
+   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given matrix-free
+   * cell/face and quadrature point.
    */
   dealii::VectorizedArray<double> get_inv_rho_cp(
-      unsigned int cell, unsigned int q,
-      std::array<dealii::VectorizedArray<double>,
-                 static_cast<unsigned int>(MaterialState::SIZE)> const
-          &state_ratios,
-      dealii::VectorizedArray<double> const &temperature,
-      dealii::AlignedVector<dealii::VectorizedArray<double>> const
-          &temperature_powers) const;
-
-  /**
-   * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given matrix-free face
-   * and quadrature point.
-   */
-  dealii::VectorizedArray<double> get_face_inv_rho_cp(
-      unsigned int cell, unsigned int q,
+      std::array<dealii::types::material_id,
+                 dealii::VectorizedArray<double>::size()> const &material_id,
       std::array<dealii::VectorizedArray<double>,
                  static_cast<unsigned int>(MaterialState::SIZE)> const
           &state_ratios,
@@ -239,7 +228,7 @@ private:
   mutable dealii::Table<2, dealii::VectorizedArray<double>> _powder_ratio;
   /**
    * Table of the powder fraction on faces; mutable so that it can be changed in
-   * face_local apply which is const.
+   * face_local_apply which is const.
    */
   mutable dealii::Table<2, dealii::VectorizedArray<double>> _face_powder_ratio;
   /**

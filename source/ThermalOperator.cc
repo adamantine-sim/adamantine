@@ -180,7 +180,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::vmult_add(
   // Execute the matrix-free matrix-vector multiplication
 
   // If we use adiabatic boundary condition, we have nothing to do on the faces
-  // od the cell
+  // of the cell
   if (_boundary_type & BoundaryType::adiabatic)
   {
     _matrix_free.cell_loop(&ThermalOperator::cell_local_apply, this, dst, src);
@@ -328,7 +328,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::update_face_state_ratios(
 template <int dim, int fe_degree, typename MemorySpaceType>
 dealii::VectorizedArray<double>
 ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
-    unsigned int cell, unsigned int q,
+    std::array<dealii::types::material_id,
+               dealii::VectorizedArray<double>::size()> const &material_id,
     std::array<dealii::VectorizedArray<double>,
                static_cast<unsigned int>(MaterialState::SIZE)> const
         &state_ratios,
@@ -339,7 +340,6 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
   // Here we need the specific heat (including the latent heat contribution)
   // and the density
 
-  auto material_id = _material_id(cell, q);
   // First, get the state-independent material properties
   dealii::VectorizedArray<double> solidus, liquidus, latent_heat;
   for (unsigned int n = 0; n < solidus.size(); ++n)
@@ -374,58 +374,6 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
   }
 
   return 1.0 / (density * specific_heat);
-}
-
-template <int dim, int fe_degree, typename MemorySpaceType>
-dealii::VectorizedArray<double>
-ThermalOperator<dim, fe_degree, MemorySpaceType>::get_face_inv_rho_cp(
-    unsigned int face, unsigned int q,
-    std::array<dealii::VectorizedArray<double>,
-               static_cast<unsigned int>(MaterialState::SIZE)> const
-        &face_state_ratios,
-    dealii::VectorizedArray<double> const &temperature,
-    dealii::AlignedVector<dealii::VectorizedArray<double>> const
-        &temperature_powers) const
-{
-  // Here we need the specific heat (including the latent heat contribution)
-  // and the density
-
-  auto material_id = _face_material_id(face, q);
-  // First, get the state-independent material properties
-  dealii::VectorizedArray<double> solidus, liquidus, latent_heat;
-  for (unsigned int n = 0; n < solidus.size(); ++n)
-  {
-    solidus[n] = _material_properties.get(material_id[n], Property::solidus);
-    liquidus[n] = _material_properties.get(material_id[n], Property::liquidus);
-    latent_heat[n] =
-        _material_properties.get(material_id[n], Property::latent_heat);
-  }
-
-  // Now compute the state-dependent properties
-  dealii::VectorizedArray<double> density =
-      _material_properties.compute_material_property(
-          StateProperty::density, material_id.data(), face_state_ratios.data(),
-          temperature, temperature_powers);
-
-  dealii::VectorizedArray<double> specific_heat =
-      _material_properties.compute_material_property(
-          StateProperty::specific_heat, material_id.data(),
-          face_state_ratios.data(), temperature, temperature_powers);
-
-  // Add in the latent heat contribution
-  unsigned int constexpr liquid =
-      static_cast<unsigned int>(MaterialState::liquid);
-
-  for (unsigned int n = 0; n < specific_heat.size(); ++n)
-  {
-    if (face_state_ratios[liquid][n] > 0.0 &&
-        (face_state_ratios[liquid][n] < 1.0))
-    {
-      specific_heat[n] += latent_heat[n] / (liquidus[n] - solidus[n]);
-    }
-  }
-
-  return (1.0 / (density * specific_heat));
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -480,9 +428,9 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
 
       // Calculate the local material properties
       update_state_ratios(cell, q, temperature, state_ratios);
-      auto inv_rho_cp = get_inv_rho_cp(cell, q, state_ratios, temperature,
+      auto material_id = _material_id(cell, q);
+      auto inv_rho_cp = get_inv_rho_cp(material_id, state_ratios, temperature,
                                        temperature_powers);
-      auto mat_id = _material_id(cell, q);
       auto th_conductivity_grad = fe_eval.get_gradient(q);
 
       // In 2D we only use x and z, and there are no deposition angle
@@ -490,11 +438,11 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
       {
         th_conductivity_grad[axis<dim>::x] *=
             _material_properties.compute_material_property(
-                StateProperty::thermal_conductivity_x, mat_id.data(),
+                StateProperty::thermal_conductivity_x, material_id.data(),
                 state_ratios.data(), temperature, temperature_powers);
         th_conductivity_grad[axis<dim>::z] *=
             _material_properties.compute_material_property(
-                StateProperty::thermal_conductivity_z, mat_id.data(),
+                StateProperty::thermal_conductivity_z, material_id.data(),
                 state_ratios.data(), temperature, temperature_powers);
       }
 
@@ -504,11 +452,11 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
         auto const th_conductivity_grad_y = th_conductivity_grad[axis<dim>::y];
         auto const thermal_conductivity_x =
             _material_properties.compute_material_property(
-                StateProperty::thermal_conductivity_x, mat_id.data(),
+                StateProperty::thermal_conductivity_x, material_id.data(),
                 state_ratios.data(), temperature, temperature_powers);
         auto const thermal_conductivity_y =
             _material_properties.compute_material_property(
-                StateProperty::thermal_conductivity_y, mat_id.data(),
+                StateProperty::thermal_conductivity_y, material_id.data(),
                 state_ratios.data(), temperature, temperature_powers);
 
         auto cos = _deposition_cos(cell, q);
@@ -538,7 +486,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
         // There is no deposition angle for the z axis
         th_conductivity_grad[axis<dim>::z] *=
             _material_properties.compute_material_property(
-                StateProperty::thermal_conductivity_z, mat_id.data(),
+                StateProperty::thermal_conductivity_z, material_id.data(),
                 state_ratios.data(), temperature, temperature_powers);
       }
 
@@ -644,37 +592,38 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::face_local_apply(
       }
 
       // Compute the local_properties
-      auto mat_id = _face_material_id(face, q);
+      auto material_id = _face_material_id(face, q);
       update_face_state_ratios(face, q, temperature, face_state_ratios);
-      auto const inv_rho_cp = get_face_inv_rho_cp(
-          face, q, face_state_ratios, temperature, temperature_powers);
+      auto const inv_rho_cp = get_inv_rho_cp(material_id, face_state_ratios,
+                                             temperature, temperature_powers);
       if (_boundary_type & BoundaryType::convective)
       {
         for (unsigned int n = 0; n < conv_temperature_infty.size(); ++n)
         {
           conv_temperature_infty[n] = _material_properties.get(
-              mat_id[n], Property::convection_temperature_infty);
+              material_id[n], Property::convection_temperature_infty);
         }
         conv_heat_transfer_coef =
             _material_properties.compute_material_property(
-                StateProperty::convection_heat_transfer_coef, mat_id.data(),
-                face_state_ratios.data(), temperature, temperature_powers);
+                StateProperty::convection_heat_transfer_coef,
+                material_id.data(), face_state_ratios.data(), temperature,
+                temperature_powers);
       }
       if (_boundary_type & BoundaryType::radiative)
       {
         for (unsigned int n = 0; n < rad_temperature_infty.size(); ++n)
         {
           rad_temperature_infty[n] = _material_properties.get(
-              mat_id[n], Property::radiation_temperature_infty);
+              material_id[n], Property::radiation_temperature_infty);
         }
 
-        // We need the radiation heat transfer coefficient but is not a real
+        // We need the radiation heat transfer coefficient but it is not a real
         // material property but it is derived from other material
         // properties: h_rad = emissitivity * stefan-boltzmann constant * (T
         // + T_infty) (T^2 + T^2_infty).
         rad_heat_transfer_coef =
             _material_properties.compute_material_property(
-                StateProperty::emissivity, mat_id.data(),
+                StateProperty::emissivity, material_id.data(),
                 face_state_ratios.data(), temperature, temperature_powers) *
             Constant::stefan_boltzmann * (temperature + rad_temperature_infty) *
             (temperature * temperature +
@@ -685,15 +634,6 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::face_local_apply(
           -inv_rho_cp *
           (conv_heat_transfer_coef * (temperature - conv_temperature_infty) +
            rad_heat_transfer_coef * (temperature - rad_temperature_infty));
-      //  for (unsigned int n = 0; n < rad_temperature_infty.size(); ++n)
-      //  {
-      //    std::cout << "aaa val " << boundary_val[n] << " -inv_rho_cp "
-      //              << -inv_rho_cp << " conv_heat " <<
-      //              conv_heat_transfer_coef[n]
-      //              << " T " << temperature[n] << " T_infty "
-      //              << conv_temperature_infty[n] << std::endl;
-      //  }
-
       fe_face_eval.submit_value(boundary_val * fe_face_eval.get_value(q), q);
     }
     // Sum over the quadrature points
@@ -781,7 +721,7 @@ void ThermalOperator<dim, fe_degree,
         for (unsigned int i = 0;
              i < _matrix_free.n_active_entries_per_face_batch(face); ++i)
         {
-          // We get one cells associated with the face
+          // We get one cell associated with the face
           auto [cell, face_] = _matrix_free.get_face_iterator(face, i, true);
           unsigned int const active_fe_index = cell->active_fe_index();
           if (active_fe_index == 1)

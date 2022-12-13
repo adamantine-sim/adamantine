@@ -588,7 +588,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 
   _thermal_operator->clear();
   // The data on each cell is stored in the following order: solution, direction
-  // of deposition (cosine and sine), and state rate.
+  // of deposition (cosine and sine), and state ratio.
   std::vector<std::vector<double>> data_to_transfer;
   unsigned int const n_dofs_per_cell = _dof_handler.get_fe().n_dofs_per_cell();
   unsigned int const direction_data_size = 2;
