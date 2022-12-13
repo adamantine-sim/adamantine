@@ -12,10 +12,13 @@
 
 #include <Kokkos_Core.hpp>
 
+#include <cfenv>
+
 bool init_function() { return true; }
 
 int main(int argc, char *argv[])
 {
+  feenableexcept(FE_INVALID);
   dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
   Kokkos::ScopeGuard guard(argc, argv);

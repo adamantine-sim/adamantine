@@ -216,6 +216,20 @@ void MaterialProperty<dim, MemorySpaceType>::reinit_dofs()
   }
 
   _state.reinit(_n_material_states, _dofs_map.size());
+#ifdef ADAMANTINE_DEBUG
+  if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
+  {
+    MemoryBlockView<double, MemorySpaceType> state_view(_state);
+    for_each(MemorySpaceType{}, _n_material_states,
+             [=](int i) mutable
+             {
+               for (unsigned int j = 0; j < _dofs_map.size(); ++j)
+                 state_view(i, j) =
+                     std::numeric_limits<double>::signaling_NaN();
+               ;
+             });
+  }
+#endif
 }
 
 template <int dim, typename MemorySpaceType>
@@ -382,6 +396,8 @@ void MaterialProperty<dim, MemorySpaceType>::update(
       });
 }
 
+// TODO When we can get rid of this function, we can remove
+// StateProperty::radiation_heat_transfer_coef
 template <int dim, typename MemorySpaceType>
 void MaterialProperty<dim, MemorySpaceType>::
     update_boundary_material_properties(

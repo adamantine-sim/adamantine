@@ -53,10 +53,6 @@ evaluate_thermal_physics_impl(
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
     std::vector<Timer> &timers)
 {
-  timers[evol_time_update_bound_mat_prop].start();
-  thermal_operator->update_boundary_material_properties(y);
-  timers[evol_time_update_bound_mat_prop].stop();
-
   timers[evol_time_eval_th_ph].start();
   thermal_operator->set_time_and_source_height(t, current_source_height);
 
@@ -105,8 +101,10 @@ evaluate_thermal_physics_impl(
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
     std::vector<Timer> &timers)
 {
+  auto thermal_operator_dev = std::dynamic_pointer_cast<
+      ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>>(thermal_operator);
   timers[evol_time_update_bound_mat_prop].start();
-  thermal_operator->update_boundary_material_properties(y);
+  thermal_operator_dev->update_boundary_material_properties(y);
   timers[evol_time_update_bound_mat_prop].stop();
 
   timers[evol_time_eval_th_ph].start();
@@ -115,7 +113,7 @@ evaluate_thermal_physics_impl(
       y.get_partitioner());
 
   // Apply the Thermal Operator.
-  thermal_operator->vmult(value_dev, y);
+  thermal_operator_dev->vmult(value_dev, y);
 
   // Compute the source term.
   // TODO do this on the GPU
@@ -127,8 +125,6 @@ evaluate_thermal_physics_impl(
 
   // Compute inv_rho_cp at the cell level on the host. We would not need to do
   // this if everything was done on the GPU.
-  auto thermal_operator_dev = std::dynamic_pointer_cast<
-      ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>>(thermal_operator);
   thermal_operator_dev->update_inv_rho_cp_cell();
 
   dealii::hp::QCollection<dim> source_q_collection;
@@ -164,7 +160,7 @@ evaluate_thermal_physics_impl(
     {
       for (unsigned int q = 0; q < n_q_points; ++q)
       {
-        double const inv_rho_cp = thermal_operator->get_inv_rho_cp(cell, q);
+        double const inv_rho_cp = thermal_operator_dev->get_inv_rho_cp(cell, q);
         double quad_pt_source = 0.;
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
         for (auto &beam : heat_sources)
@@ -214,7 +210,7 @@ evaluate_thermal_physics_impl(
             for (unsigned int q = 0; q < n_face_q_points; ++q)
             {
               double const inv_rho_cp =
-                  thermal_operator->get_inv_rho_cp(cell, q);
+                  thermal_operator_dev->get_inv_rho_cp(cell, q);
               cell_source[i] +=
                   inv_rho_cp *
                   (conv_heat_transfer_coef * conv_temperature_infty +
@@ -238,7 +234,7 @@ evaluate_thermal_physics_impl(
   value_dev += source_dev;
 
   // Multiply by the inverse of the mass matrix.
-  value_dev.scale(*thermal_operator->get_inverse_mass_matrix());
+  value_dev.scale(*thermal_operator_dev->get_inverse_mass_matrix());
 
   timers[evol_time_eval_th_ph].stop();
 
@@ -283,7 +279,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
 
   // Create the QCollection
   _q_collection.push_back(QuadratureType(fe_degree + 1));
-  _q_collection.push_back(QuadratureType(1));
+  _q_collection.push_back(QuadratureType(fe_degree + 1));
 
   // Create the heat sources
   boost::property_tree::ptree const &source_database =
@@ -585,32 +581,70 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   CALI_CXX_MARK_FUNCTION;
 #endif
 
+  // Update the material state from the ThermalOperator to MaterialProperty
+  // because, for now, we need to use state from MaterialProperty to perform the
+  // transfer to the refined mesh.
+  set_state_to_material_properties();
+
   _thermal_operator->clear();
+  // The data on each cell is stored in the following order: solution, direction
+  // of deposition (cosine and sine), and state ratio.
   std::vector<std::vector<double>> data_to_transfer;
   unsigned int const n_dofs_per_cell = _dof_handler.get_fe().n_dofs_per_cell();
+  unsigned int const direction_data_size = 2;
+  unsigned int constexpr n_material_states =
+      static_cast<unsigned int>(adamantine::MaterialState::SIZE);
+  unsigned int const data_size_per_cell =
+      n_dofs_per_cell + direction_data_size + n_material_states;
   dealii::Vector<double> cell_solution(n_dofs_per_cell);
-  std::vector<double> dummy_cell_data(n_dofs_per_cell + 2,
+  std::vector<double> dummy_cell_data(data_size_per_cell,
                                       std::numeric_limits<double>::infinity());
 
   solution.update_ghost_values();
 
+  adamantine::MemoryBlockView<double, MemorySpaceType> material_state_view =
+      _material_properties.get_state();
+  adamantine::MemoryBlock<double, dealii::MemorySpace::Host>
+      material_state_host(material_state_view.extent(0),
+                          material_state_view.extent(1));
+  typename decltype(material_state_view)::memory_space memspace;
+  adamantine::deep_copy(material_state_host.data(), dealii::MemorySpace::Host{},
+                        material_state_view.data(), memspace,
+                        material_state_view.size());
+
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
+      state_host_view(material_state_host);
   unsigned int cell_id = 0;
   unsigned int active_cell_id = 0;
   std::map<typename dealii::DoFHandler<dim>::active_cell_iterator, int>
       cell_to_id;
   for (auto const &cell : _dof_handler.active_cell_iterators())
   {
-    if ((cell->is_locally_owned()) && (cell->active_fe_index() == 0))
+    if (cell->is_locally_owned())
     {
-      std::vector<double> cell_data(2);
-      cell->get_dof_values(solution, cell_solution);
-      cell_data.insert(cell_data.begin(), cell_solution.begin(),
-                       cell_solution.end());
-      cell_data[n_dofs_per_cell] = _deposition_cos[cell_id];
-      cell_data[n_dofs_per_cell + 1] = _deposition_sin[cell_id];
-      data_to_transfer.push_back(cell_data);
+      if (cell->active_fe_index() == 0)
+      {
+        std::vector<double> cell_data(direction_data_size + n_material_states);
+        cell->get_dof_values(solution, cell_solution);
+        cell_data.insert(cell_data.begin(), cell_solution.begin(),
+                         cell_solution.end());
+        cell_data[n_dofs_per_cell] = _deposition_cos[cell_id];
+        cell_data[n_dofs_per_cell + 1] = _deposition_sin[cell_id];
+        for (unsigned int i = 0; i < n_material_states; ++i)
+          cell_data[n_dofs_per_cell + direction_data_size + i] =
+              state_host_view(i, cell_id);
+        data_to_transfer.push_back(cell_data);
 
-      ++cell_id;
+        ++cell_id;
+      }
+      else
+      {
+        std::vector<double> cell_data = dummy_cell_data;
+        for (unsigned int i = 0; i < n_material_states; ++i)
+          cell_data[n_dofs_per_cell + direction_data_size + i] =
+              state_host_view(i, cell_id);
+        data_to_transfer.push_back(cell_data);
+      }
     }
     else
     {
@@ -657,12 +691,18 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   compute_inverse_mass_matrix();
 
   initialize_dof_vector(new_material_temperature, solution);
-  std::vector<std::vector<double>> transferred_data(
-      triangulation.n_active_cells(), std::vector<double>(n_dofs_per_cell + 2));
-  cell_data_trans.unpack(transferred_data);
 
+  // Unpack the material state and repopulate the material state
+  std::vector<std::vector<double>> transferred_data(
+      triangulation.n_active_cells(), std::vector<double>(data_size_per_cell));
+  cell_data_trans.unpack(transferred_data);
+  material_state_view = _material_properties.get_state();
+  material_state_host.reinit(material_state_view.extent(0),
+                             material_state_view.extent(1));
+  state_host_view.reinit(material_state_host);
   _deposition_cos.clear();
   _deposition_sin.clear();
+  cell_id = 0;
   active_cell_id = 0;
   for (auto const &cell : _dof_handler.active_cell_iterators())
   {
@@ -684,9 +724,18 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         _deposition_sin.push_back(
             transferred_data[active_cell_id][n_dofs_per_cell + 1]);
       }
+      for (unsigned int i = 0; i < n_material_states; ++i)
+      {
+        state_host_view(i, cell_id) =
+            transferred_data[active_cell_id]
+                            [n_dofs_per_cell + direction_data_size + i];
+      }
+      ++cell_id;
     }
     ++active_cell_id;
   }
+  deep_copy(material_state_view, state_host_view);
+  get_state_from_material_properties();
   _thermal_operator->set_material_deposition_orientation(_deposition_cos,
                                                          _deposition_sin);
 
