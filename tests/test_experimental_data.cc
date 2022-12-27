@@ -151,11 +151,15 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_ray_tracing_from_file)
   points_ref.emplace_back(1., 0.5, 0.4999);
 
   if (dealii::Utilities::MPI::this_mpi_process(communicator) == 0)
+  {
+    BOOST_TEST(points_values.values.size() = values_ref.size());
+    BOOST_TEST(points_values.points.size() = points_ref.size());
     for (unsigned int i = 0; i < values_ref.size(); ++i)
     {
       BOOST_TEST(points_values.values[i] == values_ref[i]);
       BOOST_TEST(points_values.points[i] == points_ref[i]);
     }
+  }
 }
 
 BOOST_AUTO_TEST_CASE(timestamp, *utf::tolerance(1e-12))
