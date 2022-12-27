@@ -146,8 +146,8 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_ray_tracing_from_file)
   std::vector<double> values_ref = {1, 2, 3, 5};
   std::vector<dealii::Point<3>> points_ref;
   points_ref.emplace_back(0., 0.1, 0.2);
-  points_ref.emplace_back(1., 0.1, 0.);
-  points_ref.emplace_back(1., 0.5, 0.);
+  points_ref.emplace_back(1., 0.1, 0.001);
+  points_ref.emplace_back(1., 0.5, 0.001);
   points_ref.emplace_back(1., 0.5, 0.4999);
 
   if (dealii::Utilities::MPI::this_mpi_process(communicator) == 0)
