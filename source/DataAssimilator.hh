@@ -17,6 +17,8 @@
 #include <deal.II/lac/la_vector.h>
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/sparse_matrix.h>
+#include <deal.II/lac/trilinos_sparse_matrix.h>
+#include <deal.II/lac/trilinos_sparsity_pattern.h>
 
 #include <map>
 #include <random>
@@ -157,7 +159,7 @@ private:
    * redone to make it more generally applicable.
    */
   template <typename VectorType>
-  dealii::SparseMatrix<double> calc_sample_covariance_sparse(
+  dealii::TrilinosWrappers::SparseMatrix calc_sample_covariance_sparse(
       std::vector<VectorType> const vec_ensemble) const;
 
   /**
@@ -183,7 +185,7 @@ private:
   /**
    * The sparsity pattern for the localized covariance matrix.
    */
-  dealii::SparsityPattern _covariance_sparsity_pattern;
+  dealii::TrilinosWrappers::SparsityPattern _covariance_sparsity_pattern;
 
   /**
    * Map between the indices in the covariance matrix and the distance between
