@@ -414,8 +414,7 @@ public:
 
     da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
 
-    dealii::SparseMatrix<double> cov =
-        da.calc_sample_covariance_sparse(vec_ensemble);
+    auto cov = da.calc_sample_covariance_sparse(vec_ensemble);
 
     // Check results
     double tol = 1e-10;
@@ -439,8 +438,7 @@ public:
     vec_ensemble1.push_back(sim_vec);
     vec_ensemble1.push_back(sim_vec1);
 
-    dealii::SparseMatrix<double> cov1 =
-        da.calc_sample_covariance_sparse(vec_ensemble1);
+    auto cov1 = da.calc_sample_covariance_sparse(vec_ensemble1);
 
     BOOST_TEST(cov1.el(0, 0) == 0.005, tt::tolerance(tol));
     BOOST_TEST(cov1.el(0, 1) == 0.015, tt::tolerance(tol));
@@ -463,8 +461,7 @@ public:
     da._localization_cutoff_distance = 1.0e-6;
     da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
     BOOST_TEST(da._covariance_sparsity_pattern.n_nonzero_elements() == 4);
-    dealii::SparseMatrix<double> cov2 =
-        da.calc_sample_covariance_sparse(vec_ensemble1);
+    auto cov2 = da.calc_sample_covariance_sparse(vec_ensemble1);
 
     BOOST_TEST(cov2.el(0, 0) == 0.005, tt::tolerance(tol));
     BOOST_TEST(cov2.el(0, 1) == 0.0, tt::tolerance(tol));
@@ -488,8 +485,7 @@ public:
     da._localization_cutoff_function = LocalizationCutoff::gaspari_cohn;
     da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
     BOOST_TEST(da._covariance_sparsity_pattern.n_nonzero_elements() == 16);
-    dealii::SparseMatrix<double> cov3 =
-        da.calc_sample_covariance_sparse(vec_ensemble1);
+    auto cov3 = da.calc_sample_covariance_sparse(vec_ensemble1);
 
     BOOST_TEST(cov3.el(0, 0) == 0.005, tt::tolerance(tol));
     BOOST_TEST(cov3.el(0, 1) > 0.0);
@@ -544,8 +540,7 @@ public:
     da._localization_cutoff_distance = 1.0e-6;
     da.update_covariance_sparsity_pattern<2>(dof_handler, 2);
     BOOST_TEST(da._covariance_sparsity_pattern.n_nonzero_elements() == 24u);
-    dealii::SparseMatrix<double> cov4 =
-        da.calc_sample_covariance_sparse(vec_ensemble2);
+    auto cov4 = da.calc_sample_covariance_sparse(vec_ensemble2);
 
     BOOST_TEST(cov4.el(0, 0) == 0.005, tt::tolerance(tol));
     BOOST_TEST(cov4.el(0, 1) == 0.0, tt::tolerance(tol));

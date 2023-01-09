@@ -304,8 +304,9 @@ RUN export CALIPER_HASH=bd59b8073beac49d9928c14efec8989c7fff4cb8 && \
     rm -rf ${CALIPER_SOURCE_DIR}
 ENV CALIPER_DIR=${INSTALL_DIR}/caliper
 
-# Install ArborX 1.2
-RUN export ARBORX_HASH=dc372874ce4d1ec756de2503a30c293e2fd0776b && \
+# Install ArborX from November 30th, 2022 because it has a bug fix when using
+# MPI and Ray
+RUN export ARBORX_HASH=77e055395c9550cb42e5b90156ba659f060bd852 && \
     export ARBORX_URL=https://github.com/arborx/ArborX/archive/${ARBORX_HASH}.tar.gz && \
     export ARBORX_ARCHIVE=${ARCHIVE_DIR}/arborx.tar.gz && \
     export ARBORX_SOURCE_DIR=${SOURCE_DIR}/arborx && \
@@ -319,6 +320,7 @@ RUN export ARBORX_HASH=dc372874ce4d1ec756de2503a30c293e2fd0776b && \
     cmake -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=ON \
         -DCMAKE_CXX_EXTENSIONS=OFF \
+        -DARBORX_ENABLE_MPI=ON \
         -DCMAKE_PREFIX_PATH=${TRILINOS_DIR} \
         -DCMAKE_INSTALL_PREFIX=${ARBORX_INSTALL_DIR} \
         ${ARBORX_SOURCE_DIR} && \

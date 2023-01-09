@@ -8,12 +8,12 @@
 #include <DataAssimilator.hh>
 #include <utils.hh>
 
-#include <deal.II/arborx/bvh.h>
+#include <deal.II/arborx/distributed_tree.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/mapping_q1.h>
 #include <deal.II/lac/block_vector.h>
-#include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/linear_operator_tools.h>
+#include <deal.II/lac/trilinos_sparse_matrix.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -186,12 +186,11 @@ DataAssimilator::apply_kalman_gain(
    */
   dealii::SparsityPattern pattern_H(_expt_size, augmented_state_size,
                                     _expt_size);
+  auto H = calc_H(pattern_H);
+  auto P = calc_sample_covariance_sparse(augmented_state_ensemble);
 
-  dealii::SparseMatrix<double> H = calc_H(pattern_H);
-
-  dealii::SparseMatrix<double> P(_covariance_sparsity_pattern);
-
-  P = calc_sample_covariance_sparse(augmented_state_ensemble);
+  ASSERT(H.n() == P.m(), "Matrices dimensions not compatible");
+  ASSERT(H.m() == R.m(), "Matrices dimensions not compatible");
 
   const auto op_H = dealii::linear_operator(H);
   const auto op_P = dealii::linear_operator(P);
@@ -313,14 +312,7 @@ void DataAssimilator::update_covariance_sparsity_pattern(
   _parameter_size = parameter_size;
   unsigned int augmented_state_size = _sim_size + _parameter_size;
 
-  // Use a DynamicSparsityPattern temporarily because the number of entries
-  // per row is difficult to guess.
-  dealii::DynamicSparsityPattern dsp(augmented_state_size);
-
-  // Loop through the dofs to see which pairs are within the specified
-  // distance
-  // Note: this code is identical to code in
-  // experimental_data.cc:set_with_experimental_data
+  // Find the dofs that are within the specified distance of each others.
   std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
 
   dealii::DoFTools::map_dofs_to_support_points(
@@ -339,7 +331,9 @@ void DataAssimilator::update_covariance_sparsity_pattern(
   }
 
   // Perform the spatial search using ArborX
-  dealii::ArborXWrappers::BVH bvh(support_points);
+  auto communicator = dof_handler.get_communicator();
+  dealii::ArborXWrappers::DistributedTree distributed_tree(communicator,
+                                                           support_points);
 
   std::vector<std::pair<dealii::Point<dim, double>, double>> spheres;
   if (dim == 2)
@@ -349,46 +343,63 @@ void DataAssimilator::update_covariance_sparsity_pattern(
     for (auto const pt : support_points)
       spheres.push_back({{pt[0], pt[1], pt[2]}, _localization_cutoff_distance});
   dealii::ArborXWrappers::SphereIntersectPredicate sph_intersect(spheres);
-  auto [indices, offsets] = bvh.query(sph_intersect);
+  auto [indices_ranks, offsets] = distributed_tree.query(sph_intersect);
   ASSERT(offsets.size() == spheres.size() + 1,
          "There was a problem in ArborX.");
 
+  // We need IndexSet to build the sparsity pattern. The IndexSet is the same as
+  // the one from the DoFHandler but augmented by parameter size;
+  dealii::IndexSet parallel_partitioning(augmented_state_size);
+  auto locally_owned_dofs = dof_handler.locally_owned_dofs();
+  parallel_partitioning.add_indices(locally_owned_dofs);
+  int const my_rank = dealii::Utilities::MPI::this_mpi_process(communicator);
+  if (my_rank == 0)
+    parallel_partitioning.add_range(_sim_size, augmented_state_size);
+  parallel_partitioning.compress();
+  _covariance_sparsity_pattern.reinit(parallel_partitioning, communicator);
+
+  // Fill in the SparsityPattern
   if (offsets.size() != 0)
   {
     for (unsigned int i = 0; i < offsets.size() - 1; ++i)
     {
       for (int j = offsets[i]; j < offsets[i + 1]; ++j)
       {
-        int k = indices[j];
-        _covariance_distance_map[std::make_pair(i, k)] =
-            support_points[i].distance(support_points[k]);
-        // We would like to use the add_entries functions but we cannot because
-        // deal.II only accepts unsigned int but ArborX returns int.
-        // Note that the entries are unique but not sorted.
-        dsp.add(i, k);
+        if (indices_ranks[j].second == my_rank)
+        {
+          int k = indices_ranks[j].first;
+          _covariance_distance_map[std::make_pair(i, k)] =
+              support_points[i].distance(support_points[k]);
+          // We would like to use the add_entries functions but we cannot
+          // because deal.II only accepts unsigned int but ArborX returns int.
+          // Note that the entries are unique but not sorted.
+          _covariance_sparsity_pattern.add(i, k);
+        }
       }
     }
   }
 
-  // Add entries for the parameter augmentation
-  for (unsigned int i1 = _sim_size; i1 < augmented_state_size; ++i1)
+  if (my_rank == 0)
   {
-    for (unsigned int j1 = 0; j1 < augmented_state_size; ++j1)
+    // Add entries for the parameter augmentation
+    for (unsigned int i1 = _sim_size; i1 < augmented_state_size; ++i1)
     {
-      dsp.add(i1, j1);
+      for (unsigned int j1 = 0; j1 < augmented_state_size; ++j1)
+      {
+        _covariance_sparsity_pattern.add(i1, j1);
+      }
+    }
+
+    for (unsigned int i1 = 0; i1 < _sim_size; ++i1)
+    {
+      for (unsigned int j1 = _sim_size; j1 < augmented_state_size; ++j1)
+      {
+        _covariance_sparsity_pattern.add(i1, j1);
+      }
     }
   }
 
-  for (unsigned int i1 = 0; i1 < _sim_size; ++i1)
-  {
-    for (unsigned int j1 = _sim_size; j1 < augmented_state_size; ++j1)
-    {
-      dsp.add(i1, j1);
-    }
-  }
-
-  // Copy the DynamicSparsityPattern into a regular SparsityPattern for use
-  _covariance_sparsity_pattern.copy_from(dsp);
+  _covariance_sparsity_pattern.compress();
 }
 
 dealii::Vector<double> DataAssimilator::calc_Hx(
@@ -470,7 +481,8 @@ double DataAssimilator::gaspari_cohn_function(double const r) const
 }
 
 template <typename VectorType>
-dealii::SparseMatrix<double> DataAssimilator::calc_sample_covariance_sparse(
+dealii::TrilinosWrappers::SparseMatrix
+DataAssimilator::calc_sample_covariance_sparse(
     std::vector<VectorType> const vec_ensemble) const
 {
   unsigned int augmented_state_size = _sim_size + _parameter_size;
@@ -487,7 +499,7 @@ dealii::SparseMatrix<double> DataAssimilator::calc_sample_covariance_sparse(
     mean[i] = sum / _num_ensemble_members;
   }
 
-  dealii::SparseMatrix<double> cov(_covariance_sparsity_pattern);
+  dealii::TrilinosWrappers::SparseMatrix cov(_covariance_sparsity_pattern);
 
   unsigned int pos = 0;
   for (auto conv_iter = cov.begin(); conv_iter != cov.end(); ++conv_iter, ++pos)
@@ -552,10 +564,10 @@ template void DataAssimilator::update_covariance_sparsity_pattern<2>(
 template void DataAssimilator::update_covariance_sparsity_pattern<3>(
     dealii::DoFHandler<3> const &dof_handler,
     const unsigned int parameter_size);
-template dealii::SparseMatrix<double>
+template dealii::TrilinosWrappers::SparseMatrix
 DataAssimilator::calc_sample_covariance_sparse<dealii::Vector<double>>(
     std::vector<dealii::Vector<double>> const vec_ensemble) const;
-template dealii::SparseMatrix<double>
+template dealii::TrilinosWrappers::SparseMatrix
 DataAssimilator::calc_sample_covariance_sparse<
     dealii::LA::distributed::Vector<double>>(
     std::vector<dealii::LA::distributed::Vector<double>> const vec_ensemble)
