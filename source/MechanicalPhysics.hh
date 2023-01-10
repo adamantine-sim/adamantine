@@ -27,7 +27,7 @@ public:
   MechanicalPhysics(MPI_Comm const &communicator, unsigned int fe_degree,
                     Geometry<dim> &geometry,
                     MaterialProperty<dim, MemorySpaceType> &material_properties,
-                    double initial_temperature = -1.,
+                    std::vector<double> initial_temperatures,
                     bool include_gravity = false);
 
   /**

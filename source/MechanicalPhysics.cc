@@ -22,7 +22,7 @@ MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
     MPI_Comm const &communicator, unsigned int fe_degree,
     Geometry<dim> &geometry,
     MaterialProperty<dim, MemorySpaceType> &material_properties,
-    double initial_temperature, bool include_gravity)
+    std::vector<double> reference_temperatures, bool include_gravity)
     : _geometry(geometry), _dof_handler(_geometry.get_triangulation()),
       _include_gravity(include_gravity)
 {
@@ -39,7 +39,7 @@ MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
   // Create the mechanical operator
   _mechanical_operator =
       std::make_unique<MechanicalOperator<dim, MemorySpaceType>>(
-          communicator, material_properties, initial_temperature,
+          communicator, material_properties, reference_temperatures,
           include_gravity);
 }
 

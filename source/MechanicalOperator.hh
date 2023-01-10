@@ -39,7 +39,7 @@ public:
   MechanicalOperator(
       MPI_Comm const &communicator,
       MaterialProperty<dim, MemorySpaceType> &material_properties,
-      double initial_temperature = -1., bool include_gravity = false);
+      std::vector<double> reference_temperatures, bool include_gravity = false);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
@@ -102,11 +102,13 @@ private:
    */
   bool _include_gravity = false;
   /**
-   * Initial temperature of the material. If the temperature is positive, we
-   * solve a themo-mechanical problem. Otherwise, we solve a mechanical only
-   * problem.
+   * List of initial temperatures of the material. If the length of the vector
+   * is nonzero, we solve a themo-mechanical problem. Otherwise, we solve a
+   * mechanical only problem. The vector index refers to the user index for a
+   * given cell (i.e. if the cell user index is "1", the appropriate reference
+   * temperature is _reference_temperatures[1]).
    */
-  double _initial_temperature = -1.;
+  std::vector<double> _reference_temperatures;
   /**
    * Reference to the MaterialProperty from MechanicalPhysics.
    */

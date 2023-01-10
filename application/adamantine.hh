@@ -872,6 +872,21 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   double const initial_temperature =
       material_database.get("initial_temperature", 300.);
 
+  // Get the reference temperature(s) for the substrate and deposited
+  // material(s)
+  std::vector<double> material_reference_temps = {initial_temperature};
+  // PropertyTreeInput materials.n_materials
+  double const n_materials = material_database.get<unsigned int>("n_materials");
+  for (unsigned int i = 0; i < n_materials; ++i)
+  {
+    // Use the solidus as the reference temperature, in the future we may want
+    // to use something else
+    // PropertyTreeInput materials.material_n.solidus
+    double const reference_temperature = material_database.get<double>(
+        "material_" + std::to_string(i) + ".solidus");
+    material_reference_temps.push_back(reference_temperature);
+  }
+
   // Create MechanicalPhysics if necessary
 #ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
   std::unique_ptr<adamantine::MechanicalPhysics<dim, MemorySpaceType>>
@@ -884,14 +899,18 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     mechanical_physics =
         std::make_unique<adamantine::MechanicalPhysics<dim, MemorySpaceType>>(
             communicator, fe_degree, geometry, material_properties,
-            initial_temperature);
+            material_reference_temps);
     post_processor_database.put("mechanical_output", true);
   }
-#endif
 
+  adamantine::PostProcessor<dim> post_processor(
+      communicator, post_processor_database, thermal_physics->get_dof_handler(),
+      mechanical_physics->get_dof_handler());
+#else
   adamantine::PostProcessor<dim> post_processor(
       communicator, post_processor_database,
       thermal_physics->get_dof_handler());
+#endif
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> temperature;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -1049,6 +1068,20 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     }
     timers[adamantine::add_material_activate].stop();
 
+    // If thermomechanics are being solved, mark cells that are above the
+    // solidus as cells that should have their reference temperature reset. This
+    // cannot be in the thermomechanics solve because some cells may go above
+    // the solidus and then back below the solidus in the time between
+    // thermomechanical solves.
+    if (use_thermal_physics && use_mechanical_physics)
+    {
+      // FIXME: Need to figure out the new implementation
+      /*
+        thermal_physics->mark_cells_above_temperature(material_reference_temps[1],
+                                                      temperature);
+      */
+    }
+
     // Time can be different than time + time_step if an embedded scheme is
     // used. Note that this is a problem when adding material because it
     // means that the amount of material that needs to be added is not
@@ -1071,19 +1104,24 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // Solve the (thermo-)mechanical problem
     if (use_mechanical_physics)
     {
-      if (use_thermal_physics)
+      // Since there is no history dependence in the model, only calculate
+      // mechanics when outputting
+      if (n_time_step % time_steps_output == 0)
       {
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-            temperature_host(temperature.get_partitioner());
-        temperature_host.import(temperature, dealii::VectorOperation::insert);
-        mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
-                                       temperature_host);
+        if (use_thermal_physics)
+        {
+          dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+              temperature_host(temperature.get_partitioner());
+          temperature_host.import(temperature, dealii::VectorOperation::insert);
+          mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
+                                         temperature_host);
+        }
+        else
+        {
+          mechanical_physics->setup_dofs();
+        }
+        displacement = mechanical_physics->solve();
       }
-      else
-      {
-        mechanical_physics->setup_dofs();
-      }
-      displacement = mechanical_physics->solve();
     }
 #endif
 

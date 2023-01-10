@@ -227,9 +227,10 @@ BOOST_AUTO_TEST_CASE(elastostatic)
       material_properties(communicator, triangulation, material_database);
   // Build MechanicalPhysics
   unsigned int const fe_degree = 1;
+  std::vector<double> empty_vector;
   adamantine::MechanicalPhysics<3, dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, material_properties,
-                         -1, true);
+                         empty_vector, true);
   mechanical_physics.setup_dofs();
   auto solution = mechanical_physics.solve();
 
@@ -383,9 +384,10 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
 
   // Build MechanicalPhysics
   unsigned int const fe_degree = 1;
+  std::vector<double> initial_temperature = {2.0};
   adamantine::MechanicalPhysics<3, dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, material_properties,
-                         2.0);
+                         initial_temperature);
 
   boost::property_tree::ptree post_processor_database;
   post_processor_database.put("filename_prefix", "mech_phys_test");

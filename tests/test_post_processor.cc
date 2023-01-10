@@ -189,8 +189,10 @@ BOOST_AUTO_TEST_CASE(mechanical_post_processor)
   adamantine::MaterialProperty<dim, dealii::MemorySpace::Host> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
 
+  std::vector<double> empty_vector;
+
   adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
-      mechanical_operator(communicator, mat_properties);
+      mechanical_operator(communicator, mat_properties, empty_vector);
   mechanical_operator.reinit(dof_handler, affine_constraints, q_collection);
 
   // Create the PostProcessor
