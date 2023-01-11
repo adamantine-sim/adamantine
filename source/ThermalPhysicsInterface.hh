@@ -57,6 +57,7 @@ public:
           &elements_to_activate,
       std::vector<double> const &new_deposition_cos,
       std::vector<double> const &new_deposition_sin,
+      std::vector<double> const &new_has_melted_indicator,
       unsigned int const activation_start, unsigned int const activation_end,
       double const initial_temperature,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution) = 0;
@@ -136,6 +137,19 @@ public:
    * @p i.
    */
   virtual double get_deposition_sin(unsigned int const i) const = 0;
+
+  /**
+   * Mark cells above the given temperature
+   */
+  virtual void mark_cells_above_temperature(
+      const double threshold_temperature,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const
+          temperature) = 0;
+
+  /**
+   * Returns _has_melted_indicator
+   */
+  virtual std::vector<double> get_has_melted_indicator() const = 0;
 
   /**
    * Return the DoFHandler.

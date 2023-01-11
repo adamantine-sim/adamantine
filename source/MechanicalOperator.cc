@@ -84,10 +84,12 @@ template <int dim, typename MemorySpaceType>
 void MechanicalOperator<dim, MemorySpaceType>::update_temperature(
     dealii::DoFHandler<dim> const &thermal_dof_handler,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-        &temperature)
+        &temperature,
+    std::vector<double> const &has_melted_indicator)
 {
   _thermal_dof_handler = &thermal_dof_handler;
   _temperature = temperature;
+  _has_melted_indicator = has_melted_indicator;
 }
 
 template <int dim, typename MemorySpaceType>
@@ -195,7 +197,11 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
           // on the material.
 
           // FIXME: Needs new implementation
-          const bool is_unmelted_substrate = true;
+          bool is_unmelted_substrate = false;
+          if (_has_melted_indicator.at(cell->active_cell_index()) < 0.5)
+          {
+            is_unmelted_substrate = true;
+          }
           // const bool is_unmelted_substrate = cell->user_flag_set();
 
           double reference_temperature;

@@ -41,7 +41,8 @@ public:
   void setup_dofs(
       dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &temperature);
+          &temperature,
+      std::vector<double> const &has_melted_indicator);
 
   /**
    * Solve the mechanical problem and return the solution.

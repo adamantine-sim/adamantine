@@ -74,7 +74,8 @@ public:
   void update_temperature(
       dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &temperature);
+          &temperature,
+      std::vector<double> const &has_melted_indicator);
 
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const &
   rhs() const;
@@ -143,6 +144,13 @@ private:
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       _temperature;
+  /**
+   * Indicator variable for whether a point has ever been above the solidus. The
+   * value is 0 for material that has not yet melted and 1 for material that has
+   * melted. Due to how the state is transferred for remeshing, this has to be
+   * stored as a double.
+   */
+  std::vector<double> _has_melted_indicator;
 };
 
 template <int dim, typename MemorySpaceType>

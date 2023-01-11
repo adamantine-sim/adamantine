@@ -72,9 +72,11 @@ template <int dim, typename MemorySpaceType>
 void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
     dealii::DoFHandler<dim> const &thermal_dof_handler,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-        &temperature)
+        &temperature,
+    std::vector<double> const &has_melted_indicator)
 {
-  _mechanical_operator->update_temperature(thermal_dof_handler, temperature);
+  _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
+                                           has_melted_indicator);
   setup_dofs();
 }
 

@@ -52,6 +52,7 @@ public:
           &elements_to_activate,
       std::vector<double> const &new_deposition_cos,
       std::vector<double> const &new_deposition_sin,
+      std::vector<double> const &new_has_melted_indicator,
       unsigned int const activation_start, unsigned int const activation_end,
       double const initial_temperature,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
@@ -97,6 +98,13 @@ public:
   double get_deposition_cos(unsigned int const i) const override;
 
   double get_deposition_sin(unsigned int const i) const override;
+
+  void mark_cells_above_temperature(
+      const double threshold_temperature,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> const
+          temperature) override;
+
+  std::vector<double> get_has_melted_indicator() const override;
 
   dealii::DoFHandler<dim> &get_dof_handler() override;
 
@@ -199,6 +207,13 @@ private:
    */
   std::vector<double> _deposition_sin;
   /**
+   * Indicator variable for whether a point has ever been above the solidus. The
+   * value is 0 for material that has not yet melted and 1 for material that has
+   * melted. Due to how the state is transferred for remeshing, this has to be
+   * stored as a double.
+   */
+  std::vector<double> _has_melted_indicator;
+  /**
    * Associated material properties.
    */
   MaterialProperty<dim, MemorySpaceType> &_material_properties;
@@ -266,6 +281,15 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_deposition_sin(unsigned int const i) const
 {
   return _deposition_sin[i];
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline std::vector<double>
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
+               QuadratureType>::get_has_melted_indicator() const
+{
+  return _has_melted_indicator;
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,

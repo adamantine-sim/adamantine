@@ -895,7 +895,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   {
     // PropertyTreeInput discretization.mechanical.fe_degree
     unsigned int const fe_degree =
-        discretization_database.get<unsigned int>("mechanial.fe_degree");
+        discretization_database.get<unsigned int>("mechanical.fe_degree");
     mechanical_physics =
         std::make_unique<adamantine::MechanicalPhysics<dim, MemorySpaceType>>(
             communicator, fe_degree, geometry, material_properties,
@@ -934,7 +934,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           temperature_host(temperature.get_partitioner());
       temperature_host.import(temperature, dealii::VectorOperation::insert);
       mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
-                                     temperature_host);
+                                     temperature_host,
+                                     thermal_physics->get_melted_indicator());
     }
     else
     {
@@ -1053,10 +1054,14 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     {
       if (use_thermal_physics)
       {
+        // For now assume that all deposited material has never been melted (may
+        // or may not be reasonable)
+        std::vector<double> has_melted_indicator(deposition_cos.size(), 0.0);
+
         thermal_physics->add_material(elements_to_activate, deposition_cos,
-                                      deposition_sin, activation_start,
-                                      activation_end, new_material_temperature,
-                                      temperature);
+                                      deposition_sin, has_melted_indicator,
+                                      activation_start, activation_end,
+                                      new_material_temperature, temperature);
       }
     }
 
@@ -1075,11 +1080,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // thermomechanical solves.
     if (use_thermal_physics && use_mechanical_physics)
     {
-      // FIXME: Need to figure out the new implementation
-      /*
-        thermal_physics->mark_cells_above_temperature(material_reference_temps[1],
-                                                      temperature);
-      */
+      thermal_physics->mark_cells_above_temperature(material_reference_temps[1],
+                                                    temperature);
     }
 
     // Time can be different than time + time_step if an embedded scheme is
@@ -1113,8 +1115,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
               temperature_host(temperature.get_partitioner());
           temperature_host.import(temperature, dealii::VectorOperation::insert);
-          mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
-                                         temperature_host);
+          mechanical_physics->setup_dofs(
+              thermal_physics->get_dof_handler(), temperature_host,
+              thermal_physics->get_has_melted_indicator());
         }
         else
         {
@@ -1654,9 +1657,14 @@ run_ensemble(MPI_Comm const &communicator,
     if (activation_start < activation_end)
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
+        // For now assume that all deposited material has never been melted (may
+        // or may not be reasonable)
+        std::vector<double> has_melted_indicator(deposition_cos.size(), 0.0);
+
         thermal_physics_ensemble[member]->add_material(
             elements_to_activate, deposition_cos, deposition_sin,
-            activation_start, activation_end, new_material_temperature[member],
+            has_melted_indicator, activation_start, activation_end,
+            new_material_temperature[member],
             solution_augmented_ensemble[member].block(base_state));
 
         solution_augmented_ensemble[member].collect_sizes();

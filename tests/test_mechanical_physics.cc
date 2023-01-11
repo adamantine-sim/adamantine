@@ -398,7 +398,10 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
       communicator, post_processor_database, thermal_physics.get_dof_handler(),
       mechanical_physics.get_dof_handler());
 
-  mechanical_physics.setup_dofs(thermal_physics.get_dof_handler(), temperature);
+  std::vector<double> has_melted_indicator(triangulation.n_active_cells(), 0.0);
+
+  mechanical_physics.setup_dofs(thermal_physics.get_dof_handler(), temperature,
+                                has_melted_indicator);
 
   auto solution = mechanical_physics.solve();
 
