@@ -652,10 +652,15 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
       _state.extent(1));
   MemoryBlockView<double, dealii::MemorySpace::Host> mp_dof_host_view(
       mp_dof_host_block);
+  // We only loop over the part of the domain which has material, i.e., not over
+  // FE_Nothing cell. This is because _cell_it_to_mf_pos does not exist for
+  // FE_Nothing cells. However, we have set the state of the material on the
+  // entire domain. This is not a problem since that state is unchanged and does
+  // not need to be updated.
   unsigned int cell_i = 0;
-  for (auto const &cell :
-       dealii::filter_iterators(dof_handler.active_cell_iterators(),
-                                dealii::IteratorFilters::LocallyOwnedCell()))
+  for (auto const &cell : dealii::filter_iterators(
+           dof_handler.active_cell_iterators(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true)))
   {
     typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
     auto mp_dof_index = get_dof_index(cell_tria);
@@ -681,7 +686,7 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
   auto const powder_state = static_cast<unsigned int>(MaterialState::powder);
   auto const liquid_state = static_cast<unsigned int>(MaterialState::liquid);
   auto const solid_state = static_cast<unsigned int>(MaterialState::solid);
-  for_each(MemorySpaceType{}, mapping_host_view.extent(0),
+  for_each(MemorySpaceType{}, cell_i,
            [=] ADAMANTINE_HOST_DEV(int i) mutable
            {
              double liquid_ratio_sum = 0.;
