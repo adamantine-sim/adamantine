@@ -378,10 +378,13 @@ void refine_and_transfer(
       solution_transfer(dof_handler);
 
   // Transfer material state
+  unsigned int const direction_data_size = 2;
+  unsigned int const phase_history_data_size = 1;
   unsigned int constexpr n_material_states =
       static_cast<unsigned int>(adamantine::MaterialState::SIZE);
   std::vector<std::vector<double>> data_to_transfer;
-  std::vector<double> dummy_cell_data(n_material_states + 2,
+  std::vector<double> dummy_cell_data(n_material_states + direction_data_size +
+                                          phase_history_data_size,
                                       std::numeric_limits<double>::infinity());
   adamantine::MemoryBlockView<double, MemorySpaceType> material_state_view =
       material_properties.get_state();
@@ -401,7 +404,8 @@ void refine_and_transfer(
   {
     if (cell->is_locally_owned())
     {
-      std::vector<double> cell_data(n_material_states + 2);
+      std::vector<double> cell_data(n_material_states + direction_data_size +
+                                    phase_history_data_size);
       for (unsigned int i = 0; i < n_material_states; ++i)
         cell_data[i] = state_host_view(i, cell_id);
       if (cell->active_fe_index() == 0)
@@ -410,12 +414,16 @@ void refine_and_transfer(
             thermal_physics->get_deposition_cos(activated_cell_id);
         cell_data[n_material_states + 1] =
             thermal_physics->get_deposition_sin(activated_cell_id);
+        cell_data[n_material_states + direction_data_size] =
+            thermal_physics->get_has_melted_indicator(activated_cell_id);
         ++activated_cell_id;
       }
       else
       {
         cell_data[n_material_states] = std::numeric_limits<double>::infinity();
         cell_data[n_material_states + 1] =
+            std::numeric_limits<double>::infinity();
+        cell_data[n_material_states + direction_data_size] =
             std::numeric_limits<double>::infinity();
       }
       data_to_transfer.push_back(cell_data);
@@ -484,7 +492,8 @@ void refine_and_transfer(
   // Unpack the material state and repopulate the material state
   std::vector<std::vector<double>> transferred_data(
       triangulation.n_active_cells(),
-      std::vector<double>(n_material_states + 2));
+      std::vector<double>(n_material_states + direction_data_size +
+                          phase_history_data_size));
   cell_data_trans.unpack(transferred_data);
   material_state_view = material_properties.get_state();
   material_state_host.reinit(material_state_view.extent(0),
@@ -494,6 +503,7 @@ void refine_and_transfer(
   cell_id = 0;
   std::vector<double> transferred_cos;
   std::vector<double> transferred_sin;
+  std::vector<double> has_melted_indicator;
   for (auto const &cell : dof_handler.active_cell_iterators())
   {
     if (cell->is_locally_owned())
@@ -508,6 +518,9 @@ void refine_and_transfer(
             transferred_data[total_cell_id][n_material_states]);
         transferred_sin.push_back(
             transferred_data[total_cell_id][n_material_states + 1]);
+        has_melted_indicator.push_back(
+            transferred_data[total_cell_id]
+                            [n_material_states + direction_data_size]);
       }
       ++cell_id;
     }
@@ -517,6 +530,9 @@ void refine_and_transfer(
   // Update the deposition cos and sin
   thermal_physics->set_material_deposition_orientation(transferred_cos,
                                                        transferred_sin);
+
+  // Update the melted indicator
+  thermal_physics->set_has_melted_indicator_vector(has_melted_indicator);
 
   // Copy the data back to material_property
   adamantine::deep_copy(material_state_view.data(), memspace,
@@ -933,9 +949,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
           temperature_host(temperature.get_partitioner());
       temperature_host.import(temperature, dealii::VectorOperation::insert);
-      mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
-                                     temperature_host,
-                                     thermal_physics->get_melted_indicator());
+      mechanical_physics->setup_dofs(
+          thermal_physics->get_dof_handler(), temperature_host,
+          thermal_physics->get_has_melted_indicator_vector());
     }
     else
     {
@@ -1117,7 +1133,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           temperature_host.import(temperature, dealii::VectorOperation::insert);
           mechanical_physics->setup_dofs(
               thermal_physics->get_dof_handler(), temperature_host,
-              thermal_physics->get_has_melted_indicator());
+              thermal_physics->get_has_melted_indicator_vector());
         }
         else
         {

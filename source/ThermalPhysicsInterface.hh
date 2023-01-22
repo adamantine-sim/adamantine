@@ -149,7 +149,18 @@ public:
   /**
    * Returns _has_melted_indicator
    */
-  virtual std::vector<double> get_has_melted_indicator() const = 0;
+  virtual std::vector<double> get_has_melted_indicator_vector() const = 0;
+
+  /**
+   * Sets _has_melted_indicator
+   */
+  virtual void set_has_melted_indicator_vector(
+      std::vector<double> const &has_melted_indicator) = 0;
+
+  /**
+   * Returns one entry of _has_melted_indicator
+   */
+  virtual double get_has_melted_indicator(const unsigned int) const = 0;
 
   /**
    * Return the DoFHandler.

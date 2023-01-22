@@ -104,7 +104,12 @@ public:
       dealii::LA::distributed::Vector<double, MemorySpaceType> const
           temperature) override;
 
-  std::vector<double> get_has_melted_indicator() const override;
+  std::vector<double> get_has_melted_indicator_vector() const override;
+
+  void set_has_melted_indicator_vector(
+      std::vector<double> const &has_melted_indicator) override;
+
+  double get_has_melted_indicator(unsigned int const i) const override;
 
   dealii::DoFHandler<dim> &get_dof_handler() override;
 
@@ -287,9 +292,26 @@ template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
 inline std::vector<double>
 ThermalPhysics<dim, fe_degree, MemorySpaceType,
-               QuadratureType>::get_has_melted_indicator() const
+               QuadratureType>::get_has_melted_indicator_vector() const
 {
   return _has_melted_indicator;
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+    set_has_melted_indicator_vector(
+        std::vector<double> const &has_melted_indicator)
+{
+  _has_melted_indicator = has_melted_indicator;
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+    get_has_melted_indicator(unsigned int const i) const
+{
+  return _has_melted_indicator[i];
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
