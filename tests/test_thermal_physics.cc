@@ -66,3 +66,8 @@ BOOST_AUTO_TEST_CASE(convection_bcs_host)
 {
   convection_bcs<dealii::MemorySpace::Host>();
 }
+
+BOOST_AUTO_TEST_CASE(reference_temperature_host)
+{
+  reference_temperature<dealii::MemorySpace::Host>();
+}
