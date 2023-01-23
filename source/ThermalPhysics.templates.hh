@@ -690,7 +690,13 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
       cell_data_trans(triangulation);
   cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
 
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("refine triangulation");
+#endif
   triangulation.execute_coarsening_and_refinement();
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("refine triangulation");
+#endif
 
   setup_dofs();
 

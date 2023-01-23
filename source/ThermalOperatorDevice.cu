@@ -538,7 +538,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::vmult_add(
 
   LocalThermalOperatorDevice<dim, fe_degree> local_operator(
       _material_properties.properties_use_table(),
-      _material_properties.polynomial_order(), _deposition_cos.get_values(),
+      _material_properties.polynomial_order, _deposition_cos.get_values(),
       _deposition_sin.get_values(), powder_ratio_view, liquid_ratio_view,
       material_id_view, _inv_rho_cp, _material_properties.get_properties(),
       _material_properties.get_state_property_tables(),

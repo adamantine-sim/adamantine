@@ -398,9 +398,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
   // could compute it in MaterialProperty but because it's in a hot loop.
   // It's really worth to compute it once and pass it when we compute a
   // material property.
-  unsigned int const polynomial_order = _material_properties.polynomial_order();
   dealii::AlignedVector<dealii::VectorizedArray<double>> temperature_powers(
-      polynomial_order + 1);
+      _material_properties.polynomial_order + 1);
 
   // Loop over the "cells". Note that we don't really work on a cell but on a
   // set of quadrature point.
@@ -420,7 +419,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
     {
       auto temperature = fe_eval.get_value(q);
       // Precompute the powers of temperature.
-      for (unsigned int i = 0; i <= polynomial_order; ++i)
+      for (unsigned int i = 0; i <= _material_properties.polynomial_order; ++i)
       {
         // FIXME Need to cast i to double due to a limitation in deal.II 9.5
         temperature_powers[i] = std::pow(temperature, static_cast<double>(i));
@@ -566,9 +565,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::face_local_apply(
   // could compute it in MaterialProperty but because it's in a hot loop.
   // It's really worth to compute it once and pass it when we compute a
   // material property.
-  unsigned int const polynomial_order = _material_properties.polynomial_order();
   dealii::AlignedVector<dealii::VectorizedArray<double>> temperature_powers(
-      polynomial_order + 1);
+      _material_properties.polynomial_order + 1);
 
   // Loop over the faces
   for (unsigned int face = face_range.first; face < face_range.second; ++face)
@@ -585,7 +583,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::face_local_apply(
     {
       auto temperature = fe_face_eval.get_value(q);
       // Precompute the powers of temperature.
-      for (unsigned int i = 0; i <= polynomial_order; ++i)
+      for (unsigned int i = 0; i <= _material_properties.polynomial_order; ++i)
       {
         // FIXME Need to cast i to double due to a limitation in deal.II 9.5
         temperature_powers[i] = std::pow(temperature, static_cast<double>(i));
