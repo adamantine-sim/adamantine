@@ -9,6 +9,9 @@
 #define THERMAL_PHYSICS_TEMPLATES_HH
 
 #include <ThermalOperator.hh>
+
+#include <deal.II/base/index_set.h>
+#include <deal.II/lac/read_write_vector.h>
 #if defined(ADAMANTINE_HAVE_CUDA) && defined(__CUDACC__)
 #include <ThermalOperatorDevice.hh>
 #endif
@@ -321,8 +324,7 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   size_t pos_str = 0;
   std::string boundary;
   std::string delimiter = ",";
-  auto parse_boundary_type = [&](std::string const &boundary)
-  {
+  auto parse_boundary_type = [&](std::string const &boundary) {
     if (boundary == "adiabatic")
     {
       _boundary_type = BoundaryType::adiabatic;
@@ -673,6 +675,13 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
                         material_state_view.data(), memspace,
                         material_state_view.size());
 
+  // We need to move the solution on the host because we cannot use
+  // CellDataTransfer on the device.
+  dealii::IndexSet rw_index_set = solution.locally_owned_elements();
+  rw_index_set.add_indices(solution.get_partitioner()->ghost_indices());
+  dealii::LA::ReadWriteVector<double> rw_solution(rw_index_set);
+  rw_solution.import(solution, dealii::VectorOperation::insert);
+
   adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
       state_host_view(material_state_host);
   unsigned int cell_id = 0;
@@ -687,7 +696,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
       {
         std::vector<double> cell_data(
             direction_data_size + phase_history_data_size + n_material_states);
-        cell->get_dof_values(solution, cell_solution);
+        cell->get_dof_values(rw_solution, cell_solution);
         cell_data.insert(cell_data.begin(), cell_solution.begin(),
                          cell_solution.end());
         cell_data[n_dofs_per_cell] = _deposition_cos[cell_id];
@@ -747,7 +756,13 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
       cell_data_trans(triangulation);
   cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
 
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("refine triangulation");
+#endif
   triangulation.execute_coarsening_and_refinement();
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("refine triangulation");
+#endif
 
   setup_dofs();
 
@@ -757,7 +772,12 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   // Recompute the inverse of the mass matrix
   compute_inverse_mass_matrix();
 
-  initialize_dof_vector(new_material_temperature, solution);
+  initialize_dof_vector(std::numeric_limits<double>::infinity(), solution);
+  rw_index_set = solution.locally_owned_elements();
+  rw_index_set.add_indices(solution.get_partitioner()->ghost_indices());
+  rw_solution.reinit(rw_index_set);
+  for (auto val : solution.locally_owned_elements())
+    rw_solution[val] = new_material_temperature;
 
   // Unpack the material state and repopulate the material state
   std::vector<std::vector<double>> transferred_data(
@@ -782,7 +802,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         std::copy(transferred_data[active_cell_id].begin(),
                   transferred_data[active_cell_id].begin() + n_dofs_per_cell,
                   cell_solution.begin());
-        cell->set_dof_values(cell_solution, solution);
+        cell->set_dof_values(cell_solution, rw_solution);
       }
 
       if (cell->active_fe_index() == 0)
@@ -812,7 +832,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
                                                          _deposition_sin);
 
   // Communicate the results.
-  solution.compress(dealii::VectorOperation::min);
+  solution.import(rw_solution, dealii::VectorOperation::min);
 
   // Set the value to the newly create DoFs. Here we need to be careful with the
   // hanging nodes. When there is a hanging node, the dofs at the vertices are
@@ -820,14 +840,15 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   // associated to the fine cell. The final value is decided by
   // AffineConstraints. Thus, we need to make sure that the newly activated
   // cells are at the same level than their neighbors.
-  std::for_each(solution.begin(), solution.end(),
-                [&](double &val)
-                {
-                  if (val == std::numeric_limits<double>::infinity())
-                  {
-                    val = new_material_temperature;
-                  }
-                });
+  rw_solution.reinit(solution.locally_owned_elements());
+  rw_solution.import(solution, dealii::VectorOperation::insert);
+  std::for_each(rw_solution.begin(), rw_solution.end(), [&](double &val) {
+    if (val == std::numeric_limits<double>::infinity())
+    {
+      val = new_material_temperature;
+    }
+  });
+  solution.import(rw_solution, dealii::VectorOperation::insert);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -873,10 +894,12 @@ double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   }
   _current_source_height = temp_height;
 
-  auto eval = [&](double const t, LA_Vector const &y)
-  { return evaluate_thermal_physics(t, y, timers); };
-  auto id_m_Jinv = [&](double const t, double const tau, LA_Vector const &y)
-  { return id_minus_tau_J_inverse(t, tau, y, timers); };
+  auto eval = [&](double const t, LA_Vector const &y) {
+    return evaluate_thermal_physics(t, y, timers);
+  };
+  auto id_m_Jinv = [&](double const t, double const tau, LA_Vector const &y) {
+    return id_minus_tau_J_inverse(t, tau, y, timers);
+  };
 
   double time = _time_stepping->evolve_one_time_step(eval, id_m_Jinv, t,
                                                      delta_t, solution);

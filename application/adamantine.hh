@@ -362,6 +362,10 @@ void refine_and_transfer(
     dealii::DoFHandler<dim> &dof_handler,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_CXX_MARK_FUNCTION;
+#endif
+
   dealii::parallel::distributed::Triangulation<dim> &triangulation =
       dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
           const_cast<dealii::Triangulation<dim> &>(
@@ -467,8 +471,14 @@ void refine_and_transfer(
       cell_data_trans(triangulation);
   cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
 
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("refine triangulation");
+#endif
   // Execute the refinement
   triangulation.execute_coarsening_and_refinement();
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("refine triangulation");
+#endif
 
   // Update the AffineConstraints and resize the solution
   thermal_physics->setup_dofs();

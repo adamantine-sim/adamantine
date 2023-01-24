@@ -371,9 +371,9 @@ __device__ void LocalThermalOperatorDevice<dim, fe_degree>::operator()(
   dealii::CUDAWrappers::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
       fe_eval(cell, gpu_data, shared_data);
   fe_eval.read_dof_values(src);
-  fe_eval.evaluate(/*values*/ false, /*gradients*/ true);
+  fe_eval.evaluate(/*values*/ true, /*gradients*/ true);
 
-  double temperature = src[pos];
+  double temperature = fe_eval.get_value();
   double
       state_ratios[static_cast<unsigned int>(adamantine::MaterialState::SIZE)];
   update_state_ratios(pos, temperature, state_ratios);
@@ -420,8 +420,10 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::hp::QCollection<1> const &q_collection)
 {
-  // FIXME deal.II does not support QCollection on GPU
-  _matrix_free.reinit(dof_handler, affine_constraints, q_collection[0],
+  dealii::IteratorFilters::ActiveFEIndexEqualTo filter(0, true);
+  // deal.II does not support QCollection on GPU
+  _matrix_free.reinit(dealii::StaticMappingQ1<dim>::mapping, dof_handler,
+                      affine_constraints, q_collection[0], filter,
                       _matrix_free_data);
   dealii::LA::distributed::Vector<double, MemorySpaceType> tmp;
   _matrix_free.initialize_dof_vector(tmp);
@@ -477,7 +479,9 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
       mf_data;
   mf_data.mapping_update_flags =
       dealii::update_values | dealii::update_JxW_values;
-  mass_matrix_free.reinit(dof_handler, affine_constraints, mass_matrix_quad,
+  dealii::IteratorFilters::ActiveFEIndexEqualTo filter(0, true);
+  mass_matrix_free.reinit(dealii::StaticMappingQ1<dim>::mapping, dof_handler,
+                          affine_constraints, mass_matrix_quad, filter,
                           mf_data);
   mass_matrix_free.initialize_dof_vector(*_inverse_mass_matrix);
   // We don't save memory by not allocating the vector. Instead this is done in
@@ -534,7 +538,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::vmult_add(
 
   LocalThermalOperatorDevice<dim, fe_degree> local_operator(
       _material_properties.properties_use_table(),
-      _material_properties.polynomial_order(), _deposition_cos.get_values(),
+      _material_properties.polynomial_order, _deposition_cos.get_values(),
       _deposition_sin.get_values(), powder_ratio_view, liquid_ratio_view,
       material_id_view, _inv_rho_cp, _material_properties.get_properties(),
       _material_properties.get_state_property_tables(),

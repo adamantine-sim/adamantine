@@ -276,7 +276,6 @@ void MaterialProperty<dim, MemorySpaceType>::update(
       _state_property_tables);
 
   bool use_table = _use_table;
-  unsigned int polynomial_order = _polynomial_order;
   for_each(
       MemorySpaceType{}, material_ids_size,
       [=] ADAMANTINE_HOST_DEV(int i)
@@ -459,7 +458,7 @@ void MaterialProperty<dim, MemorySpaceType>::
         for (unsigned int material_state = 0;
              material_state < _n_material_states; ++material_state)
         {
-          for (unsigned int i = 0; i <= _polynomial_order; ++i)
+          for (unsigned int i = 0; i <= polynomial_order; ++i)
           {
             property_values_view(property, dof) +=
                 state_view(material_state, dof) *
@@ -532,7 +531,7 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
       {
         dealii::types::material_id m_id = material_id[n];
 
-        for (unsigned int i = 0; i <= _polynomial_order; ++i)
+        for (unsigned int i = 0; i <= polynomial_order; ++i)
         {
           value[n] += state_ratios[material_state][n] *
                       state_property_polynomials_view(m_id, material_state,
@@ -579,7 +578,7 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
     {
       dealii::types::material_id m_id = material_id;
 
-      for (unsigned int i = 0; i <= _polynomial_order; ++i)
+      for (unsigned int i = 0; i <= polynomial_order; ++i)
       {
         value += state_ratios[material_state] *
                  state_property_polynomials_view(m_id, material_state,
@@ -652,10 +651,15 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
       _state.extent(1));
   MemoryBlockView<double, dealii::MemorySpace::Host> mp_dof_host_view(
       mp_dof_host_block);
+  // We only loop over the part of the domain which has material, i.e., not over
+  // FE_Nothing cell. This is because _cell_it_to_mf_pos does not exist for
+  // FE_Nothing cells. However, we have set the state of the material on the
+  // entire domain. This is not a problem since that state is unchanged and does
+  // not need to be updated.
   unsigned int cell_i = 0;
-  for (auto const &cell :
-       dealii::filter_iterators(dof_handler.active_cell_iterators(),
-                                dealii::IteratorFilters::LocallyOwnedCell()))
+  for (auto const &cell : dealii::filter_iterators(
+           dof_handler.active_cell_iterators(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true)))
   {
     typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
     auto mp_dof_index = get_dof_index(cell_tria);
@@ -681,7 +685,7 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
   auto const powder_state = static_cast<unsigned int>(MaterialState::powder);
   auto const liquid_state = static_cast<unsigned int>(MaterialState::liquid);
   auto const solid_state = static_cast<unsigned int>(MaterialState::solid);
-  for_each(MemorySpaceType{}, mapping_host_view.extent(0),
+  for_each(MemorySpaceType{}, cell_i,
            [=] ADAMANTINE_HOST_DEV(int i) mutable
            {
              double liquid_ratio_sum = 0.;
@@ -767,34 +771,30 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
       state_property_polynomials_host;
   if (_use_table)
   {
-    // TODO read table size from input file
-    _table_size = 4;
     _state_property_tables.reinit(n_material_ids, _n_material_states,
-                                  _n_thermal_state_properties, _table_size, 2);
+                                  _n_thermal_state_properties, table_size, 2);
     state_property_tables_host.reinit(n_material_ids, _n_material_states,
-                                      _n_thermal_state_properties, _table_size,
+                                      _n_thermal_state_properties, table_size,
                                       2);
     state_property_tables_host.set_zero();
     // Mechanical properties only exist for the solid state
     _mechanical_properties_tables_host.reinit(
-        n_material_ids, _n_mechanical_state_properties, _table_size, 2);
+        n_material_ids, _n_mechanical_state_properties, table_size, 2);
     _mechanical_properties_tables_host.set_zero();
   }
   else
   {
-    // TODO read polynomial_order from input file
-    _polynomial_order = 4;
     _state_property_polynomials.reinit(n_material_ids + 1, _n_material_states,
                                        _n_thermal_state_properties,
-                                       _polynomial_order + 1);
+                                       polynomial_order + 1);
     state_property_polynomials_host.reinit(
         n_material_ids + 1, _n_material_states, _n_thermal_state_properties,
-        _polynomial_order + 1);
+        polynomial_order + 1);
     state_property_polynomials_host.set_zero();
     // Mechanical properties only exist for the solid state
     _mechanical_properties_polynomials_host.reinit(
         n_material_ids + 1, _n_mechanical_state_properties,
-        _polynomial_order + 1);
+        polynomial_order + 1);
     _mechanical_properties_polynomials_host.set_zero();
   }
 
@@ -845,7 +845,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
               boost::split(parsed_property, property_string,
                            [](char c) { return c == ';'; });
               unsigned int const parsed_property_size = parsed_property.size();
-              ASSERT_THROW(parsed_property_size <= _table_size,
+              ASSERT_THROW(parsed_property_size <= table_size,
                            "Too many coefficients, increase the table size");
               for (unsigned int i = 0; i < parsed_property_size; ++i)
               {
@@ -871,7 +871,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
                 }
               }
               // fill the rest  with the last value
-              for (unsigned int i = parsed_property_size; i < _table_size; ++i)
+              for (unsigned int i = parsed_property_size; i < table_size; ++i)
               {
                 if (p < _n_thermal_state_properties)
                 {
@@ -904,7 +904,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
                            [](char c) { return c == ','; });
               unsigned int const parsed_property_size = parsed_property.size();
               ASSERT_THROW(
-                  parsed_property_size <= _polynomial_order,
+                  parsed_property_size <= polynomial_order,
                   "Too many coefficients, increase the polynomial order");
               for (unsigned int i = 0; i < parsed_property_size; ++i)
               {

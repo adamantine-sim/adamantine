@@ -54,11 +54,6 @@ public:
   bool properties_use_table() const;
 
   /**
-   * Return the order of the polynomial used to set the material properties
-   */
-  unsigned int polynomial_order() const;
-
-  /**
    * Return the value of the given StateProperty for a given cell.
    */
   double get_cell_value(
@@ -214,6 +209,17 @@ public:
       unsigned int const material_id, unsigned int const material_state,
       unsigned int const property, double const temperature);
 
+  /**
+   * Order of the polynomial used to describe the material properties.
+   */
+  static unsigned int constexpr polynomial_order = 4;
+
+  /**
+   * Size of the table, i.e. number of temperature/property pairs, used to
+   * describe the material properties.
+   */
+  static unsigned int constexpr table_size = 4;
+
 private:
   /**
    * Maximum different number of states a given material can be.
@@ -244,17 +250,6 @@ private:
    */
   static unsigned int constexpr _n_properties =
       static_cast<unsigned int>(Property::SIZE);
-
-  /**
-   * Order of the polynomial used to describe the material properties.
-   */
-  unsigned int _polynomial_order = 0;
-
-  /**
-   * Size of the table, i.e. number of temperature/property pairs, used to
-   * describe the material properties.
-   */
-  unsigned int _table_size = 0;
 
   /**
    * Fill the _properties map.
@@ -368,13 +363,6 @@ template <int dim, typename MemorySpaceType>
 inline bool MaterialProperty<dim, MemorySpaceType>::properties_use_table() const
 {
   return _use_table;
-}
-
-template <int dim, typename MemorySpaceType>
-inline unsigned int
-MaterialProperty<dim, MemorySpaceType>::polynomial_order() const
-{
-  return _polynomial_order;
 }
 
 template <int dim, typename MemorySpaceType>
