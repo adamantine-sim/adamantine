@@ -43,7 +43,7 @@ materials
                     ; density.
       specific_heat 600 ; [J/kg K]
       thermal_conductivity_x 26.6 ; [W/m K]
-      thermal_conductivity_y 26.6 ; [W/m K]
+      thermal_conductivity_z 26.6 ; [W/m K]
     }
 
     powder
@@ -51,7 +51,7 @@ materials
       specific_heat 600 ; [J/kg K]
       density 7541 ; [kg/m^3]
       thermal_conductivity_x 0.266 ; [W/m K]
-      thermal_conductivity_y 0.266 ; [W/m K]
+      thermal_conductivity_z 0.266 ; [W/m K]
     }
 
     liquid
@@ -59,7 +59,7 @@ materials
       specific_heat 775 ; [J/kg K]
       density 7541 ; [kg/m^3]
       thermal_conductivity_x 29.0 ; [W/m k] 
-      thermal_conductivity_y 29.0 ; [W/m k] 
+      thermal_conductivity_z 29.0 ; [W/m k] 
       ; Not all three states need to define the same properties or to exist
     }
 
