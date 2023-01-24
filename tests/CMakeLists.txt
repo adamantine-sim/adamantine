@@ -22,6 +22,7 @@ list(APPEND
      test_integration_3d_amr
      test_integration_da
      test_integration_da_augmented
+     test_integration_thermoelastic
      test_validate_input_database
      )
 
@@ -103,3 +104,5 @@ adamantine_COPY_INPUT_FILE(bare_plate_L_da_aug_ref_log.txt tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_da_aug_ref_data_0_0.csv tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_da_aug_ref_data_0_1.csv tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_da_augmented.info tests/data)
+adamantine_COPY_INPUT_FILE(thermoelastic_bare_plate.info tests/data)
+adamantine_COPY_INPUT_FILE(thermoelastic_bare_plate_scan_path.txt tests/data)

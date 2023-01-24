@@ -173,8 +173,6 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
   // thermoelastic problem.
   if (_reference_temperatures.size() > 0)
   {
-    std::cout << "Adding thermal expansion term..." << std::endl;
-
     // Create a functor to evaluate the thermal expansion
     temperature_hp_fe_values = std::make_unique<dealii::hp::FEValues<dim>>(
         _thermal_dof_handler->get_fe_collection(), *_q_collection,
@@ -263,8 +261,6 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
   // If gravity is included, add a gravitational body force
   if (_include_gravity)
   {
-    std::cout << "Adding a gravitational body force" << std::endl;
-
     // Create a functor to evaluate the body force
     dealiiWeakForms::WeakForms::VectorFunctor<dim> const body_force_coeff(
         "f", "\\mathbf{f}");
