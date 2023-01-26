@@ -913,7 +913,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     material_reference_temps.push_back(reference_temperature);
   }
 
-  // Create MechanicalPhysics if necessary
+  // Create MechanicalPhysics if necessary and create PostProcessor
+  std::unique_ptr<adamantine::PostProcessor<dim>> post_processor;
 #ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
   std::unique_ptr<adamantine::MechanicalPhysics<dim, MemorySpaceType>>
       mechanical_physics;
@@ -927,15 +928,24 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
             communicator, fe_degree, geometry, material_properties,
             material_reference_temps);
     post_processor_database.put("mechanical_output", true);
+
+    post_processor = std::make_unique<adamantine::PostProcessor<dim>>(
+        communicator, post_processor_database,
+        thermal_physics->get_dof_handler(),
+        mechanical_physics->get_dof_handler());
+  }
+  else
+  {
+    post_processor = std::make_unique<adamantine::PostProcessor<dim>>(
+        communicator, post_processor_database,
+        thermal_physics->get_dof_handler());
   }
 
-  adamantine::PostProcessor<dim> post_processor(
-      communicator, post_processor_database, thermal_physics->get_dof_handler(),
-      mechanical_physics->get_dof_handler());
 #else
-  adamantine::PostProcessor<dim> post_processor(
+  post_processor = std::make_unique<adamantine::PostProcessor<dim>>(
       communicator, post_processor_database,
       thermal_physics->get_dof_handler());
+
 #endif
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> temperature;
@@ -977,7 +987,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   unsigned int n_time_step = 0;
   double time = 0.;
   // Output the initial solution
-  output_pvtu(post_processor, cycle, n_time_step, time, thermal_physics,
+  output_pvtu(*post_processor, cycle, n_time_step, time, thermal_physics,
               temperature,
 #ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
               mechanical_physics,
@@ -1190,7 +1200,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       {
         thermal_physics->set_state_to_material_properties();
       }
-      output_pvtu(post_processor, cycle, n_time_step, time, thermal_physics,
+      output_pvtu(*post_processor, cycle, n_time_step, time, thermal_physics,
                   temperature,
 #ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
                   mechanical_physics,
@@ -1203,7 +1213,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   CALI_CXX_MARK_LOOP_END(main_loop_id);
 #endif
 
-  post_processor.write_pvd();
+  post_processor->write_pvd();
 
   // This is only used for integration test
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)

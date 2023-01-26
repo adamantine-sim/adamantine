@@ -324,7 +324,8 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   size_t pos_str = 0;
   std::string boundary;
   std::string delimiter = ",";
-  auto parse_boundary_type = [&](std::string const &boundary) {
+  auto parse_boundary_type = [&](std::string const &boundary)
+  {
     if (boundary == "adiabatic")
     {
       _boundary_type = BoundaryType::adiabatic;
@@ -577,9 +578,11 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
             temperature)
 {
   auto dofs_per_cell = _dof_handler.get_fe().dofs_per_cell;
-  dealii::FEValues<dim> fe_values(_dof_handler.get_fe(), _q_collection,
-                                  dealii::update_values |
-                                      dealii::update_JxW_values);
+
+  dealii::hp::FEValues<dim> hp_fe_values(
+      _dof_handler.get_fe_collection(), _q_collection,
+      dealii::UpdateFlags::update_values |
+          dealii::UpdateFlags::update_JxW_values);
 
   unsigned int const n_q_points = _q_collection.max_n_quadrature_points();
 
@@ -590,8 +593,10 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   {
     if (_has_melted_indicator.at(cell->active_cell_index()) < 0.5)
     {
+      hp_fe_values.reinit(cell);
+      dealii::FEValues<dim> const &fe_values =
+          hp_fe_values.get_present_fe_values();
 
-      fe_values.reinit(cell);
       std::vector<dealii::types::global_dof_index> local_dof_indices(
           fe_values.dofs_per_cell);
       cell->get_dof_indices(local_dof_indices);
@@ -602,10 +607,6 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
       {
         for (unsigned int q = 0; q < n_q_points; ++q)
         {
-          // This is substantially over-predicting the temperature. I don't
-          // think is should be a sum over quadrature points and dofs. I think
-          // this is off by a factor of 4.
-          // NOTE: I'm not sure if the above comment is still true...
           cell_temperature += fe_values.shape_value(i, q) *
                               temperature(local_dof_indices[i]) *
                               fe_values.JxW(q);
@@ -842,12 +843,14 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   // cells are at the same level than their neighbors.
   rw_solution.reinit(solution.locally_owned_elements());
   rw_solution.import(solution, dealii::VectorOperation::insert);
-  std::for_each(rw_solution.begin(), rw_solution.end(), [&](double &val) {
-    if (val == std::numeric_limits<double>::infinity())
-    {
-      val = new_material_temperature;
-    }
-  });
+  std::for_each(rw_solution.begin(), rw_solution.end(),
+                [&](double &val)
+                {
+                  if (val == std::numeric_limits<double>::infinity())
+                  {
+                    val = new_material_temperature;
+                  }
+                });
   solution.import(rw_solution, dealii::VectorOperation::insert);
 }
 
@@ -894,12 +897,10 @@ double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   }
   _current_source_height = temp_height;
 
-  auto eval = [&](double const t, LA_Vector const &y) {
-    return evaluate_thermal_physics(t, y, timers);
-  };
-  auto id_m_Jinv = [&](double const t, double const tau, LA_Vector const &y) {
-    return id_minus_tau_J_inverse(t, tau, y, timers);
-  };
+  auto eval = [&](double const t, LA_Vector const &y)
+  { return evaluate_thermal_physics(t, y, timers); };
+  auto id_m_Jinv = [&](double const t, double const tau, LA_Vector const &y)
+  { return id_minus_tau_J_inverse(t, tau, y, timers); };
 
   double time = _time_stepping->evolve_one_time_step(eval, id_m_Jinv, t,
                                                      delta_t, solution);
