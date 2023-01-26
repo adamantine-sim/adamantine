@@ -42,7 +42,7 @@ public:
       dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &temperature,
-      std::vector<double> const &has_melted_indicator);
+      std::vector<bool> const &has_melted);
 
   /**
    * Solve the mechanical problem and return the solution.

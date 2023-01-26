@@ -75,7 +75,7 @@ public:
       dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &temperature,
-      std::vector<double> const &has_melted_indicator);
+      std::vector<bool> const &has_melted);
 
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const &
   rhs() const;
@@ -104,10 +104,7 @@ private:
   bool _include_gravity = false;
   /**
    * List of initial temperatures of the material. If the length of the vector
-   * is nonzero, we solve a themo-mechanical problem. Otherwise, we solve a
-   * mechanical only problem. The vector index refers to the user index for a
-   * given cell (i.e. if the cell user index is "1", the appropriate reference
-   * temperature is _reference_temperatures[1]).
+   * is nonzero, we solve a thermo-mechanical problem.
    */
   std::vector<double> _reference_temperatures;
   /**
@@ -146,11 +143,10 @@ private:
       _temperature;
   /**
    * Indicator variable for whether a point has ever been above the solidus. The
-   * value is 0 for material that has not yet melted and 1 for material that has
-   * melted. Due to how the state is transferred for remeshing, this has to be
-   * stored as a double.
+   * value is false for material that has not yet melted and true for material
+   * that has melted.
    */
-  std::vector<double> _has_melted_indicator;
+  std::vector<bool> _has_melted;
 };
 
 template <int dim, typename MemorySpaceType>

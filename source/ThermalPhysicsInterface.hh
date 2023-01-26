@@ -57,9 +57,8 @@ public:
           &elements_to_activate,
       std::vector<double> const &new_deposition_cos,
       std::vector<double> const &new_deposition_sin,
-      std::vector<double> const &new_has_melted_indicator,
-      unsigned int const activation_start, unsigned int const activation_end,
-      double const initial_temperature,
+      std::vector<bool> &new_has_melted, unsigned int const activation_start,
+      unsigned int const activation_end, double const initial_temperature,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution) = 0;
 
   /**
@@ -139,28 +138,27 @@ public:
   virtual double get_deposition_sin(unsigned int const i) const = 0;
 
   /**
-   * Mark cells above the given temperature
+   * Mark cells above the given temperature to denote that they have melted
    */
-  virtual void mark_cells_above_temperature(
-      const double threshold_temperature,
-      dealii::LA::distributed::Vector<double, MemorySpaceType> const
-          temperature) = 0;
+  virtual void
+  mark_has_melted(const double threshold_temperature,
+                  dealii::LA::distributed::Vector<double, MemorySpaceType> const
+                      temperature) = 0;
 
   /**
-   * Returns _has_melted_indicator
+   * Returns _has_melted
    */
-  virtual std::vector<double> get_has_melted_indicator_vector() const = 0;
+  virtual std::vector<bool> get_has_melted_vector() const = 0;
 
   /**
-   * Sets _has_melted_indicator
+   * Sets _has_melted
    */
-  virtual void set_has_melted_indicator_vector(
-      std::vector<double> const &has_melted_indicator) = 0;
+  virtual void set_has_melted_vector(std::vector<bool> const &has_melted) = 0;
 
   /**
-   * Returns one entry of _has_melted_indicator
+   * Returns one entry of _has_melted
    */
-  virtual double get_has_melted_indicator(const unsigned int) const = 0;
+  virtual bool get_has_melted(const unsigned int) const = 0;
 
   /**
    * Return the DoFHandler.

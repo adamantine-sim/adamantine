@@ -328,12 +328,11 @@ BOOST_AUTO_TEST_CASE(material_deposition)
       auto elements_to_activate = adamantine::get_elements_to_activate(
           dof_handler, material_deposition_boxes);
 
-      std::vector<double> has_melted_indicator(deposition_cos.size(), 0.0);
+      std::vector<bool> has_melted(deposition_cos.size(), false);
 
-      thermal_physics.add_material(elements_to_activate, deposition_cos,
-                                   deposition_sin, has_melted_indicator,
-                                   activation_start, activation_end,
-                                   initial_temperature, solution);
+      thermal_physics.add_material(
+          elements_to_activate, deposition_cos, deposition_sin, has_melted,
+          activation_start, activation_end, initial_temperature, solution);
     }
 
     time =

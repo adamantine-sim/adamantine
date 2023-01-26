@@ -418,8 +418,12 @@ void refine_and_transfer(
             thermal_physics->get_deposition_cos(activated_cell_id);
         cell_data[n_material_states + 1] =
             thermal_physics->get_deposition_sin(activated_cell_id);
-        cell_data[n_material_states + direction_data_size] =
-            thermal_physics->get_has_melted_indicator(activated_cell_id);
+
+        if (thermal_physics->get_has_melted(activated_cell_id))
+          cell_data[n_material_states + direction_data_size] = 1.0;
+        else
+          cell_data[n_material_states + direction_data_size] = 0.0;
+
         ++activated_cell_id;
       }
       else
@@ -513,7 +517,7 @@ void refine_and_transfer(
   cell_id = 0;
   std::vector<double> transferred_cos;
   std::vector<double> transferred_sin;
-  std::vector<double> has_melted_indicator;
+  std::vector<bool> has_melted;
   for (auto const &cell : dof_handler.active_cell_iterators())
   {
     if (cell->is_locally_owned())
@@ -528,9 +532,14 @@ void refine_and_transfer(
             transferred_data[total_cell_id][n_material_states]);
         transferred_sin.push_back(
             transferred_data[total_cell_id][n_material_states + 1]);
-        has_melted_indicator.push_back(
-            transferred_data[total_cell_id]
-                            [n_material_states + direction_data_size]);
+
+        // Convert from double back to bool
+        if (transferred_data[total_cell_id]
+                            [n_material_states + direction_data_size] > 0.5)
+          has_melted.push_back(true);
+        else
+
+          has_melted.push_back(false);
       }
       ++cell_id;
     }
@@ -542,7 +551,7 @@ void refine_and_transfer(
                                                        transferred_sin);
 
   // Update the melted indicator
-  thermal_physics->set_has_melted_indicator_vector(has_melted_indicator);
+  thermal_physics->set_has_melted_vector(has_melted);
 
   // Copy the data back to material_property
   adamantine::deep_copy(material_state_view.data(), memspace,
@@ -900,9 +909,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 
   // Get the reference temperature(s) for the substrate and deposited
   // material(s)
-  std::vector<double> material_reference_temps = {initial_temperature};
+  std::vector<double> material_reference_temps;
   // PropertyTreeInput materials.n_materials
-  double const n_materials = material_database.get<unsigned int>("n_materials");
+  unsigned int const n_materials =
+      material_database.get<unsigned int>("n_materials");
   for (unsigned int i = 0; i < n_materials; ++i)
   {
     // Use the solidus as the reference temperature, in the future we may want
@@ -912,9 +922,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         "material_" + std::to_string(i) + ".solidus");
     material_reference_temps.push_back(reference_temperature);
   }
+  material_reference_temps.push_back(initial_temperature);
 
-  // Create MechanicalPhysics if necessary and create PostProcessor
-  std::unique_ptr<adamantine::PostProcessor<dim>> post_processor;
+// Create MechanicalPhysics
 #ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
   std::unique_ptr<adamantine::MechanicalPhysics<dim, MemorySpaceType>>
       mechanical_physics;
@@ -928,7 +938,16 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
             communicator, fe_degree, geometry, material_properties,
             material_reference_temps);
     post_processor_database.put("mechanical_output", true);
+  }
+#endif
 
+  // Create PostProcessor
+  std::unique_ptr<adamantine::PostProcessor<dim>> post_processor;
+  bool thermal_output = post_processor_database.get("thermal_output", false);
+  bool mechanical_output =
+      post_processor_database.get("mechanical_output", false);
+  if ((thermal_output) && (mechanical_output))
+  {
     post_processor = std::make_unique<adamantine::PostProcessor<dim>>(
         communicator, post_processor_database,
         thermal_physics->get_dof_handler(),
@@ -938,15 +957,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   {
     post_processor = std::make_unique<adamantine::PostProcessor<dim>>(
         communicator, post_processor_database,
-        thermal_physics->get_dof_handler());
+        thermal_output ? thermal_physics->get_dof_handler()
+                       : mechanical_physics->get_dof_handler());
   }
-
-#else
-  post_processor = std::make_unique<adamantine::PostProcessor<dim>>(
-      communicator, post_processor_database,
-      thermal_physics->get_dof_handler());
-
-#endif
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> temperature;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -969,9 +982,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
           temperature_host(temperature.get_partitioner());
       temperature_host.import(temperature, dealii::VectorOperation::insert);
-      mechanical_physics->setup_dofs(
-          thermal_physics->get_dof_handler(), temperature_host,
-          thermal_physics->get_has_melted_indicator_vector());
+      mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
+                                     temperature_host,
+                                     thermal_physics->get_has_melted_vector());
     }
     else
     {
@@ -1090,12 +1103,12 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     {
       if (use_thermal_physics)
       {
-        // For now assume that all deposited material has never been melted (may
-        // or may not be reasonable)
-        std::vector<double> has_melted_indicator(deposition_cos.size(), 0.0);
+        // For now assume that all deposited material has never been melted
+        // (may or may not be reasonable)
+        std::vector<bool> has_melted(deposition_cos.size(), false);
 
         thermal_physics->add_material(elements_to_activate, deposition_cos,
-                                      deposition_sin, has_melted_indicator,
+                                      deposition_sin, has_melted,
                                       activation_start, activation_end,
                                       new_material_temperature, temperature);
       }
@@ -1110,14 +1123,14 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     timers[adamantine::add_material_activate].stop();
 
     // If thermomechanics are being solved, mark cells that are above the
-    // solidus as cells that should have their reference temperature reset. This
-    // cannot be in the thermomechanics solve because some cells may go above
-    // the solidus and then back below the solidus in the time between
+    // solidus as cells that should have their reference temperature reset.
+    // This cannot be in the thermomechanics solve because some cells may go
+    // above the solidus and then back below the solidus in the time between
     // thermomechanical solves.
     if (use_thermal_physics && use_mechanical_physics)
     {
-      thermal_physics->mark_cells_above_temperature(material_reference_temps[1],
-                                                    temperature);
+      thermal_physics->mark_has_melted(material_reference_temps[0],
+                                       temperature);
     }
 
     // Time can be different than time + time_step if an embedded scheme is
@@ -1153,7 +1166,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           temperature_host.import(temperature, dealii::VectorOperation::insert);
           mechanical_physics->setup_dofs(
               thermal_physics->get_dof_handler(), temperature_host,
-              thermal_physics->get_has_melted_indicator_vector());
+              thermal_physics->get_has_melted_vector());
         }
         else
         {
@@ -1693,14 +1706,13 @@ run_ensemble(MPI_Comm const &communicator,
     if (activation_start < activation_end)
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
-        // For now assume that all deposited material has never been melted (may
-        // or may not be reasonable)
-        std::vector<double> has_melted_indicator(deposition_cos.size(), 0.0);
+        // For now assume that all deposited material has never been melted
+        // (may or may not be reasonable)
+        std::vector<bool> has_melted(deposition_cos.size(), false);
 
         thermal_physics_ensemble[member]->add_material(
-            elements_to_activate, deposition_cos, deposition_sin,
-            has_melted_indicator, activation_start, activation_end,
-            new_material_temperature[member],
+            elements_to_activate, deposition_cos, deposition_sin, has_melted,
+            activation_start, activation_end, new_material_temperature[member],
             solution_augmented_ensemble[member].block(base_state));
 
         solution_augmented_ensemble[member].collect_sizes();

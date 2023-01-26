@@ -297,9 +297,9 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
   adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
       mechanical_operator(communicator, material_properties,
                           reference_temperatures, true);
-  std::vector<double> has_melted_indicator(triangulation.n_active_cells(), 0.0);
+  std::vector<bool> has_melted(triangulation.n_active_cells(), false);
   mechanical_operator.update_temperature(thermal_dof_handler, temperature,
-                                         has_melted_indicator);
+                                         has_melted);
   mechanical_operator.reinit(mechanical_dof_handler,
                              mechanical_affine_constraints,
                              mechanical_q_collection);

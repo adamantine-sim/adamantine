@@ -22,7 +22,6 @@ list(APPEND
      test_integration_3d_amr
      test_integration_da
      test_integration_da_augmented
-     test_integration_thermoelastic
      test_validate_input_database
      )
 
@@ -49,6 +48,7 @@ list(APPEND
 set(WEAK_FORMS_UNIT_TESTS "")
 list(APPEND
      WEAK_FORMS_UNIT_TESTS
+     test_integration_thermoelastic
      test_mechanical_operator
      test_mechanical_physics
      )

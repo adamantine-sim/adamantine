@@ -622,44 +622,44 @@ void reference_temperature()
 
   // Now check that the melting indicator works as expected
   double tol = 1e-10;
-  std::vector<double> reference_temperatures({300.0, 1500.0});
+  std::vector<double> reference_temperatures({1500.0, 300.0});
 
-  auto has_melted_indicator = physics.get_has_melted_indicator_vector();
+  auto has_melted = physics.get_has_melted_vector();
 
-  // Check that has_melted_indicator is the correct size
-  BOOST_TEST(has_melted_indicator.size() ==
+  // Check that has_melted is the correct size
+  BOOST_TEST(has_melted.size() ==
              geometry.get_triangulation().n_locally_owned_active_cells());
 
   // Check that nothing is marked as melted
-  for (auto indicator : has_melted_indicator)
-    BOOST_CHECK_CLOSE(indicator, 0.0, tol);
+  for (auto indicator : has_melted)
+    BOOST_CHECK(indicator == false);
 
   // Mark cells above the melting temperature, expect none to be marked
-  physics.mark_cells_above_temperature(reference_temperatures[1], solution);
-  has_melted_indicator = physics.get_has_melted_indicator_vector();
+  physics.mark_has_melted(reference_temperatures[0], solution);
+  has_melted = physics.get_has_melted_vector();
 
-  for (auto indicator : has_melted_indicator)
-    BOOST_CHECK_CLOSE(indicator, 0.0, tol);
+  for (auto indicator : has_melted)
+    BOOST_CHECK(indicator == false);
 
   // Increase the temperature above the reference temperature, expect all to be
   // marked now
   for (unsigned int i = 0; i < solution.locally_owned_size(); ++i)
     solution.local_element(i) = 1600.0;
 
-  physics.mark_cells_above_temperature(reference_temperatures[1], solution);
-  has_melted_indicator = physics.get_has_melted_indicator_vector();
+  physics.mark_has_melted(reference_temperatures[0], solution);
+  has_melted = physics.get_has_melted_vector();
 
-  for (auto indicator : has_melted_indicator)
-    BOOST_CHECK_CLOSE(indicator, 1.0, tol);
+  for (auto indicator : has_melted)
+    BOOST_CHECK(indicator == true);
 
   // Decrease the temperature back below the reference temperature, expect all
   // to still be marked
   for (unsigned int i = 0; i < solution.locally_owned_size(); ++i)
     solution.local_element(i) = 1100.0;
 
-  physics.mark_cells_above_temperature(reference_temperatures[1], solution);
-  has_melted_indicator = physics.get_has_melted_indicator_vector();
+  physics.mark_has_melted(reference_temperatures[0], solution);
+  has_melted = physics.get_has_melted_vector();
 
-  for (auto indicator : has_melted_indicator)
-    BOOST_CHECK_CLOSE(indicator, 1.0, tol);
+  for (auto indicator : has_melted)
+    BOOST_CHECK(indicator == true);
 }

@@ -85,11 +85,11 @@ void MechanicalOperator<dim, MemorySpaceType>::update_temperature(
     dealii::DoFHandler<dim> const &thermal_dof_handler,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
         &temperature,
-    std::vector<double> const &has_melted_indicator)
+    std::vector<bool> const &has_melted)
 {
   _thermal_dof_handler = &thermal_dof_handler;
   _temperature = temperature;
-  _has_melted_indicator = has_melted_indicator;
+  _has_melted = has_melted;
 }
 
 template <int dim, typename MemorySpaceType>
@@ -181,6 +181,8 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
     dealiiWeakForms::WeakForms::TensorFunctor<2, dim> const expansion_coeff(
         "B", "\\mathcal{B}");
 
+    const double initial_temperature = _reference_temperatures.back();
+
     auto expansion_tensor = expansion_coeff.template value<double, dim>(
         [&](dealii::FEValuesBase<dim> const &fe_values,
             unsigned int const q_point)
@@ -193,24 +195,15 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
           // Get the appropriate reference temperature for the cell. If the cell
           // is not in the unmelted substrate, the reference temperature depends
           // on the material.
-
-          // FIXME: Needs new implementation
-          bool is_unmelted_substrate = false;
-          if (_has_melted_indicator.at(cell->active_cell_index()) < 0.5)
-          {
-            is_unmelted_substrate = true;
-          }
-          // const bool is_unmelted_substrate = cell->user_flag_set();
-
           double reference_temperature;
-          if (is_unmelted_substrate)
+          if (_has_melted[cell->active_cell_index()])
           {
-            reference_temperature = _reference_temperatures.at(0);
+            reference_temperature =
+                _reference_temperatures[cell->material_id()];
           }
           else
           {
-            reference_temperature =
-                _reference_temperatures.at(cell->material_id() + 1);
+            reference_temperature = initial_temperature;
           }
 
           // Since we use a Triangulation cell to reinitialize the hp::FEValues,
