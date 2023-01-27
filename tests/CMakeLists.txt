@@ -40,6 +40,7 @@ list(APPEND
      CUDA_UNIT_TESTS
      test_integration_2d_device
      test_integration_3d_device
+     test_integration_3d_amr_device
      test_material_property_device
      test_thermal_operator_device
      test_thermal_physics_device
