@@ -59,6 +59,11 @@ if (ADAMANTINE_ENABLE_DEALII_WEAK_FORMS)
       ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.cc
       ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.cc
      )
+else()
+    set(Adamantine_HEADERS
+        ${Adamantine_HEADERS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysicsDummy.hh
+        )
 endif()
 
 if (ADAMANTINE_ENABLE_CUDA)
