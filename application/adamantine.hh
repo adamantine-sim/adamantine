@@ -13,6 +13,8 @@
 #include <MaterialProperty.hh>
 #ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
 #include <MechanicalPhysics.hh>
+#else
+#include <MechanicalPhysicsDummy.hh>
 #endif
 #include <MemoryBlock.hh>
 #include <PostProcessor.hh>
@@ -60,10 +62,8 @@ void output_pvtu(
         &thermal_physics,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
         &temperature,
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
     std::unique_ptr<adamantine::MechanicalPhysics<dim, MemorySpaceType>> const
         &mechanical_physics,
-#endif
     [[maybe_unused]] dealii::LA::distributed::Vector<
         double, dealii::MemorySpace::Host> &displacement,
     adamantine::MaterialProperty<dim, MemorySpaceType> const
@@ -77,7 +77,6 @@ void output_pvtu(
   if (thermal_physics)
   {
     thermal_physics->get_affine_constraints().distribute(temperature);
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
     if (mechanical_physics)
     {
       mechanical_physics->get_affine_constraints().distribute(displacement);
@@ -87,7 +86,6 @@ void output_pvtu(
                                   material_properties.get_dof_handler());
     }
     else
-#endif
     {
       post_processor.write_thermal_output(
           cycle, n_time_step, time, temperature,
@@ -95,7 +93,6 @@ void output_pvtu(
           material_properties.get_dof_handler());
     }
   }
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
   else
   {
     mechanical_physics->get_affine_constraints().distribute(displacement);
@@ -104,7 +101,6 @@ void output_pvtu(
         material_properties.get_dofs_map(),
         material_properties.get_dof_handler());
   }
-#endif
   timers[adamantine::output].stop();
 }
 
@@ -121,10 +117,8 @@ void output_pvtu(
         &thermal_physics,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
         &temperature,
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
     std::unique_ptr<adamantine::MechanicalPhysics<dim, MemorySpaceType>> const
         &mechanical_physics,
-#endif
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
         &displacement,
     adamantine::MaterialProperty<dim, MemorySpaceType> const
@@ -148,7 +142,6 @@ void output_pvtu(
         temperature_host(temperature.get_partitioner());
     temperature_host.import(temperature, dealii::VectorOperation::insert);
     thermal_physics->get_affine_constraints().distribute(temperature_host);
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
     if (mechanical_physics)
     {
       mechanical_physics->get_affine_constraints().distribute(displacement);
@@ -158,7 +151,6 @@ void output_pvtu(
                                   material_properties.get_dof_handler());
     }
     else
-#endif
     {
       post_processor.write_thermal_output(
           cycle, n_time_step, time, temperature_host, state_host_view,
@@ -166,7 +158,6 @@ void output_pvtu(
           material_properties.get_dof_handler());
     }
   }
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
   else
   {
     mechanical_physics->get_affine_constraints().distribute(displacement);
@@ -175,7 +166,6 @@ void output_pvtu(
         material_properties.get_dofs_map(),
         material_properties.get_dof_handler());
   }
-#endif
   timers[adamantine::output].stop();
 }
 #endif
@@ -382,10 +372,13 @@ void refine_and_transfer(
       solution_transfer(dof_handler);
 
   // Transfer material state
+  unsigned int const direction_data_size = 2;
+  unsigned int const phase_history_data_size = 1;
   unsigned int constexpr n_material_states =
       static_cast<unsigned int>(adamantine::MaterialState::SIZE);
   std::vector<std::vector<double>> data_to_transfer;
-  std::vector<double> dummy_cell_data(n_material_states + 2,
+  std::vector<double> dummy_cell_data(n_material_states + direction_data_size +
+                                          phase_history_data_size,
                                       std::numeric_limits<double>::infinity());
   adamantine::MemoryBlockView<double, MemorySpaceType> material_state_view =
       material_properties.get_state();
@@ -405,7 +398,8 @@ void refine_and_transfer(
   {
     if (cell->is_locally_owned())
     {
-      std::vector<double> cell_data(n_material_states + 2);
+      std::vector<double> cell_data(n_material_states + direction_data_size +
+                                    phase_history_data_size);
       for (unsigned int i = 0; i < n_material_states; ++i)
         cell_data[i] = state_host_view(i, cell_id);
       if (cell->active_fe_index() == 0)
@@ -414,12 +408,20 @@ void refine_and_transfer(
             thermal_physics->get_deposition_cos(activated_cell_id);
         cell_data[n_material_states + 1] =
             thermal_physics->get_deposition_sin(activated_cell_id);
+
+        if (thermal_physics->get_has_melted(activated_cell_id))
+          cell_data[n_material_states + direction_data_size] = 1.0;
+        else
+          cell_data[n_material_states + direction_data_size] = 0.0;
+
         ++activated_cell_id;
       }
       else
       {
         cell_data[n_material_states] = std::numeric_limits<double>::infinity();
         cell_data[n_material_states + 1] =
+            std::numeric_limits<double>::infinity();
+        cell_data[n_material_states + direction_data_size] =
             std::numeric_limits<double>::infinity();
       }
       data_to_transfer.push_back(cell_data);
@@ -494,7 +496,8 @@ void refine_and_transfer(
   // Unpack the material state and repopulate the material state
   std::vector<std::vector<double>> transferred_data(
       triangulation.n_active_cells(),
-      std::vector<double>(n_material_states + 2));
+      std::vector<double>(n_material_states + direction_data_size +
+                          phase_history_data_size));
   cell_data_trans.unpack(transferred_data);
   material_state_view = material_properties.get_state();
   material_state_host.reinit(material_state_view.extent(0),
@@ -504,6 +507,7 @@ void refine_and_transfer(
   cell_id = 0;
   std::vector<double> transferred_cos;
   std::vector<double> transferred_sin;
+  std::vector<bool> has_melted;
   for (auto const &cell : dof_handler.active_cell_iterators())
   {
     if (cell->is_locally_owned())
@@ -518,6 +522,13 @@ void refine_and_transfer(
             transferred_data[total_cell_id][n_material_states]);
         transferred_sin.push_back(
             transferred_data[total_cell_id][n_material_states + 1]);
+
+        // Convert from double back to bool
+        if (transferred_data[total_cell_id]
+                            [n_material_states + direction_data_size] > 0.5)
+          has_melted.push_back(true);
+        else
+          has_melted.push_back(false);
       }
       ++cell_id;
     }
@@ -527,6 +538,9 @@ void refine_and_transfer(
   // Update the deposition cos and sin
   thermal_physics->set_material_deposition_orientation(transferred_cos,
                                                        transferred_sin);
+
+  // Update the melted indicator
+  thermal_physics->set_has_melted_vector(has_melted);
 
   // Copy the data back to material_property
   adamantine::deep_copy(material_state_view.data(), memspace,
@@ -882,26 +896,57 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   double const initial_temperature =
       material_database.get("initial_temperature", 300.);
 
-  // Create MechanicalPhysics if necessary
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
+  // Get the reference temperature(s) for the substrate and deposited
+  // material(s)
+  std::vector<double> material_reference_temps;
+  // PropertyTreeInput materials.n_materials
+  unsigned int const n_materials =
+      material_database.get<unsigned int>("n_materials");
+  for (unsigned int i = 0; i < n_materials; ++i)
+  {
+    // Use the solidus as the reference temperature, in the future we may want
+    // to use something else
+    // PropertyTreeInput materials.material_n.solidus
+    double const reference_temperature = material_database.get<double>(
+        "material_" + std::to_string(i) + ".solidus");
+    material_reference_temps.push_back(reference_temperature);
+  }
+  material_reference_temps.push_back(initial_temperature);
+
+  // Create MechanicalPhysics
   std::unique_ptr<adamantine::MechanicalPhysics<dim, MemorySpaceType>>
       mechanical_physics;
   if (use_mechanical_physics)
   {
     // PropertyTreeInput discretization.mechanical.fe_degree
     unsigned int const fe_degree =
-        discretization_database.get<unsigned int>("mechanial.fe_degree");
+        discretization_database.get<unsigned int>("mechanical.fe_degree");
     mechanical_physics =
         std::make_unique<adamantine::MechanicalPhysics<dim, MemorySpaceType>>(
             communicator, fe_degree, geometry, material_properties,
-            initial_temperature);
+            material_reference_temps);
     post_processor_database.put("mechanical_output", true);
   }
-#endif
 
-  adamantine::PostProcessor<dim> post_processor(
-      communicator, post_processor_database,
-      thermal_physics->get_dof_handler());
+  // Create PostProcessor
+  std::unique_ptr<adamantine::PostProcessor<dim>> post_processor;
+  bool thermal_output = post_processor_database.get("thermal_output", false);
+  bool mechanical_output =
+      post_processor_database.get("mechanical_output", false);
+  if ((thermal_output) && (mechanical_output))
+  {
+    post_processor = std::make_unique<adamantine::PostProcessor<dim>>(
+        communicator, post_processor_database,
+        thermal_physics->get_dof_handler(),
+        mechanical_physics->get_dof_handler());
+  }
+  else
+  {
+    post_processor = std::make_unique<adamantine::PostProcessor<dim>>(
+        communicator, post_processor_database,
+        thermal_output ? thermal_physics->get_dof_handler()
+                       : mechanical_physics->get_dof_handler());
+  }
 
   dealii::LA::distributed::Vector<double, MemorySpaceType> temperature;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -915,7 +960,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     thermal_physics->get_state_from_material_properties();
   }
 
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
   if (use_mechanical_physics)
   {
     if (use_thermal_physics)
@@ -925,7 +969,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           temperature_host(temperature.get_partitioner());
       temperature_host.import(temperature, dealii::VectorOperation::insert);
       mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
-                                     temperature_host);
+                                     temperature_host,
+                                     thermal_physics->get_has_melted_vector());
     }
     else
     {
@@ -934,19 +979,16 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     }
     displacement = mechanical_physics->solve();
   }
-#endif
 
   unsigned int progress = 0;
   unsigned int cycle = 0;
   unsigned int n_time_step = 0;
   double time = 0.;
+
   // Output the initial solution
-  output_pvtu(post_processor, cycle, n_time_step, time, thermal_physics,
-              temperature,
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
-              mechanical_physics,
-#endif
-              displacement, material_properties, timers);
+  output_pvtu(*post_processor, cycle, n_time_step, time, thermal_physics,
+              temperature, mechanical_physics, displacement,
+              material_properties, timers);
   ++n_time_step;
 
   // Create the bounding boxes used for material deposition
@@ -1044,10 +1086,14 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     {
       if (use_thermal_physics)
       {
+        // For now assume that all deposited material has never been melted
+        // (may or may not be reasonable)
+        std::vector<bool> has_melted(deposition_cos.size(), false);
+
         thermal_physics->add_material(elements_to_activate, deposition_cos,
-                                      deposition_sin, activation_start,
-                                      activation_end, new_material_temperature,
-                                      temperature);
+                                      deposition_sin, has_melted,
+                                      activation_start, activation_end,
+                                      new_material_temperature, temperature);
       }
     }
 
@@ -1058,6 +1104,17 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                 << std::endl;
     }
     timers[adamantine::add_material_activate].stop();
+
+    // If thermomechanics are being solved, mark cells that are above the
+    // solidus as cells that should have their reference temperature reset.
+    // This cannot be in the thermomechanics solve because some cells may go
+    // above the solidus and then back below the solidus in the time between
+    // thermomechanical solves.
+    if (use_thermal_physics && use_mechanical_physics)
+    {
+      thermal_physics->mark_has_melted(material_reference_temps[0],
+                                       temperature);
+    }
 
     // Time can be different than time + time_step if an embedded scheme is
     // used. Note that this is a problem when adding material because it
@@ -1077,25 +1134,29 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                                                    timers);
     }
 
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
     // Solve the (thermo-)mechanical problem
     if (use_mechanical_physics)
     {
-      if (use_thermal_physics)
+      // Since there is no history dependence in the model, only calculate
+      // mechanics when outputting
+      if (n_time_step % time_steps_output == 0)
       {
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-            temperature_host(temperature.get_partitioner());
-        temperature_host.import(temperature, dealii::VectorOperation::insert);
-        mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
-                                       temperature_host);
+        if (use_thermal_physics)
+        {
+          dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+              temperature_host(temperature.get_partitioner());
+          temperature_host.import(temperature, dealii::VectorOperation::insert);
+          mechanical_physics->setup_dofs(
+              thermal_physics->get_dof_handler(), temperature_host,
+              thermal_physics->get_has_melted_vector());
+        }
+        else
+        {
+          mechanical_physics->setup_dofs();
+        }
+        displacement = mechanical_physics->solve();
       }
-      else
-      {
-        mechanical_physics->setup_dofs();
-      }
-      displacement = mechanical_physics->solve();
     }
-#endif
 
 #if ADAMANTINE_DEBUG
     ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),
@@ -1133,12 +1194,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       {
         thermal_physics->set_state_to_material_properties();
       }
-      output_pvtu(post_processor, cycle, n_time_step, time, thermal_physics,
-                  temperature,
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
-                  mechanical_physics,
-#endif
-                  displacement, material_properties, timers);
+      output_pvtu(*post_processor, cycle, n_time_step, time, thermal_physics,
+                  temperature, mechanical_physics, displacement,
+                  material_properties, timers);
     }
     ++n_time_step;
   }
@@ -1146,7 +1204,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   CALI_CXX_MARK_LOOP_END(main_loop_id);
 #endif
 
-  post_processor.write_pvd();
+  post_processor->write_pvd();
 
   // This is only used for integration test
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
@@ -1155,13 +1213,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     {
       thermal_physics->get_affine_constraints().distribute(temperature);
     }
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
     if (use_mechanical_physics)
     {
       mechanical_physics->get_affine_constraints().distribute(displacement);
     }
-#endif
-
     return std::make_pair(temperature, displacement);
   }
   else
@@ -1174,12 +1229,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     {
       thermal_physics->get_affine_constraints().distribute(temperature_host);
     }
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
     if (use_mechanical_physics)
     {
       mechanical_physics->get_affine_constraints().distribute(displacement);
     }
-#endif
     return std::make_pair(temperature_host, displacement);
   }
 }
@@ -1500,10 +1553,8 @@ run_ensemble(MPI_Comm const &communicator,
   double time = 0.;
 
   // ----- Output the initial solution -----
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
   std::unique_ptr<adamantine::MechanicalPhysics<dim, MemorySpaceType>>
       mechanical_physics;
-#endif
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       displacement;
   for (unsigned int member = 0; member < ensemble_size; ++member)
@@ -1511,10 +1562,8 @@ run_ensemble(MPI_Comm const &communicator,
     output_pvtu(*post_processor_ensemble[member], cycle, n_time_step, time,
                 thermal_physics_ensemble[member],
                 solution_augmented_ensemble[member].block(base_state),
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
-                mechanical_physics,
-#endif
-                displacement, *material_properties_ensemble[member], timers);
+                mechanical_physics, displacement,
+                *material_properties_ensemble[member], timers);
   }
 
   // ----- Increment the time step -----
@@ -1626,8 +1675,12 @@ run_ensemble(MPI_Comm const &communicator,
     if (activation_start < activation_end)
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
+        // For now assume that all deposited material has never been melted
+        // (may or may not be reasonable)
+        std::vector<bool> has_melted(deposition_cos.size(), false);
+
         thermal_physics_ensemble[member]->add_material(
-            elements_to_activate, deposition_cos, deposition_sin,
+            elements_to_activate, deposition_cos, deposition_sin, has_melted,
             activation_start, activation_end, new_material_temperature[member],
             solution_augmented_ensemble[member].block(base_state));
 
@@ -1881,11 +1934,8 @@ run_ensemble(MPI_Comm const &communicator,
         output_pvtu(*post_processor_ensemble[member], cycle, n_time_step, time,
                     thermal_physics_ensemble[member],
                     solution_augmented_ensemble[member].block(base_state),
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
-                    mechanical_physics,
-#endif
-                    displacement, *material_properties_ensemble[member],
-                    timers);
+                    mechanical_physics, displacement,
+                    *material_properties_ensemble[member], timers);
       }
     }
 

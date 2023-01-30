@@ -14,6 +14,66 @@
 
 namespace tt = boost::test_tools;
 
+boost::property_tree::ptree basic_geometry_database()
+{
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 12e-3);
+  geometry_database.put("length_divisions", 1);
+  geometry_database.put("height", 6e-3);
+  geometry_database.put("height_divisions", 1);
+
+  return geometry_database;
+}
+
+boost::property_tree::ptree basic_material_properies_database()
+{
+  // MaterialProperty database
+  boost::property_tree::ptree material_property_database;
+  material_property_database.put("property_format", "polynomial");
+  material_property_database.put("n_materials", 1);
+  material_property_database.put("material_0.solid.density", 1.);
+  material_property_database.put("material_0.powder.density", 10.);
+  material_property_database.put("material_0.liquid.density", 1.);
+  material_property_database.put("material_0.solid.specific_heat", 1.);
+  material_property_database.put("material_0.powder.specific_heat", 2.);
+  material_property_database.put("material_0.liquid.specific_heat", 1.);
+  material_property_database.put("material_0.solid.thermal_conductivity_x", 1.);
+  material_property_database.put("material_0.solid.thermal_conductivity_z", 1.);
+  material_property_database.put("material_0.powder.thermal_conductivity_x",
+                                 1.);
+  material_property_database.put("material_0.powder.thermal_conductivity_z",
+                                 1.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_x",
+                                 1.);
+  material_property_database.put("material_0.liquid.thermal_conductivity_z",
+                                 1.);
+
+  return material_property_database;
+}
+
+boost::property_tree::ptree basic_input_database()
+{
+  boost::property_tree::ptree database;
+  // Source database
+  database.put("sources.n_beams", 1);
+  database.put("sources.beam_0.depth", 1e100);
+  database.put("sources.beam_0.diameter", 1e100);
+  database.put("sources.beam_0.max_power", 1e300);
+  database.put("sources.beam_0.scan_path_file", "scan_path.txt");
+  database.put("sources.beam_0.absorption_efficiency", 0.3);
+  database.put("sources.beam_0.type", "electron_beam");
+  database.put("sources.beam_0.scan_path_file",
+               "scan_path_test_thermal_physics.txt");
+  database.put("sources.beam_0.scan_path_file_format", "segment");
+  // Boundary database
+  database.put("boundary.type", "adiabatic");
+
+  // Time-stepping database
+  database.put("time_stepping.method", "rk_fourth_order");
+  return database;
+}
+
 template <typename MemorySpaceType>
 void thermal_2d(boost::property_tree::ptree &database, double time_step)
 {
@@ -185,55 +245,18 @@ void initial_temperature()
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
-  // Geometry database
-  boost::property_tree::ptree geometry_database;
-  geometry_database.put("import_mesh", false);
-  geometry_database.put("length", 12e-3);
-  geometry_database.put("length_divisions", 1);
-  geometry_database.put("height", 6e-3);
-  geometry_database.put("height_divisions", 1);
   // Build Geometry
+  auto geometry_database = basic_geometry_database();
   adamantine::Geometry<2> geometry(communicator, geometry_database);
-  // MaterialProperty database
-  boost::property_tree::ptree material_property_database;
-  material_property_database.put("property_format", "polynomial");
-  material_property_database.put("n_materials", 1);
-  material_property_database.put("material_0.solid.density", 1.);
-  material_property_database.put("material_0.powder.density", 10.);
-  material_property_database.put("material_0.liquid.density", 1.);
-  material_property_database.put("material_0.solid.specific_heat", 1.);
-  material_property_database.put("material_0.powder.specific_heat", 2.);
-  material_property_database.put("material_0.liquid.specific_heat", 1.);
-  material_property_database.put("material_0.solid.thermal_conductivity_x", 1.);
-  material_property_database.put("material_0.solid.thermal_conductivity_z", 1.);
-  material_property_database.put("material_0.powder.thermal_conductivity_x",
-                                 1.);
-  material_property_database.put("material_0.powder.thermal_conductivity_z",
-                                 1.);
-  material_property_database.put("material_0.liquid.thermal_conductivity_x",
-                                 1.);
-  material_property_database.put("material_0.liquid.thermal_conductivity_z",
-                                 1.);
+
   // Build MaterialProperty
+  auto material_property_database = basic_material_properies_database();
   adamantine::MaterialProperty<2, MemorySpaceType> material_properties(
       communicator, geometry.get_triangulation(), material_property_database);
-  boost::property_tree::ptree database;
-  // Source database
-  database.put("sources.n_beams", 1);
-  database.put("sources.beam_0.depth", 1e100);
-  database.put("sources.beam_0.diameter", 1e100);
-  database.put("sources.beam_0.max_power", 1e300);
-  database.put("sources.beam_0.scan_path_file", "scan_path.txt");
-  database.put("sources.beam_0.absorption_efficiency", 0.3);
-  database.put("sources.beam_0.type", "electron_beam");
-  database.put("sources.beam_0.scan_path_file",
-               "scan_path_test_thermal_physics.txt");
-  database.put("sources.beam_0.scan_path_file_format", "segment");
-  // Boundary database
-  database.put("boundary.type", "adiabatic");
 
-  // Time-stepping database
-  database.put("time_stepping.method", "rk_fourth_order");
+  // Other generic input parameters
+  auto database = basic_input_database();
+
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
       communicator, database, geometry, material_properties);
@@ -567,4 +590,76 @@ void convection_bcs()
   BOOST_TEST(min <= 20.);
   BOOST_TEST(max > 10.);
   BOOST_TEST(max <= 20.);
+}
+
+template <typename MemorySpaceType>
+void reference_temperature()
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  // Build Geometry
+  auto geometry_database = basic_geometry_database();
+  adamantine::Geometry<2> geometry(communicator, geometry_database);
+
+  // Build MaterialProperty
+  auto material_property_database = basic_material_properies_database();
+  adamantine::MaterialProperty<2, MemorySpaceType> material_properties(
+      communicator, geometry.get_triangulation(), material_property_database);
+
+  // Other generic input parameters
+  auto database = basic_input_database();
+
+  // Build ThermalPhysics
+  adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
+      communicator, database, geometry, material_properties);
+  physics.setup_dofs();
+  physics.update_material_deposition_orientation();
+  physics.compute_inverse_mass_matrix();
+
+  dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
+  physics.initialize_dof_vector(1000., solution);
+  physics.get_state_from_material_properties();
+
+  // Now check that the melting indicator works as expected
+  double tol = 1e-10;
+  std::vector<double> reference_temperatures({1500.0, 300.0});
+
+  auto has_melted = physics.get_has_melted_vector();
+
+  // Check that has_melted is the correct size
+  BOOST_TEST(has_melted.size() ==
+             geometry.get_triangulation().n_locally_owned_active_cells());
+
+  // Check that nothing is marked as melted
+  for (auto indicator : has_melted)
+    BOOST_CHECK(indicator == false);
+
+  // Mark cells above the melting temperature, expect none to be marked
+  physics.mark_has_melted(reference_temperatures[0], solution);
+  has_melted = physics.get_has_melted_vector();
+
+  for (auto indicator : has_melted)
+    BOOST_CHECK(indicator == false);
+
+  // Increase the temperature above the reference temperature, expect all to be
+  // marked now
+  for (unsigned int i = 0; i < solution.locally_owned_size(); ++i)
+    solution.local_element(i) = 1600.0;
+
+  physics.mark_has_melted(reference_temperatures[0], solution);
+  has_melted = physics.get_has_melted_vector();
+
+  for (auto indicator : has_melted)
+    BOOST_CHECK(indicator == true);
+
+  // Decrease the temperature back below the reference temperature, expect all
+  // to still be marked
+  for (unsigned int i = 0; i < solution.locally_owned_size(); ++i)
+    solution.local_element(i) = 1100.0;
+
+  physics.mark_has_melted(reference_temperatures[0], solution);
+  has_melted = physics.get_has_melted_vector();
+
+  for (auto indicator : has_melted)
+    BOOST_CHECK(indicator == true);
 }

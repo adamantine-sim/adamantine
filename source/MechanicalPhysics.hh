@@ -27,7 +27,7 @@ public:
   MechanicalPhysics(MPI_Comm const &communicator, unsigned int fe_degree,
                     Geometry<dim> &geometry,
                     MaterialProperty<dim, MemorySpaceType> &material_properties,
-                    double initial_temperature = -1.,
+                    std::vector<double> initial_temperatures,
                     bool include_gravity = false);
 
   /**
@@ -41,7 +41,8 @@ public:
   void setup_dofs(
       dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &temperature);
+          &temperature,
+      std::vector<bool> const &has_melted);
 
   /**
    * Solve the mechanical problem and return the solution.

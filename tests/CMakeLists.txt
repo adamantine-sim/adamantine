@@ -49,6 +49,7 @@ list(APPEND
 set(WEAK_FORMS_UNIT_TESTS "")
 list(APPEND
      WEAK_FORMS_UNIT_TESTS
+     test_integration_thermoelastic
      test_mechanical_operator
      test_mechanical_physics
      )
@@ -105,3 +106,5 @@ adamantine_COPY_INPUT_FILE(bare_plate_L_da_aug_ref_log.txt tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_da_aug_ref_data_0_0.csv tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_da_aug_ref_data_0_1.csv tests/data)
 adamantine_COPY_INPUT_FILE(bare_plate_L_da_augmented.info tests/data)
+adamantine_COPY_INPUT_FILE(thermoelastic_bare_plate.info tests/data)
+adamantine_COPY_INPUT_FILE(thermoelastic_bare_plate_scan_path.txt tests/data)

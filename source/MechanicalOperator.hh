@@ -39,7 +39,7 @@ public:
   MechanicalOperator(
       MPI_Comm const &communicator,
       MaterialProperty<dim, MemorySpaceType> &material_properties,
-      double initial_temperature = -1., bool include_gravity = false);
+      std::vector<double> reference_temperatures, bool include_gravity = false);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
@@ -74,7 +74,8 @@ public:
   void update_temperature(
       dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &temperature);
+          &temperature,
+      std::vector<bool> const &has_melted);
 
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const &
   rhs() const;
@@ -102,11 +103,10 @@ private:
    */
   bool _include_gravity = false;
   /**
-   * Initial temperature of the material. If the temperature is positive, we
-   * solve a themo-mechanical problem. Otherwise, we solve a mechanical only
-   * problem.
+   * List of initial temperatures of the material. If the length of the vector
+   * is nonzero, we solve a thermo-mechanical problem.
    */
-  double _initial_temperature = -1.;
+  std::vector<double> _reference_temperatures;
   /**
    * Reference to the MaterialProperty from MechanicalPhysics.
    */
@@ -141,6 +141,12 @@ private:
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       _temperature;
+  /**
+   * Indicator variable for whether a point has ever been above the solidus. The
+   * value is false for material that has not yet melted and true for material
+   * that has melted.
+   */
+  std::vector<bool> _has_melted;
 };
 
 template <int dim, typename MemorySpaceType>

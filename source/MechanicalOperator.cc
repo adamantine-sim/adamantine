@@ -25,9 +25,9 @@ template <int dim, typename MemorySpaceType>
 MechanicalOperator<dim, MemorySpaceType>::MechanicalOperator(
     MPI_Comm const &communicator,
     MaterialProperty<dim, MemorySpaceType> &material_properties,
-    double const initial_temperature, bool include_gravity)
+    std::vector<double> const reference_temperatures, bool include_gravity)
     : _communicator(communicator), _include_gravity(include_gravity),
-      _initial_temperature(initial_temperature),
+      _reference_temperatures(reference_temperatures),
       _material_properties(material_properties)
 {
 }
@@ -84,10 +84,12 @@ template <int dim, typename MemorySpaceType>
 void MechanicalOperator<dim, MemorySpaceType>::update_temperature(
     dealii::DoFHandler<dim> const &thermal_dof_handler,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-        &temperature)
+        &temperature,
+    std::vector<bool> const &has_melted)
 {
   _thermal_dof_handler = &thermal_dof_handler;
   _temperature = temperature;
+  _has_melted = has_melted;
 }
 
 template <int dim, typename MemorySpaceType>
@@ -167,10 +169,10 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
   std::unique_ptr<dealii::hp::FEValues<dim>> temperature_hp_fe_values;
   // Now add the appropriate linear form(s) (ie RHS)
 
-  // If the initial temperature is positive, we solve the thermoelastic problem.
-  if (_initial_temperature >= 0.)
+  // If the list of reference temperatures is non-empty, we solve the
+  // thermoelastic problem.
+  if (_reference_temperatures.size() > 0)
   {
-
     // Create a functor to evaluate the thermal expansion
     temperature_hp_fe_values = std::make_unique<dealii::hp::FEValues<dim>>(
         _thermal_dof_handler->get_fe_collection(), *_q_collection,
@@ -178,6 +180,8 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
 
     dealiiWeakForms::WeakForms::TensorFunctor<2, dim> const expansion_coeff(
         "B", "\\mathcal{B}");
+
+    const double initial_temperature = _reference_temperatures.back();
 
     auto expansion_tensor = expansion_coeff.template value<double, dim>(
         [&](dealii::FEValuesBase<dim> const &fe_values,
@@ -188,12 +192,26 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
           // quadrature point using the temperature DoFHandler.
           auto const &cell = fe_values.get_cell();
 
+          // Get the appropriate reference temperature for the cell. If the cell
+          // is not in the unmelted substrate, the reference temperature depends
+          // on the material.
+          double reference_temperature;
+          if (_has_melted[cell->active_cell_index()])
+          {
+            reference_temperature =
+                _reference_temperatures[cell->material_id()];
+          }
+          else
+          {
+            reference_temperature = initial_temperature;
+          }
+
           // Since we use a Triangulation cell to reinitialize the hp::FEValues,
           // it will automatically choose the zero-th finite element.
           temperature_hp_fe_values->reinit(cell);
           auto &temperature_fe_values =
               temperature_hp_fe_values->get_present_fe_values();
-          double delta_T = -_initial_temperature;
+          double delta_T = -reference_temperature;
 
           dealii::DoFAccessor<dim, dim, dim, false> cell_dof(
               &(cell->get_triangulation()), cell->level(), cell->index(),

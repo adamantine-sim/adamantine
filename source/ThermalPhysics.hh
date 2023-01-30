@@ -52,8 +52,8 @@ public:
           &elements_to_activate,
       std::vector<double> const &new_deposition_cos,
       std::vector<double> const &new_deposition_sin,
-      unsigned int const activation_start, unsigned int const activation_end,
-      double const initial_temperature,
+      std::vector<bool> &new_has_melted, unsigned int const activation_start,
+      unsigned int const activation_end, double const initial_temperature,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
       override;
 
@@ -97,6 +97,17 @@ public:
   double get_deposition_cos(unsigned int const i) const override;
 
   double get_deposition_sin(unsigned int const i) const override;
+
+  void
+  mark_has_melted(const double threshold_temperature,
+                  dealii::LA::distributed::Vector<double, MemorySpaceType> const
+                      temperature) override;
+
+  std::vector<bool> get_has_melted_vector() const override;
+
+  void set_has_melted_vector(std::vector<bool> const &has_melted) override;
+
+  bool get_has_melted(unsigned int const i) const override;
 
   dealii::DoFHandler<dim> &get_dof_handler() override;
 
@@ -199,6 +210,12 @@ private:
    */
   std::vector<double> _deposition_sin;
   /**
+   * Indicator variable for whether a point has ever been above the solidus. The
+   * value is false for material that has not yet melted and true for material
+   * that has melted.
+   */
+  std::vector<bool> _has_melted;
+  /**
    * Associated material properties.
    */
   MaterialProperty<dim, MemorySpaceType> &_material_properties;
@@ -266,6 +283,32 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType,
                QuadratureType>::get_deposition_sin(unsigned int const i) const
 {
   return _deposition_sin[i];
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline std::vector<bool>
+ThermalPhysics<dim, fe_degree, MemorySpaceType,
+               QuadratureType>::get_has_melted_vector() const
+{
+  return _has_melted;
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+    set_has_melted_vector(std::vector<bool> const &has_melted)
+{
+  _has_melted = has_melted;
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+inline bool
+ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::get_has_melted(
+    unsigned int const i) const
+{
+  return _has_melted[i];
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,

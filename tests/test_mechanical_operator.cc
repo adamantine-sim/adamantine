@@ -99,8 +99,11 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
   q_collection.push_back(dealii::QGauss<dim>(3));
   q_collection.push_back(dealii::QGauss<dim>(1));
 
+  std::vector<double> empty_vector;
+
   adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
-      mechanical_operator(communicator, material_properties, -1, true);
+      mechanical_operator(communicator, material_properties, empty_vector,
+                          true);
   mechanical_operator.reinit(dof_handler, affine_constraints, q_collection);
 
   // deal.II reference implementation
@@ -290,9 +293,13 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
       thermal_dof_handler.locally_owned_dofs(), communicator);
   temperature = 1.;
   // Create the MechanicalOperator
+  std::vector<double> reference_temperatures = {0.0, 0.0};
   adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
-      mechanical_operator(communicator, material_properties, 0., true);
-  mechanical_operator.update_temperature(thermal_dof_handler, temperature);
+      mechanical_operator(communicator, material_properties,
+                          reference_temperatures, true);
+  std::vector<bool> has_melted(triangulation.n_active_cells(), false);
+  mechanical_operator.update_temperature(thermal_dof_handler, temperature,
+                                         has_melted);
   mechanical_operator.reinit(mechanical_dof_handler,
                              mechanical_affine_constraints,
                              mechanical_q_collection);

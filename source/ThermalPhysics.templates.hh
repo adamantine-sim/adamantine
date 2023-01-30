@@ -521,6 +521,8 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
       // sin = 0
       _deposition_cos.push_back(1.);
       _deposition_sin.push_back(0.);
+      // Set the initial material as non-melted
+      _has_melted.push_back(false);
     }
     else
       cell->set_active_fe_index(1);
@@ -570,13 +572,69 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
 void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+    mark_has_melted(
+        const double threshold_temperature,
+        dealii::LA::distributed::Vector<double, MemorySpaceType> const
+            temperature)
+{
+  auto dofs_per_cell = _dof_handler.get_fe().dofs_per_cell;
+
+  dealii::hp::FEValues<dim> hp_fe_values(
+      _dof_handler.get_fe_collection(), _q_collection,
+      dealii::UpdateFlags::update_values |
+          dealii::UpdateFlags::update_JxW_values);
+
+  unsigned int const n_q_points = _q_collection.max_n_quadrature_points();
+
+  for (auto const &cell : dealii::filter_iterators(
+           _dof_handler.active_cell_iterators(),
+           dealii::IteratorFilters::LocallyOwnedCell(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+  {
+    if (!_has_melted[cell->active_cell_index()])
+    {
+      hp_fe_values.reinit(cell);
+      dealii::FEValues<dim> const &fe_values =
+          hp_fe_values.get_present_fe_values();
+
+      std::vector<dealii::types::global_dof_index> local_dof_indices(
+          fe_values.dofs_per_cell);
+      cell->get_dof_indices(local_dof_indices);
+
+      double cell_temperature = 0.0;
+      double cell_volume = 0.0;
+      for (unsigned int i = 0; i < dofs_per_cell; ++i)
+      {
+        for (unsigned int q = 0; q < n_q_points; ++q)
+        {
+          cell_temperature += fe_values.shape_value(i, q) *
+                              temperature(local_dof_indices[i]) *
+                              fe_values.JxW(q);
+          cell_volume += fe_values.shape_value(i, q) * fe_values.JxW(q);
+        }
+      }
+      cell_temperature /= cell_volume;
+
+      // Set the indicator that this cell has melted
+      if (cell_temperature > threshold_temperature)
+      {
+        _has_melted[cell->active_cell_index()] = true;
+      }
+    }
+  }
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     add_material(
         std::vector<std::vector<
             typename dealii::DoFHandler<dim>::active_cell_iterator>> const
             &elements_to_activate,
         std::vector<double> const &new_deposition_cos,
         std::vector<double> const &new_deposition_sin,
-        unsigned int const activation_start, unsigned int const activation_end,
+        std::vector<bool> &new_has_melted, unsigned int const activation_start,
+        unsigned int const activation_end,
         double const new_material_temperature,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
@@ -591,14 +649,16 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 
   _thermal_operator->clear();
   // The data on each cell is stored in the following order: solution, direction
-  // of deposition (cosine and sine), and state ratio.
+  // of deposition (cosine and sine), prior melting indictor, and state ratio.
   std::vector<std::vector<double>> data_to_transfer;
   unsigned int const n_dofs_per_cell = _dof_handler.get_fe().n_dofs_per_cell();
   unsigned int const direction_data_size = 2;
+  unsigned int const phase_history_data_size = 1;
   unsigned int constexpr n_material_states =
       static_cast<unsigned int>(adamantine::MaterialState::SIZE);
   unsigned int const data_size_per_cell =
-      n_dofs_per_cell + direction_data_size + n_material_states;
+      n_dofs_per_cell + direction_data_size + phase_history_data_size +
+      n_material_states;
   dealii::Vector<double> cell_solution(n_dofs_per_cell);
   std::vector<double> dummy_cell_data(data_size_per_cell,
                                       std::numeric_limits<double>::infinity());
@@ -634,15 +694,22 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     {
       if (cell->active_fe_index() == 0)
       {
-        std::vector<double> cell_data(direction_data_size + n_material_states);
+        std::vector<double> cell_data(
+            direction_data_size + phase_history_data_size + n_material_states);
         cell->get_dof_values(rw_solution, cell_solution);
         cell_data.insert(cell_data.begin(), cell_solution.begin(),
                          cell_solution.end());
         cell_data[n_dofs_per_cell] = _deposition_cos[cell_id];
         cell_data[n_dofs_per_cell + 1] = _deposition_sin[cell_id];
+
+        if (_has_melted[cell_id])
+          cell_data[n_dofs_per_cell + direction_data_size] = 1.0;
+        else
+          cell_data[n_dofs_per_cell + direction_data_size] = 0.0;
+
         for (unsigned int i = 0; i < n_material_states; ++i)
-          cell_data[n_dofs_per_cell + direction_data_size + i] =
-              state_host_view(i, cell_id);
+          cell_data[n_dofs_per_cell + direction_data_size +
+                    phase_history_data_size + i] = state_host_view(i, cell_id);
         data_to_transfer.push_back(cell_data);
 
         ++cell_id;
@@ -651,8 +718,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
       {
         std::vector<double> cell_data = dummy_cell_data;
         for (unsigned int i = 0; i < n_material_states; ++i)
-          cell_data[n_dofs_per_cell + direction_data_size + i] =
-              state_host_view(i, cell_id);
+          cell_data[n_dofs_per_cell + direction_data_size +
+                    phase_history_data_size + i] = state_host_view(i, cell_id);
         data_to_transfer.push_back(cell_data);
       }
     }
@@ -676,6 +743,12 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
             new_deposition_cos[i];
         data_to_transfer[cell_to_id[cell]][n_dofs_per_cell + 1] =
             new_deposition_sin[i];
+
+        if (data_to_transfer[cell_to_id[cell]]
+                            [n_dofs_per_cell + direction_data_size] > 0.5)
+          new_has_melted[i] = true;
+        else
+          new_has_melted[i] = false;
       }
     }
   }
@@ -723,6 +796,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   state_host_view.reinit(material_state_host);
   _deposition_cos.clear();
   _deposition_sin.clear();
+  _has_melted.clear();
   cell_id = 0;
   active_cell_id = 0;
   for (auto const &cell : _dof_handler.active_cell_iterators())
@@ -744,12 +818,18 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
             transferred_data[active_cell_id][n_dofs_per_cell]);
         _deposition_sin.push_back(
             transferred_data[active_cell_id][n_dofs_per_cell + 1]);
+        if (transferred_data[active_cell_id]
+                            [n_dofs_per_cell + direction_data_size] > 0.5)
+          _has_melted.push_back(true);
+        else
+          _has_melted.push_back(false);
       }
       for (unsigned int i = 0; i < n_material_states; ++i)
       {
         state_host_view(i, cell_id) =
             transferred_data[active_cell_id]
-                            [n_dofs_per_cell + direction_data_size + i];
+                            [n_dofs_per_cell + direction_data_size +
+                             phase_history_data_size + i];
       }
       ++cell_id;
     }
