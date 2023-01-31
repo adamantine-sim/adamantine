@@ -1,4 +1,4 @@
-/* Copyright (c) 2022, the adamantine authors.
+/* Copyright (c) 2022 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -64,6 +64,10 @@ private:
    * Associated Geometry.
    */
   Geometry<dim> &_geometry;
+  /**
+   * Associated MaterialProperty.
+   */
+  MaterialProperty<dim, MemorySpaceType> &_material_properties;
   /**
    * Associated FECollection.
    */

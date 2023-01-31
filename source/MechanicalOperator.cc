@@ -1,4 +1,4 @@
-/* Copyright (c) 2022, the adamantine authors.
+/* Copyright (c) 2022 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -153,7 +153,8 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
 
   // FIXME the formulation below is more widespread but it doesn't work in
   // dealii-weak_forms yet. Keeping the implementation to use it in the
-  // future. assembler +=
+  // future.
+  // assembler +=
   //     dealiiWeakForms::WeakForms::bilinear_form(test_grad, lambda + mu,
   //                                               trial_grad)
   //         .dV() +

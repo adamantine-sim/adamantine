@@ -862,12 +862,15 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
                 }
                 else
                 {
-                  mechanical_property_tables_host_view(
-                      material_id, p - _n_thermal_state_properties, i, 0) =
-                      std::stod(t_v[0]);
-                  mechanical_property_tables_host_view(
-                      material_id, p - _n_thermal_state_properties, i, 1) =
-                      std::stod(t_v[1]);
+                  if (state == static_cast<unsigned int>(MaterialState::solid))
+                  {
+                    mechanical_property_tables_host_view(
+                        material_id, p - _n_thermal_state_properties, i, 0) =
+                        std::stod(t_v[0]);
+                    mechanical_property_tables_host_view(
+                        material_id, p - _n_thermal_state_properties, i, 1) =
+                        std::stod(t_v[1]);
+                  }
                 }
               }
               // fill the rest  with the last value
@@ -884,16 +887,19 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
                 }
                 else
                 {
-                  mechanical_property_tables_host_view(
-                      material_id, p - _n_thermal_state_properties, i, 0) =
-                      mechanical_property_tables_host_view(
-                          material_id, p - _n_thermal_state_properties, i - 1,
-                          0);
-                  mechanical_property_tables_host_view(
-                      material_id, p - _n_thermal_state_properties, i, 1) =
-                      mechanical_property_tables_host_view(
-                          material_id, p - _n_thermal_state_properties, i - 1,
-                          1);
+                  if (state == static_cast<unsigned int>(MaterialState::solid))
+                  {
+                    mechanical_property_tables_host_view(
+                        material_id, p - _n_thermal_state_properties, i, 0) =
+                        mechanical_property_tables_host_view(
+                            material_id, p - _n_thermal_state_properties, i - 1,
+                            0);
+                    mechanical_property_tables_host_view(
+                        material_id, p - _n_thermal_state_properties, i, 1) =
+                        mechanical_property_tables_host_view(
+                            material_id, p - _n_thermal_state_properties, i - 1,
+                            1);
+                  }
                 }
               }
             }

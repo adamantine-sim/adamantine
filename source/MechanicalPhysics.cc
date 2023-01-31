@@ -1,4 +1,4 @@
-/* Copyright (c) 2022, the adamantine authors.
+/* Copyright (c) 2022 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -23,7 +23,8 @@ MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
     Geometry<dim> &geometry,
     MaterialProperty<dim, MemorySpaceType> &material_properties,
     std::vector<double> reference_temperatures, bool include_gravity)
-    : _geometry(geometry), _dof_handler(_geometry.get_triangulation()),
+    : _geometry(geometry), _material_properties(material_properties),
+      _dof_handler(_geometry.get_triangulation()),
       _include_gravity(include_gravity)
 {
   // Create the FECollection
@@ -36,10 +37,26 @@ MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
   _q_collection.push_back(dealii::QGauss<dim>(fe_degree + 1));
   _q_collection.push_back(dealii::QGauss<dim>(1));
 
+  // Solve the mechanical problem only on the part of the domain that has solid
+  // material.
+  for (auto const &cell :
+       dealii::filter_iterators(_dof_handler.active_cell_iterators(),
+                                dealii::IteratorFilters::LocallyOwnedCell()))
+  {
+    if (_material_properties.get_state_ratio(cell, MaterialState::solid) > 0.99)
+    {
+      cell->set_active_fe_index(0);
+    }
+    else
+    {
+      cell->set_active_fe_index(1);
+    }
+  }
+
   // Create the mechanical operator
   _mechanical_operator =
       std::make_unique<MechanicalOperator<dim, MemorySpaceType>>(
-          communicator, material_properties, reference_temperatures,
+          communicator, _material_properties, reference_temperatures,
           include_gravity);
 }
 
@@ -77,6 +94,32 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
 {
   _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
                                            has_melted);
+  // Update the active fe indices
+  for (auto const &cell :
+       dealii::filter_iterators(_dof_handler.active_cell_iterators(),
+                                dealii::IteratorFilters::LocallyOwnedCell()))
+  {
+    if (_material_properties.get_state_ratio(cell, MaterialState::solid) > 0.99)
+    {
+      // Only enable the cell if it is also enabled for the thermal simulation
+      // Get the thermal DoFHandler cell iterator
+      dealii::DoFCellAccessor<dim, dim, false> thermal_cell(
+          &_dof_handler.get_triangulation(), cell->level(), cell->index(),
+          &thermal_dof_handler);
+      if (thermal_cell.active_fe_index() == 0)
+      {
+        cell->set_active_fe_index(0);
+      }
+      else
+      {
+        cell->set_active_fe_index(1);
+      }
+    }
+    else
+    {
+      cell->set_active_fe_index(1);
+    }
+  }
   setup_dofs();
 }
 

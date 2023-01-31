@@ -250,6 +250,68 @@ BOOST_AUTO_TEST_CASE(elastostatic)
     BOOST_CHECK_SMALL(solution[i] - reference_solution[i], tolerance);
 }
 
+BOOST_AUTO_TEST_CASE(fe_nothing)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  // Geometry database
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 12);
+  geometry_database.put("length_divisions", 6);
+  geometry_database.put("height", 8);
+  geometry_database.put("height_divisions", 4);
+  geometry_database.put("width", 6);
+  geometry_database.put("width_divisions", 3);
+  // Build Geometry
+  adamantine::Geometry<3> geometry(communicator, geometry_database);
+  auto const &triangulation = geometry.get_triangulation();
+  for (auto cell : triangulation.cell_iterators())
+  {
+    cell->set_material_id(0);
+    if (cell->center()[2] < 6.)
+    {
+      cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
+    }
+    else
+    {
+      cell->set_user_index(static_cast<int>(adamantine::MaterialState::powder));
+    }
+  }
+  // Create the MaterialProperty
+  boost::property_tree::ptree material_database;
+  material_database.put("property_format", "polynomial");
+  material_database.put("n_materials", 1);
+  material_database.put("material_0.solid.density", 1.);
+  material_database.put("material_0.solid.lame_first_parameter", 2.);
+  material_database.put("material_0.solid.lame_second_parameter", 3.);
+  adamantine::MaterialProperty<3, dealii::MemorySpace::Host>
+      material_properties(communicator, triangulation, material_database);
+  // Build MechanicalPhysics
+  unsigned int const fe_degree = 1;
+  std::vector<double> empty_vector;
+  adamantine::MechanicalPhysics<3, dealii::MemorySpace::Host>
+      mechanical_physics(communicator, fe_degree, geometry, material_properties,
+                         empty_vector, true);
+  mechanical_physics.setup_dofs();
+  auto solution = mechanical_physics.solve();
+
+  // Reference computation
+  ElastoStaticity elasto_staticity;
+  elasto_staticity.setup_system();
+  elasto_staticity.assemble_system();
+  auto reference_solution = elasto_staticity.solve();
+
+  double const tolerance = 2e-9;
+  BOOST_TEST(solution.size() == reference_solution.size());
+
+  // Use BOOST_CHECK_SMALL so that minor deviations from zero related to finite
+  // solver tolerances don't trigger failures. The largest solution values are
+  // O(1), so the tolerance is strict enough to catch meaningful differences.
+  for (unsigned int i = 0; i < reference_solution.size(); ++i)
+    BOOST_CHECK_SMALL(solution[i] - reference_solution[i], tolerance);
+}
+
 template <int dim>
 class InitialValueT : public dealii::Function<dim>
 {
