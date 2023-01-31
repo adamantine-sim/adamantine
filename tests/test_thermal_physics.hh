@@ -621,7 +621,6 @@ void reference_temperature()
   physics.get_state_from_material_properties();
 
   // Now check that the melting indicator works as expected
-  double tol = 1e-10;
   std::vector<double> reference_temperatures({1500.0, 300.0});
 
   auto has_melted = physics.get_has_melted_vector();
