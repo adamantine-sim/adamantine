@@ -101,7 +101,19 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
   {
     if (_material_properties.get_state_ratio(cell, MaterialState::solid) > 0.99)
     {
-      cell->set_active_fe_index(0);
+      // Only enable the cell if it is also enabled for the thermal simulation
+      // Get the thermal DoFHandler cell iterator
+      dealii::DoFCellAccessor<dim, dim, false> thermal_cell(
+          &_dof_handler.get_triangulation(), cell->level(), cell->index(),
+          &thermal_dof_handler);
+      if (thermal_cell.active_fe_index() == 0)
+      {
+        cell->set_active_fe_index(0);
+      }
+      else
+      {
+        cell->set_active_fe_index(1);
+      }
     }
     else
     {
