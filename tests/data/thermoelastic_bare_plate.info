@@ -33,7 +33,6 @@ discretization
   mechanical 
   {
     fe_degree 1
-    quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
   }
 }
 
