@@ -761,7 +761,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
                                                          _deposition_sin);
 
   // Communicate the results.
-  solution.import(rw_solution, dealii::VectorOperation::min);
+  solution.import(rw_solution, dealii::VectorOperation::insert);
 
   // Set the value to the newly create DoFs. Here we need to be careful with the
   // hanging nodes. When there is a hanging node, the dofs at the vertices are

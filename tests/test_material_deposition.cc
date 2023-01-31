@@ -282,7 +282,7 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
   // Boundary database
-  database.put("boundary.type", "radiative");
+  database.put("boundary.type", "adiabatic");
 
   // Build ThermalPhysics
   adamantine::ThermalPhysics<dim, dim, dealii::MemorySpace::Host,
