@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -1143,6 +1143,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       {
         if (use_thermal_physics)
         {
+          // Update the material state
+          thermal_physics->set_state_to_material_properties();
           dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
               temperature_host(temperature.get_partitioner());
           temperature_host.import(temperature, dealii::VectorOperation::insert);
