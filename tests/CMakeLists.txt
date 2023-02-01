@@ -18,7 +18,6 @@ list(APPEND
      test_thermal_operator
      test_timer
      test_utils
-     test_integration_3d
      test_integration_3d_amr
      test_integration_da
      test_integration_da_augmented
@@ -30,6 +29,7 @@ list(APPEND
      MPI_UNIT_TESTS
      test_experimental_data
      test_integration_2d
+     test_integration_3d
      test_material_deposition
      test_thermal_physics
      test_ensemble_management
@@ -84,6 +84,8 @@ adamantine_COPY_INPUT_FILE(integration_2d.info tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d_ensemble.info tests/data)
 adamantine_COPY_INPUT_FILE(integration_2d_gold.txt tests/data)
 adamantine_COPY_INPUT_FILE(integration_3d_gold.txt tests/data)
+adamantine_COPY_INPUT_FILE(integration_3d_gold_0.txt tests/data)
+adamantine_COPY_INPUT_FILE(integration_3d_gold_1.txt tests/data)
 adamantine_COPY_INPUT_FILE(material_deposition_2d.txt tests/data)
 adamantine_COPY_INPUT_FILE(material_deposition_3d.txt tests/data)
 adamantine_COPY_INPUT_FILE(material_path_test_material_deposition.txt tests/data)
