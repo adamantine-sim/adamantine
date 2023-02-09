@@ -28,6 +28,7 @@ BOOST_AUTO_TEST_CASE(integration_thermoelastic, *utf::tolerance(1.0e-5))
                            "The file " + filename + " does not exist.");
   boost::property_tree::ptree database;
   boost::property_tree::info_parser::read_info(filename, database);
+  database.put("materials.material_0.solid.thermal_expansion_coef", 17.2e-3);
 
   auto [temperature, displacement] =
       run<3, dealii::MemorySpace::Host>(communicator, database, timers);
@@ -38,7 +39,7 @@ BOOST_AUTO_TEST_CASE(integration_thermoelastic, *utf::tolerance(1.0e-5))
   // To generate a new gold solution
   // std::cout << "dis l2:" << displacement.l2_norm() << std::endl;
 
-  BOOST_TEST(displacement.l2_norm() == 0.000211621);
+  BOOST_TEST(displacement.l2_norm() == 0.21537566016824577);
 }
 
 BOOST_AUTO_TEST_CASE(integration_thermoelastic_add_material,
