@@ -104,16 +104,9 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
       // Only enable the cell if it is also enabled for the thermal simulation
       // Get the thermal DoFHandler cell iterator
       dealii::DoFCellAccessor<dim, dim, false> thermal_cell(
-          &_dof_handler.get_triangulation(), cell->level(), cell->index(),
+          &(_dof_handler.get_triangulation()), cell->level(), cell->index(),
           &thermal_dof_handler);
-      if (thermal_cell.active_fe_index() == 0)
-      {
-        cell->set_active_fe_index(0);
-      }
-      else
-      {
-        cell->set_active_fe_index(1);
-      }
+      cell->set_active_fe_index(thermal_cell.active_fe_index());
     }
     else
     {

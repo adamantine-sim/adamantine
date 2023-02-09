@@ -89,10 +89,7 @@ materials
       thermal_conductivity_x 37.3 ; [W/m k]
       thermal_conductivity_y 37.3 ; [W/m k]
       thermal_conductivity_z 37.3 ; [W/m k]
-      
-      lame_first_parameter 1.0e9 ; [Pa]
-      lame_second_parameter 1.0e9 ; [Pa]
-      thermal_expansion_coef 17.2e-6 ; [1/K]
+
       ; Not all three states need to define the same properties or to exist
     }
 

@@ -214,14 +214,19 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
               temperature_hp_fe_values->get_present_fe_values();
           double delta_T = -reference_temperature;
 
-          dealii::DoFAccessor<dim, dim, dim, false> cell_dof(
+          dealii::DoFCellAccessor<dim, dim, false> thermal_cell(
               &(cell->get_triangulation()), cell->level(), cell->index(),
               _thermal_dof_handler);
+          // If the thermal cell uses FE_Nothing, we exit
+          if (thermal_cell.active_fe_index() == 1)
+          {
+            return dealii::Physics::Elasticity::StandardTensors<dim>::I;
+          }
 
           std::vector<dealii::types::global_dof_index> local_dof_indices(
               temperature_fe_values.dofs_per_cell);
 
-          cell_dof.get_dof_indices(local_dof_indices);
+          thermal_cell.get_dof_indices(local_dof_indices);
 
           for (unsigned int i = 0; i < temperature_fe_values.dofs_per_cell; ++i)
           {
