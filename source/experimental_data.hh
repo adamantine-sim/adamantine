@@ -37,6 +37,15 @@ std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
     boost::property_tree::ptree const &experiment_database);
 
 /**
+ * Get the pair of vectors that map the DOF indices to the
+ * support points.
+ */
+template <int dim>
+std::pair<std::vector<dealii::types::global_dof_index>,
+          std::vector<dealii::Point<dim>>>
+get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler);
+
+/**
  * Get the pair of vectors that map the experimental observation indices to the
  * dof indices.
  */

@@ -214,9 +214,9 @@ std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
 }
 
 template <int dim>
-std::pair<std::vector<int>, std::vector<int>>
-get_expt_to_dof_mapping(PointsValues<dim> const &points_values,
-                        dealii::DoFHandler<dim> const &dof_handler)
+std::pair<std::vector<dealii::types::global_dof_index>,
+          std::vector<dealii::Point<dim>>>
+get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler)
 {
   // First we need to get all the support points and the associated dof
   // indices
@@ -280,6 +280,16 @@ get_expt_to_dof_mapping(PointsValues<dim> const &points_values,
     dof_indices[pos] = map_it->first;
     support_points[pos] = map_it->second;
   }
+
+  return {dof_indices, support_points};
+}
+
+template <int dim>
+std::pair<std::vector<int>, std::vector<int>>
+get_expt_to_dof_mapping(PointsValues<dim> const &points_values,
+                        dealii::DoFHandler<dim> const &dof_handler)
+{
+  auto [dof_indices, support_points] = get_dof_to_support_mapping(dof_handler);
 
   // Perform the search
   dealii::ArborXWrappers::BVH bvh(support_points);
@@ -435,6 +445,7 @@ RayTracing::RayTracing(boost::property_tree::ptree const &experiment_database)
       std::ifstream file;
       file.open(filename);
       std::string line;
+      std::getline(file, line); // skip the header
       while (std::getline(file, line))
       {
         std::size_t pos = 0;

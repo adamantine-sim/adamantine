@@ -213,8 +213,7 @@ DataAssimilator::apply_kalman_gain(
   // members in parallel
   std::transform(
       perturbed_innovation.begin(), perturbed_innovation.end(), output.begin(),
-      [&](dealii::Vector<double> entry)
-      {
+      [&](dealii::Vector<double> entry) {
         dealii::SolverGMRES<dealii::Vector<double>> HPH_plus_R_inv_solver(
             solver_control, additional_data);
 
@@ -285,23 +284,7 @@ void DataAssimilator::update_covariance_sparsity_pattern(
   _parameter_size = parameter_size;
   unsigned int augmented_state_size = _sim_size + _parameter_size;
 
-  // Find the dofs that are within the specified distance of each others.
-  std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
-
-  dealii::DoFTools::map_dofs_to_support_points(
-      dealii::StaticMappingQ1<dim>::mapping, dof_handler, indices_points);
-
-  // Change the format to something that can be used by ArborX
-  std::vector<dealii::types::global_dof_index> dof_indices(
-      indices_points.size());
-  std::vector<dealii::Point<dim>> support_points(indices_points.size());
-  unsigned int pos = 0;
-  for (auto map_it = indices_points.begin(); map_it != indices_points.end();
-       ++map_it, ++pos)
-  {
-    dof_indices[pos] = map_it->first;
-    support_points[pos] = map_it->second;
-  }
+  auto [dof_indices, support_points] = get_dof_to_support_mapping(dof_handler);
 
   // Perform the spatial search using ArborX
   auto communicator = dof_handler.get_communicator();
