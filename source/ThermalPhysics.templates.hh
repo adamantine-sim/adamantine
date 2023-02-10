@@ -585,13 +585,13 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
           dealii::UpdateFlags::update_JxW_values);
 
   unsigned int const n_q_points = _q_collection.max_n_quadrature_points();
-
+  unsigned int cell_id = 0;
   for (auto const &cell : dealii::filter_iterators(
            _dof_handler.active_cell_iterators(),
            dealii::IteratorFilters::LocallyOwnedCell(),
            dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
   {
-    if (!_has_melted[cell->active_cell_index()])
+    if (!_has_melted[cell_id])
     {
       hp_fe_values.reinit(cell);
       dealii::FEValues<dim> const &fe_values =
@@ -621,6 +621,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         _has_melted[cell->active_cell_index()] = true;
       }
     }
+    ++cell_id;
   }
 }
 
