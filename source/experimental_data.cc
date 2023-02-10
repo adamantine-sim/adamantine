@@ -218,9 +218,6 @@ std::pair<std::vector<int>, std::vector<int>>
 get_expt_to_dof_mapping(PointsValues<dim> const &points_values,
                         dealii::DoFHandler<dim> const &dof_handler)
 {
-  // NOTE: This may not be the best way to store/move this information. We may
-  // want to consider changing this to pairs of dof indices and field values.
-
   // First we need to get all the support points and the associated dof
   // indices
   std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;

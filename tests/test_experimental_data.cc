@@ -269,7 +269,7 @@ BOOST_AUTO_TEST_CASE(project_ray_data_on_mesh, *utf::tolerance(1e-12))
 
     BOOST_CHECK(points_values.points.size() == 58938);
 
-    // Get the indices and offsets
+    // Get the experiment to dof mapping
     auto expt_to_dof_mapping =
         adamantine::get_expt_to_dof_mapping<3>(points_values, dof_handler);
 
