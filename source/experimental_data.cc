@@ -214,9 +214,8 @@ std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
 }
 
 template <int dim>
-std::tuple<std::vector<dealii::types::global_dof_index>,
-           std::pair<std::vector<int>, std::vector<int>>>
-get_indices_and_offsets(PointsValues<dim> const &points_values,
+std::pair<std::vector<int>, std::vector<int>>
+get_expt_to_dof_mapping(PointsValues<dim> const &points_values,
                         dealii::DoFHandler<dim> const &dof_handler)
 {
   // NOTE: This may not be the best way to store/move this information. We may
@@ -268,9 +267,6 @@ get_indices_and_offsets(PointsValues<dim> const &points_values,
           fe_values.get_quadrature_points();
       for (unsigned int i = 0; i < cell->get_fe().n_dofs_per_cell(); ++i)
       {
-        const unsigned int dof_comp =
-            cell->get_fe().system_to_component_index(i).first;
-
         indices_points[local_dof_indices[i]] = points[i];
       }
     }
@@ -294,53 +290,36 @@ get_indices_and_offsets(PointsValues<dim> const &points_values,
                                                            1);
   auto [indices, offset] = bvh.query(pt_nearest);
 
-  // Return the indices and offsets, which can be used to map the PointsValues
-  // vector to entries in the solution vector
-  return {dof_indices, {indices, offset}};
-}
-
-template <int dim>
-std::pair<std::vector<int>, std::vector<int>> set_with_experimental_data(
-    PointsValues<dim> const &points_values,
-    dealii::DoFHandler<dim> const &dof_handler,
-    dealii::LinearAlgebra::distributed::Vector<double> &temperature)
-{
-  // First we need to get all the support points and the associated dof
-  // indices
-  std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
-  dealii::DoFTools::map_dofs_to_support_points(
-      dealii::StaticMappingQ1<dim>::mapping, dof_handler, indices_points);
-  // Change the format to something that can be used by ArborX
-  std::vector<dealii::types::global_dof_index> dof_indices(
-      indices_points.size());
-  std::vector<dealii::Point<dim>> support_points(indices_points.size());
-  unsigned int pos = 0;
-  for (auto map_it = indices_points.begin(); map_it != indices_points.end();
-       ++map_it, ++pos)
-  {
-    dof_indices[pos] = map_it->first;
-    support_points[pos] = map_it->second;
-  }
-
-  // Perform the search
-  dealii::ArborXWrappers::BVH bvh(support_points);
-  dealii::ArborXWrappers::PointNearestPredicate pt_nearest(points_values.points,
-                                                           1);
-  auto [indices, offset] = bvh.query(pt_nearest);
-
-  // Fill in the temperature
+  // Convert the indices and offsets to a pair that maps experimental indices to
+  // dof indices
+  std::pair<std::vector<int>, std::vector<int>> expt_to_dof_mapping;
+  expt_to_dof_mapping.first.resize(indices.size());
+  expt_to_dof_mapping.second.resize(indices.size());
   unsigned int const n_queries = points_values.points.size();
   for (unsigned int i = 0; i < n_queries; ++i)
   {
     for (int j = offset[i]; j < offset[i + 1]; ++j)
     {
-      temperature[dof_indices[indices[j]]] = points_values.values[i];
+      expt_to_dof_mapping.first[j] = i;
+      expt_to_dof_mapping.second[j] = dof_indices[indices[j]];
     }
   }
 
-  temperature.compress(dealii::VectorOperation::insert);
+  return expt_to_dof_mapping;
+}
 
-  return {indices, offset};
+template <int dim>
+void set_with_experimental_data(
+    PointsValues<dim> const &points_values,
+    std::pair<std::vector<int>, std::vector<int>> &expt_to_dof_mapping,
+    dealii::LinearAlgebra::distributed::Vector<double> &temperature)
+{
+  for (unsigned int i = 0; i < points_values.values.size(); ++i)
+  {
+    temperature[expt_to_dof_mapping.second[i]] = points_values.values[i];
+  }
+
+  temperature.compress(dealii::VectorOperation::insert);
 }
 
 std::vector<std::vector<double>>
@@ -692,22 +671,18 @@ template std::vector<PointsValues<3>> read_experimental_data_point_cloud(
     MPI_Comm const &communicator,
     boost::property_tree::ptree const &experiment_database);
 
-template std::pair<std::vector<int>, std::vector<int>>
-set_with_experimental_data(
+template void set_with_experimental_data(
     PointsValues<2> const &points_values,
-    dealii::DoFHandler<2> const &dof_handler,
+    std::pair<std::vector<int>, std::vector<int>> &expt_to_dof_mapping,
+    dealii::LinearAlgebra::distributed::Vector<double> &temperature);
+template void set_with_experimental_data(
+    PointsValues<3> const &points_values,
+    std::pair<std::vector<int>, std::vector<int>> &expt_to_dof_mapping,
     dealii::LinearAlgebra::distributed::Vector<double> &temperature);
 template std::pair<std::vector<int>, std::vector<int>>
-set_with_experimental_data(
-    PointsValues<3> const &points_values,
-    dealii::DoFHandler<3> const &dof_handler,
-    dealii::LinearAlgebra::distributed::Vector<double> &temperature);
-template std::tuple<std::vector<dealii::types::global_dof_index>,
-                    std::pair<std::vector<int>, std::vector<int>>>
-get_indices_and_offsets(PointsValues<2> const &points_values,
+get_expt_to_dof_mapping(PointsValues<2> const &points_values,
                         dealii::DoFHandler<2> const &dof_handler);
-template std::tuple<std::vector<dealii::types::global_dof_index>,
-                    std::pair<std::vector<int>, std::vector<int>>>
-get_indices_and_offsets(PointsValues<3> const &points_values,
+template std::pair<std::vector<int>, std::vector<int>>
+get_expt_to_dof_mapping(PointsValues<3> const &points_values,
                         dealii::DoFHandler<3> const &dof_handler);
 } // namespace adamantine

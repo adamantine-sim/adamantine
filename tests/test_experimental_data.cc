@@ -59,7 +59,6 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_point_cloud_from_file)
 BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data_point_cloud)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
-  auto n_mpi_processes = dealii::Utilities::MPI::n_mpi_processes(communicator);
 
   adamantine::PointsValues<3> points_values;
   // Create the points
@@ -98,19 +97,12 @@ BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data_point_cloud)
   dealii::LinearAlgebra::distributed::Vector<double> temperature(
       locally_owned_dofs, locally_relevant_dofs, communicator);
 
-  auto [dof_indices, indices_and_offsets] =
-      adamantine::get_indices_and_offsets(points_values, dof_handler);
+  auto expt_to_dof_mapping =
+      adamantine::get_expt_to_dof_mapping(points_values, dof_handler);
 
-  // This used to be in set_with_experimental_data
-  unsigned int const n_queries = points_values.points.size();
-  for (unsigned int i = 0; i < n_queries; ++i)
+  for (unsigned int i = 0; i < points_values.values.size(); ++i)
   {
-    for (int j = indices_and_offsets.second[i];
-         j < indices_and_offsets.second[i + 1]; ++j)
-    {
-      temperature[dof_indices[indices_and_offsets.first[j]]] =
-          points_values.values[i];
-    }
+    temperature[expt_to_dof_mapping.second[i]] = points_values.values[i];
   }
 
   temperature.compress(dealii::VectorOperation::insert);
@@ -278,10 +270,10 @@ BOOST_AUTO_TEST_CASE(project_ray_data_on_mesh, *utf::tolerance(1e-12))
     BOOST_CHECK(points_values.points.size() == 58938);
 
     // Get the indices and offsets
-    auto [dof_indices, indices_and_offsets] =
-        adamantine::get_indices_and_offsets<3>(points_values, dof_handler);
+    auto expt_to_dof_mapping =
+        adamantine::get_expt_to_dof_mapping<3>(points_values, dof_handler);
 
-    BOOST_CHECK(indices_and_offsets.first.size() == 58938);
+    BOOST_CHECK(expt_to_dof_mapping.first.size() == 58938);
   }
   else
   {

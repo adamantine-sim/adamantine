@@ -1773,10 +1773,9 @@ run_ensemble(MPI_Comm const &communicator,
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_BEGIN("da_experimental_data");
 #endif
-        auto [dof_indices, indices_and_offsets] =
-            adamantine::get_indices_and_offsets(
-                points_values[experimental_frame_index],
-                thermal_physics_ensemble[0]->get_dof_handler());
+        auto expt_to_dof_mapping = adamantine::get_expt_to_dof_mapping(
+            points_values[experimental_frame_index],
+            thermal_physics_ensemble[0]->get_dof_handler());
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_END("da_experimental_data");
 #endif
@@ -1793,9 +1792,7 @@ run_ensemble(MPI_Comm const &communicator,
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_BEGIN("da_dof_mapping");
 #endif
-        data_assimilator.update_dof_mapping<dim>(
-            thermal_physics_ensemble[0]->get_dof_handler(),
-            indices_and_offsets);
+        data_assimilator.update_dof_mapping<dim>(expt_to_dof_mapping);
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_END("da_dof_mapping");
 #endif

@@ -270,37 +270,10 @@ DataAssimilator::calc_H(dealii::SparsityPattern &pattern) const
 
 template <int dim>
 void DataAssimilator::update_dof_mapping(
-    dealii::DoFHandler<dim> const &dof_handler,
-    std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets)
+    std::pair<std::vector<int>, std::vector<int>> const &expt_to_dof_mapping)
 {
-  _expt_size = indices_and_offsets.first.size();
-
-  std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
-  dealii::DoFTools::map_dofs_to_support_points(
-      dealii::StaticMappingQ1<dim>::mapping, dof_handler, indices_points);
-  // Change the format to the one used by ArborX
-  std::vector<dealii::types::global_dof_index> dof_indices(
-      indices_points.size());
-  unsigned int pos = 0;
-  for (auto map_it = indices_points.begin(); map_it != indices_points.end();
-       ++map_it, ++pos)
-  {
-    dof_indices[pos] = map_it->first;
-  }
-
-  _expt_to_dof_mapping.first.resize(indices_and_offsets.first.size());
-  _expt_to_dof_mapping.second.resize(indices_and_offsets.first.size());
-
-  for (unsigned int i = 0; i < _expt_size; ++i)
-  {
-    for (int j = indices_and_offsets.second[i];
-         j < indices_and_offsets.second[i + 1]; ++j)
-    {
-      _expt_to_dof_mapping.first[j] = i;
-      _expt_to_dof_mapping.second[j] =
-          dof_indices[indices_and_offsets.first[j]];
-    }
-  }
+  _expt_size = expt_to_dof_mapping.first.size();
+  _expt_to_dof_mapping = expt_to_dof_mapping;
 }
 
 template <int dim>
@@ -553,11 +526,9 @@ DataAssimilator::calc_sample_covariance_sparse(
 
 // Explicit instantiation
 template void DataAssimilator::update_dof_mapping<2>(
-    dealii::DoFHandler<2> const &dof_handler,
-    std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
+    std::pair<std::vector<int>, std::vector<int>> const &expt_to_dof_mapping);
 template void DataAssimilator::update_dof_mapping<3>(
-    dealii::DoFHandler<3> const &dof_handler,
-    std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
+    std::pair<std::vector<int>, std::vector<int>> const &expt_to_dof_mapping);
 template void DataAssimilator::update_covariance_sparsity_pattern<2>(
     dealii::DoFHandler<2> const &dof_handler,
     const unsigned int parameter_size);

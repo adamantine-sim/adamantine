@@ -10,7 +10,9 @@
 #include <DataAssimilator.hh>
 #include <Geometry.hh>
 
+#include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_q.h>
+#include <deal.II/fe/mapping_q1.h>
 #include <deal.II/lac/la_parallel_vector.h>
 
 #include "main.cc"
@@ -72,14 +74,13 @@ public:
     expt_vec(0) = 2.5;
     expt_vec(1) = 9.5;
 
-    std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
-    indices_and_offsets.first.resize(2);
-    indices_and_offsets.second.resize(3); // Offset vector is one longer
-    indices_and_offsets.first[0] = 1;
-    indices_and_offsets.first[1] = 3;
-    indices_and_offsets.second[0] = 0;
-    indices_and_offsets.second[1] = 1;
-    indices_and_offsets.second[2] = 2;
+    std::pair<std::vector<int>, std::vector<int>> expt_to_dof_mapping;
+    expt_to_dof_mapping.first.resize(2);
+    expt_to_dof_mapping.second.resize(2);
+    expt_to_dof_mapping.first[0] = 0;
+    expt_to_dof_mapping.first[1] = 1;
+    expt_to_dof_mapping.second[0] = 1;
+    expt_to_dof_mapping.second[1] = 3;
 
     boost::property_tree::ptree solver_settings_database;
     DataAssimilator da(solver_settings_database);
@@ -87,7 +88,7 @@ public:
     da._expt_size = expt_size;
     da._parameter_size = 0;
     da._num_ensemble_members = 3;
-    da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
+    da.update_dof_mapping<2>(expt_to_dof_mapping);
     da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
 
     // Create the simulation data
@@ -170,41 +171,24 @@ public:
 
   void test_update_dof_mapping()
   {
-    MPI_Comm communicator = MPI_COMM_WORLD;
-
-    boost::property_tree::ptree database;
-    database.put("import_mesh", false);
-    database.put("length", 1);
-    database.put("length_divisions", 2);
-    database.put("height", 1);
-    database.put("height_divisions", 2);
-    adamantine::Geometry<2> geometry(communicator, database);
-    dealii::parallel::distributed::Triangulation<2> const &tria =
-        geometry.get_triangulation();
-
-    dealii::FE_Q<2> fe(1);
-    dealii::DoFHandler<2> dof_handler(tria);
-    dof_handler.distribute_dofs(fe);
-
     unsigned int sim_size = 4;
     unsigned int expt_size = 3;
 
-    std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
-    indices_and_offsets.first.resize(3);
-    indices_and_offsets.second.resize(4); // offset vector is one longer
-    indices_and_offsets.first[0] = 0;
-    indices_and_offsets.first[1] = 1;
-    indices_and_offsets.first[2] = 3;
-    indices_and_offsets.second[0] = 0;
-    indices_and_offsets.second[1] = 1;
-    indices_and_offsets.second[2] = 2;
-    indices_and_offsets.second[3] = 3;
+    std::pair<std::vector<int>, std::vector<int>> expt_to_dof_mapping;
+    expt_to_dof_mapping.first.resize(3);
+    expt_to_dof_mapping.second.resize(3);
+    expt_to_dof_mapping.first[0] = 0;
+    expt_to_dof_mapping.first[1] = 1;
+    expt_to_dof_mapping.first[2] = 2;
+    expt_to_dof_mapping.second[0] = 0;
+    expt_to_dof_mapping.second[1] = 1;
+    expt_to_dof_mapping.second[2] = 3;
 
     boost::property_tree::ptree solver_settings_database;
     DataAssimilator da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
-    da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
+    da.update_dof_mapping<2>(expt_to_dof_mapping);
 
     BOOST_TEST(da._expt_to_dof_mapping.first[0] == 0);
     BOOST_TEST(da._expt_to_dof_mapping.first[1] == 1);
@@ -235,22 +219,21 @@ public:
     unsigned int sim_size = 4;
     unsigned int expt_size = 3;
 
-    std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
-    indices_and_offsets.first.resize(3);
-    indices_and_offsets.second.resize(4); // offset vector is one longer
-    indices_and_offsets.first[0] = 0;
-    indices_and_offsets.first[1] = 1;
-    indices_and_offsets.first[2] = 3;
-    indices_and_offsets.second[0] = 0;
-    indices_and_offsets.second[1] = 1;
-    indices_and_offsets.second[2] = 2;
-    indices_and_offsets.second[3] = 3;
+    std::pair<std::vector<int>, std::vector<int>> expt_to_dof_mapping;
+    expt_to_dof_mapping.first.resize(3);
+    expt_to_dof_mapping.second.resize(3);
+    expt_to_dof_mapping.first[0] = 0;
+    expt_to_dof_mapping.first[1] = 1;
+    expt_to_dof_mapping.first[2] = 2;
+    expt_to_dof_mapping.second[0] = 0;
+    expt_to_dof_mapping.second[1] = 1;
+    expt_to_dof_mapping.second[2] = 3;
 
     boost::property_tree::ptree solver_settings_database;
     DataAssimilator da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
-    da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
+    da.update_dof_mapping<2>(expt_to_dof_mapping);
 
     dealii::SparsityPattern pattern(expt_size, sim_size, expt_size);
 
@@ -304,22 +287,21 @@ public:
     expt_vec(1) = 4.5;
     expt_vec(2) = 8.5;
 
-    std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
-    indices_and_offsets.first.resize(3);
-    indices_and_offsets.second.resize(4); // Offset vector is one longer
-    indices_and_offsets.first[0] = 0;
-    indices_and_offsets.first[1] = 1;
-    indices_and_offsets.first[2] = 3;
-    indices_and_offsets.second[0] = 0;
-    indices_and_offsets.second[1] = 1;
-    indices_and_offsets.second[2] = 2;
-    indices_and_offsets.second[3] = 3;
+    std::pair<std::vector<int>, std::vector<int>> expt_to_dof_mapping;
+    expt_to_dof_mapping.first.resize(3);
+    expt_to_dof_mapping.second.resize(3);
+    expt_to_dof_mapping.first[0] = 0;
+    expt_to_dof_mapping.first[1] = 1;
+    expt_to_dof_mapping.first[2] = 2;
+    expt_to_dof_mapping.second[0] = 0;
+    expt_to_dof_mapping.second[1] = 1;
+    expt_to_dof_mapping.second[2] = 3;
 
     boost::property_tree::ptree solver_settings_database;
     DataAssimilator da(solver_settings_database);
     da._sim_size = sim_size;
     da._expt_size = expt_size;
-    da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
+    da.update_dof_mapping<2>(expt_to_dof_mapping);
     dealii::Vector<double> Hx = da.calc_Hx(sim_vec);
 
     double tol = 1e-10;
@@ -676,14 +658,13 @@ public:
     expt_vec[0] = 2.5;
     expt_vec[1] = 9.5;
 
-    std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
-    indices_and_offsets.first.resize(2);
-    indices_and_offsets.second.resize(3); // Offset vector is one longer
-    indices_and_offsets.first[0] = 1;
-    indices_and_offsets.first[1] = 3;
-    indices_and_offsets.second[0] = 0;
-    indices_and_offsets.second[1] = 1;
-    indices_and_offsets.second[2] = 2;
+    std::pair<std::vector<int>, std::vector<int>> expt_to_dof_mapping;
+    expt_to_dof_mapping.first.resize(2);
+    expt_to_dof_mapping.second.resize(2);
+    expt_to_dof_mapping.first[0] = 0;
+    expt_to_dof_mapping.first[1] = 1;
+    expt_to_dof_mapping.second[0] = 1;
+    expt_to_dof_mapping.second[1] = 3;
 
     boost::property_tree::ptree solver_settings_database;
     DataAssimilator da(solver_settings_database);
@@ -693,7 +674,7 @@ public:
     da._num_ensemble_members = 3;
 
     da.update_covariance_sparsity_pattern<2>(dof_handler, 0);
-    da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
+    da.update_dof_mapping<2>(expt_to_dof_mapping);
 
     // Create the simulation data
     std::vector<dealii::LA::distributed::BlockVector<double>>
@@ -795,14 +776,13 @@ public:
     expt_vec[0] = 2.5;
     expt_vec[1] = 9.5;
 
-    std::pair<std::vector<int>, std::vector<int>> indices_and_offsets;
-    indices_and_offsets.first.resize(2);
-    indices_and_offsets.second.resize(3); // Offset vector is one longer
-    indices_and_offsets.first[0] = 1;
-    indices_and_offsets.first[1] = 3;
-    indices_and_offsets.second[0] = 0;
-    indices_and_offsets.second[1] = 1;
-    indices_and_offsets.second[2] = 2;
+    std::pair<std::vector<int>, std::vector<int>> expt_to_dof_mapping;
+    expt_to_dof_mapping.first.resize(2);
+    expt_to_dof_mapping.second.resize(2);
+    expt_to_dof_mapping.first[0] = 0;
+    expt_to_dof_mapping.first[1] = 1;
+    expt_to_dof_mapping.second[0] = 1;
+    expt_to_dof_mapping.second[1] = 3;
 
     boost::property_tree::ptree solver_settings_database;
     DataAssimilator da(solver_settings_database);
@@ -812,7 +792,7 @@ public:
     da._num_ensemble_members = 3;
 
     da.update_covariance_sparsity_pattern<2>(dof_handler, parameter_size);
-    da.update_dof_mapping<2>(dof_handler, indices_and_offsets);
+    da.update_dof_mapping<2>(expt_to_dof_mapping);
 
     // Create the simulation data
     std::vector<dealii::LA::distributed::BlockVector<double>>
