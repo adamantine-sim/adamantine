@@ -18,6 +18,8 @@
 #include <deal.II/fe/mapping_q1.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/reference_cell.h>
+#include <deal.II/hp/fe_values.h>
+#include <deal.II/hp/mapping_collection.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
@@ -212,12 +214,98 @@ std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
 }
 
 template <int dim>
+std::tuple<std::vector<dealii::types::global_dof_index>,
+           std::pair<std::vector<int>, std::vector<int>>>
+get_indices_and_offsets(PointsValues<dim> const &points_values,
+                        dealii::DoFHandler<dim> const &dof_handler)
+{
+  // NOTE: This may not be the best way to store/move this information. We may
+  // want to consider changing this to pairs of dof indices and field values.
+
+  // First we need to get all the support points and the associated dof
+  // indices
+  std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
+
+  // Manually do what dealii::DoFTools::map_dofs_to_support_points does, since
+  // that doesn't currently work with FE_Nothing
+  const dealii::hp::FECollection<dim> &fe_collection =
+      dof_handler.get_fe_collection();
+
+  dealii::hp::QCollection<dim> q_coll_dummy;
+  for (unsigned int fe_index = 0; fe_index < fe_collection.size(); ++fe_index)
+  {
+    q_coll_dummy.push_back(dealii::Quadrature<dim>(
+        fe_collection[fe_index].get_unit_support_points()));
+  }
+
+  dealii::hp::MappingCollection<dim, dim> mapping_collection;
+  const dealii::StaticMappingQ1<dim> mapping;
+  mapping_collection.push_back(mapping.mapping);
+  if (fe_collection.size() > 1)
+    mapping_collection.push_back(mapping.mapping);
+
+  dealii::hp::FEValues<dim, dim> hp_fe_values(mapping_collection, fe_collection,
+                                              q_coll_dummy,
+                                              dealii::update_quadrature_points);
+
+  std::vector<dealii::types::global_dof_index> local_dof_indices;
+
+  for (auto const &cell : dealii::filter_iterators(
+           dof_handler.active_cell_iterators(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+  {
+    // only work on locally relevant cells
+    if (cell->is_artificial() == false)
+    {
+      hp_fe_values.reinit(cell);
+      const dealii::FEValues<dim, dim> &fe_values =
+          hp_fe_values.get_present_fe_values();
+
+      local_dof_indices.resize(cell->get_fe().n_dofs_per_cell());
+      cell->get_dof_indices(local_dof_indices);
+
+      const std::vector<dealii::Point<dim>> &points =
+          fe_values.get_quadrature_points();
+      for (unsigned int i = 0; i < cell->get_fe().n_dofs_per_cell(); ++i)
+      {
+        const unsigned int dof_comp =
+            cell->get_fe().system_to_component_index(i).first;
+
+        indices_points[local_dof_indices[i]] = points[i];
+      }
+    }
+  }
+
+  // Change the format to something that can be used by ArborX
+  std::vector<dealii::types::global_dof_index> dof_indices(
+      indices_points.size());
+  std::vector<dealii::Point<dim>> support_points(indices_points.size());
+  unsigned int pos = 0;
+  for (auto map_it = indices_points.begin(); map_it != indices_points.end();
+       ++map_it, ++pos)
+  {
+    dof_indices[pos] = map_it->first;
+    support_points[pos] = map_it->second;
+  }
+
+  // Perform the search
+  dealii::ArborXWrappers::BVH bvh(support_points);
+  dealii::ArborXWrappers::PointNearestPredicate pt_nearest(points_values.points,
+                                                           1);
+  auto [indices, offset] = bvh.query(pt_nearest);
+
+  // Return the indices and offsets, which can be used to map the PointsValues
+  // vector to entries in the solution vector
+  return {dof_indices, {indices, offset}};
+}
+
+template <int dim>
 std::pair<std::vector<int>, std::vector<int>> set_with_experimental_data(
     PointsValues<dim> const &points_values,
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::LinearAlgebra::distributed::Vector<double> &temperature)
 {
-  // First we need to get all the supports points and the associated dof
+  // First we need to get all the support points and the associated dof
   // indices
   std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
   dealii::DoFTools::map_dofs_to_support_points(
@@ -614,4 +702,12 @@ set_with_experimental_data(
     PointsValues<3> const &points_values,
     dealii::DoFHandler<3> const &dof_handler,
     dealii::LinearAlgebra::distributed::Vector<double> &temperature);
+template std::tuple<std::vector<dealii::types::global_dof_index>,
+                    std::pair<std::vector<int>, std::vector<int>>>
+get_indices_and_offsets(PointsValues<2> const &points_values,
+                        dealii::DoFHandler<2> const &dof_handler);
+template std::tuple<std::vector<dealii::types::global_dof_index>,
+                    std::pair<std::vector<int>, std::vector<int>>>
+get_indices_and_offsets(PointsValues<3> const &points_values,
+                        dealii::DoFHandler<3> const &dof_handler);
 } // namespace adamantine

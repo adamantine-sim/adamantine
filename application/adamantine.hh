@@ -1773,12 +1773,10 @@ run_ensemble(MPI_Comm const &communicator,
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_BEGIN("da_experimental_data");
 #endif
-        dealii::LA::distributed::Vector<double, MemorySpaceType>
-            temperature_dummy(solution_augmented_ensemble[0].block(base_state));
-
-        auto indices_and_offsets = adamantine::set_with_experimental_data(
-            points_values[experimental_frame_index],
-            thermal_physics_ensemble[0]->get_dof_handler(), temperature_dummy);
+        auto [dof_indices, indices_and_offsets] =
+            adamantine::get_indices_and_offsets(
+                points_values[experimental_frame_index],
+                thermal_physics_ensemble[0]->get_dof_handler());
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_END("da_experimental_data");
 #endif

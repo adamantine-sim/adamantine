@@ -14,6 +14,8 @@
 
 #include <boost/property_tree/ptree.hpp>
 
+#include <tuple>
+
 namespace adamantine
 {
 /**
@@ -35,6 +37,16 @@ template <int dim>
 std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
     MPI_Comm const &communicator,
     boost::property_tree::ptree const &experiment_database);
+
+/**
+ * Get the indices and offsets to map the PointsValues to entries in a solution
+ * vector.
+ */
+template <int dim>
+std::tuple<std::vector<dealii::types::global_dof_index>,
+           std::pair<std::vector<int>, std::vector<int>>>
+get_indices_and_offsets(PointsValues<dim> const &points_values,
+                        dealii::DoFHandler<dim> const &dof_handler);
 
 /**
  * Fill the @p temperature Vector given @p points_values.
