@@ -224,27 +224,13 @@ get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler)
 
   // Manually do what dealii::DoFTools::map_dofs_to_support_points does, since
   // that doesn't currently work with FE_Nothing
-  const dealii::hp::FECollection<dim> &fe_collection =
-      dof_handler.get_fe_collection();
+  const dealii::FiniteElement<dim> &fe = dof_handler.get_fe(0);
 
-  dealii::hp::QCollection<dim> q_coll_dummy;
-  for (unsigned int fe_index = 0; fe_index < fe_collection.size(); ++fe_index)
-  {
-    q_coll_dummy.push_back(dealii::Quadrature<dim>(
-        fe_collection[fe_index].get_unit_support_points()));
-  }
+  dealii::FEValues<dim, dim> fe_values(fe, fe.get_unit_support_points(),
+                                       dealii::update_quadrature_points);
 
-  dealii::hp::MappingCollection<dim, dim> mapping_collection;
-  const dealii::StaticMappingQ1<dim> mapping;
-  mapping_collection.push_back(mapping.mapping);
-  if (fe_collection.size() > 1)
-    mapping_collection.push_back(mapping.mapping);
-
-  dealii::hp::FEValues<dim, dim> hp_fe_values(mapping_collection, fe_collection,
-                                              q_coll_dummy,
-                                              dealii::update_quadrature_points);
-
-  std::vector<dealii::types::global_dof_index> local_dof_indices;
+  std::vector<dealii::types::global_dof_index> local_dof_indices(
+      fe.n_dofs_per_cell());
 
   for (auto const &cell : dealii::filter_iterators(
            dof_handler.active_cell_iterators(),
@@ -253,16 +239,11 @@ get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler)
     // only work on locally relevant cells
     if (cell->is_artificial() == false)
     {
-      hp_fe_values.reinit(cell);
-      const dealii::FEValues<dim, dim> &fe_values =
-          hp_fe_values.get_present_fe_values();
-
-      local_dof_indices.resize(cell->get_fe().n_dofs_per_cell());
+      fe_values.reinit(cell);
       cell->get_dof_indices(local_dof_indices);
-
       const std::vector<dealii::Point<dim>> &points =
           fe_values.get_quadrature_points();
-      for (unsigned int i = 0; i < cell->get_fe().n_dofs_per_cell(); ++i)
+      for (unsigned int i = 0; i < fe.n_dofs_per_cell(); ++i)
       {
         indices_points[local_dof_indices[i]] = points[i];
       }
