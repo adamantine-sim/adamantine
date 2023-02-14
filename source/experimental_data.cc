@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2022, the adamantine authors.
+/* Copyright (c) 2021-2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -234,19 +234,15 @@ get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler)
 
   for (auto const &cell : dealii::filter_iterators(
            dof_handler.active_cell_iterators(),
-           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true)))
   {
-    // only work on locally relevant cells
-    if (cell->is_artificial() == false)
+    fe_values.reinit(cell);
+    cell->get_dof_indices(local_dof_indices);
+    const std::vector<dealii::Point<dim>> &points =
+        fe_values.get_quadrature_points();
+    for (unsigned int i = 0; i < fe.n_dofs_per_cell(); ++i)
     {
-      fe_values.reinit(cell);
-      cell->get_dof_indices(local_dof_indices);
-      const std::vector<dealii::Point<dim>> &points =
-          fe_values.get_quadrature_points();
-      for (unsigned int i = 0; i < fe.n_dofs_per_cell(); ++i)
-      {
-        indices_points[local_dof_indices[i]] = points[i];
-      }
+      indices_points[local_dof_indices[i]] = points[i];
     }
   }
 
