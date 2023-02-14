@@ -18,6 +18,8 @@
 #include <deal.II/fe/mapping_q1.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/reference_cell.h>
+#include <deal.II/hp/fe_values.h>
+#include <deal.II/hp/mapping_collection.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
@@ -212,16 +214,42 @@ std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
 }
 
 template <int dim>
-std::pair<std::vector<int>, std::vector<int>> set_with_experimental_data(
-    PointsValues<dim> const &points_values,
-    dealii::DoFHandler<dim> const &dof_handler,
-    dealii::LinearAlgebra::distributed::Vector<double> &temperature)
+std::pair<std::vector<dealii::types::global_dof_index>,
+          std::vector<dealii::Point<dim>>>
+get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler)
 {
-  // First we need to get all the supports points and the associated dof
+  // First we need to get all the support points and the associated dof
   // indices
   std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
-  dealii::DoFTools::map_dofs_to_support_points(
-      dealii::StaticMappingQ1<dim>::mapping, dof_handler, indices_points);
+
+  // Manually do what dealii::DoFTools::map_dofs_to_support_points does, since
+  // that doesn't currently work with FE_Nothing
+  const dealii::FiniteElement<dim> &fe = dof_handler.get_fe(0);
+
+  dealii::FEValues<dim, dim> fe_values(fe, fe.get_unit_support_points(),
+                                       dealii::update_quadrature_points);
+
+  std::vector<dealii::types::global_dof_index> local_dof_indices(
+      fe.n_dofs_per_cell());
+
+  for (auto const &cell : dealii::filter_iterators(
+           dof_handler.active_cell_iterators(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+  {
+    // only work on locally relevant cells
+    if (cell->is_artificial() == false)
+    {
+      fe_values.reinit(cell);
+      cell->get_dof_indices(local_dof_indices);
+      const std::vector<dealii::Point<dim>> &points =
+          fe_values.get_quadrature_points();
+      for (unsigned int i = 0; i < fe.n_dofs_per_cell(); ++i)
+      {
+        indices_points[local_dof_indices[i]] = points[i];
+      }
+    }
+  }
+
   // Change the format to something that can be used by ArborX
   std::vector<dealii::types::global_dof_index> dof_indices(
       indices_points.size());
@@ -234,25 +262,52 @@ std::pair<std::vector<int>, std::vector<int>> set_with_experimental_data(
     support_points[pos] = map_it->second;
   }
 
+  return {dof_indices, support_points};
+}
+
+template <int dim>
+std::pair<std::vector<int>, std::vector<int>>
+get_expt_to_dof_mapping(PointsValues<dim> const &points_values,
+                        dealii::DoFHandler<dim> const &dof_handler)
+{
+  auto [dof_indices, support_points] = get_dof_to_support_mapping(dof_handler);
+
   // Perform the search
   dealii::ArborXWrappers::BVH bvh(support_points);
   dealii::ArborXWrappers::PointNearestPredicate pt_nearest(points_values.points,
                                                            1);
   auto [indices, offset] = bvh.query(pt_nearest);
 
-  // Fill in the temperature
+  // Convert the indices and offsets to a pair that maps experimental indices to
+  // dof indices
+  std::pair<std::vector<int>, std::vector<int>> expt_to_dof_mapping;
+  expt_to_dof_mapping.first.resize(indices.size());
+  expt_to_dof_mapping.second.resize(indices.size());
   unsigned int const n_queries = points_values.points.size();
   for (unsigned int i = 0; i < n_queries; ++i)
   {
     for (int j = offset[i]; j < offset[i + 1]; ++j)
     {
-      temperature[dof_indices[indices[j]]] = points_values.values[i];
+      expt_to_dof_mapping.first[j] = i;
+      expt_to_dof_mapping.second[j] = dof_indices[indices[j]];
     }
   }
 
-  temperature.compress(dealii::VectorOperation::insert);
+  return expt_to_dof_mapping;
+}
 
-  return {indices, offset};
+template <int dim>
+void set_with_experimental_data(
+    PointsValues<dim> const &points_values,
+    std::pair<std::vector<int>, std::vector<int>> &expt_to_dof_mapping,
+    dealii::LinearAlgebra::distributed::Vector<double> &temperature)
+{
+  for (unsigned int i = 0; i < points_values.values.size(); ++i)
+  {
+    temperature[expt_to_dof_mapping.second[i]] = points_values.values[i];
+  }
+
+  temperature.compress(dealii::VectorOperation::insert);
 }
 
 std::vector<std::vector<double>>
@@ -371,6 +426,7 @@ RayTracing::RayTracing(boost::property_tree::ptree const &experiment_database)
       std::ifstream file;
       file.open(filename);
       std::string line;
+      std::getline(file, line); // skip the header
       while (std::getline(file, line))
       {
         std::size_t pos = 0;
@@ -604,14 +660,18 @@ template std::vector<PointsValues<3>> read_experimental_data_point_cloud(
     MPI_Comm const &communicator,
     boost::property_tree::ptree const &experiment_database);
 
-template std::pair<std::vector<int>, std::vector<int>>
-set_with_experimental_data(
+template void set_with_experimental_data(
     PointsValues<2> const &points_values,
-    dealii::DoFHandler<2> const &dof_handler,
+    std::pair<std::vector<int>, std::vector<int>> &expt_to_dof_mapping,
+    dealii::LinearAlgebra::distributed::Vector<double> &temperature);
+template void set_with_experimental_data(
+    PointsValues<3> const &points_values,
+    std::pair<std::vector<int>, std::vector<int>> &expt_to_dof_mapping,
     dealii::LinearAlgebra::distributed::Vector<double> &temperature);
 template std::pair<std::vector<int>, std::vector<int>>
-set_with_experimental_data(
-    PointsValues<3> const &points_values,
-    dealii::DoFHandler<3> const &dof_handler,
-    dealii::LinearAlgebra::distributed::Vector<double> &temperature);
+get_expt_to_dof_mapping(PointsValues<2> const &points_values,
+                        dealii::DoFHandler<2> const &dof_handler);
+template std::pair<std::vector<int>, std::vector<int>>
+get_expt_to_dof_mapping(PointsValues<3> const &points_values,
+                        dealii::DoFHandler<3> const &dof_handler);
 } // namespace adamantine

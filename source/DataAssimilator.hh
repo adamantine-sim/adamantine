@@ -93,14 +93,11 @@ public:
    * This updates the internal mapping between the indices of the entries in
    * expt_data and the indices of the entries in the sim_data ensemble members
    * in updateEnsemble. This must be called before updateEnsemble whenever there
-   * are changes to the simulation mesh or the observation locations. The
-   * indices_and_offsets variable is the output from
-   * adamantine::set_with_experimental_data.
+   * are changes to the simulation mesh or the observation locations.
    */
   template <int dim>
   void update_dof_mapping(
-      dealii::DoFHandler<dim> const &dof_handler,
-      std::pair<std::vector<int>, std::vector<int>> const &indices_and_offsets);
+      std::pair<std::vector<int>, std::vector<int>> const &expt_to_dof_mapping);
 
   /**
    * This updates the sparsity pattern for the sample covariance matrix for the

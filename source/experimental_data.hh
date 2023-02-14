@@ -37,12 +37,30 @@ std::vector<PointsValues<dim>> read_experimental_data_point_cloud(
     boost::property_tree::ptree const &experiment_database);
 
 /**
+ * Get the pair of vectors that map the DOF indices to the
+ * support points.
+ */
+template <int dim>
+std::pair<std::vector<dealii::types::global_dof_index>,
+          std::vector<dealii::Point<dim>>>
+get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler);
+
+/**
+ * Get the pair of vectors that map the experimental observation indices to the
+ * dof indices.
+ */
+template <int dim>
+std::pair<std::vector<int>, std::vector<int>>
+get_expt_to_dof_mapping(PointsValues<dim> const &points_values,
+                        dealii::DoFHandler<dim> const &dof_handler);
+
+/**
  * Fill the @p temperature Vector given @p points_values.
  */
 template <int dim>
-std::pair<std::vector<int>, std::vector<int>> set_with_experimental_data(
+void set_with_experimental_data(
     PointsValues<dim> const &points_values,
-    dealii::DoFHandler<dim> const &dof_handler,
+    std::pair<std::vector<int>, std::vector<int>> &expt_to_dof_mapping,
     dealii::LinearAlgebra::distributed::Vector<double> &temperature);
 
 /**

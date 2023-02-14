@@ -12,7 +12,9 @@
 #include <experimental_data.hh>
 
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_q.h>
+#include <deal.II/grid/filtered_iterator.h>
 
 #include "main.cc"
 
@@ -95,8 +97,15 @@ BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data_point_cloud)
   dealii::LinearAlgebra::distributed::Vector<double> temperature(
       locally_owned_dofs, locally_relevant_dofs, communicator);
 
-  adamantine::set_with_experimental_data(points_values, dof_handler,
-                                         temperature);
+  auto expt_to_dof_mapping =
+      adamantine::get_expt_to_dof_mapping(points_values, dof_handler);
+
+  for (unsigned int i = 0; i < points_values.values.size(); ++i)
+  {
+    temperature[expt_to_dof_mapping.second[i]] = points_values.values[i];
+  }
+
+  temperature.compress(dealii::VectorOperation::insert);
 
   std::vector<double> temperature_ref = {
       0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0, 0,
@@ -186,4 +195,90 @@ BOOST_AUTO_TEST_CASE(timestamp, *utf::tolerance(1e-12))
   BOOST_TEST(time_stamps[1][0] == 0.1);
   BOOST_TEST(time_stamps[1][1] == 0.1136);
   BOOST_TEST(time_stamps[1][2] == 0.1348);
+}
+
+BOOST_AUTO_TEST_CASE(project_ray_data_on_mesh, *utf::tolerance(1e-12))
+{
+  // NOTE: Currently this is using an IR data file that's not calibrated
+  // particularly well. That's ok for these purposes, but we may eventually
+  // want to switch to a "better" IR file.
+
+  MPI_Comm communicator = MPI_COMM_WORLD;
+  auto n_mpi_processes = dealii::Utilities::MPI::n_mpi_processes(communicator);
+  if (n_mpi_processes == 1)
+  {
+
+    // Oversize version of the mesh from the Tormach wall build
+    boost::property_tree::ptree database;
+    database.put("import_mesh", false);
+    database.put("length", 400.0e-3);
+    database.put("length_divisions", 8);
+    database.put("height", 200.0e-3);
+    database.put("height_divisions", 4);
+    database.put("width", 400.0e-3);
+    database.put("width_divisions", 8);
+    database.put("material_height", 100.0e-3);
+
+    adamantine::Geometry<3> geometry(communicator, database);
+    dealii::parallel::distributed::Triangulation<3> const &tria =
+        geometry.get_triangulation();
+
+    dealii::hp::FECollection<3> fe_collection;
+    fe_collection.push_back(dealii::FE_Q<3>(1));
+    fe_collection.push_back(dealii::FE_Nothing<3>());
+    dealii::DoFHandler<3> dof_handler(tria);
+    dof_handler.distribute_dofs(fe_collection);
+
+    auto active_cells = 0;
+    auto inactive_cells = 0;
+
+    double const material_height = database.get("material_height", 1e9);
+    for (auto const &cell :
+         dealii::filter_iterators(dof_handler.active_cell_iterators(),
+                                  dealii::IteratorFilters::LocallyOwnedCell()))
+    {
+      // If the center of the cell is below material_height, it contains
+      // material otherwise it does not.
+      if (cell->center()[2] < material_height)
+      {
+        cell->set_active_fe_index(0);
+        active_cells++;
+      }
+      else
+      {
+        cell->set_active_fe_index(1);
+        inactive_cells++;
+      }
+    }
+
+    BOOST_CHECK(active_cells == 128);
+    BOOST_CHECK(inactive_cells == 128);
+
+    // Read the rays from file
+    boost::property_tree::ptree experiment_database;
+    experiment_database.put("file", "rays_cam-#camera-#frame_test_full.csv");
+    experiment_database.put("last_frame", 0);
+    experiment_database.put("first_camera_id", 0);
+    experiment_database.put("last_camera_id", 0);
+
+    adamantine::RayTracing ray_tracing(experiment_database);
+
+    // Compute the intersection points
+    unsigned int frame = 0;
+    auto points_values = ray_tracing.get_intersection(dof_handler, frame);
+
+    BOOST_CHECK(points_values.points.size() == 58938);
+
+    // Get the experiment to dof mapping
+    auto expt_to_dof_mapping =
+        adamantine::get_expt_to_dof_mapping<3>(points_values, dof_handler);
+
+    BOOST_CHECK(expt_to_dof_mapping.first.size() == 58938);
+  }
+  else
+  {
+    std::cout << "'project_ray_data_on_mesh' is currently skipped for multiple "
+                 "MPI processes"
+              << std::endl;
+  }
 }
