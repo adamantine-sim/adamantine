@@ -29,9 +29,9 @@
 #include <cstdlib>
 #include <fstream>
 #include <limits>
-#include <optional>
 #include <regex>
 #include <sstream>
+#include <unordered_set>
 
 #include <ArborX_Ray.hpp>
 
@@ -218,9 +218,9 @@ std::pair<std::vector<dealii::types::global_dof_index>,
           std::vector<dealii::Point<dim>>>
 get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler)
 {
-  // First we need to get all the support points and the associated dof
-  // indices
-  std::map<dealii::types::global_dof_index, dealii::Point<dim>> indices_points;
+  std::vector<dealii::types::global_dof_index> dof_indices;
+  std::vector<dealii::Point<dim>> support_points;
+  std::unordered_set<dealii::types::global_dof_index> visited_dof_indices;
 
   // Manually do what dealii::DoFTools::map_dofs_to_support_points does, since
   // that doesn't currently work with FE_Nothing
@@ -242,20 +242,14 @@ get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler)
         fe_values.get_quadrature_points();
     for (unsigned int i = 0; i < fe.n_dofs_per_cell(); ++i)
     {
-      indices_points[local_dof_indices[i]] = points[i];
+      // Skip duplicate points like vertices
+      if (visited_dof_indices.count(local_dof_indices[i]) == 0)
+      {
+        dof_indices.push_back(local_dof_indices[i]);
+        support_points.push_back(points[i]);
+        visited_dof_indices.insert(local_dof_indices[i]);
+      }
     }
-  }
-
-  // Change the format to something that can be used by ArborX
-  std::vector<dealii::types::global_dof_index> dof_indices(
-      indices_points.size());
-  std::vector<dealii::Point<dim>> support_points(indices_points.size());
-  unsigned int pos = 0;
-  for (auto map_it = indices_points.begin(); map_it != indices_points.end();
-       ++map_it, ++pos)
-  {
-    dof_indices[pos] = map_it->first;
-    support_points[pos] = map_it->second;
   }
 
   return {dof_indices, support_points};
