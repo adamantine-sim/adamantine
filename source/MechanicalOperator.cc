@@ -12,6 +12,7 @@
 #include <deal.II/base/index_set.h>
 #include <deal.II/differentiation/ad.h>
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/hp/q_collection.h>
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/physics/elasticity/standard_tensors.h>
@@ -168,6 +169,7 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
                    .dV();
 
   std::unique_ptr<dealii::hp::FEValues<dim>> temperature_hp_fe_values;
+  std::vector<unsigned int> cell_indices;
   // Now add the appropriate linear form(s) (ie RHS)
 
   // If the list of reference temperatures is non-empty, we solve the
@@ -182,7 +184,19 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
     dealiiWeakForms::WeakForms::TensorFunctor<2, dim> const expansion_coeff(
         "B", "\\mathcal{B}");
 
-    const double initial_temperature = _reference_temperatures.back();
+    double const initial_temperature = _reference_temperatures.back();
+    unsigned int const n_local_active_cells =
+        _dof_handler->get_triangulation().n_active_cells();
+    cell_indices.resize(n_local_active_cells);
+    unsigned int cell_index = 0;
+    for (auto const &cell : dealii::filter_iterators(
+             _dof_handler->active_cell_iterators(),
+             dealii::IteratorFilters::LocallyOwnedCell(),
+             dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+    {
+      cell_indices[cell->active_cell_index()] = cell_index;
+      ++cell_index;
+    }
 
     auto expansion_tensor = expansion_coeff.template value<double, dim>(
         [&](dealii::FEValuesBase<dim> const &fe_values,
@@ -193,11 +207,20 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
           // quadrature point using the temperature DoFHandler.
           auto const &cell = fe_values.get_cell();
 
+          // If the thermal cell uses FE_Nothing, we exit early
+          dealii::DoFCellAccessor<dim, dim, false> thermal_cell(
+              &(cell->get_triangulation()), cell->level(), cell->index(),
+              _thermal_dof_handler);
+          if (thermal_cell.active_fe_index() == 1)
+          {
+            return dealii::Physics::Elasticity::StandardTensors<dim>::I;
+          }
+
           // Get the appropriate reference temperature for the cell. If the cell
           // is not in the unmelted substrate, the reference temperature depends
           // on the material.
           double reference_temperature;
-          if (_has_melted[cell->active_cell_index()])
+          if (_has_melted[cell_indices[cell->active_cell_index()]])
           {
             reference_temperature =
                 _reference_temperatures[cell->material_id()];
@@ -213,15 +236,6 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
           auto &temperature_fe_values =
               temperature_hp_fe_values->get_present_fe_values();
           double delta_T = -reference_temperature;
-
-          dealii::DoFCellAccessor<dim, dim, false> thermal_cell(
-              &(cell->get_triangulation()), cell->level(), cell->index(),
-              _thermal_dof_handler);
-          // If the thermal cell uses FE_Nothing, we exit
-          if (thermal_cell.active_fe_index() == 1)
-          {
-            return dealii::Physics::Elasticity::StandardTensors<dim>::I;
-          }
 
           std::vector<dealii::types::global_dof_index> local_dof_indices(
               temperature_fe_values.dofs_per_cell);

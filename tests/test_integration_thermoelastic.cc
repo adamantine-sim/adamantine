@@ -68,5 +68,5 @@ BOOST_AUTO_TEST_CASE(integration_thermoelastic_add_material,
   // For now doing a simple regression test. Without a dof handler, it's hard to
   // do something more meaningful with the vector.
 
-  BOOST_TEST(displacement.l2_norm() == 0.21134574383060864);
+  BOOST_TEST(displacement.l2_norm() == 0.355534971638);
 }
