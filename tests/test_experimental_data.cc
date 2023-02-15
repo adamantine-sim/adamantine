@@ -1,4 +1,4 @@
-/* Copyright (c) 2021, the adamantine authors.
+/* Copyright (c) 2021-2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -60,61 +60,65 @@ BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data_point_cloud)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
-  adamantine::PointsValues<3> points_values;
-  // Create the points
-  points_values.points.emplace_back(0, 0, 1.);
-  points_values.points.emplace_back(0, 0.5, 1.);
-  points_values.points.emplace_back(0, 1., 1.);
-  points_values.points.emplace_back(0.5, 0., 1.);
-  points_values.points.emplace_back(0.5, 0.5, 1.);
-  points_values.points.emplace_back(0.5, 1., 1.);
-  points_values.points.emplace_back(1., 0., 1.);
-  points_values.points.emplace_back(1., 0.5, 1.);
-  points_values.points.emplace_back(1., 1., 1.);
-  // Create the values
-  points_values.values = {1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.};
-
-  boost::property_tree::ptree database;
-  database.put("import_mesh", false);
-  database.put("length", 1);
-  database.put("length_divisions", 2);
-  database.put("height", 1);
-  database.put("height_divisions", 2);
-  database.put("width", 1);
-  database.put("width_divisions", 2);
-  adamantine::Geometry<3> geometry(communicator, database);
-  dealii::parallel::distributed::Triangulation<3> const &tria =
-      geometry.get_triangulation();
-
-  dealii::FE_Q<3> fe(1);
-  dealii::DoFHandler<3> dof_handler(tria);
-  dof_handler.distribute_dofs(fe);
-
-  auto locally_owned_dofs = dof_handler.locally_owned_dofs();
-  dealii::IndexSet locally_relevant_dofs;
-  dealii::DoFTools::extract_locally_relevant_dofs(dof_handler,
-                                                  locally_relevant_dofs);
-  dealii::LinearAlgebra::distributed::Vector<double> temperature(
-      locally_owned_dofs, locally_relevant_dofs, communicator);
-
-  auto expt_to_dof_mapping =
-      adamantine::get_expt_to_dof_mapping(points_values, dof_handler);
-
-  for (unsigned int i = 0; i < points_values.values.size(); ++i)
+  if (dealii::Utilities::MPI::n_mpi_processes(communicator) == 1)
   {
-    temperature[expt_to_dof_mapping.second[i]] = points_values.values[i];
-  }
 
-  temperature.compress(dealii::VectorOperation::insert);
+    adamantine::PointsValues<3> points_values;
+    // Create the points
+    points_values.points.emplace_back(0, 0, 1.);
+    points_values.points.emplace_back(0, 0.5, 1.);
+    points_values.points.emplace_back(0, 1., 1.);
+    points_values.points.emplace_back(0.5, 0., 1.);
+    points_values.points.emplace_back(0.5, 0.5, 1.);
+    points_values.points.emplace_back(0.5, 1., 1.);
+    points_values.points.emplace_back(1., 0., 1.);
+    points_values.points.emplace_back(1., 0.5, 1.);
+    points_values.points.emplace_back(1., 1., 1.);
+    // Create the values
+    points_values.values = {1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.};
 
-  std::vector<double> temperature_ref = {
-      0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0, 0,
-      0, 0, 0, 0, 1.2, 1.5, 1.3, 1.6, 1.8, 1.9, 1.4, 1.7, 2};
+    boost::property_tree::ptree database;
+    database.put("import_mesh", false);
+    database.put("length", 1);
+    database.put("length_divisions", 2);
+    database.put("height", 1);
+    database.put("height_divisions", 2);
+    database.put("width", 1);
+    database.put("width_divisions", 2);
+    adamantine::Geometry<3> geometry(communicator, database);
+    dealii::parallel::distributed::Triangulation<3> const &tria =
+        geometry.get_triangulation();
 
-  for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
-  {
-    BOOST_TEST(temperature.local_element(i) ==
-               temperature_ref[locally_owned_dofs.nth_index_in_set(i)]);
+    dealii::FE_Q<3> fe(1);
+    dealii::DoFHandler<3> dof_handler(tria);
+    dof_handler.distribute_dofs(fe);
+
+    auto locally_owned_dofs = dof_handler.locally_owned_dofs();
+    dealii::IndexSet locally_relevant_dofs;
+    dealii::DoFTools::extract_locally_relevant_dofs(dof_handler,
+                                                    locally_relevant_dofs);
+    dealii::LinearAlgebra::distributed::Vector<double> temperature(
+        locally_owned_dofs, locally_relevant_dofs, communicator);
+
+    auto expt_to_dof_mapping =
+        adamantine::get_expt_to_dof_mapping(points_values, dof_handler);
+
+    for (unsigned int i = 0; i < points_values.values.size(); ++i)
+    {
+      temperature[expt_to_dof_mapping.second[i]] = points_values.values[i];
+    }
+
+    temperature.compress(dealii::VectorOperation::insert);
+
+    std::vector<double> temperature_ref = {
+        0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0, 0,
+        0, 0, 0, 0, 1.2, 1.5, 1.3, 1.6, 1.8, 1.9, 1.4, 1.7, 2};
+
+    for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
+    {
+      BOOST_TEST(temperature.local_element(i) ==
+                 temperature_ref[locally_owned_dofs.nth_index_in_set(i)]);
+    }
   }
 }
 
