@@ -64,10 +64,6 @@ BOOST_AUTO_TEST_CASE(integration_3D_da_point_cloud_add_material)
    *
    * TODO: Add a similar test for ray data.
    */
-  std::cout
-      << "Starting test case: integration_3D_da_point_cloud_add_material..."
-      << std::endl;
-
   MPI_Comm communicator = MPI_COMM_WORLD;
 
   std::vector<adamantine::Timer> timers;
@@ -106,6 +102,4 @@ BOOST_AUTO_TEST_CASE(integration_3D_da_point_cloud_add_material)
   // Based on the experimental data, the expected temperature is ~200.0
   BOOST_CHECK(average_minimum_value >= 200.0);
   BOOST_CHECK(average_minimum_value < 300.0);
-
-  std::cout << "...completed." << std::endl;
 }

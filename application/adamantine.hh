@@ -1603,14 +1603,13 @@ run_ensemble(MPI_Comm const &communicator,
   timers[adamantine::add_material_search].start();
   std::vector<std::vector<
       std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>>
-      elements_to_activate_ensemble;
+      elements_to_activate_ensemble(ensemble_size);
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
-    auto elements_to_activate = adamantine::get_elements_to_activate(
-        thermal_physics_ensemble[member]->get_dof_handler(),
-        material_deposition_boxes);
-    timers[adamantine::add_material_search].stop();
-    elements_to_activate_ensemble.push_back(elements_to_activate);
+    elements_to_activate_ensemble[member] =
+        adamantine::get_elements_to_activate(
+            thermal_physics_ensemble[member]->get_dof_handler(),
+            material_deposition_boxes);
   }
   timers[adamantine::add_material_search].stop();
 
@@ -1656,15 +1655,12 @@ run_ensemble(MPI_Comm const &communicator,
 
       // ----- Add material if necessary -----
       timers[adamantine::add_material_search].start();
-      elements_to_activate_ensemble.clear();
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
-        auto elements_to_activate = adamantine::get_elements_to_activate(
-            thermal_physics_ensemble[member]->get_dof_handler(),
-            material_deposition_boxes);
-        timers[adamantine::add_material_search].stop();
-        elements_to_activate_ensemble.push_back(elements_to_activate);
-
+        elements_to_activate_ensemble[member] =
+            adamantine::get_elements_to_activate(
+                thermal_physics_ensemble[member]->get_dof_handler(),
+                material_deposition_boxes);
         solution_augmented_ensemble[member].collect_sizes();
       }
       timers[adamantine::add_material_search].stop();
