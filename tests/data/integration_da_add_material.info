@@ -1,0 +1,172 @@
+ensemble
+{
+  ensemble_simulation true
+  ensemble_size 3
+  initial_temperature_stddev 5.0
+  beam_0_absorption_stddev 0.05
+}
+experiment
+{
+  read_in_experimental_data true
+  log_filename integration_da_add_material_expt_log.txt
+  file integration_da_add_material_expt_pc_#camera_#frame.csv
+  data_columns 1,2,3,4
+  first_frame 0
+  last_frame 0
+  first_camera_id 0
+  last_camera_id 0
+  first_frame_temporal_offset 0.06
+  estimated_uncertainty 1.0
+}
+data_assimilation
+{
+  assimilate_data true
+  localization_cutoff_function gaspari_cohn
+  localization_cutoff_distance 5.0e-4
+  solver
+  {
+    max_number_of_temp_vectors 10
+    convergence_tolerance 1.0e-8
+  }
+}
+
+geometry
+{
+  import_mesh false ; Use built-in mesh generator
+  dim 3 ; dimension of the domain
+  length 99.18e-3 ; [m]
+  height 21.0e-3 ; [m] In 3D, the third parameters is width
+  width  99.18e-3
+  length_divisions 2 ; Number of cell layers in the length direction
+  height_divisions 3 ; Number of cell layers in the height direction
+  width_divisions  2
+  material_deposition true
+  material_deposition_method scan_paths
+  deposition_length 2.0e-3
+  deposition_height 2.0e-3
+  deposition_width 2.0e-3
+  deposition_lead_time 1.0e0
+  material_height 14.0e-3
+}
+
+physics
+{
+  thermal true
+  mechanical false
+}
+
+boundary
+{
+  type adiabatic ; convective,radiative
+}
+
+refinement
+{
+  n_heat_refinements 0 ; Number of coarsening/refinement executed (uses Kelly's
+                       ; error estimator)
+  heat_cell_ratio    2.0 ;
+  n_beam_refinements 0 ; Number of time the cells on the paths of the beams are
+                       ; refined
+  max_level          0 ; Maximum number of time a cell can be refined
+  time_steps_between_refinement 200000 ; number of time steps after which
+                                                 ; the refinement process is performed
+}
+
+materials
+{
+  n_materials 1
+
+  property_format polynomial
+  material_0
+  {
+    initial_temperature 285
+    solid
+    {
+      density 7904; [kg/m^3] For now all the states needs to have the same
+                    ; density.
+      specific_heat 714; [J/kg K]
+      thermal_conductivity_x 31.4 ; [W/m K]
+      thermal_conductivity_y 31.4 ; [W/m K]
+      thermal_conductivity_z 31.4 ; [W/m K]
+    }
+
+    powder
+    {
+      specific_heat 714; [J/kg K]
+      density 7904; [kg/m^3]
+      thermal_conductivity_x 0.314 ; [W/m K]
+      thermal_conductivity_y 0.314 ; [W/m K]
+      thermal_conductivity_z 0.314 ; [W/m K]
+    }
+
+    liquid
+    {
+      specific_heat 847; [J/kg K]
+      density 7904; [kg/m^3]
+      thermal_conductivity_x 37.3 ; [W/m k]
+      thermal_conductivity_y 37.3 ; [W/m k]
+      thermal_conductivity_z 37.3 ; [W/m k]
+      ; Not all three states need to define the same properties or to exist
+    }
+
+    solidus 1675; [K]
+    liquidus 1708; [K]
+    latent_heat 290000 ; [J/kg]
+  }
+}
+
+sources
+{
+  n_beams 1
+
+  beam_0
+  {
+    type goldak ; goldak (laser) or electron_beam
+    depth 3.0e-3 ; [m] maximum depth reached by the laser
+    diameter 3.0e-3 ; [m]
+    scan_path_file integration_da_add_material_sp.txt
+    scan_path_file_format segment
+    absorption_efficiency 0.6 ; number between 0 and 1 equivalent to
+                              ; energy_conversion_efficiency * control_efficiency
+                              ; for an electron beam
+    max_power 900.0 ; [W], current * voltage for an electron beam
+  }
+}
+
+time_stepping
+{
+  method forward_euler ; Possibilities: backward_euler, implicit_midpoint,
+                        ; crank_nicolson, sdirk2, forward_euler, rk_third_order,
+                        ; rk_fourth_order, bogacki_shampine, dopri,
+                        ; fehlberg, cash_karp
+  duration 2.0e-1 ; [s]
+  time_step 2.0e-2 ; [s]
+}
+
+post_processor
+{
+  filename_prefix output
+  time_steps_between_output 1
+}
+
+discretization
+{
+  thermal 
+  {
+    fe_degree 2
+    quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+  }
+  mechanical 
+  {
+    fe_degree 1
+    quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+  }
+}
+
+profiling
+{
+  timer true
+  caliper "spot(profile.mpi),loop-report,runtime-report"
+}
+
+memory_space host ; Always run on the host

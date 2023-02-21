@@ -1601,10 +1601,16 @@ run_ensemble(MPI_Comm const &communicator,
   // need to activate. This list will be invalidated every time we refine the
   // mesh.
   timers[adamantine::add_material_search].start();
-
-  auto elements_to_activate = adamantine::get_elements_to_activate(
-      thermal_physics_ensemble[0]->get_dof_handler(),
-      material_deposition_boxes);
+  std::vector<std::vector<
+      std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>>
+      elements_to_activate_ensemble(ensemble_size);
+  for (unsigned int member = 0; member < ensemble_size; ++member)
+  {
+    elements_to_activate_ensemble[member] =
+        adamantine::get_elements_to_activate(
+            thermal_physics_ensemble[member]->get_dof_handler(),
+            material_deposition_boxes);
+  }
   timers[adamantine::add_material_search].stop();
 
   // ----- Main time stepping loop -----
@@ -1649,15 +1655,15 @@ run_ensemble(MPI_Comm const &communicator,
 
       // ----- Add material if necessary -----
       timers[adamantine::add_material_search].start();
-      elements_to_activate = adamantine::get_elements_to_activate(
-          thermal_physics_ensemble[0]->get_dof_handler(),
-          material_deposition_boxes);
-      timers[adamantine::add_material_search].stop();
-
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
+        elements_to_activate_ensemble[member] =
+            adamantine::get_elements_to_activate(
+                thermal_physics_ensemble[member]->get_dof_handler(),
+                material_deposition_boxes);
         solution_augmented_ensemble[member].collect_sizes();
       }
+      timers[adamantine::add_material_search].stop();
     }
 
     // We use an epsilon to get the "expected" behavior when the deposition
@@ -1682,8 +1688,9 @@ run_ensemble(MPI_Comm const &communicator,
         std::vector<bool> has_melted(deposition_cos.size(), false);
 
         thermal_physics_ensemble[member]->add_material(
-            elements_to_activate, deposition_cos, deposition_sin, has_melted,
-            activation_start, activation_end, new_material_temperature[member],
+            elements_to_activate_ensemble[member], deposition_cos,
+            deposition_sin, has_melted, activation_start, activation_end,
+            new_material_temperature[member],
             solution_augmented_ensemble[member].block(base_state));
 
         solution_augmented_ensemble[member].collect_sizes();
