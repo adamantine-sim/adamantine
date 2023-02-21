@@ -55,3 +55,57 @@ BOOST_AUTO_TEST_CASE(integration_data_assimilation)
   BOOST_TEST(average_minimum_value >= 200.0);
   BOOST_TEST(average_minimum_value < 300.0);
 }
+
+BOOST_AUTO_TEST_CASE(integration_3D_da_point_cloud_add_material)
+{
+  /*
+   * This integration test checks that the data assimilation using point cloud
+   * data works while adding material.
+   *
+   * TODO: Add a similar test for ray data.
+   */
+  std::cout
+      << "Starting test case: integration_3D_da_point_cloud_add_material..."
+      << std::endl;
+
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  std::vector<adamantine::Timer> timers;
+  initialize_timers(communicator, timers);
+
+  // Read the input.
+  std::string const filename = "integration_da_add_material.info";
+  adamantine::ASSERT_THROW(boost::filesystem::exists(filename) == true,
+                           "The file " + filename + " does not exist.");
+  boost::property_tree::ptree database;
+  boost::property_tree::info_parser::read_info(filename, database);
+
+  // Run the simulation
+  auto result = run_ensemble<3, dealii::MemorySpace::Host>(communicator,
+                                                           database, timers);
+
+  // Three ensemble members expected
+  BOOST_TEST(result.size() == 3);
+
+  // Get the average minimum value for each ensemble member, which is very close
+  // to the initial temperature
+  double sum = 0.0;
+  for (unsigned int member = 0; member < result.size(); ++member)
+  {
+    double min_val = std::numeric_limits<double>::max();
+    for (unsigned int i = 0;
+         i < result.at(member).block(0).locally_owned_size(); ++i)
+    {
+      if (result.at(member).block(0).local_element(i) < min_val)
+        min_val = result.at(member).block(0).local_element(i);
+    }
+    sum += min_val;
+  }
+  double average_minimum_value = sum / result.size();
+
+  // Based on the experimental data, the expected temperature is ~200.0
+  BOOST_CHECK(average_minimum_value >= 200.0);
+  BOOST_CHECK(average_minimum_value < 300.0);
+
+  std::cout << "...completed." << std::endl;
+}
