@@ -105,26 +105,46 @@ public:
   static int constexpr dim = 3;
 
   /**
-   * Constructor. Read all the rays and the values from all the frames.
+   * Constructor.
    */
   RayTracing(boost::property_tree::ptree const &experiment_database);
 
   /**
-   * Perform the ray tracing given a DoFHandler @p dof_handler. @p frame is the
-   * relative frame the number, i.e., current frame id - first frame id
+   * Read data from the next frame.
    */
-  PointsValues<dim> get_intersection(dealii::DoFHandler<dim> const &dof_handler,
-                                     unsigned int frame);
+  void read_next_frame();
+
+  /**
+   * Perform the ray tracing given a DoFHandler @p dof_handler.
+   */
+  PointsValues<dim>
+  get_intersection(dealii::DoFHandler<dim> const &dof_handler);
 
 private:
   /**
-   * Rays associated to each frame.
+   * Next frame that should be read.
    */
-  std::vector<std::vector<Ray<dim>>> _rays_all_frames;
+  unsigned int _next_frame;
   /**
-   * Values associated to the rays of each frame.
+   * ID of the first camera.
    */
-  std::vector<std::vector<double>> _values_all_frames;
+  unsigned int _first_camera_id;
+  /**
+   * ID of the last camera.
+   */
+  unsigned int _last_camera_id;
+  /**
+   * Generic file name of the frames.
+   */
+  std::string _data_filename;
+  /**
+   * Rays associated to the current frame.
+   */
+  std::vector<Ray<dim>> _rays_current_frame;
+  /**
+   * Values associated to the rays of the current frame.
+   */
+  std::vector<double> _values_current_frame;
 };
 
 } // namespace adamantine

@@ -150,10 +150,10 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_ray_tracing_from_file)
   experiment_database.put("first_camera_id", 0);
   experiment_database.put("last_camera_id", 0);
   adamantine::RayTracing ray_tracing(experiment_database);
+  ray_tracing.read_next_frame();
 
   // Compute the intersection points
-  unsigned int frame = 0;
-  auto points_values = ray_tracing.get_intersection(dof_handler, frame);
+  auto points_values = ray_tracing.get_intersection(dof_handler);
 
   // Reference solution
   std::vector<double> values_ref = {1, 2, 3, 5};
@@ -266,10 +266,10 @@ BOOST_AUTO_TEST_CASE(project_ray_data_on_mesh, *utf::tolerance(1e-12))
     experiment_database.put("last_camera_id", 0);
 
     adamantine::RayTracing ray_tracing(experiment_database);
+    ray_tracing.read_next_frame();
 
     // Compute the intersection points
-    unsigned int frame = 0;
-    auto points_values = ray_tracing.get_intersection(dof_handler, frame);
+    auto points_values = ray_tracing.get_intersection(dof_handler);
 
     BOOST_CHECK(points_values.points.size() == 58938);
 
