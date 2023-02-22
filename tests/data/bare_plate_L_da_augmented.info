@@ -9,6 +9,7 @@ experiment
   read_in_experimental_data true
   log_filename bare_plate_L_da_aug_ref_log.txt
   file bare_plate_L_da_aug_ref_data_#camera_#frame.csv
+  format point_cloud
   data_columns 1,2,3,4
   first_frame 0
   last_frame 1

@@ -1532,8 +1532,33 @@ run_ensemble(MPI_Comm const &communicator,
       if (rank == 0)
         std::cout << "Reading the experimental data..." << std::endl;
 
-      points_values = adamantine::read_experimental_data_point_cloud<dim>(
-          communicator, experiment_database);
+      std::string experiment_format =
+          experiment_database.get<std::string>("format");
+
+      if (boost::iequals(experiment_format, "point_cloud"))
+        points_values = adamantine::read_experimental_data_point_cloud<dim>(
+            communicator, experiment_database);
+      else
+      {
+        // PropertyTreeInput experiment.first_frame
+        unsigned int first_frame = experiment_database.get("first_frame", 0);
+        // PropertyTreeInput experiment.last_frame
+        unsigned int last_frame =
+            experiment_database.get<unsigned int>("last_frame");
+
+        adamantine::RayTracing ray_tracing(experiment_database);
+        points_values.resize(last_frame + 1 - first_frame);
+        for (auto frame = first_frame; frame < last_frame + 1; ++frame)
+        {
+          // We can get away with doing this once with the zeroth member's
+          // dof_handler because we are calculating a geometric point
+          if constexpr (dim == 3)
+          {
+            points_values[frame] = ray_tracing.get_intersection(
+                thermal_physics_ensemble[0]->get_dof_handler(), frame);
+          }
+        }
+      }
 
       adamantine::ASSERT_THROW(frame_time_stamps[0].size() ==
                                    points_values.size(),

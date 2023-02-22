@@ -189,6 +189,7 @@ The following options are available:
     * file: format of the file names. The format is pretty arbitrary, the keywords \#frame
     and \#camera are replaced by the frame and the camera number. The format of
     the file itself should be csv with a header line. (required)
+    * format: The format of the experimental data, either "point_cloud", with (x,y,z,value) per line, or "ray", with (x0,y0,z0,x1,y1,z1,value) per line. (required)
     * first\_frame: number associated to the first frame (default value: 0)
     * last\_frame: number associated to the last frame (required)
     * first\_camera\_id: number associated to the first camera (required)
