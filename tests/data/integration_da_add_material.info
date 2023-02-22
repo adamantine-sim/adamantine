@@ -23,7 +23,7 @@ data_assimilation
 {
   assimilate_data true
   localization_cutoff_function gaspari_cohn
-  localization_cutoff_distance 5.0e-4
+  localization_cutoff_distance 5.0e-1
   solver
   {
     max_number_of_temp_vectors 10
