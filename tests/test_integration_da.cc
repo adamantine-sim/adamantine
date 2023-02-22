@@ -62,7 +62,6 @@ BOOST_AUTO_TEST_CASE(integration_3D_da_point_cloud_add_material)
    * This integration test checks that the data assimilation using point cloud
    * data works while adding material.
    */
-
   MPI_Comm communicator = MPI_COMM_WORLD;
 
   std::vector<adamantine::Timer> timers;
