@@ -1,4 +1,4 @@
-/* Copyright (c) 2021, the adamantine authors.
+/* Copyright (c) 2021-2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -8,7 +8,7 @@
 #ifndef DATA_ASSIMILATOR_HH
 #define DATA_ASSIMILATOR_HH
 
-#include <experimental_data.hh>
+#include <experimental_data_utils.hh>
 #include <types.hh>
 
 #include <deal.II/fe/mapping_q1_eulerian.h>

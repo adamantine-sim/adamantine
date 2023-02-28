@@ -1,12 +1,12 @@
-/* Copyright (c) 2021, the adamantine authors.
+/* Copyright (c) 2021-2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
  * for the text and further information on this license.
  */
 
-#ifndef EXPERIMENTAL_DATA_HH
-#define EXPERIMENTAL_DATA_HH
+#ifndef EXPERIMENTAL_DATA_UTILS_HH
+#define EXPERIMENTAL_DATA_UTILS_HH
 
 #include <deal.II/base/point.h>
 #include <deal.II/dofs/dof_handler.h>
@@ -76,76 +76,6 @@ void set_with_experimental_data(
  */
 std::vector<std::vector<double>>
 read_frame_timestamps(boost::property_tree::ptree const &experiment_database);
-
-/**
- * Data structure representing a ray.
- */
-template <int dim>
-struct Ray
-{
-  /**
-   * Origin of the ray.
-   */
-  dealii::Point<dim> origin;
-  /**
-   * Direction of propagation of the ray.
-   */
-  dealii::Tensor<1, dim> direction;
-};
-
-/**
- * This class performs ray tracing
- */
-class RayTracing
-{
-public:
-  /**
-   * This class assumes the geometry is 3D.
-   */
-  static int constexpr dim = 3;
-
-  /**
-   * Constructor.
-   */
-  RayTracing(boost::property_tree::ptree const &experiment_database);
-
-  /**
-   * Read data from the next frame.
-   */
-  void read_next_frame();
-
-  /**
-   * Perform the ray tracing given a DoFHandler @p dof_handler.
-   */
-  PointsValues<dim>
-  get_intersection(dealii::DoFHandler<dim> const &dof_handler);
-
-private:
-  /**
-   * Next frame that should be read.
-   */
-  unsigned int _next_frame;
-  /**
-   * ID of the first camera.
-   */
-  unsigned int _first_camera_id;
-  /**
-   * ID of the last camera.
-   */
-  unsigned int _last_camera_id;
-  /**
-   * Generic file name of the frames.
-   */
-  std::string _data_filename;
-  /**
-   * Rays associated to the current frame.
-   */
-  std::vector<Ray<dim>> _rays_current_frame;
-  /**
-   * Values associated to the rays of the current frame.
-   */
-  std::vector<double> _values_current_frame;
-};
 
 } // namespace adamantine
 
