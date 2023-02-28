@@ -8,7 +8,6 @@
 #include <experimental_data.hh>
 #include <utils.hh>
 
-#include <deal.II/arborx/bvh.h>
 #include <deal.II/arborx/distributed_tree.h>
 #include <deal.II/base/mpi.h>
 #include <deal.II/base/symmetric_tensor.h>
@@ -262,24 +261,31 @@ get_expt_to_dof_mapping(PointsValues<dim> const &points_values,
 {
   auto [dof_indices, support_points] = get_dof_to_support_mapping(dof_handler);
 
-  // Perform the search
-  dealii::ArborXWrappers::BVH bvh(support_points);
+  // Perform the search. This needs to be a distributed tree so that we only
+  // take care of locally owned nearest points_values. Otherwise all the
+  // points_values will be found on every rank.
+  auto communicator = dof_handler.get_communicator();
+  dealii::ArborXWrappers::DistributedTree distributed_tree(communicator,
+                                                           support_points);
   dealii::ArborXWrappers::PointNearestPredicate pt_nearest(points_values.points,
                                                            1);
-  auto [indices, offset] = bvh.query(pt_nearest);
+  auto [indices_ranks, offset] = distributed_tree.query(pt_nearest);
 
   // Convert the indices and offsets to a pair that maps experimental indices to
   // dof indices
+  int const my_rank = dealii::Utilities::MPI::this_mpi_process(communicator);
   std::pair<std::vector<int>, std::vector<int>> expt_to_dof_mapping;
-  expt_to_dof_mapping.first.resize(indices.size());
-  expt_to_dof_mapping.second.resize(indices.size());
   unsigned int const n_queries = points_values.points.size();
   for (unsigned int i = 0; i < n_queries; ++i)
   {
     for (int j = offset[i]; j < offset[i + 1]; ++j)
     {
-      expt_to_dof_mapping.first[j] = i;
-      expt_to_dof_mapping.second[j] = dof_indices[indices[j]];
+      if (indices_ranks[j].second == my_rank)
+      {
+        expt_to_dof_mapping.first.push_back(i);
+        expt_to_dof_mapping.second.push_back(
+            dof_indices[indices_ranks[j].first]);
+      }
     }
   }
 
