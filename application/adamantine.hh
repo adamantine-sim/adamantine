@@ -1532,6 +1532,7 @@ run_ensemble(MPI_Comm const &communicator,
       if (rank == 0)
         std::cout << "Reading the experimental data..." << std::endl;
 
+      // PropertyTreeInput experiment.format
       std::string experiment_format =
           experiment_database.get<std::string>("format");
 
