@@ -407,7 +407,8 @@ void validate_input_database(boost::property_tree::ptree &database)
 
   // Tree: experiment
   // I'm not checking for the existence of the experimental files here, that's
-  // still done in `adamantine::read_experimental_data_point_cloud`.
+  // still done in `adamantine::read_experimental_data_point_cloud` and
+  // `adamantine::RayTracing`.
   boost::optional<boost::property_tree::ptree &> experiment_optional_database =
       database.get_child_optional("experiment");
   if (experiment_optional_database)
@@ -423,6 +424,12 @@ void validate_input_database(boost::property_tree::ptree &database)
       ASSERT_THROW(database.get_child("experiment").count("last_frame") != 0,
                    "Error: If reading experimental data, a last frame index "
                    "must be given.");
+
+      std::string experiment_format =
+          database.get<std::string>("experiment.format");
+      ASSERT_THROW(boost::iequals(experiment_format, "point_cloud") ||
+                       boost::iequals(experiment_format, "ray"),
+                   "Error: Experiment format must be 'point_cloud' or 'ray'.");
 
       unsigned int first_frame_index =
           database.get<unsigned int>("experiment.first_frame", 0);

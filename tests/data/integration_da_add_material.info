@@ -10,6 +10,7 @@ experiment
   read_in_experimental_data true
   log_filename integration_da_add_material_expt_log.txt
   file integration_da_add_material_expt_pc_#camera_#frame.csv
+  format point_cloud
   data_columns 1,2,3,4
   first_frame 0
   last_frame 0
@@ -22,7 +23,7 @@ data_assimilation
 {
   assimilate_data true
   localization_cutoff_function gaspari_cohn
-  localization_cutoff_distance 5.0e-4
+  localization_cutoff_distance 5.0e-1
   solver
   {
     max_number_of_temp_vectors 10
@@ -34,12 +35,12 @@ geometry
 {
   import_mesh false ; Use built-in mesh generator
   dim 3 ; dimension of the domain
-  length 99.18e-3 ; [m]
-  height 21.0e-3 ; [m] In 3D, the third parameters is width
-  width  99.18e-3
-  length_divisions 2 ; Number of cell layers in the length direction
+  length 100.0e-3 ; [m]
+  height 20.0e-3 ; [m] In 3D, the third parameters is width
+  width  100.0e-3
+  length_divisions 3 ; Number of cell layers in the length direction
   height_divisions 3 ; Number of cell layers in the height direction
-  width_divisions  2
+  width_divisions  3
   material_deposition true
   material_deposition_method scan_paths
   deposition_length 2.0e-3
