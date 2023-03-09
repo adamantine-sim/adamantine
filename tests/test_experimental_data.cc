@@ -9,7 +9,9 @@
 #define BOOST_TEST_MODULE ExperimentaData
 
 #include <Geometry.hh>
-#include <experimental_data.hh>
+#include <PointCloud.hh>
+#include <RayTracing.hh>
+#include <experimental_data_utils.hh>
 
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_nothing.h>
@@ -24,15 +26,31 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_point_cloud_from_file)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
-  boost::property_tree::ptree database;
-  database.put("file", "experimental_data_#camera_#frame.csv");
-  database.put("last_frame", 0);
-  database.put("first_camera_id", 0);
-  database.put("last_camera_id", 0);
-  database.put("data_columns", "1,2,3,5");
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 1);
+  geometry_database.put("length_divisions", 2);
+  geometry_database.put("height", 1);
+  geometry_database.put("height_divisions", 2);
+  geometry_database.put("width", 1);
+  geometry_database.put("width_divisions", 2);
+  adamantine::Geometry<3> geometry(communicator, geometry_database);
+  dealii::parallel::distributed::Triangulation<3> const &tria =
+      geometry.get_triangulation();
 
-  auto points_values =
-      adamantine::read_experimental_data_point_cloud<3>(communicator, database);
+  dealii::FE_Q<3> fe(1);
+  dealii::DoFHandler<3> dof_handler(tria);
+  dof_handler.distribute_dofs(fe);
+
+  boost::property_tree::ptree experiment_database;
+  experiment_database.put("file", "experimental_data_#camera_#frame.csv");
+  experiment_database.put("last_frame", 0);
+  experiment_database.put("first_camera_id", 0);
+  experiment_database.put("last_camera_id", 0);
+
+  adamantine::PointCloud<3> point_cloud(experiment_database);
+  point_cloud.read_next_frame();
+  auto points_values = point_cloud.get_points_values();
 
   std::vector<double> values_ref = {1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.};
   std::vector<dealii::Point<3>> points_ref;
@@ -46,13 +64,12 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_point_cloud_from_file)
   points_ref.emplace_back(1., 0.5, 1.);
   points_ref.emplace_back(1., 1., 1.);
 
-  BOOST_TEST(points_values.size() == 1);
-  BOOST_TEST(points_values[0].points.size() == 9);
-  BOOST_TEST(points_values[0].points.size() == points_values[0].values.size());
-  for (unsigned int i = 0; i < points_values[0].points.size(); ++i)
+  BOOST_TEST(points_values.points.size() == 9);
+  BOOST_TEST(points_values.points.size() == points_values.values.size());
+  for (unsigned int i = 0; i < points_values.points.size(); ++i)
   {
-    BOOST_TEST(points_values[0].values[i] == values_ref[i]);
-    BOOST_TEST(points_values[0].points[i] == points_ref[i]);
+    BOOST_TEST(points_values.values[i] == values_ref[i]);
+    BOOST_TEST(points_values.points[i] == points_ref[i]);
   }
 }
 
@@ -149,11 +166,11 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_ray_tracing_from_file)
   experiment_database.put("last_frame", 0);
   experiment_database.put("first_camera_id", 0);
   experiment_database.put("last_camera_id", 0);
-  adamantine::RayTracing ray_tracing(experiment_database);
+  adamantine::RayTracing ray_tracing(experiment_database, dof_handler);
+  ray_tracing.read_next_frame();
 
   // Compute the intersection points
-  unsigned int frame = 0;
-  auto points_values = ray_tracing.get_intersection(dof_handler, frame);
+  auto points_values = ray_tracing.get_points_values();
 
   // Reference solution
   std::vector<double> values_ref = {1, 2, 3, 5};
@@ -265,11 +282,11 @@ BOOST_AUTO_TEST_CASE(project_ray_data_on_mesh, *utf::tolerance(1e-12))
     experiment_database.put("first_camera_id", 0);
     experiment_database.put("last_camera_id", 0);
 
-    adamantine::RayTracing ray_tracing(experiment_database);
+    adamantine::RayTracing ray_tracing(experiment_database, dof_handler);
+    ray_tracing.read_next_frame();
 
     // Compute the intersection points
-    unsigned int frame = 0;
-    auto points_values = ray_tracing.get_intersection(dof_handler, frame);
+    auto points_values = ray_tracing.get_points_values();
 
     BOOST_CHECK(points_values.points.size() == 58938);
 

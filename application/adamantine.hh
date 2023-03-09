@@ -8,6 +8,7 @@
 #ifndef ADAMANTINE_HH
 #define ADAMANTINE_HH
 
+#include "ExperimentalData.hh"
 #include <DataAssimilator.hh>
 #include <Geometry.hh>
 #include <MaterialProperty.hh>
@@ -17,12 +18,14 @@
 #include <MechanicalPhysicsDummy.hh>
 #endif
 #include <MemoryBlock.hh>
+#include <PointCloud.hh>
 #include <PostProcessor.hh>
+#include <RayTracing.hh>
 #include <ThermalPhysics.hh>
 #include <ThermalPhysicsInterface.hh>
 #include <Timer.hh>
 #include <ensemble_management.hh>
-#include <experimental_data.hh>
+#include <experimental_data_utils.hh>
 #include <material_deposition.hh>
 #include <utils.hh>
 
@@ -1492,9 +1495,9 @@ run_ensemble(MPI_Comm const &communicator,
   }
 
   // ----- Read the experimental data -----
-  unsigned int experimental_frame_index = 0;
   std::vector<std::vector<double>> frame_time_stamps;
-  std::vector<adamantine::PointsValues<dim>> points_values;
+  std::unique_ptr<adamantine::ExperimentalData<dim>> experimental_data;
+  unsigned int experimental_frame_index = -1;
 
   if (experiment_optional_database)
   {
@@ -1526,51 +1529,25 @@ run_ensemble(MPI_Comm const &communicator,
                   << " camera(s), with " << frame_time_stamps[0].size()
                   << " frame(s)." << std::endl;
 
-      // Get a vector of experimental data where each element contains all
-      // data from all cameras per frame. For now data from all cameras are
-      // intermixed so the frames needs to be synced.
-      if (rank == 0)
-        std::cout << "Reading the experimental data..." << std::endl;
-
       // PropertyTreeInput experiment.format
       std::string experiment_format =
           experiment_database.get<std::string>("format");
 
       if (boost::iequals(experiment_format, "point_cloud"))
-        points_values = adamantine::read_experimental_data_point_cloud<dim>(
-            communicator, experiment_database);
+      {
+        experimental_data = std::make_unique<adamantine::PointCloud<dim>>(
+            adamantine::PointCloud<dim>(experiment_database));
+      }
       else
       {
-        // PropertyTreeInput experiment.first_frame
-        unsigned int first_frame = experiment_database.get("first_frame", 0);
-        // PropertyTreeInput experiment.last_frame
-        unsigned int last_frame =
-            experiment_database.get<unsigned int>("last_frame");
-
-        adamantine::RayTracing ray_tracing(experiment_database);
-        points_values.resize(last_frame + 1 - first_frame);
-        for (auto frame = first_frame; frame < last_frame + 1; ++frame)
+        if constexpr (dim == 3)
         {
-          // We can get away with doing this once with the zeroth member's
-          // dof_handler because we are calculating a geometric point
-          if constexpr (dim == 3)
-          {
-            points_values[frame] = ray_tracing.get_intersection(
-                thermal_physics_ensemble[0]->get_dof_handler(), frame);
-          }
+          experimental_data =
+              std::make_unique<adamantine::RayTracing>(adamantine::RayTracing(
+                  experiment_database,
+                  thermal_physics_ensemble[0]->get_dof_handler()));
         }
       }
-
-      adamantine::ASSERT_THROW(frame_time_stamps[0].size() ==
-                                   points_values.size(),
-                               "The number of frames in the log file and the "
-                               "data files must match.");
-      if (rank == 0)
-        std::cout << "Done. Data files found for " << points_values.size()
-                  << " frame(s)." << std::endl;
-
-      // PropertyTreeInput experiment.first_frame
-      experimental_frame_index = experiment_database.get("first_frame", 0);
     }
   }
 
@@ -1772,14 +1749,17 @@ run_ensemble(MPI_Comm const &communicator,
       // Currently assume that all frames are synced so that the 0th camera
       // frame time is the relevant time
       double frame_time;
-      if (experimental_frame_index < frame_time_stamps[0].size())
-      {
-        frame_time = frame_time_stamps[0][experimental_frame_index];
-      }
-      else
+      if (((experimental_frame_index + 1) >= frame_time_stamps[0].size()) ||
+          (frame_time_stamps[0][experimental_frame_index + 1] > time))
       {
         frame_time = std::numeric_limits<double>::max();
       }
+      else
+      {
+        experimental_frame_index = experimental_data->read_next_frame();
+        frame_time = frame_time_stamps[0][experimental_frame_index];
+      }
+
       if (frame_time <= time)
       {
         adamantine::ASSERT_THROW(
@@ -1806,9 +1786,11 @@ run_ensemble(MPI_Comm const &communicator,
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_BEGIN("da_experimental_data");
 #endif
+        auto points_values = experimental_data->get_points_values();
+        auto const &thermal_dof_handler =
+            thermal_physics_ensemble[0]->get_dof_handler();
         auto expt_to_dof_mapping = adamantine::get_expt_to_dof_mapping(
-            points_values[experimental_frame_index],
-            thermal_physics_ensemble[0]->get_dof_handler());
+            points_values, thermal_dof_handler);
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_END("da_experimental_data");
 #endif
@@ -1836,15 +1818,14 @@ run_ensemble(MPI_Comm const &communicator,
         CALI_MARK_BEGIN("da_covariance_sparsity");
 #endif
         data_assimilator.update_covariance_sparsity_pattern<dim>(
-            thermal_physics_ensemble[0]->get_dof_handler(),
+            thermal_dof_handler,
             solution_augmented_ensemble[0].block(augmented_state).size());
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_END("da_covariance_sparsity");
 #endif
         timers[adamantine::da_covariance_sparsity].start();
 
-        unsigned int experimental_data_size =
-            points_values[experimental_frame_index].values.size();
+        unsigned int experimental_data_size = points_values.values.size();
 
         // Create the R matrix (the observation covariance matrix)
         // PropertyTreeInput experiment.estimated_uncertainty
@@ -1880,8 +1861,7 @@ run_ensemble(MPI_Comm const &communicator,
         CALI_MARK_BEGIN("da_update_ensemble");
 #endif
         data_assimilator.update_ensemble(
-            communicator, solution_augmented_ensemble,
-            points_values[experimental_frame_index].values, R);
+            communicator, solution_augmented_ensemble, points_values.values, R);
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_END("da_update_ensemble");
 #endif
@@ -1930,8 +1910,6 @@ run_ensemble(MPI_Comm const &communicator,
             std::cout << std::endl;
           }
         }
-
-        experimental_frame_index++;
       }
 
       // Update the heat source in the ThermalPhysics objects

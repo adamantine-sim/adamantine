@@ -1,12 +1,12 @@
-/* Copyright (c) 2021, the adamantine authors.
+/* Copyright (c) 2021-2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
  * for the text and further information on this license.
  */
 
-#ifndef EXPERIMENTAL_DATA_HH
-#define EXPERIMENTAL_DATA_HH
+#ifndef EXPERIMENTAL_DATA_UTILS_HH
+#define EXPERIMENTAL_DATA_UTILS_HH
 
 #include <deal.II/base/point.h>
 #include <deal.II/dofs/dof_handler.h>
@@ -76,56 +76,6 @@ void set_with_experimental_data(
  */
 std::vector<std::vector<double>>
 read_frame_timestamps(boost::property_tree::ptree const &experiment_database);
-
-/**
- * Data structure representing a ray.
- */
-template <int dim>
-struct Ray
-{
-  /**
-   * Origin of the ray.
-   */
-  dealii::Point<dim> origin;
-  /**
-   * Direction of propagation of the ray.
-   */
-  dealii::Tensor<1, dim> direction;
-};
-
-/**
- * This class performs ray tracing
- */
-class RayTracing
-{
-public:
-  /**
-   * This class assumes the geometry is 3D.
-   */
-  static int constexpr dim = 3;
-
-  /**
-   * Constructor. Read all the rays and the values from all the frames.
-   */
-  RayTracing(boost::property_tree::ptree const &experiment_database);
-
-  /**
-   * Perform the ray tracing given a DoFHandler @p dof_handler. @p frame is the
-   * relative frame the number, i.e., current frame id - first frame id
-   */
-  PointsValues<dim> get_intersection(dealii::DoFHandler<dim> const &dof_handler,
-                                     unsigned int frame);
-
-private:
-  /**
-   * Rays associated to each frame.
-   */
-  std::vector<std::vector<Ray<dim>>> _rays_all_frames;
-  /**
-   * Values associated to the rays of each frame.
-   */
-  std::vector<std::vector<double>> _values_all_frames;
-};
 
 } // namespace adamantine
 

@@ -3,6 +3,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/CubeHeatSource.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/DataAssimilator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ElectronBeamHeatSource.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/ExperimentalData.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Geometry.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/GoldakHeatSource.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/HeatSource.hh
@@ -13,7 +14,9 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/MemoryBlockView.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Operator.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/PointCloud.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/RayTracing.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ScanPath.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorBase.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.hh
@@ -22,7 +25,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.templates.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ensemble_management.hh
-    ${CMAKE_CURRENT_SOURCE_DIR}/experimental_data.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/experimental_data_utils.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/material_deposition.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/utils.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/types.hh
@@ -37,13 +40,15 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/PointCloud.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/RayTracing.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ScanPath.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ensemble_management.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/experimental_data.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/experimental_data_utils.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/material_deposition.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/validate_input_database.cc
   )
