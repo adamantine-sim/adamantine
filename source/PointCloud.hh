@@ -28,8 +28,7 @@ public:
 
   unsigned int read_next_frame() override;
 
-  PointsValues<dim>
-  get_points_values(dealii::DoFHandler<dim> const &dof_handler) override;
+  PointsValues<dim> get_points_values() override;
 
 private:
   /**

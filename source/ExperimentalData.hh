@@ -29,8 +29,7 @@ public:
   /**
    * Return the Points and their associated value (temperature).
    */
-  virtual PointsValues<dim>
-  get_points_values(dealii::DoFHandler<dim> const &dof_handler) = 0;
+  virtual PointsValues<dim> get_points_values() = 0;
 };
 
 } // namespace adamantine

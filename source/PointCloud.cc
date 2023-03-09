@@ -49,7 +49,8 @@ unsigned int PointCloud<dim>::read_next_frame()
     unsigned int counter = 1;
     while (!boost::filesystem::exists(filename))
     {
-      // Spin loop waiting for the file to appear
+      // Spin loop waiting for the file to appear (message printed if counter
+      // overflows)
       if (counter == 0)
         std::cout << "Waiting for the next frame" << std::endl;
       ++counter;
@@ -104,8 +105,7 @@ unsigned int PointCloud<dim>::read_next_frame()
 }
 
 template <int dim>
-PointsValues<dim>
-PointCloud<dim>::get_points_values(dealii::DoFHandler<dim> const &)
+PointsValues<dim> PointCloud<dim>::get_points_values()
 {
   return _points_values_current_frame;
 }

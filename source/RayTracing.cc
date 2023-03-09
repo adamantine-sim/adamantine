@@ -79,7 +79,9 @@ struct AccessTraits<adamantine::RayNearestPredicate, PredicatesTag>
 
 namespace adamantine
 {
-RayTracing::RayTracing(boost::property_tree::ptree const &experiment_database)
+RayTracing::RayTracing(boost::property_tree::ptree const &experiment_database,
+                       dealii::DoFHandler<3> const &dof_handler)
+    : _dof_handler(dof_handler)
 {
 
   // Format of the file names: the format is pretty arbitrary, #frame and
@@ -111,7 +113,8 @@ unsigned int RayTracing::read_next_frame()
     unsigned int counter = 1;
     while (!boost::filesystem::exists(filename))
     {
-      // Spin loop waiting for the file to appear
+      // Spin loop waiting for the file to appear (message printed if counter
+      // overflows)
       if (counter == 0)
         std::cout << "Waiting for the next frame" << std::endl;
       ++counter;
@@ -171,8 +174,7 @@ unsigned int RayTracing::read_next_frame()
   return _next_frame++;
 }
 
-PointsValues<3>
-RayTracing::get_points_values(dealii::DoFHandler<dim> const &dof_handler)
+PointsValues<3> RayTracing::get_points_values()
 {
   PointsValues<dim> points_values;
 
@@ -184,7 +186,7 @@ RayTracing::get_points_values(dealii::DoFHandler<dim> const &dof_handler)
   std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>
       cell_iterators;
   for (auto const &cell : dealii::filter_iterators(
-           dof_handler.active_cell_iterators(),
+           _dof_handler.active_cell_iterators(),
            dealii::IteratorFilters::LocallyOwnedCell(),
            dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
   {
@@ -197,7 +199,7 @@ RayTracing::get_points_values(dealii::DoFHandler<dim> const &dof_handler)
   // DistributedTree because some rays can be stopped by activated cells on a
   // different processors. Since the rays are on all the processors, we don't
   // need to communicate the results to other processors.
-  auto communicator = dof_handler.get_communicator();
+  auto communicator = _dof_handler.get_communicator();
   dealii::ArborXWrappers::DistributedTree distributed_tree(communicator,
                                                            bounding_boxes);
   RayNearestPredicate ray_nearest(_rays_current_frame);

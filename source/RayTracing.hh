@@ -10,6 +10,8 @@
 
 #include <ExperimentalData.hh>
 
+#include <deal.II/dofs/dof_handler.h>
+
 namespace adamantine
 {
 /**
@@ -39,12 +41,12 @@ public:
   /**
    * Constructor.
    */
-  RayTracing(boost::property_tree::ptree const &experiment_database);
+  RayTracing(boost::property_tree::ptree const &experiment_database,
+             dealii::DoFHandler<dim> const &dof_handler);
 
   unsigned int read_next_frame() override;
 
-  PointsValues<dim>
-  get_points_values(dealii::DoFHandler<dim> const &dof_handler) override;
+  PointsValues<dim> get_points_values() override;
 
 private:
   /**
@@ -63,6 +65,10 @@ private:
    * Generic file name of the frames.
    */
   std::string _data_filename;
+  /**
+   * DoFHandler of the mesh we want to perform the ray tracing on.
+   */
+  dealii::DoFHandler<dim> const &_dof_handler;
   /**
    * Rays associated to the current frame.
    */

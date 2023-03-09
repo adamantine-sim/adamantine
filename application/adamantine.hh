@@ -1542,8 +1542,10 @@ run_ensemble(MPI_Comm const &communicator,
       {
         if constexpr (dim == 3)
         {
-          experimental_data = std::make_unique<adamantine::RayTracing>(
-              adamantine::RayTracing(experiment_database));
+          experimental_data =
+              std::make_unique<adamantine::RayTracing>(adamantine::RayTracing(
+                  experiment_database,
+                  thermal_physics_ensemble[0]->get_dof_handler()));
         }
       }
     }
@@ -1784,10 +1786,9 @@ run_ensemble(MPI_Comm const &communicator,
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_BEGIN("da_experimental_data");
 #endif
+        auto points_values = experimental_data->get_points_values();
         auto const &thermal_dof_handler =
             thermal_physics_ensemble[0]->get_dof_handler();
-        auto points_values =
-            experimental_data->get_points_values(thermal_dof_handler);
         auto expt_to_dof_mapping = adamantine::get_expt_to_dof_mapping(
             points_values, thermal_dof_handler);
 #ifdef ADAMANTINE_WITH_CALIPER
