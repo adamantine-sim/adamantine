@@ -6,6 +6,7 @@
  */
 
 #include <RayTracing.hh>
+#include <utils.hh>
 
 #include <deal.II/arborx/distributed_tree.h>
 #include <deal.II/grid/filtered_iterator.h>
@@ -214,36 +215,31 @@ PointsValues<3> RayTracing::get_points_values()
   unsigned int n_intersections = 0;
   for (unsigned int i = 0; i < n_rays; ++i)
   {
-    if (offset[i] != offset[i + 1])
-    {
-      for (int j = offset[i]; j < offset[i + 1]; ++j)
-      {
-        if (indices_ranks[j].second == my_rank)
-        {
-          ++n_intersections;
-        }
-      }
-    }
-  }
-
-  // If there are no intersections, leave early
-  if (n_intersections == 0)
-    return points_values;
-
-  std::vector<double> distances(n_intersections,
-                                std::numeric_limits<double>::max());
-  points_values.points.resize(n_intersections);
-  points_values.values.resize(n_intersections);
-  auto constexpr reference_cell = dealii::ReferenceCells::get_hypercube<dim>();
-  double constexpr tolerance = 1e-12;
-  unsigned int ii = 0;
-  for (unsigned int i = 0; i < n_rays; ++i)
-  {
-    points_values.values[ii] = _values_current_frame[i];
     for (int j = offset[i]; j < offset[i + 1]; ++j)
     {
       if (indices_ranks[j].second == my_rank)
       {
+        ++n_intersections;
+      }
+    }
+  }
+
+  // If there are no intersections with the mesh leave early
+  if (n_intersections == 0)
+    return points_values;
+
+  points_values.points.reserve(n_intersections);
+  points_values.values.reserve(n_intersections);
+  auto constexpr reference_cell = dealii::ReferenceCells::get_hypercube<dim>();
+  double constexpr tol = 1e-6;
+  for (unsigned int i = 0; i < n_rays; ++i)
+  {
+    for (int j = offset[i]; j < offset[i + 1]; ++j)
+    {
+      if (indices_ranks[j].second == my_rank)
+      {
+        double distance = std::numeric_limits<double>::max();
+        dealii::Point<dim> intersection;
         auto const &cell = cell_iterators[indices_ranks[j].first];
         // We know that the ray intersects the bounding box but we don't know
         // where it intersects the cells. We need to check the intersection of
@@ -269,10 +265,14 @@ PointsValues<3> RayTracing::get_points_values()
               {{-ray_direction[0], -ray_direction[1], -ray_direction[2]},
                {edge_01[0], edge_01[1], edge_01[2]},
                {edge_02[0], edge_02[1], edge_02[2]}});
-          double det = dealii::determinant(matrix);
+          double const det = dealii::determinant(matrix);
+          double face_area = 0.;
+          for (int e = 0; e < dim; ++e)
+            for (int k = 0; k < dim; ++k)
+              face_area += std::abs(edge_01[e] * edge_02[k]);
           // If determinant is close to zero, the ray is parallel to the face
           // and we go to the next face.
-          if (std::abs(det) < tolerance)
+          if (std::abs(det) < tol * face_area)
             continue;
           // Compute the distance along the ray direction between the origin
           // of the ray and the intersection point.
@@ -287,12 +287,13 @@ PointsValues<3> RayTracing::get_points_values()
           // a cube the ray will get into the cube from one face and it will
           // get out of the cube by the opposite face. The correct
           // intersection point is the one with the smallest distance.
-          if (d < distances[ii])
+          if (d < distance)
           {
             // The point intersects the plane of the face but maybe not the
             // face itself. Check that the point is on the face. NOTE: We
             // assume that the face is an axis-aligned rectangle.
-            dealii::Point<dim> intersection = ray_origin + d * ray_direction;
+            dealii::Point<dim> face_intersection =
+                ray_origin + d * ray_direction;
             std::vector<double> min(dim, std::numeric_limits<double>::max());
             std::vector<double> max(dim, std::numeric_limits<double>::lowest());
             for (unsigned int coord = 0; coord < dim; ++coord)
@@ -314,14 +315,11 @@ PointsValues<3> RayTracing::get_points_values()
             }
 
             bool on_the_face = true;
-            for (unsigned int coord = 0; coord < 3; ++coord)
+            for (int coord = 0; coord < dim; ++coord)
             {
-              // NOTE: We could add a tolerance if the intersection point is
-              // on the edge. Currently, we may lose some rays but I don't
-              // think it matters. The mesh does not match exactly the real
-              // object anyway.
-              if ((intersection[coord] < min[coord]) ||
-                  (intersection[coord] > max[coord]))
+              double const max_edge = std::max(edge_01[coord], edge_02[coord]);
+              if ((face_intersection[coord] < (min[coord] - tol * max_edge)) ||
+                  (face_intersection[coord] > (max[coord] + tol * max_edge)))
               {
                 on_the_face = false;
                 break;
@@ -330,16 +328,23 @@ PointsValues<3> RayTracing::get_points_values()
 
             if (on_the_face)
             {
-              points_values.points[ii] = intersection;
-              distances[ii] = d;
+              distance = d;
+              intersection = face_intersection;
             }
           }
         }
+        if (distance < std::numeric_limits<double>::max())
+        {
+          points_values.points.push_back(intersection);
+          points_values.values.push_back(_values_current_frame[i]);
+        }
       }
-      if (offset[i] != offset[i + 1])
-        ++ii;
     }
   }
+  // We know that there are at most n_intersections between the rays and the
+  // mesh
+  ASSERT(points_values.points.size() <= n_intersections,
+         "Error when computing the intersection of rays with the mesh.");
 
   return points_values;
 }
