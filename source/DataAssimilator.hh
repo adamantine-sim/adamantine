@@ -133,14 +133,12 @@ private:
       dealii::LA::distributed::Vector<double> const &sim_ensemble_member) const;
 
   /**
-   * This fills a vector (vec) with noise from a multivariate normal
-   * distribution defined by a covariance matrix (R). Note: For non-diagonal R
-   * this method currently uses full matrices, which substantially limits the
-   * allowable problem size.
+   * This creates a vector with noise from a multivariate normal
+   * distribution defined by a covariance matrix (R). This function assumes that
+   * R is diagonal.
    */
-  void fill_noise_vector(dealii::Vector<double> &vec,
-                         dealii::SparseMatrix<double> const &R,
-                         bool const R_is_diagonal);
+  dealii::Vector<double>
+  get_noise_vector(dealii::SparseMatrix<double> const &R);
 
   /**
    * A standard localization function, resembles a Gaussian, but with finite
