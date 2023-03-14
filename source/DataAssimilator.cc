@@ -435,23 +435,25 @@ double DataAssimilator::gaspari_cohn_function(double const r) const
   }
 }
 
-template <typename VectorType>
 dealii::TrilinosWrappers::SparseMatrix
 DataAssimilator::calc_sample_covariance_sparse(
-    std::vector<VectorType> const vec_ensemble) const
+    std::vector<dealii::LA::distributed::BlockVector<double>> const
+        &vec_ensemble) const
 {
-  unsigned int augmented_state_size = _sim_size + _parameter_size;
+  unsigned int const local_size = vec_ensemble[0].locally_owned_size();
 
   // Calculate the mean
-  dealii::Vector<double> mean(augmented_state_size);
-  for (unsigned int i = 0; i < augmented_state_size; ++i)
+  dealii::Vector<double> mean(local_size);
+  auto sum = vec_ensemble[0];
+  for (unsigned int sample = 1; sample < _num_ensemble_members; ++sample)
   {
-    double sum = 0.0;
-    for (unsigned int sample = 0; sample < _num_ensemble_members; ++sample)
-    {
-      sum += vec_ensemble[sample][i];
-    }
-    mean[i] = sum / _num_ensemble_members;
+    sum += vec_ensemble[sample];
+  }
+  unsigned int ii = 0;
+  for (auto index : sum.locally_owned_elements())
+  {
+    mean[ii] = sum[index] / _num_ensemble_members;
+    ++ii;
   }
 
   dealii::TrilinosWrappers::SparseMatrix cov(_covariance_sparsity_pattern);
@@ -517,13 +519,5 @@ template void DataAssimilator::update_covariance_sparsity_pattern<2>(
 template void DataAssimilator::update_covariance_sparsity_pattern<3>(
     dealii::DoFHandler<3> const &dof_handler,
     const unsigned int parameter_size);
-template dealii::TrilinosWrappers::SparseMatrix
-DataAssimilator::calc_sample_covariance_sparse<dealii::Vector<double>>(
-    std::vector<dealii::Vector<double>> const vec_ensemble) const;
-template dealii::TrilinosWrappers::SparseMatrix
-DataAssimilator::calc_sample_covariance_sparse<
-    dealii::LA::distributed::Vector<double>>(
-    std::vector<dealii::LA::distributed::Vector<double>> const vec_ensemble)
-    const;
 
 } // namespace adamantine

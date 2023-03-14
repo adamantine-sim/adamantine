@@ -155,9 +155,9 @@ private:
    * the use of member variables inside. If needed, the interface could be
    * redone to make it more generally applicable.
    */
-  template <typename VectorType>
   dealii::TrilinosWrappers::SparseMatrix calc_sample_covariance_sparse(
-      std::vector<VectorType> const vec_ensemble) const;
+      std::vector<dealii::LA::distributed::BlockVector<double>> const
+          &vec_ensemble) const;
 
   /**
    * The number of ensemble members in the simulation.

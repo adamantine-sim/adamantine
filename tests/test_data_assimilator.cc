@@ -374,13 +374,14 @@ public:
 
     // Trivial case of identical vectors, effectively dense, covariance should
     // be the zero matrix
-    dealii::LA::distributed::Vector<double> sim_vec(dof_handler.n_dofs());
-    sim_vec(0) = 2.0;
-    sim_vec(1) = 4.0;
-    sim_vec(2) = 5.0;
-    sim_vec(3) = 7.0;
+    dealii::LA::distributed::BlockVector<double> sim_vec(1,
+                                                         dof_handler.n_dofs());
+    sim_vec[0] = 2.0;
+    sim_vec[1] = 4.0;
+    sim_vec[2] = 5.0;
+    sim_vec[3] = 7.0;
 
-    std::vector<dealii::LA::distributed::Vector<double>> vec_ensemble;
+    std::vector<dealii::LA::distributed::BlockVector<double>> vec_ensemble;
     vec_ensemble.push_back(sim_vec);
     vec_ensemble.push_back(sim_vec);
 
@@ -408,13 +409,14 @@ public:
 
     // Non-trivial case, still effectively dense, using NumPy solution as the
     // reference
-    dealii::LA::distributed::Vector<double> sim_vec1(dof_handler.n_dofs());
+    dealii::LA::distributed::BlockVector<double> sim_vec1(1,
+                                                          dof_handler.n_dofs());
     sim_vec1(0) = 2.1;
     sim_vec1(1) = 4.3;
     sim_vec1(2) = 5.2;
     sim_vec1(3) = 7.4;
 
-    std::vector<dealii::LA::distributed::Vector<double>> vec_ensemble1;
+    std::vector<dealii::LA::distributed::BlockVector<double>> vec_ensemble1;
     vec_ensemble1.push_back(sim_vec);
     vec_ensemble1.push_back(sim_vec1);
 
@@ -497,7 +499,8 @@ public:
     BOOST_TEST(cov3.el(3, 3) == 0.08, tt::tolerance(tol));
 
     // Non-trivial case with step-function sparsity and two augmented parameters
-    dealii::LA::distributed::Vector<double> sim_vec2(dof_handler.n_dofs() + 2);
+    dealii::LA::distributed::BlockVector<double> sim_vec2(
+        1, dof_handler.n_dofs() + 2);
     sim_vec2(0) = 2.0;
     sim_vec2(1) = 4.0;
     sim_vec2(2) = 5.0;
@@ -505,7 +508,8 @@ public:
     sim_vec2(4) = 1.0;
     sim_vec2(5) = 1.5;
 
-    dealii::LA::distributed::Vector<double> sim_vec3(dof_handler.n_dofs() + 2);
+    dealii::LA::distributed::BlockVector<double> sim_vec3(
+        1, dof_handler.n_dofs() + 2);
     sim_vec3(0) = 2.1;
     sim_vec3(1) = 4.3;
     sim_vec3(2) = 5.2;
@@ -513,7 +517,7 @@ public:
     sim_vec3(4) = 1.1;
     sim_vec3(5) = 1.4;
 
-    std::vector<dealii::LA::distributed::Vector<double>> vec_ensemble2;
+    std::vector<dealii::LA::distributed::BlockVector<double>> vec_ensemble2;
     vec_ensemble2.push_back(sim_vec2);
     vec_ensemble2.push_back(sim_vec3);
 
