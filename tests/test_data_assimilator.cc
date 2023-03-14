@@ -5,6 +5,7 @@
  * for the text and further information on this license.
  */
 
+#include <deal.II/lac/vector_operation.h>
 #define BOOST_TEST_MODULE DataAssimilator
 
 #include <DataAssimilator.hh>
@@ -116,14 +117,10 @@ public:
     augmented_state_ensemble[2].collect_sizes();
 
     // Build the sparse experimental covariance matrix
-    dealii::SparsityPattern pattern(expt_size, expt_size, 1);
-    pattern.add(0, 0);
-    pattern.add(1, 1);
-    pattern.compress();
-
-    dealii::SparseMatrix<double> R(pattern);
+    dealii::TrilinosWrappers::SparseMatrix R(expt_size, expt_size, 1);
     R.add(0, 0, 0.002);
     R.add(1, 1, 0.001);
+    R.compress(dealii::VectorOperation::insert);
 
     // Create the (perturbed) innovation
     std::vector<dealii::Vector<double>> perturbed_innovation(3);
@@ -563,17 +560,11 @@ public:
     boost::property_tree::ptree solver_settings_database;
     DataAssimilator da(solver_settings_database);
 
-    dealii::SparsityPattern pattern(3, 3, 1);
-    pattern.add(0, 0);
-    pattern.add(1, 1);
-    pattern.add(2, 2);
-    pattern.compress();
-
-    dealii::SparseMatrix<double> R(pattern);
-
+    dealii::TrilinosWrappers::SparseMatrix R(3, 3, 1);
     R.add(0, 0, 0.1);
     R.add(1, 1, 1.0);
     R.add(2, 2, 0.2);
+    R.compress(dealii::VectorOperation::insert);
 
     std::vector<dealii::Vector<double>> data;
     for (unsigned int i = 0; i < 1000; ++i)
@@ -659,15 +650,10 @@ public:
     augmented_state_ensemble[2].block(0)(3) = 9.1;
     augmented_state_ensemble[2].collect_sizes();
 
-    // Build the sparse experimental covariance matrix
-    dealii::SparsityPattern pattern(expt_size, expt_size, 1);
-    pattern.add(0, 0);
-    pattern.add(1, 1);
-    pattern.compress();
-
-    dealii::SparseMatrix<double> R(pattern);
+    dealii::TrilinosWrappers::SparseMatrix R(expt_size, expt_size, 1);
     R.add(0, 0, 0.002);
     R.add(1, 1, 0.001);
+    R.compress(dealii::VectorOperation::insert);
 
     // Save the data at the observation points before assimilation
     std::vector<double> sim_at_expt_pt_1_before(3);
@@ -789,14 +775,10 @@ public:
     augmented_state_ensemble[2].collect_sizes();
 
     // Build the sparse experimental covariance matrix
-    dealii::SparsityPattern pattern(expt_size, expt_size, 1);
-    pattern.add(0, 0);
-    pattern.add(1, 1);
-    pattern.compress();
-
-    dealii::SparseMatrix<double> R(pattern);
+    dealii::TrilinosWrappers::SparseMatrix R(expt_size, expt_size, 1);
     R.add(0, 0, 0.002);
     R.add(1, 1, 0.001);
+    R.compress(dealii::VectorOperation::insert);
 
     // Save the data at the observation points before assimilation
     std::vector<double> sim_at_expt_pt_1_before(3);

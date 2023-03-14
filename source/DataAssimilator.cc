@@ -77,7 +77,8 @@ void DataAssimilator::update_ensemble(
     MPI_Comm const &communicator,
     std::vector<dealii::LA::distributed::BlockVector<double>>
         &augmented_state_ensemble,
-    std::vector<double> const &expt_data, dealii::SparseMatrix<double> const &R)
+    std::vector<double> const &expt_data,
+    dealii::TrilinosWrappers::SparseMatrix const &R)
 {
   unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
@@ -167,7 +168,7 @@ std::vector<dealii::LA::distributed::BlockVector<double>>
 DataAssimilator::apply_kalman_gain(
     std::vector<dealii::LA::distributed::BlockVector<double>>
         &augmented_state_ensemble,
-    dealii::SparseMatrix<double> const &R,
+    dealii::TrilinosWrappers::SparseMatrix const &R,
     std::vector<dealii::Vector<double>> const &perturbed_innovation)
 {
   unsigned int augmented_state_size = _sim_size + _parameter_size;
@@ -370,8 +371,8 @@ dealii::Vector<double> DataAssimilator::calc_Hx(
   return out_vec;
 }
 
-dealii::Vector<double>
-DataAssimilator::get_noise_vector(dealii::SparseMatrix<double> const &R)
+dealii::Vector<double> DataAssimilator::get_noise_vector(
+    dealii::TrilinosWrappers::SparseMatrix const &R)
 {
   // If R is diagonal, then the entries in the noise vector are independent
   // and each are simply a scaled output of the pseudo-random number
@@ -379,9 +380,12 @@ DataAssimilator::get_noise_vector(dealii::SparseMatrix<double> const &R)
   // decomposition of R to achieve the appropriate correlation between the
   // entries.
   dealii::Vector<double> noise(_expt_size);
+  auto index_set = R.locally_owned_range_indices();
   for (unsigned int i = 0; i < _expt_size; ++i)
   {
-    noise(i) = _normal_dist_generator(_prng) * std::sqrt(R(i, i));
+    auto global_index = index_set.nth_index_in_set(i);
+    noise(i) = _normal_dist_generator(_prng) *
+               std::sqrt(R(global_index, global_index));
   }
 
   return noise;

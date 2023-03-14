@@ -87,7 +87,7 @@ public:
                        std::vector<dealii::LA::distributed::BlockVector<double>>
                            &augmented_state_ensemble,
                        std::vector<double> const &expt_data,
-                       dealii::SparseMatrix<double> const &R);
+                       dealii::TrilinosWrappers::SparseMatrix const &R);
 
   /**
    * This updates the internal mapping between the indices of the entries in
@@ -116,7 +116,7 @@ private:
   std::vector<dealii::LA::distributed::BlockVector<double>> apply_kalman_gain(
       std::vector<dealii::LA::distributed::BlockVector<double>>
           &augmented_state_ensemble,
-      dealii::SparseMatrix<double> const &R,
+      dealii::TrilinosWrappers::SparseMatrix const &R,
       std::vector<dealii::Vector<double>> const &perturbed_innovation);
 
   /**
@@ -138,7 +138,7 @@ private:
    * R is diagonal.
    */
   dealii::Vector<double>
-  get_noise_vector(dealii::SparseMatrix<double> const &R);
+  get_noise_vector(dealii::TrilinosWrappers::SparseMatrix const &R);
 
   /**
    * A standard localization function, resembles a Gaussian, but with finite

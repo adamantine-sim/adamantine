@@ -1827,31 +1827,44 @@ run_ensemble(MPI_Comm const &communicator,
 #endif
         timers[adamantine::da_covariance_sparsity].start();
 
-        unsigned int experimental_data_size = points_values.values.size();
-
         // Create the R matrix (the observation covariance matrix)
         // PropertyTreeInput experiment.estimated_uncertainty
         timers[adamantine::da_obs_covariance].start();
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_BEGIN("da_obs_covariance");
 #endif
+        // Build the IndexSet of R
+        unsigned int local_experimental_data_size = points_values.values.size();
+        std::vector<unsigned int> experimental_data_sizes =
+            dealii::Utilities::MPI::all_gather(communicator,
+                                               local_experimental_data_size);
+        unsigned int total_experimental_data_size = 0;
+        unsigned int local_exp_offset = 0;
+        for (unsigned int i = 0; i < experimental_data_sizes.size(); ++i)
+        {
+          total_experimental_data_size += experimental_data_sizes[i];
+          if (i < rank)
+          {
+            local_exp_offset += experimental_data_sizes[i];
+          }
+        }
+        dealii::IndexSet obs_index_set(total_experimental_data_size);
+        obs_index_set.add_range(
+            local_exp_offset, local_exp_offset + local_experimental_data_size);
+
+        dealii::TrilinosWrappers::SparseMatrix R(obs_index_set, communicator,
+                                                 1);
+
         double variance_entries = experiment_optional_database.get().get(
             "estimated_uncertainty", 0.0);
         variance_entries = variance_entries * variance_entries;
-
-        dealii::SparsityPattern pattern(experimental_data_size,
-                                        experimental_data_size, 1);
-        for (unsigned int i = 0; i < experimental_data_size; ++i)
+        for (unsigned int i = local_exp_offset;
+             i < local_exp_offset + local_experimental_data_size; ++i)
         {
-          pattern.add(i, i);
+          R.set(i, i, variance_entries);
         }
-        pattern.compress();
+        R.compress(dealii::VectorOperation::insert);
 
-        dealii::SparseMatrix<double> R(pattern);
-        for (unsigned int i = 0; i < experimental_data_size; ++i)
-        {
-          R.add(i, i, variance_entries);
-        }
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_END("da_obs_covariance");
 #endif
