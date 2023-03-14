@@ -362,12 +362,10 @@ void DataAssimilator::update_covariance_sparsity_pattern(
 dealii::Vector<double> DataAssimilator::calc_Hx(
     dealii::LA::distributed::Vector<double> const &sim_ensemble_member) const
 {
-  int num_expt_dof_map_entries = _expt_to_dof_mapping.first.size();
-
   dealii::Vector<double> out_vec(_expt_size);
 
   // Loop through the observation map to get the observation indices
-  for (auto i = 0; i < num_expt_dof_map_entries; ++i)
+  for (unsigned int i = 0; i < _expt_size; ++i)
   {
     auto sim_index = _expt_to_dof_mapping.second[i];
     auto expt_index = _expt_to_dof_mapping.first[i];
