@@ -739,7 +739,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     {
       if (cell->active_fe_index() != 0)
       {
-        cell->set_active_fe_index(0);
+        cell->set_future_fe_index(0);
         data_to_transfer[cell_to_id[cell]][n_dofs_per_cell] =
             new_deposition_cos[i];
         data_to_transfer[cell_to_id[cell]][n_dofs_per_cell + 1] =
