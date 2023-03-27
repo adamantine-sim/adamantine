@@ -224,6 +224,10 @@ PointsValues<3> RayTracing::get_points_values()
     }
   }
 
+  unsigned int face_losses = 0;
+  unsigned int edge_losses = 0;
+  unsigned int intersections_added = 0;
+
   // If there are no intersections with the mesh leave early
   if (n_intersections == 0)
     return points_values;
@@ -231,7 +235,7 @@ PointsValues<3> RayTracing::get_points_values()
   points_values.points.reserve(n_intersections);
   points_values.values.reserve(n_intersections);
   auto constexpr reference_cell = dealii::ReferenceCells::get_hypercube<dim>();
-  double constexpr tol = 1e-6;
+  double constexpr tol = 1e-10; // 1e-6
   for (unsigned int i = 0; i < n_rays; ++i)
   {
     for (int j = offset[i]; j < offset[i + 1]; ++j)
@@ -246,101 +250,122 @@ PointsValues<3> RayTracing::get_points_values()
         // the ray with each face of the cell.
         for (unsigned int f = 0; f < reference_cell.n_faces(); ++f)
         {
-          // First we check if the ray is parallel to the face. If this is the
-          // case, either the ray misses the face or the ray hits the edge of
-          // the face. In that last case, the ray is also orthogonal to
-          // another face and it is safe to discard all rays parallel to a
-          // face.
-          auto const point_0 = cell->face(f)->vertex(0);
-          auto const point_1 = cell->face(f)->vertex(1);
-          auto const point_2 = cell->face(f)->vertex(2);
-          dealii::Tensor<1, dim> edge_01({point_1[0] - point_0[0],
-                                          point_1[1] - point_0[1],
-                                          point_1[2] - point_0[2]});
-          dealii::Tensor<1, dim> edge_02({point_2[0] - point_0[0],
-                                          point_2[1] - point_0[1],
-                                          point_2[2] - point_0[2]});
-          auto const &ray_direction = _rays_current_frame[i].direction;
-          dealii::Tensor<2, dim> matrix(
-              {{-ray_direction[0], -ray_direction[1], -ray_direction[2]},
-               {edge_01[0], edge_01[1], edge_01[2]},
-               {edge_02[0], edge_02[1], edge_02[2]}});
-          double const det = dealii::determinant(matrix);
-          double face_area = 0.;
-          for (int e = 0; e < dim; ++e)
-            for (int k = 0; k < dim; ++k)
-              face_area += std::abs(edge_01[e] * edge_02[k]);
-          // If determinant is close to zero, the ray is parallel to the face
-          // and we go to the next face.
-          if (std::abs(det) < tol * face_area)
-            continue;
-          // Compute the distance along the ray direction between the origin
-          // of the ray and the intersection point.
-          auto const cross_product = dealii::cross_product_3d(edge_01, edge_02);
-          auto const &ray_origin = _rays_current_frame[i].origin;
-          dealii::Tensor<1, dim> p0_ray({ray_origin[0] - point_0[0],
-                                         ray_origin[1] - point_0[1],
-                                         ray_origin[2] - point_0[2]});
-          double d = cross_product * p0_ray / det;
-          // We can finally compute the intersection point. It is possible
-          // that a ray intersects multiple faces. For instance if the mesh is
-          // a cube the ray will get into the cube from one face and it will
-          // get out of the cube by the opposite face. The correct
-          // intersection point is the one with the smallest distance.
-          if (d < distance)
+          /*
+        // First we check if the ray is parallel to the face. If this is the
+        // case, either the ray misses the face or the ray hits the edge of
+        // the face. In that last case, the ray is also orthogonal to
+        // another face and it is safe to discard all rays parallel to a
+        // face.
+        auto const point_0 = cell->face(f)->vertex(0);
+        auto const point_1 = cell->face(f)->vertex(1);
+        auto const point_2 = cell->face(f)->vertex(2);
+        dealii::Tensor<1, dim> edge_01({point_1[0] - point_0[0],
+                                        point_1[1] - point_0[1],
+                                        point_1[2] - point_0[2]});
+        dealii::Tensor<1, dim> edge_02({point_2[0] - point_0[0],
+                                        point_2[1] - point_0[1],
+                                        point_2[2] - point_0[2]});
+        auto const &ray_direction = _rays_current_frame[i].direction;
+        dealii::Tensor<2, dim> matrix(
+            {{-ray_direction[0], -ray_direction[1], -ray_direction[2]},
+             {edge_01[0], edge_01[1], edge_01[2]},
+             {edge_02[0], edge_02[1], edge_02[2]}});
+        double const det = dealii::determinant(matrix);
+        double face_area = 0.;
+        for (int e = 0; e < dim; ++e)
+          for (int k = 0; k < dim; ++k)
+            face_area += std::abs(edge_01[e] * edge_02[k]);
+        // If determinant is close to zero, the ray is parallel to the face
+        // and we go to the next face.
+        if (std::abs(det) < tol * face_area)
+        {
+          face_losses++;
+          continue;
+        }
+        // Compute the distance along the ray direction between the origin
+        // of the ray and the intersection point.
+        auto const cross_product = dealii::cross_product_3d(edge_01, edge_02);
+        auto const &ray_origin = _rays_current_frame[i].origin;
+        dealii::Tensor<1, dim> p0_ray({ray_origin[0] - point_0[0],
+                                       ray_origin[1] - point_0[1],
+                                       ray_origin[2] - point_0[2]});
+        double d = cross_product * p0_ray / det;
+        // We can finally compute the intersection point. It is possible
+        // that a ray intersects multiple faces. For instance if the mesh is
+        // a cube the ray will get into the cube from one face and it will
+        // get out of the cube by the opposite face. The correct
+        // intersection point is the one with the smallest distance.
+        if (d < distance)
+        {
+          // The point intersects the plane of the face but maybe not the
+          // face itself. Check that the point is on the face. NOTE: We
+          // assume that the face is an axis-aligned rectangle.
+          dealii::Point<dim> face_intersection =
+              ray_origin + d * ray_direction;
+          std::vector<double> min(dim, std::numeric_limits<double>::max());
+          std::vector<double> max(dim, std::numeric_limits<double>::lowest());
+          for (unsigned int coord = 0; coord < dim; ++coord)
           {
-            // The point intersects the plane of the face but maybe not the
-            // face itself. Check that the point is on the face. NOTE: We
-            // assume that the face is an axis-aligned rectangle.
-            dealii::Point<dim> face_intersection =
-                ray_origin + d * ray_direction;
-            std::vector<double> min(dim, std::numeric_limits<double>::max());
-            std::vector<double> max(dim, std::numeric_limits<double>::lowest());
-            for (unsigned int coord = 0; coord < dim; ++coord)
+            if (point_0[coord] < min[coord])
+              min[coord] = point_0[coord];
+            if (point_0[coord] > max[coord])
+              max[coord] = point_0[coord];
+
+            if (point_1[coord] < min[coord])
+              min[coord] = point_1[coord];
+            if (point_1[coord] > max[coord])
+              max[coord] = point_1[coord];
+
+            if (point_2[coord] < min[coord])
+              min[coord] = point_2[coord];
+            if (point_2[coord] > max[coord])
+              max[coord] = point_2[coord];
+          }
+
+          bool on_the_face = true;
+          for (int coord = 0; coord < dim; ++coord)
+          {
+            double const max_edge = std::max(edge_01[coord], edge_02[coord]);
+            if ((face_intersection[coord] < (min[coord] - tol * max_edge)) ||
+                (face_intersection[coord] > (max[coord] + tol * max_edge)))
             {
-              if (point_0[coord] < min[coord])
-                min[coord] = point_0[coord];
-              if (point_0[coord] > max[coord])
-                max[coord] = point_0[coord];
-
-              if (point_1[coord] < min[coord])
-                min[coord] = point_1[coord];
-              if (point_1[coord] > max[coord])
-                max[coord] = point_1[coord];
-
-              if (point_2[coord] < min[coord])
-                min[coord] = point_2[coord];
-              if (point_2[coord] > max[coord])
-                max[coord] = point_2[coord];
-            }
-
-            bool on_the_face = true;
-            for (int coord = 0; coord < dim; ++coord)
-            {
-              double const max_edge = std::max(edge_01[coord], edge_02[coord]);
-              if ((face_intersection[coord] < (min[coord] - tol * max_edge)) ||
-                  (face_intersection[coord] > (max[coord] + tol * max_edge)))
-              {
-                on_the_face = false;
-                break;
-              }
-            }
-
-            if (on_the_face)
-            {
-              distance = d;
-              intersection = face_intersection;
+              on_the_face = false;
+              break;
             }
           }
+
+          if (on_the_face)
+          {
+            distance = d;
+            intersection = face_intersection;
+          }
+        }
+        */
+          // TESTING
+          distance = 0.0;
+          auto const point_0 = cell->face(f)->vertex(0);
+          intersection = point_0;
         }
         if (distance < std::numeric_limits<double>::max())
         {
+          intersections_added++;
           points_values.points.push_back(intersection);
           points_values.values.push_back(_values_current_frame[i]);
+        }
+        else
+        {
+          edge_losses++;
         }
       }
     }
   }
+
+  std::cout << "Found " << n_intersections << " intersections." << std::endl;
+  std::cout << "Lost " << face_losses << " rays on faces." << std::endl;
+  std::cout << "Lost " << edge_losses << " rays on edges." << std::endl;
+  std::cout << "Total of  " << intersections_added << " intersections added."
+            << std::endl;
+
   // We know that there are at most n_intersections between the rays and the
   // mesh
   ASSERT(points_values.points.size() <= n_intersections,

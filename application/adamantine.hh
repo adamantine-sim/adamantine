@@ -1494,6 +1494,14 @@ run_ensemble(MPI_Comm const &communicator,
             thermal_physics_ensemble[member]->get_dof_handler(), member));
   }
 
+  // PostProcessor for outputting the experimental data
+  boost::property_tree::ptree post_processor_expt_database;
+  post_processor_expt_database.put("filename_prefix", "expt");
+  post_processor_expt_database.put("thermal_output", true);
+  adamantine::PostProcessor<dim> post_processor_expt(
+      communicator, post_processor_expt_database,
+      thermal_physics_ensemble[0]->get_dof_handler());
+
   // ----- Read the experimental data -----
   std::vector<std::vector<double>> frame_time_stamps;
   std::unique_ptr<adamantine::ExperimentalData<dim>> experimental_data;
@@ -1795,6 +1803,23 @@ run_ensemble(MPI_Comm const &communicator,
         CALI_MARK_END("da_experimental_data");
 #endif
         timers[adamantine::da_experimental_data].stop();
+
+        // Optionally output the experimental data projected onto the mesh
+        dealii::LA::distributed::Vector<double, MemorySpaceType>
+            temperature_expt;
+        temperature_expt.reinit(
+            solution_augmented_ensemble[0].block(base_state));
+        temperature_expt.add(1.0e10);
+        adamantine::set_with_experimental_data(
+            points_values, expt_to_dof_mapping, temperature_expt);
+
+        thermal_physics_ensemble[0]->get_affine_constraints().distribute(
+            temperature_expt);
+        post_processor_expt.write_thermal_output(
+            cycle, n_time_step, time, temperature_expt,
+            material_properties_ensemble[0]->get_state(),
+            material_properties_ensemble[0]->get_dofs_map(),
+            material_properties_ensemble[0]->get_dof_handler());
 
         // NOTE: As is, this updates the dof mapping and covariance sparsity
         // pattern for every data assimilation operation. Strictly, this is

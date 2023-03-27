@@ -101,9 +101,19 @@ void set_with_experimental_data(
     std::pair<std::vector<int>, std::vector<int>> &expt_to_dof_mapping,
     dealii::LinearAlgebra::distributed::Vector<double> &temperature)
 {
+  std::cout << "Number of unique experimental points is "
+            << std::set<double>(expt_to_dof_mapping.second.begin(),
+                                expt_to_dof_mapping.second.end())
+                   .size()
+            << std::endl;
+
+  std::cout << expt_to_dof_mapping.second.size() << std::endl;
+
   for (unsigned int i = 0; i < points_values.values.size(); ++i)
   {
     temperature[expt_to_dof_mapping.second[i]] = points_values.values[i];
+    std::cout << expt_to_dof_mapping.second[i] << " "
+              << points_values.values[i];
   }
 
   temperature.compress(dealii::VectorOperation::insert);
