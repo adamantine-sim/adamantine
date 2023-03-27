@@ -282,6 +282,10 @@ PointsValues<3> RayTracing::get_points_values()
                                          ray_origin[1] - point_0[1],
                                          ray_origin[2] - point_0[2]});
           double d = cross_product * p0_ray / det;
+          // If d is less than 0, this means that the ray intersects the plane
+          // of the face but not the face itself. We can exit early.
+          if (d < 0)
+            continue;
           // We can finally compute the intersection point. It is possible
           // that a ray intersects multiple faces. For instance if the mesh is
           // a cube the ray will get into the cube from one face and it will
@@ -315,11 +319,13 @@ PointsValues<3> RayTracing::get_points_values()
             }
 
             bool on_the_face = true;
+            double const effective_edge = std::sqrt(face_area);
             for (int coord = 0; coord < dim; ++coord)
             {
-              double const max_edge = std::max(edge_01[coord], edge_02[coord]);
-              if ((face_intersection[coord] < (min[coord] - tol * max_edge)) ||
-                  (face_intersection[coord] > (max[coord] + tol * max_edge)))
+              if ((face_intersection[coord] <
+                   (min[coord] - tol * effective_edge)) ||
+                  (face_intersection[coord] >
+                   (max[coord] + tol * effective_edge)))
               {
                 on_the_face = false;
                 break;
