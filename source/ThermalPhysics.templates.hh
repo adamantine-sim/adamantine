@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -618,7 +618,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
       // Set the indicator that this cell has melted
       if (cell_temperature > threshold_temperature)
       {
-        _has_melted[cell->active_cell_index()] = true;
+        _has_melted[cell_id] = true;
       }
     }
     ++cell_id;
