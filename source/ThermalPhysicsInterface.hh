@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -141,9 +141,9 @@ public:
    * Mark cells above the given temperature to denote that they have melted
    */
   virtual void
-  mark_has_melted(const double threshold_temperature,
-                  dealii::LA::distributed::Vector<double, MemorySpaceType> const
-                      temperature) = 0;
+  mark_has_melted(double const threshold_temperature,
+                  dealii::LA::distributed::Vector<double, MemorySpaceType>
+                      &temperature) = 0;
 
   /**
    * Returns _has_melted

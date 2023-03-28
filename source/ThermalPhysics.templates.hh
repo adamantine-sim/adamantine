@@ -573,10 +573,10 @@ template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
 void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     mark_has_melted(
-        const double threshold_temperature,
-        dealii::LA::distributed::Vector<double, MemorySpaceType> const
-            temperature)
+        double const threshold_temperature,
+        dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature)
 {
+  temperature.update_ghost_values();
   auto dofs_per_cell = _dof_handler.get_fe().dofs_per_cell;
 
   dealii::hp::FEValues<dim> hp_fe_values(
