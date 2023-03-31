@@ -108,6 +108,12 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
     if (dim == 3)
       p2[axis<dim>::y] = database.get<double>("width");
 
+    // TESTING
+    // p1(0) = -p2(0);
+    // p1(1) = -p2(1);
+    // p1(2) = -p2(2);
+    // END TESTING
+
     // For now we assume that the geometry is very simple.
     dealii::GridGenerator::subdivided_hyper_rectangle(
         _triangulation, repetitions, p1, p2, true);

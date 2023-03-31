@@ -1764,8 +1764,20 @@ run_ensemble(MPI_Comm const &communicator,
       }
       else
       {
+        std::cout << "old frame index: " << experimental_frame_index
+                  << std::endl;
+        std::cout << "old frame time: " << frame_time << std::endl;
         experimental_frame_index = experimental_data->read_next_frame();
         frame_time = frame_time_stamps[0][experimental_frame_index];
+        std::cout << "next frame index: " << experimental_frame_index
+                  << std::endl;
+        std::cout << "next frame time: " << frame_time << std::endl;
+        std::cout << "list of time stamps: ";
+        for (auto ts : frame_time_stamps[0])
+        {
+          std::cout << ts << " ";
+        }
+        std::cout << std::endl;
       }
 
       if (frame_time <= time)
@@ -1799,6 +1811,8 @@ run_ensemble(MPI_Comm const &communicator,
             thermal_physics_ensemble[0]->get_dof_handler();
         auto expt_to_dof_mapping = adamantine::get_expt_to_dof_mapping(
             points_values, thermal_dof_handler);
+        std::cout << "Number expt sites mapped to DOFs: "
+                  << expt_to_dof_mapping.first.size() << std::endl;
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_END("da_experimental_data");
 #endif

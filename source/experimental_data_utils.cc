@@ -107,13 +107,9 @@ void set_with_experimental_data(
                    .size()
             << std::endl;
 
-  std::cout << expt_to_dof_mapping.second.size() << std::endl;
-
   for (unsigned int i = 0; i < points_values.values.size(); ++i)
   {
     temperature[expt_to_dof_mapping.second[i]] = points_values.values[i];
-    std::cout << expt_to_dof_mapping.second[i] << " "
-              << points_values.values[i];
   }
 
   temperature.compress(dealii::VectorOperation::insert);

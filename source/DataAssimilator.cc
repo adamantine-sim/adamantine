@@ -98,6 +98,10 @@ void DataAssimilator::update_ensemble(
     _parameter_size = 0;
   }
 
+  std::cout << "sim size: " << _sim_size << std::endl;
+  std::cout << "parameter size: " << _parameter_size << std::endl;
+  std::cout << "expt size: " << expt_data.size() << std::endl;
+
   adamantine::ASSERT_THROW(_expt_size == expt_data.size(),
                            "Error: Unexpected experiment vector size.");
 
@@ -213,8 +217,7 @@ DataAssimilator::apply_kalman_gain(
   // members in parallel
   std::transform(
       perturbed_innovation.begin(), perturbed_innovation.end(), output.begin(),
-      [&](dealii::Vector<double> entry)
-      {
+      [&](dealii::Vector<double> entry) {
         dealii::SolverGMRES<dealii::Vector<double>> HPH_plus_R_inv_solver(
             solver_control, additional_data);
 

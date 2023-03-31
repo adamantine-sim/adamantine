@@ -250,7 +250,7 @@ void PostProcessor<dim>::write_pvtu(unsigned int cycle, unsigned int time_step,
       (_thermal_dof_handler) ? _thermal_dof_handler : _mechanical_dof_handler;
   dealii::types::subdomain_id subdomain_id =
       dof_handler->get_triangulation().locally_owned_subdomain();
-  _data_out.build_patches();
+  _data_out.build_patches(2);
   std::string local_filename =
       _filename_prefix + "." + dealii::Utilities::int_to_string(cycle, 2) +
       "." + dealii::Utilities::int_to_string(time_step, 6) + "." +
