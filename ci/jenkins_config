@@ -30,7 +30,7 @@ pipeline {
                     -D DEALII_WEAK_FORMS_DIR=${DEALII_WEAK_FORMS_DIR} \
                     ..
                   '''
-                  sh 'make -j8'
+                  sh 'make -j4'
                   sh 'ctest --no-compress-output -R test_ -T Test'
                 }
             }
@@ -60,7 +60,7 @@ pipeline {
                     -D DEAL_II_DIR=${DEAL_II_DIR} \
                     ..
                   '''
-                  sh 'make -j8'
+                  sh 'make -j4'
                   sh 'ctest --no-compress-output -R test_ -T Test'
                 }
             }
