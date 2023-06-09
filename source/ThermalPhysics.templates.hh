@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -573,10 +573,10 @@ template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
 void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     mark_has_melted(
-        const double threshold_temperature,
-        dealii::LA::distributed::Vector<double, MemorySpaceType> const
-            temperature)
+        double const threshold_temperature,
+        dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature)
 {
+  temperature.update_ghost_values();
   auto dofs_per_cell = _dof_handler.get_fe().dofs_per_cell;
 
   dealii::hp::FEValues<dim> hp_fe_values(
@@ -618,7 +618,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
       // Set the indicator that this cell has melted
       if (cell_temperature > threshold_temperature)
       {
-        _has_melted[cell->active_cell_index()] = true;
+        _has_melted[cell_id] = true;
       }
     }
     ++cell_id;
@@ -739,7 +739,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     {
       if (cell->active_fe_index() != 0)
       {
-        cell->set_active_fe_index(0);
+        cell->set_future_fe_index(0);
         data_to_transfer[cell_to_id[cell]][n_dofs_per_cell] =
             new_deposition_cos[i];
         data_to_transfer[cell_to_id[cell]][n_dofs_per_cell + 1] =

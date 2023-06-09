@@ -8,8 +8,8 @@
 #ifndef ADAMANTINE_HH
 #define ADAMANTINE_HH
 
-#include "ExperimentalData.hh"
 #include <DataAssimilator.hh>
+#include <ExperimentalData.hh>
 #include <Geometry.hh>
 #include <MaterialProperty.hh>
 #ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
@@ -29,12 +29,14 @@
 #include <material_deposition.hh>
 #include <utils.hh>
 
+#include <deal.II/base/index_set.h>
 #include <deal.II/base/mpi.h>
 #include <deal.II/base/types.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
 #include <deal.II/distributed/solution_transfer.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/grid_refinement.h>
+#include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/lac/vector_operation.h>
 #include <deal.II/numerics/error_estimator.h>
 

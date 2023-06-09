@@ -15,6 +15,7 @@
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/hp/q_collection.h>
 #include <deal.II/lac/affine_constraints.h>
+#include <deal.II/lac/sparsity_tools.h>
 #include <deal.II/physics/elasticity/standard_tensors.h>
 
 #include <weak_forms/bilinear_forms.h>
@@ -98,12 +99,16 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
 {
   // Create the sparsity pattern. Since we use a Trilinos matrix we don't need
   // the sparsity pattern to outlive the sparse matrix.
-  unsigned int const n_dofs = _dof_handler->n_dofs();
-  dealii::DynamicSparsityPattern dsp(n_dofs, n_dofs);
+  auto locally_owned_dofs = _dof_handler->locally_owned_dofs();
+  auto locally_relevant_dofs =
+      dealii::DoFTools::extract_locally_relevant_dofs(*_dof_handler);
+  dealii::DynamicSparsityPattern dsp(locally_relevant_dofs);
   dealii::DoFTools::make_sparsity_pattern(*_dof_handler, dsp,
                                           *_affine_constraints, false);
+  dealii::SparsityTools::distribute_sparsity_pattern(
+      dsp, locally_owned_dofs, _communicator, locally_relevant_dofs);
 
-  _system_matrix.reinit(dsp);
+  _system_matrix.reinit(locally_owned_dofs, dsp, _communicator);
 
   // Create the test and the trial functions
   dealiiWeakForms::WeakForms::TestFunction<dim> const test;
@@ -146,7 +151,6 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
         return C;
       });
 
-  _system_rhs.reinit(_dof_handler->locally_owned_dofs(), _communicator);
   auto const test_val = test_ss.value();
 
   // Assemble the bilinear form
@@ -297,9 +301,16 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
             .dV();
   }
 
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      assembled_rhs(locally_owned_dofs, locally_relevant_dofs, _communicator);
+
   // Now we pass in concrete objects to get data from and assemble into.
-  assembler.assemble_system(_system_matrix, _system_rhs, *_affine_constraints,
+  assembler.assemble_system(_system_matrix, assembled_rhs, *_affine_constraints,
                             *_dof_handler, *_q_collection);
+
+  // When solving the system, we don't want ghost entries
+  _system_rhs.reinit(_dof_handler->locally_owned_dofs(), _communicator);
+  _system_rhs = assembled_rhs;
 
   if (_bilinear_form_output)
   {

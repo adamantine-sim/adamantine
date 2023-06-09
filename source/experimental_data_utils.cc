@@ -40,6 +40,7 @@ get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler)
 
   std::vector<dealii::types::global_dof_index> local_dof_indices(
       fe.n_dofs_per_cell());
+  auto locally_owned_dofs = dof_handler.locally_owned_dofs();
 
   for (auto const &cell : dealii::filter_iterators(
            dof_handler.active_cell_iterators(),
@@ -51,8 +52,10 @@ get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler)
         fe_values.get_quadrature_points();
     for (unsigned int i = 0; i < fe.n_dofs_per_cell(); ++i)
     {
-      // Skip duplicate points like vertices
-      if (visited_dof_indices.count(local_dof_indices[i]) == 0)
+      // Skip duplicate points like vertices and indices that correspond to
+      // ghosted elements
+      if ((visited_dof_indices.count(local_dof_indices[i]) == 0) &&
+          (locally_owned_dofs.is_element(local_dof_indices[i])))
       {
         dof_indices.push_back(local_dof_indices[i]);
         support_points.push_back(points[i]);
