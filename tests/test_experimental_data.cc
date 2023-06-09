@@ -177,8 +177,8 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_ray_tracing_from_file)
   std::vector<dealii::Point<3>> points_ref;
   points_ref.emplace_back(0., 0.1, 0.2);
   points_ref.emplace_back(1., 0.1, 0.001);
-  points_ref.emplace_back(1., 0.5, 0.001);
-  points_ref.emplace_back(1., 0.5, 0.4999);
+  points_ref.emplace_back(1.0, 1.0, 0.1);
+  points_ref.emplace_back(1.0, 0., 0.5);
 
   if (dealii::Utilities::MPI::this_mpi_process(communicator) == 0)
   {
@@ -288,13 +288,13 @@ BOOST_AUTO_TEST_CASE(project_ray_data_on_mesh, *utf::tolerance(1e-12))
     // Compute the intersection points
     auto points_values = ray_tracing.get_points_values();
 
-    BOOST_CHECK(points_values.points.size() == 33149);
+    BOOST_CHECK(points_values.points.size() == 174954);
 
     // Get the experiment to dof mapping
     auto expt_to_dof_mapping =
         adamantine::get_expt_to_dof_mapping<3>(points_values, dof_handler);
 
-    BOOST_CHECK(expt_to_dof_mapping.first.size() == 33149);
+    BOOST_CHECK(expt_to_dof_mapping.first.size() == 174954);
   }
   else
   {

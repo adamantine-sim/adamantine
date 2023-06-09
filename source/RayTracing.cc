@@ -153,7 +153,10 @@ unsigned int RayTracing::read_next_frame()
           }
           else if (i < 2 * dim)
           {
-            direction[i - dim] = std::strtod(line.data() + last_pos, &end);
+            // Calculate the direction from the first and second points in the
+            // file
+            direction[i - dim] =
+                std::strtod(line.data() + last_pos, &end) - point[i - dim];
           }
           else
           {
