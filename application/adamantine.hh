@@ -12,11 +12,7 @@
 #include <ExperimentalData.hh>
 #include <Geometry.hh>
 #include <MaterialProperty.hh>
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
 #include <MechanicalPhysics.hh>
-#else
-#include <MechanicalPhysicsDummy.hh>
-#endif
 #include <MemoryBlock.hh>
 #include <PointCloud.hh>
 #include <PostProcessor.hh>

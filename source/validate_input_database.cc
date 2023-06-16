@@ -25,14 +25,6 @@ void validate_input_database(boost::property_tree::ptree &database)
   ASSERT_THROW(use_thermal_physics || use_mechanical_physics,
                "Error: both thermal and mechanical physics are disabled");
 
-#ifndef ADAMANTINE_WITH_DEALII_WEAK_FORMS
-  if (use_mechanical_physics)
-  {
-    ASSERT_THROW(
-        false, "Error: mechanical physics requires deal.II weak forms library");
-  }
-#endif
-
   // Tree: boundary
   // Read the boundary condition type and check for disallowed combinations
   // PropertyTreeInput boundary.type

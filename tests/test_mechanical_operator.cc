@@ -1,4 +1,4 @@
-/* Copyright (c) 2022, the adamantine authors.
+/* Copyright (c) 2022-2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -17,9 +17,10 @@
 #include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
+#include <deal.II/lac/dynamic_sparsity_pattern.h>
+#include <deal.II/lac/sparse_matrix.h>
+#include <deal.II/lac/sparsity_pattern.h>
 #include <deal.II/numerics/vector_tools.h>
-
-#include <weak_forms/weak_forms.h>
 
 #include <boost/property_tree/ptree.hpp>
 

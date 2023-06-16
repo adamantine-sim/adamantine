@@ -95,10 +95,6 @@ private:
    */
   MPI_Comm const &_communicator;
   /**
-   * Output the latex formula of the bilinear form
-   */
-  bool _bilinear_form_output = true;
-  /**
    * Whether to include a gravitional body force in the calculation.
    */
   bool _include_gravity = false;
