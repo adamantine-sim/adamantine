@@ -24,6 +24,5 @@ RUN cd /home && git clone https://github.com/adamantine-sim/adamantine && \
       -DCMAKE_CXX_FLAGS="-g" \
       -DADAMANTINE_ENABLE_ADIAK=ON \
       -DADAMANTINE_ENABLE_CALIPER=ON \
-      -DADAMANTINE_ENABLE_DEALII_WEAK_FORMS=ON \
     ../ && \
     make && mv bin ../ && cd ../ && rm -r build

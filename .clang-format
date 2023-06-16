@@ -9,8 +9,6 @@ IncludeCategories:
     Priority: 100
   - Regex: "deal.II*"
     Priority: 200
-  - Regex: "weak_forms*"
-    Priority: 250
   - Regex: "boost*"
     Priority: 300
   - Regex: "adiak*"
