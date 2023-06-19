@@ -35,11 +35,7 @@ BOOST_AUTO_TEST_CASE(expected_passes)
   database.put("materials.material_0.solid.density", 10.);
   database.put("materials.material_0.solid.specific_heat", 10.);
   database.put("physics.thermal", true);
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
   database.put("physics.mechanical", true);
-#else
-  database.put("physics.mechanical", false);
-#endif
   database.put("post_processor.filename_prefix", "output");
   database.put("refinement.n_heat_refinements", 0);
   database.put("sources.n_beams", 1);
@@ -96,11 +92,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   database.put("materials.material_0.solid.density", 10.);
   database.put("materials.material_0.solid.specific_heat", 10.);
   database.put("physics.thermal", true);
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
   database.put("physics.mechanical", true);
-#else
-  database.put("physics.mechanical", false);
-#endif
   database.put("post_processor.filename_prefix", "output");
   database.put("refinement.n_heat_refinements", 0);
   database.put("sources.n_beams", 1);

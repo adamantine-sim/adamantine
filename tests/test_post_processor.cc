@@ -135,7 +135,6 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
   std::remove("test.01.000002.000000.vtu");
 }
 
-#ifdef ADAMANTINE_WITH_DEALII_WEAK_FORMS
 BOOST_AUTO_TEST_CASE(mechanical_post_processor)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
@@ -235,4 +234,3 @@ BOOST_AUTO_TEST_CASE(mechanical_post_processor)
   std::remove("test.01.000001.000000.vtu");
   std::remove("test.01.000002.000000.vtu");
 }
-#endif

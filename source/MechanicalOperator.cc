@@ -10,16 +10,19 @@
 #include <utils.hh>
 
 #include <deal.II/base/index_set.h>
+#include <deal.II/base/symmetric_tensor.h>
+#include <deal.II/base/tensor.h>
 #include <deal.II/differentiation/ad.h>
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/fe/fe_update_flags.h>
 #include <deal.II/grid/filtered_iterator.h>
+#include <deal.II/grid/tria_iterator.h>
+#include <deal.II/hp/fe_values.h>
 #include <deal.II/hp/q_collection.h>
 #include <deal.II/lac/affine_constraints.h>
+#include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/sparsity_tools.h>
 #include <deal.II/physics/elasticity/standard_tensors.h>
-
-#include <weak_forms/bilinear_forms.h>
-#include <weak_forms/weak_forms.h>
 
 namespace adamantine
 {
@@ -110,221 +113,218 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
 
   _system_matrix.reinit(locally_owned_dofs, dsp, _communicator);
 
-  // Create the test and the trial functions
-  dealiiWeakForms::WeakForms::TestFunction<dim> const test;
-  dealiiWeakForms::WeakForms::TrialSolution<dim> const trial;
-  dealiiWeakForms::WeakForms::SubSpaceExtractors::Vector const
-      subspace_extractor(0, "u", "\\mathbf{u}");
+  dealii::hp::FEValues<dim> displacement_hp_fe_values(
+      _dof_handler->get_fe_collection(), *_q_collection,
+      dealii::update_values | dealii::update_gradients |
+          dealii::update_JxW_values);
 
-  auto const test_ss = test[subspace_extractor];
-  auto const trial_ss = trial[subspace_extractor];
+  unsigned int const dofs_per_cell =
+      _dof_handler->get_fe_collection().max_dofs_per_cell();
+  dealii::FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
+  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
 
-  // Get the gradient
-  auto const test_grad = test_ss.gradient();
-  auto const trial_grad = trial_ss.gradient();
+  // Loop over the locally owned cells that are not FE_Nothing and assemble the
+  // sparse matrix and the right-hand-side
+  for (auto const &cell :
+       _dof_handler->active_cell_iterators() |
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true))
+  {
+    displacement_hp_fe_values.reinit(cell);
+    auto const &fe_values = displacement_hp_fe_values.get_present_fe_values();
+    auto const &fe = fe_values.get_fe();
 
-  // Create a functor to evaluate to the stiffness tensor.
-  // For now, we ignore the quadrature point.
-  dealiiWeakForms::WeakForms::TensorFunctor<4, dim> const stiffness_coeff(
-      "C", "\\mathcal{C}");
-  auto stiffness_tensor = stiffness_coeff.template value<double, dim>(
-      [this](dealii::FEValuesBase<dim> const &fe_values,
-             unsigned int const /* q_point */)
+    // Assemble the local martrix
+    cell_matrix = 0;
+    double const lambda = this->_material_properties.get_mechanical_property(
+        cell, StateProperty::lame_first_parameter);
+    double const mu = this->_material_properties.get_mechanical_property(
+        cell, StateProperty::lame_second_parameter);
+    for (auto const i : fe_values.dof_indices())
+    {
+      auto const component_i = fe.system_to_component_index(i).first;
+      for (auto const j : fe_values.dof_indices())
       {
-        auto const &cell = fe_values.get_cell();
+        auto const component_j = fe.system_to_component_index(j).first;
+        for (auto const q_point : fe_values.quadrature_point_indices())
+        {
+          cell_matrix(i, j) +=
+              // FIXME We should be able to use the following formulation but
+              // the result is different. We need to understand why.
+              // ((lambda + mu) * fe_values.shape_grad(i, q_point)[component_i]
+              // * fe_values.shape_grad(j, q_point)[component_j] +
+              ((fe_values.shape_grad(i, q_point)[component_i] *
+                fe_values.shape_grad(j, q_point)[component_j] * lambda) +
+               (fe_values.shape_grad(i, q_point)[component_j] *
+                fe_values.shape_grad(j, q_point)[component_i] * mu) +
+               ((component_i == component_j)
+                    ? mu * fe_values.shape_grad(i, q_point) *
+                          fe_values.shape_grad(j, q_point)
+                    : 0.)) *
+              fe_values.JxW(q_point);
+        }
+      }
+    }
+    cell->get_dof_indices(local_dof_indices);
+    _affine_constraints->distribute_local_to_global(
+        cell_matrix, local_dof_indices, _system_matrix);
+  }
 
-        dealii::Tensor<4, dim, double> C;
-        dealii::SymmetricTensor<2, dim> const I =
-            dealii::unit_symmetric_tensor<dim>();
-        double lambda = this->_material_properties.get_mechanical_property(
-            cell, StateProperty::lame_first_parameter);
-        double mu = this->_material_properties.get_mechanical_property(
-            cell, StateProperty::lame_second_parameter);
-
-        for (unsigned int i = 0; i < dim; ++i)
-          for (unsigned int j = 0; j < dim; ++j)
-            for (unsigned int k = 0; k < dim; ++k)
-              for (unsigned int l = 0; l < dim; ++l)
-                C[i][j][k][l] = lambda * I[i][j] * I[k][l] +
-                                mu * (I[i][k] * I[j][l] + I[i][l] * I[j][k]);
-
-        return C;
-      });
-
-  auto const test_val = test_ss.value();
-
-  // Assemble the bilinear form
-  dealiiWeakForms::WeakForms::MatrixBasedAssembler<dim> assembler;
-
-  // FIXME the formulation below is more widespread but it doesn't work in
-  // dealii-weak_forms yet. Keeping the implementation to use it in the
-  // future.
-  // assembler +=
-  //     dealiiWeakForms::WeakForms::bilinear_form(test_grad, lambda + mu,
-  //                                               trial_grad)
-  //         .dV() +
-  //     dealiiWeakForms::WeakForms::bilinear_form(test_grad, mu, trial_grad)
-  //         .delta_IJ()
-  //         .dV() -
-  //     dealiiWeakForms::WeakForms::linear_form(test_val,
-  //     rhs_coeff.value(rhs)).dV();
-  assembler += dealiiWeakForms::WeakForms::bilinear_form(
-                   test_grad, stiffness_tensor, trial_grad)
-                   .dV();
-
-  std::unique_ptr<dealii::hp::FEValues<dim>> temperature_hp_fe_values;
-  std::vector<unsigned int> cell_indices;
-  // Now add the appropriate linear form(s) (ie RHS)
-
+  // Assemble the rhs
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      assembled_rhs(locally_owned_dofs, locally_relevant_dofs, _communicator);
+  dealii::Vector<double> cell_rhs(dofs_per_cell);
   // If the list of reference temperatures is non-empty, we solve the
-  // thermoelastic problem.
+  // thermo-elastic problem.
   if (_reference_temperatures.size() > 0)
   {
-    // Create a functor to evaluate the thermal expansion
-    temperature_hp_fe_values = std::make_unique<dealii::hp::FEValues<dim>>(
+    // Create temperature hp::FEValues using the same finite elements as the
+    // thermal simulation but evaluated at the quadrature points of the
+    // mechanical simulations.
+    dealii::hp::FEValues<dim> temperature_hp_fe_values(
         _thermal_dof_handler->get_fe_collection(), *_q_collection,
         dealii::update_values);
 
-    dealiiWeakForms::WeakForms::TensorFunctor<2, dim> const expansion_coeff(
-        "B", "\\mathcal{B}");
-
-    double const initial_temperature = _reference_temperatures.back();
-    unsigned int const n_local_active_cells =
-        _dof_handler->get_triangulation().n_active_cells();
-    cell_indices.resize(n_local_active_cells);
+    // _has_melted is using its own indices. The indices are computed using the
+    // locally owned cells of the thermal DoFHandler that have an FE_Index
+    // equal to zero. We need to translate these indices to be used with the
+    // mechanical DoFHandler. This is simplified by the fact that both the
+    // thermal and the mechanical simulation use the same Triangulation and have
+    // the same cells locally owned.
+    auto &triangulation = _dof_handler->get_triangulation();
+    unsigned int const n_local_active_cells = triangulation.n_active_cells();
+    std::vector<unsigned int> cell_indices(n_local_active_cells);
     unsigned int cell_index = 0;
-    for (auto const &cell : dealii::filter_iterators(
-             _dof_handler->active_cell_iterators(),
-             dealii::IteratorFilters::LocallyOwnedCell(),
-             dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+    for (auto const &tria_cell :
+         triangulation.active_cell_iterators() |
+             dealii::IteratorFilters::LocallyOwnedCell())
     {
-      cell_indices[cell->active_cell_index()] = cell_index;
-      ++cell_index;
+      dealii::TriaIterator<dealii::DoFCellAccessor<dim, dim, false>>
+          temperature_cell(&triangulation, tria_cell->level(),
+                           tria_cell->index(), _thermal_dof_handler);
+      if (temperature_cell->active_fe_index() == 0)
+      {
+        dealii::TriaIterator<dealii::DoFCellAccessor<dim, dim, false>>
+            displacement_cell(&triangulation, tria_cell->level(),
+                              tria_cell->index(), _dof_handler);
+        if (displacement_cell->active_fe_index() == 0)
+        {
+          cell_indices[displacement_cell->active_cell_index()] = cell_index;
+        }
+        ++cell_index;
+      }
     }
 
-    auto expansion_tensor = expansion_coeff.template value<double, dim>(
-        [&](dealii::FEValuesBase<dim> const &fe_values,
-            unsigned int const q_point)
+    std::vector<dealii::types::global_dof_index> temperature_local_dof_indices(
+        _thermal_dof_handler->get_fe_collection().max_dofs_per_cell());
+    double const initial_temperature = _reference_temperatures.back();
+    for (auto const &cell :
+         _dof_handler->active_cell_iterators() |
+             dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true))
+    {
+      cell_rhs = 0.;
+
+      // Get the temperature cell associated to the mechanical cell
+      dealii::TriaIterator<dealii::DoFCellAccessor<dim, dim, false>>
+          temperature_cell(&triangulation, cell->level(), cell->index(),
+                           _thermal_dof_handler);
+
+      // Get the appropriate reference temperature for the cell. If the cell
+      // is not in the unmelted substrate, the reference temperature depends
+      // on the material.
+      double reference_temperature;
+      if (_has_melted[cell_indices[cell->active_cell_index()]])
+      {
+        reference_temperature =
+            _reference_temperatures[temperature_cell->material_id()];
+      }
+      else
+      {
+        reference_temperature = initial_temperature;
+      }
+
+      displacement_hp_fe_values.reinit(cell);
+      auto const &fe_values = displacement_hp_fe_values.get_present_fe_values();
+
+      double const alpha = this->_material_properties.get_mechanical_property(
+          cell, StateProperty::thermal_expansion_coef);
+      double const lambda = this->_material_properties.get_mechanical_property(
+          cell, StateProperty::lame_first_parameter);
+      double const mu = this->_material_properties.get_mechanical_property(
+          cell, StateProperty::lame_second_parameter);
+
+      temperature_hp_fe_values.reinit(temperature_cell);
+      auto &temperature_fe_values =
+          temperature_hp_fe_values.get_present_fe_values();
+      temperature_cell->get_dof_indices(temperature_local_dof_indices);
+
+      dealii::FEValuesExtractors::Vector const displacements(0);
+
+      for (auto const q_point : fe_values.quadrature_point_indices())
+      {
+        double delta_T = -reference_temperature;
+        for (unsigned int j = 0; j < temperature_fe_values.dofs_per_cell; ++j)
         {
-          // fe_values is associated with the mechanical DoFHandler. We use it
-          // to get the cell and then we evaluate the temperature at the
-          // quadrature point using the temperature DoFHandler.
-          auto const &cell = fe_values.get_cell();
+          delta_T += temperature_fe_values.shape_value(j, q_point) *
+                     _temperature(temperature_local_dof_indices[j]);
+        }
+        auto B = dealii::Physics::Elasticity::StandardTensors<dim>::I;
+        B *= (3. * lambda + 2 * mu) * alpha * delta_T;
 
-          // If the thermal cell uses FE_Nothing, we exit early
-          dealii::DoFCellAccessor<dim, dim, false> thermal_cell(
-              &(cell->get_triangulation()), cell->level(), cell->index(),
-              _thermal_dof_handler);
-          if (thermal_cell.active_fe_index() == 1)
-          {
-            return dealii::Physics::Elasticity::StandardTensors<dim>::I;
-          }
+        for (auto const i : fe_values.dof_indices())
+        {
+          cell_rhs(i) += dealii::scalar_product(
+                             B, fe_values[displacements].gradient(i, q_point)) *
+                         fe_values.JxW(q_point);
+        }
+      }
 
-          // Get the appropriate reference temperature for the cell. If the cell
-          // is not in the unmelted substrate, the reference temperature depends
-          // on the material.
-          double reference_temperature;
-          if (_has_melted[cell_indices[cell->active_cell_index()]])
-          {
-            reference_temperature =
-                _reference_temperatures[cell->material_id()];
-          }
-          else
-          {
-            reference_temperature = initial_temperature;
-          }
-
-          // Since we use a Triangulation cell to reinitialize the hp::FEValues,
-          // it will automatically choose the zero-th finite element.
-          temperature_hp_fe_values->reinit(cell);
-          auto &temperature_fe_values =
-              temperature_hp_fe_values->get_present_fe_values();
-          double delta_T = -reference_temperature;
-
-          std::vector<dealii::types::global_dof_index> local_dof_indices(
-              temperature_fe_values.dofs_per_cell);
-
-          thermal_cell.get_dof_indices(local_dof_indices);
-
-          for (unsigned int i = 0; i < temperature_fe_values.dofs_per_cell; ++i)
-          {
-            delta_T += temperature_fe_values.shape_value(i, q_point) *
-                       _temperature(local_dof_indices[i]);
-          }
-
-          double alpha = this->_material_properties.get_mechanical_property(
-              cell, StateProperty::thermal_expansion_coef);
-          double lambda = this->_material_properties.get_mechanical_property(
-              cell, StateProperty::lame_first_parameter);
-          double mu = this->_material_properties.get_mechanical_property(
-              cell, StateProperty::lame_second_parameter);
-
-          // Get the identity 2nd-order tensor
-          auto B = dealii::Physics::Elasticity::StandardTensors<dim>::I;
-          B *= (3. * lambda + 2 * mu) * alpha * delta_T;
-
-          return B;
-        });
-
-    // Need to think if it's really a linear form or a bilinear form and where
-    // the grad is supposed to apply. We could use a bilinear form because the
-    // temperature is also dependent on the position but then, we would
-    // need to use petrov-galerkin formulation.
-    assembler -=
-        dealiiWeakForms::WeakForms::linear_form(test_grad, expansion_tensor)
-            .dV();
+      cell->get_dof_indices(local_dof_indices);
+      _affine_constraints->distribute_local_to_global(
+          cell_rhs, local_dof_indices, assembled_rhs);
+    }
   }
 
-  // If gravity is included, add a gravitational body force
+  // Add gravitational body force
   if (_include_gravity)
   {
-    // Create a functor to evaluate the body force
-    dealiiWeakForms::WeakForms::VectorFunctor<dim> const body_force_coeff(
-        "f", "\\mathbf{f}");
-    auto body_force_vector = body_force_coeff.template value<double, dim>(
-        [this](dealii::FEValuesBase<dim> const &fe_values,
-               unsigned int const /*q_point */)
-        {
-          auto const &cell = fe_values.get_cell();
-          // Note that that the density is independent of the temperature
-          double density = this->_material_properties.get_mechanical_property(
-              cell, StateProperty::density_s);
-          double const g = -9.80665;
+    for (auto const &cell :
+         _dof_handler->active_cell_iterators() |
+             dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true))
+    {
+      cell_rhs = 0.;
 
-          dealii::Tensor<1, dim, double> body_force;
-          body_force[axis<dim>::z] = density * g;
+      displacement_hp_fe_values.reinit(cell);
+      auto const &fe_values = displacement_hp_fe_values.get_present_fe_values();
 
-          return body_force;
-        });
-    assembler -=
-        dealiiWeakForms::WeakForms::linear_form(test_val, body_force_vector)
-            .dV();
+      // Note that that the density is independent of the temperature
+      double density = this->_material_properties.get_mechanical_property(
+          cell, StateProperty::density_s);
+      double const g = 9.80665;
+      dealii::Tensor<1, dim, double> body_force;
+      body_force[axis<dim>::z] = -density * g;
+
+      dealii::FEValuesExtractors::Vector const displacements(0);
+
+      for (auto const i : fe_values.dof_indices())
+      {
+        for (auto const q_point : fe_values.quadrature_point_indices())
+          cell_rhs(i) += body_force *
+                         fe_values[displacements].value(i, q_point) *
+                         fe_values.JxW(q_point);
+      }
+
+      cell->get_dof_indices(local_dof_indices);
+      _affine_constraints->distribute_local_to_global(
+          cell_rhs, local_dof_indices, assembled_rhs);
+    }
   }
 
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      assembled_rhs(locally_owned_dofs, locally_relevant_dofs, _communicator);
-
-  // Now we pass in concrete objects to get data from and assemble into.
-  assembler.assemble_system(_system_matrix, assembled_rhs, *_affine_constraints,
-                            *_dof_handler, *_q_collection);
+  _system_matrix.compress(dealii::VectorOperation::add);
+  assembled_rhs.compress(dealii::VectorOperation::add);
 
   // When solving the system, we don't want ghost entries
   _system_rhs.reinit(_dof_handler->locally_owned_dofs(), _communicator);
   _system_rhs = assembled_rhs;
-
-  if (_bilinear_form_output)
-  {
-    if (dealii::Utilities::MPI::this_mpi_process(_communicator) == 0)
-    {
-      std::cout << "Solving the following elastostatic problem" << std::endl;
-      dealiiWeakForms::WeakForms::SymbolicDecorations const decorator(
-          dealiiWeakForms::WeakForms::SymbolicNamesAscii(),
-          dealiiWeakForms::WeakForms::SymbolicNamesLaTeX(
-              symbolic_names("\\mathbf{v}_")));
-      std::cout << assembler.as_latex(decorator) << std::endl;
-    }
-    _bilinear_form_output = false;
-  }
 }
 } // namespace adamantine
 
