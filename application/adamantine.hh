@@ -1811,7 +1811,8 @@ run_ensemble(MPI_Comm const &communicator,
         // Optionally output the experimental data projected onto the mesh
         // PropertyTreeInput experiment.output_experiment_on_mesh
         bool const output_experiment_on_mesh =
-            experiment_optional_database.get().get("output_experiment_on_mesh", true);
+            experiment_optional_database.get().get("output_experiment_on_mesh",
+                                                   true);
         if (output_experiment_on_mesh)
         {
           dealii::LA::distributed::Vector<double, MemorySpaceType>
