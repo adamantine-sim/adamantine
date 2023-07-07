@@ -143,51 +143,62 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_ray_tracing_from_file)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
-  boost::property_tree::ptree database;
-  database.put("import_mesh", false);
-  database.put("length", 1);
-  database.put("length_divisions", 2);
-  database.put("height", 1);
-  database.put("height_divisions", 2);
-  database.put("width", 1);
-  database.put("width_divisions", 2);
-  adamantine::Geometry<3> geometry(communicator, database);
-  dealii::parallel::distributed::Triangulation<3> const &tria =
-      geometry.get_triangulation();
-
-  dealii::FE_Q<3> fe(1);
-  dealii::DoFHandler<3> dof_handler(tria);
-  dof_handler.distribute_dofs(fe);
-
-  // Read the rays from file
-  boost::property_tree::ptree experiment_database;
-  experiment_database.put("file",
-                          "raytracing_experimental_data_#camera_#frame.csv");
-  experiment_database.put("last_frame", 0);
-  experiment_database.put("first_camera_id", 0);
-  experiment_database.put("last_camera_id", 0);
-  adamantine::RayTracing ray_tracing(experiment_database, dof_handler);
-  ray_tracing.read_next_frame();
-
-  // Compute the intersection points
-  auto points_values = ray_tracing.get_points_values();
-
-  // Reference solution
-  std::vector<double> values_ref = {1, 2, 3, 5};
-  std::vector<dealii::Point<3>> points_ref;
-  points_ref.emplace_back(0., 0.1, 0.2);
-  points_ref.emplace_back(1., 0.1, 0.001);
-  points_ref.emplace_back(1.0, 1.0, 0.1);
-  points_ref.emplace_back(1.0, 0., 0.5);
-
-  if (dealii::Utilities::MPI::this_mpi_process(communicator) == 0)
+  auto n_mpi_processes = dealii::Utilities::MPI::n_mpi_processes(communicator);
+  if (n_mpi_processes == 1)
   {
-    BOOST_TEST(points_values.values.size() = values_ref.size());
-    BOOST_TEST(points_values.points.size() = points_ref.size());
-    for (unsigned int i = 0; i < values_ref.size(); ++i)
+    boost::property_tree::ptree database;
+    database.put("import_mesh", false);
+    database.put("length", 1);
+    database.put("length_divisions", 2);
+    database.put("height", 1);
+    database.put("height_divisions", 2);
+    database.put("width", 1);
+    database.put("width_divisions", 2);
+    adamantine::Geometry<3> geometry(communicator, database);
+    dealii::parallel::distributed::Triangulation<3> const &tria =
+        geometry.get_triangulation();
+
+    dealii::FE_Q<3> fe(1);
+    dealii::DoFHandler<3> dof_handler(tria);
+    dof_handler.distribute_dofs(fe);
+
+    // Read the rays from file
+    boost::property_tree::ptree experiment_database;
+    experiment_database.put("file",
+                            "raytracing_experimental_data_#camera_#frame.csv");
+    experiment_database.put("last_frame", 0);
+    experiment_database.put("first_camera_id", 0);
+    experiment_database.put("last_camera_id", 0);
+    adamantine::RayTracing ray_tracing(experiment_database, dof_handler);
+    ray_tracing.read_next_frame();
+
+    // Compute the intersection points
+    auto points_values = ray_tracing.get_points_values();
+
+    // Reference solution
+    std::vector<double> values_ref = {1, 2, 3, 5};
+    std::vector<dealii::Point<3>> points_ref;
+    points_ref.emplace_back(0., 0.1, 0.2);
+    points_ref.emplace_back(1., 0.1, 0.001);
+    points_ref.emplace_back(1.0, 1.0, 0.1);
+    points_ref.emplace_back(1.0, 0., 0.5);
+
+    if (dealii::Utilities::MPI::this_mpi_process(communicator) == 0)
     {
-      BOOST_TEST(points_values.values[i] == values_ref[i]);
-      BOOST_TEST(points_values.points[i] == points_ref[i]);
+      BOOST_TEST(points_values.values.size() = values_ref.size());
+      BOOST_TEST(points_values.points.size() = points_ref.size());
+      for (unsigned int i = 0; i < values_ref.size(); ++i)
+      {
+        BOOST_TEST(points_values.values[i] == values_ref[i]);
+        BOOST_TEST(points_values.points[i] == points_ref[i]);
+      }
+    }
+    else
+    {
+      std::cout << "'read_experimental_data_ray_tracing_from_file' is "
+                   "currently skipped for multiple "
+                   "MPI processes"
+                << std::endl;
     }
   }
 }

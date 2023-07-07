@@ -161,6 +161,10 @@ private:
    * DoFHandler associated with the mechanical simulation.
    */
   dealii::DoFHandler<dim> *_mechanical_dof_handler = nullptr;
+  /**
+   * Additional levels of refinement for the output.
+   */
+  unsigned int _additional_output_refinement;
 };
 } // namespace adamantine
 #endif

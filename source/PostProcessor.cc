@@ -71,6 +71,10 @@ PostProcessor<dim>::PostProcessor(MPI_Comm const &communicator,
     _filename_prefix =
         _filename_prefix + "_m" + std::to_string(ensemble_member_index);
   }
+
+  // PropertyTreeInput post_processor.additional_output_refinement
+  _additional_output_refinement =
+      database.get<unsigned int>("additional_output_refinement", 0);
 }
 
 template <int dim>
@@ -94,6 +98,10 @@ PostProcessor<dim>::PostProcessor(
     _filename_prefix =
         _filename_prefix + "_m" + std::to_string(ensemble_member_index);
   }
+
+  // PropertyTreeInput post_processor.additional_output_refinement
+  _additional_output_refinement =
+      database.get<unsigned int>("additional_output_refinement", 0);
 }
 
 template <int dim>

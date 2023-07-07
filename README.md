@@ -130,6 +130,7 @@ The following options are available:
   * filename\_prefix: prefix of output files (required)
   * time\_steps\_between\_output: number of time steps between the
   fields being written to the output files (default value: 1)
+  * additional\_output\_refinement: additional levels of refinement for the output (default: 0)
 * refinement (required):
   * n\_heat\_refinements: number of coarsening/refinement to execute (default value: 2)
   * heat\_cell\_ratio: this is the ratio (n new cells)/(n old cells) after heat
@@ -202,6 +203,7 @@ The following options are available:
     * estimated\_uncertainty: The estimate of the uncertainty in the experimental data points as 
     given by a standard deviation (under the simplifying assumption that the error is normally 
     distributed and independent for each data point) (default value: 0.0).
+    * output\_experiment\_on\_mesh: Whether to output the experimental data projected onto the simulation mesh at each experiment time stamp (default: true).
 * ensemble: (optional)
   * ensemble\_simulation: whether to perform an ensemble of simulations (default value: false)
   * ensemble\_size: the number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)

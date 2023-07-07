@@ -1766,20 +1766,8 @@ run_ensemble(MPI_Comm const &communicator,
       }
       else
       {
-        std::cout << "old frame index: " << experimental_frame_index
-                  << std::endl;
-        std::cout << "old frame time: " << frame_time << std::endl;
         experimental_frame_index = experimental_data->read_next_frame();
         frame_time = frame_time_stamps[0][experimental_frame_index];
-        std::cout << "next frame index: " << experimental_frame_index
-                  << std::endl;
-        std::cout << "next frame time: " << frame_time << std::endl;
-        std::cout << "list of time stamps: ";
-        for (auto ts : frame_time_stamps[0])
-        {
-          std::cout << ts << " ";
-        }
-        std::cout << std::endl;
       }
 
       if (frame_time <= time)
@@ -1821,21 +1809,27 @@ run_ensemble(MPI_Comm const &communicator,
         timers[adamantine::da_experimental_data].stop();
 
         // Optionally output the experimental data projected onto the mesh
-        dealii::LA::distributed::Vector<double, MemorySpaceType>
-            temperature_expt;
-        temperature_expt.reinit(
-            solution_augmented_ensemble[0].block(base_state));
-        temperature_expt.add(1.0e10);
-        adamantine::set_with_experimental_data(
-            points_values, expt_to_dof_mapping, temperature_expt);
+        // PropertyTreeInput experiment.output_experiment_on_mesh
+        bool const output_experiment_on_mesh =
+            experiment_optional_database.get().get("output_experiment_on_mesh", true);
+        if (output_experiment_on_mesh)
+        {
+          dealii::LA::distributed::Vector<double, MemorySpaceType>
+              temperature_expt;
+          temperature_expt.reinit(
+              solution_augmented_ensemble[0].block(base_state));
+          temperature_expt.add(1.0e10);
+          adamantine::set_with_experimental_data(
+              points_values, expt_to_dof_mapping, temperature_expt);
 
-        thermal_physics_ensemble[0]->get_affine_constraints().distribute(
-            temperature_expt);
-        post_processor_expt.write_thermal_output(
-            cycle, n_time_step, time, temperature_expt,
-            material_properties_ensemble[0]->get_state(),
-            material_properties_ensemble[0]->get_dofs_map(),
-            material_properties_ensemble[0]->get_dof_handler());
+          thermal_physics_ensemble[0]->get_affine_constraints().distribute(
+              temperature_expt);
+          post_processor_expt.write_thermal_output(
+              cycle, n_time_step, time, temperature_expt,
+              material_properties_ensemble[0]->get_state(),
+              material_properties_ensemble[0]->get_dofs_map(),
+              material_properties_ensemble[0]->get_dof_handler());
+        }
 
         // NOTE: As is, this updates the dof mapping and covariance sparsity
         // pattern for every data assimilation operation. Strictly, this is

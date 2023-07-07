@@ -98,10 +98,6 @@ void DataAssimilator::update_ensemble(
     _parameter_size = 0;
   }
 
-  std::cout << "sim size: " << _sim_size << std::endl;
-  std::cout << "parameter size: " << _parameter_size << std::endl;
-  std::cout << "expt size: " << expt_data.size() << std::endl;
-
   adamantine::ASSERT_THROW(_expt_size == expt_data.size(),
                            "Error: Unexpected experiment vector size.");
 
