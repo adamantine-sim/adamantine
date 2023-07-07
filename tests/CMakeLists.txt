@@ -11,7 +11,10 @@ list(APPEND
      test_geometry
      test_heat_source
      test_implicit_operator
+     test_integration_thermoelastic
      test_material_property
+     test_mechanical_operator
+     test_mechanical_physics
      test_newton_solver
      test_post_processor
      test_scan_path
@@ -46,14 +49,6 @@ list(APPEND
      test_thermal_physics_device
      )
 
-set(WEAK_FORMS_UNIT_TESTS "")
-list(APPEND
-     WEAK_FORMS_UNIT_TESTS
-     test_integration_thermoelastic
-     test_mechanical_operator
-     test_mechanical_physics
-     )
-
 foreach(TEST_NAME ${UNIT_TESTS})
   adamantine_ADD_BOOST_TEST(${TEST_NAME})
 endforeach()
@@ -68,11 +63,6 @@ if (ADAMANTINE_ENABLE_CUDA)
   endforeach()
 endif()
 
-if (ADAMANTINE_ENABLE_DEALII_WEAK_FORMS)
-  foreach(TEST_NAME ${WEAK_FORMS_UNIT_TESTS})
-    adamantine_ADD_BOOST_TEST(${TEST_NAME})
-  endforeach()
-endif()
 
 adamantine_COPY_INPUT_FILE(demo_316_short.info tests/data)
 adamantine_COPY_INPUT_FILE(amr_test.info tests/data)

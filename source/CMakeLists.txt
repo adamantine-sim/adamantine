@@ -10,6 +10,8 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.templates.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MemoryBlock.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MemoryBlockView.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.hh
@@ -39,6 +41,8 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/GoldakHeatSource.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/PointCloud.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.cc
@@ -52,24 +56,6 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/material_deposition.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/validate_input_database.cc
   )
-
-if (ADAMANTINE_ENABLE_DEALII_WEAK_FORMS)
-  set(Adamantine_HEADERS
-      ${Adamantine_HEADERS}
-      ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.hh
-      ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.hh
-      )
-  set(Adamantine_SOURCES
-      ${Adamantine_SOURCES}
-      ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.cc
-      ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.cc
-     )
-else()
-    set(Adamantine_HEADERS
-        ${Adamantine_HEADERS}
-        ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysicsDummy.hh
-        )
-endif()
 
 if (ADAMANTINE_ENABLE_CUDA)
   set(Adamantine_HEADERS
@@ -115,15 +101,4 @@ target_include_directories(Adamantine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 if (ADAMANTINE_ENABLE_CALIPER)
   target_include_directories(Adamantine PUBLIC ${caliper_INCLUDE_DIR})
   target_link_libraries(Adamantine caliper)
-endif()
-if (ADAMANTINE_ENABLE_DEALII_WEAK_FORMS)
-  target_include_directories(Adamantine PUBLIC ${WEAK_FORMS_INCLUDE_DIRS})
-  # FIXME dealii-weak_forms exposes its dependency to deal.II
-  # (target_link_libraries adds a -ldeal_II flag) but it does not include the
-  # path to deal.II. We manually add the path to deal.II. Note that we link
-  # deal.II a second time and we may use a different version (Debug vs Release)
-  # than the first time around. Ideally, we should remove the deal.II flag since
-  # we alreay link to deal.II
-  target_link_directories(Adamantine PUBLIC ${DEAL_II_PATH}/lib)
-  target_link_libraries(Adamantine ${WEAK_FORMS_LIBRARIES})
 endif()
