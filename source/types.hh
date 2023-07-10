@@ -37,6 +37,12 @@ enum class MaterialState
 };
 
 /**
+ * Maximum different number of states a given material can be.
+ */
+static unsigned int constexpr g_n_material_states =
+    static_cast<unsigned int>(MaterialState::SIZE);
+
+/**
  * Enum on the possible material properties that depend on the state of the
  * material.
  */
@@ -63,6 +69,24 @@ enum class StateProperty
 };
 
 /**
+ * Number of StateProperty defined.
+ */
+static unsigned int constexpr g_n_state_properties =
+    static_cast<unsigned int>(StateProperty::SIZE);
+
+/**
+ * Number of mechanical StateProperty.
+ */
+static unsigned int constexpr g_n_mechanical_state_properties =
+    static_cast<unsigned int>(StateProperty::SIZE_MECHANICAL);
+
+/**
+ * Number of thermal StateProperty.
+ */
+static unsigned int constexpr g_n_thermal_state_properties =
+    g_n_state_properties - g_n_mechanical_state_properties;
+
+/**
  * Enum on the possible material properties that do not depend on the state of
  * the material.
  */
@@ -77,16 +101,22 @@ enum class Property
 };
 
 /**
+ * Number of Property defined.
+ */
+static unsigned int constexpr g_n_properties =
+    static_cast<unsigned int>(Property::SIZE);
+
+/**
  * Array containing the possible material states.
  */
-static std::array<std::string, 3> material_state_names = {
+static std::array<std::string, 3> const material_state_names = {
     {"powder", "solid", "liquid"}};
 
 /**
  * Array continaing the possible material properties that do not depend on the
  * state of the material.
  */
-static std::array<std::string, 5> property_names = {
+static std::array<std::string, 5> const property_names = {
     {"liquidus", "solidus", "latent_heat", "radiation_temperature_infty",
      "convection_temperature_infty"}};
 
@@ -94,7 +124,7 @@ static std::array<std::string, 5> property_names = {
  * Array containing the possible material properties that depend on the
  * state of the material.
  */
-static std::array<std::string, 12> state_property_names = {
+static std::array<std::string, 12> const state_property_names = {
     {"density", "specific_heat", "thermal_conductivity_x",
      "thermal_conductivity_y", "thermal_conductivity_z", "emissivity",
      "radiation_heat_transfer_coef", "convection_heat_transfer_coef",

@@ -176,8 +176,8 @@ double MaterialProperty<dim, MemorySpaceType>::get_mechanical_property(
     StateProperty prop) const
 {
   unsigned int property =
-      static_cast<unsigned int>(prop) - _n_thermal_state_properties;
-  ASSERT(property < _n_mechanical_state_properties,
+      static_cast<unsigned int>(prop) - g_n_thermal_state_properties;
+  ASSERT(property < g_n_mechanical_state_properties,
          "Unknown mechanical property requested.");
   MemoryBlockView<double, dealii::MemorySpace::Host>
       mechanical_properties_host_view(_mechanical_properties_host);
@@ -215,12 +215,12 @@ void MaterialProperty<dim, MemorySpaceType>::reinit_dofs()
     ++i;
   }
 
-  _state.reinit(_n_material_states, _dofs_map.size());
+  _state.reinit(g_n_material_states, _dofs_map.size());
 #ifdef ADAMANTINE_DEBUG
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
   {
     MemoryBlockView<double, MemorySpaceType> state_view(_state);
-    for_each(MemorySpaceType{}, _n_material_states,
+    for_each(MemorySpaceType{}, g_n_material_states,
              [=](int i) mutable
              {
                for (unsigned int j = 0; j < _dofs_map.size(); ++j)
@@ -239,7 +239,7 @@ void MaterialProperty<dim, MemorySpaceType>::update(
 {
   auto temperature_average =
       compute_average_temperature(temperature_dof_handler, temperature);
-  _property_values.reinit(_n_thermal_state_properties, _dofs_map.size());
+  _property_values.reinit(g_n_thermal_state_properties, _dofs_map.size());
   _property_values.set_zero();
 
   std::vector<dealii::types::global_dof_index> mp_dofs;
@@ -323,10 +323,10 @@ void MaterialProperty<dim, MemorySpaceType>::update(
         if (use_table)
         {
           for (unsigned int property = 0;
-               property < _n_thermal_state_properties; ++property)
+               property < g_n_thermal_state_properties; ++property)
           {
             for (unsigned int material_state = 0;
-                 material_state < _n_material_states; ++material_state)
+                 material_state < g_n_material_states; ++material_state)
             {
               property_values_view(property, dof) +=
                   state_view(material_state, dof) *
@@ -339,10 +339,10 @@ void MaterialProperty<dim, MemorySpaceType>::update(
         else
         {
           for (unsigned int property = 0;
-               property < _n_thermal_state_properties; ++property)
+               property < g_n_thermal_state_properties; ++property)
           {
             for (unsigned int material_state = 0;
-                 material_state < _n_material_states; ++material_state)
+                 material_state < g_n_material_states; ++material_state)
             {
               for (unsigned int i = 0; i <= polynomial_order; ++i)
               {
@@ -365,7 +365,7 @@ void MaterialProperty<dim, MemorySpaceType>::update(
           unsigned int const latent_heat_prop =
               static_cast<unsigned int>(Property::latent_heat);
           for (unsigned int material_state = 0;
-               material_state < _n_material_states; ++material_state)
+               material_state < g_n_material_states; ++material_state)
           {
             property_values_view(specific_heat_prop, dof) +=
                 state_view(material_state, dof) *
@@ -406,7 +406,7 @@ void MaterialProperty<dim, MemorySpaceType>::
 {
   auto temperature_average =
       compute_average_temperature(temperature_dof_handler, temperature);
-  _property_values.reinit(_n_thermal_state_properties, _dofs_map.size());
+  _property_values.reinit(g_n_thermal_state_properties, _dofs_map.size());
   _property_values.set_zero();
 
   std::vector<dealii::types::global_dof_index> mp_dof(1);
@@ -434,11 +434,11 @@ void MaterialProperty<dim, MemorySpaceType>::
     {
       // We only care about properties that are used to compute the boundary
       // condition. So we start at 3.
-      for (unsigned int property = 3; property < _n_thermal_state_properties;
+      for (unsigned int property = 3; property < g_n_thermal_state_properties;
            ++property)
       {
         for (unsigned int material_state = 0;
-             material_state < _n_material_states; ++material_state)
+             material_state < g_n_material_states; ++material_state)
         {
           property_values_view(property, dof) +=
               state_view(material_state, dof) *
@@ -452,11 +452,11 @@ void MaterialProperty<dim, MemorySpaceType>::
     {
       // We only care about properties that are used to compute the boundary
       // condition. So we start at 3.
-      for (unsigned int property = 3; property < _n_thermal_state_properties;
+      for (unsigned int property = 3; property < g_n_thermal_state_properties;
            ++property)
       {
         for (unsigned int material_state = 0;
-             material_state < _n_material_states; ++material_state)
+             material_state < g_n_material_states; ++material_state)
         {
           for (unsigned int i = 0; i <= polynomial_order; ++i)
           {
@@ -508,7 +508,7 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
 
   if (_use_table)
   {
-    for (unsigned int material_state = 0; material_state < _n_material_states;
+    for (unsigned int material_state = 0; material_state < g_n_material_states;
          ++material_state)
     {
       for (unsigned int n = 0; n < dealii::VectorizedArray<double>::size(); ++n)
@@ -524,7 +524,7 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
   }
   else
   {
-    for (unsigned int material_state = 0; material_state < _n_material_states;
+    for (unsigned int material_state = 0; material_state < g_n_material_states;
          ++material_state)
     {
       for (unsigned int n = 0; n < dealii::VectorizedArray<double>::size(); ++n)
@@ -560,7 +560,7 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
 
   if (_use_table)
   {
-    for (unsigned int material_state = 0; material_state < _n_material_states;
+    for (unsigned int material_state = 0; material_state < g_n_material_states;
          ++material_state)
     {
       const dealii::types::material_id m_id = material_id;
@@ -573,7 +573,7 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
   }
   else
   {
-    for (unsigned int material_state = 0; material_state < _n_material_states;
+    for (unsigned int material_state = 0; material_state < g_n_material_states;
          ++material_state)
     {
       dealii::types::material_id m_id = material_id;
@@ -763,7 +763,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
   // memory. Thus, the largest material_id should be as small as possible
   unsigned int const n_material_ids =
       *std::max_element(material_ids.begin(), material_ids.end()) + 1;
-  _properties.reinit(n_material_ids, _n_properties);
+  _properties.reinit(n_material_ids, g_n_properties);
   MemoryBlock<double, dealii::MemorySpace::Host> properties_host(_properties);
 
   MemoryBlock<double, dealii::MemorySpace::Host> state_property_tables_host;
@@ -771,29 +771,29 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
       state_property_polynomials_host;
   if (_use_table)
   {
-    _state_property_tables.reinit(n_material_ids, _n_material_states,
-                                  _n_thermal_state_properties, table_size, 2);
-    state_property_tables_host.reinit(n_material_ids, _n_material_states,
-                                      _n_thermal_state_properties, table_size,
+    _state_property_tables.reinit(n_material_ids, g_n_material_states,
+                                  g_n_thermal_state_properties, table_size, 2);
+    state_property_tables_host.reinit(n_material_ids, g_n_material_states,
+                                      g_n_thermal_state_properties, table_size,
                                       2);
     state_property_tables_host.set_zero();
     // Mechanical properties only exist for the solid state
     _mechanical_properties_tables_host.reinit(
-        n_material_ids, _n_mechanical_state_properties, table_size, 2);
+        n_material_ids, g_n_mechanical_state_properties, table_size, 2);
     _mechanical_properties_tables_host.set_zero();
   }
   else
   {
-    _state_property_polynomials.reinit(n_material_ids + 1, _n_material_states,
-                                       _n_thermal_state_properties,
+    _state_property_polynomials.reinit(n_material_ids + 1, g_n_material_states,
+                                       g_n_thermal_state_properties,
                                        polynomial_order + 1);
     state_property_polynomials_host.reinit(
-        n_material_ids + 1, _n_material_states, _n_thermal_state_properties,
+        n_material_ids + 1, g_n_material_states, g_n_thermal_state_properties,
         polynomial_order + 1);
     state_property_polynomials_host.set_zero();
     // Mechanical properties only exist for the solid state
     _mechanical_properties_polynomials_host.reinit(
-        n_material_ids + 1, _n_mechanical_state_properties,
+        n_material_ids + 1, g_n_mechanical_state_properties,
         polynomial_order + 1);
     _mechanical_properties_polynomials_host.set_zero();
   }
@@ -815,7 +815,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
     boost::property_tree::ptree const &material_database =
         database.get_child("material_" + std::to_string(material_id));
     // For each material, loop over the possible states.
-    for (unsigned int state = 0; state < _n_material_states; ++state)
+    for (unsigned int state = 0; state < g_n_material_states; ++state)
     {
       // The state may or may not exist for the material.
       boost::optional<boost::property_tree::ptree const &> state_database =
@@ -823,7 +823,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
       if (state_database)
       {
         // For each state, loop over the possible properties.
-        for (unsigned int p = 0; p < _n_state_properties; ++p)
+        for (unsigned int p = 0; p < g_n_state_properties; ++p)
         {
           // The property may or may not exist for that state
           boost::optional<std::string> const property =
@@ -853,7 +853,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
                 boost::split(t_v, parsed_property[i],
                              [](char c) { return c == ','; });
                 ASSERT(t_v.size() == 2, "Error reading material property.");
-                if (p < _n_thermal_state_properties)
+                if (p < g_n_thermal_state_properties)
                 {
                   state_property_tables_host_view(material_id, state, p, i, 0) =
                       std::stod(t_v[0]);
@@ -865,10 +865,10 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
                   if (state == static_cast<unsigned int>(MaterialState::solid))
                   {
                     mechanical_property_tables_host_view(
-                        material_id, p - _n_thermal_state_properties, i, 0) =
+                        material_id, p - g_n_thermal_state_properties, i, 0) =
                         std::stod(t_v[0]);
                     mechanical_property_tables_host_view(
-                        material_id, p - _n_thermal_state_properties, i, 1) =
+                        material_id, p - g_n_thermal_state_properties, i, 1) =
                         std::stod(t_v[1]);
                   }
                 }
@@ -876,7 +876,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
               // fill the rest  with the last value
               for (unsigned int i = parsed_property_size; i < table_size; ++i)
               {
-                if (p < _n_thermal_state_properties)
+                if (p < g_n_thermal_state_properties)
                 {
                   state_property_tables_host_view(material_id, state, p, i, 0) =
                       state_property_tables_host_view(material_id, state, p,
@@ -890,15 +890,15 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
                   if (state == static_cast<unsigned int>(MaterialState::solid))
                   {
                     mechanical_property_tables_host_view(
-                        material_id, p - _n_thermal_state_properties, i, 0) =
+                        material_id, p - g_n_thermal_state_properties, i, 0) =
                         mechanical_property_tables_host_view(
-                            material_id, p - _n_thermal_state_properties, i - 1,
-                            0);
+                            material_id, p - g_n_thermal_state_properties,
+                            i - 1, 0);
                     mechanical_property_tables_host_view(
-                        material_id, p - _n_thermal_state_properties, i, 1) =
+                        material_id, p - g_n_thermal_state_properties, i, 1) =
                         mechanical_property_tables_host_view(
-                            material_id, p - _n_thermal_state_properties, i - 1,
-                            1);
+                            material_id, p - g_n_thermal_state_properties,
+                            i - 1, 1);
                   }
                 }
               }
@@ -914,7 +914,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
                   "Too many coefficients, increase the polynomial order");
               for (unsigned int i = 0; i < parsed_property_size; ++i)
               {
-                if (p < _n_thermal_state_properties)
+                if (p < g_n_thermal_state_properties)
                 {
                   state_property_polynomials_host_view(
                       material_id, state, p, i) = std::stod(parsed_property[i]);
@@ -922,7 +922,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
                 else
                 {
                   mechanical_property_polynomials_host_view(
-                      material_id, p - _n_thermal_state_properties, i) =
+                      material_id, p - g_n_thermal_state_properties, i) =
                       std::stod(parsed_property[i]);
                 }
               }
@@ -935,7 +935,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
     // Check for the properties that are associated to a material but that
     // are independent of an individual state. These properties are duplicated
     // for every state.
-    for (unsigned int p = 0; p < _n_properties; ++p)
+    for (unsigned int p = 0; p < g_n_properties; ++p)
     {
       // The property may or may not exist for that state
       boost::optional<double> const property =
@@ -951,7 +951,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
   // FIXME for now we assume that the mechanical properties are independent of
   // the temperature.
   _mechanical_properties_host.reinit(n_material_ids,
-                                     _n_mechanical_state_properties);
+                                     g_n_mechanical_state_properties);
   if (_use_table)
   {
     // We only read the first element
@@ -962,7 +962,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
             _mechanical_properties_tables_host);
     for (unsigned int i = 0; i < n_material_ids; ++i)
     {
-      for (unsigned int j = 0; j < _n_mechanical_state_properties; ++j)
+      for (unsigned int j = 0; j < g_n_mechanical_state_properties; ++j)
       {
         mechanical_properties_host_view(i, j) =
             mechanical_properties_tables_host_view(i, j, 0, 1);
@@ -979,7 +979,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
             _mechanical_properties_polynomials_host);
     for (unsigned int i = 0; i < n_material_ids; ++i)
     {
-      for (unsigned int j = 0; j < _n_mechanical_state_properties; ++j)
+      for (unsigned int j = 0; j < g_n_mechanical_state_properties; ++j)
       {
         mechanical_properties_host_view(i, j) =
             mechanical_properties_polynomials_host_view(i, j, 0);

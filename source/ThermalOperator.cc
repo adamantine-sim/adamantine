@@ -221,9 +221,8 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::update_state_ratios(
     unsigned int cell, unsigned int q,
     dealii::VectorizedArray<double> temperature,
-    std::array<dealii::VectorizedArray<double>,
-               static_cast<unsigned int>(MaterialState::SIZE)> &state_ratios)
-    const
+    std::array<dealii::VectorizedArray<double>, g_n_material_states>
+        &state_ratios) const
 {
   unsigned int constexpr liquid =
       static_cast<unsigned int>(MaterialState::liquid);
@@ -275,8 +274,7 @@ template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperator<dim, fe_degree, MemorySpaceType>::update_face_state_ratios(
     unsigned int face, unsigned int q,
     dealii::VectorizedArray<double> temperature,
-    std::array<dealii::VectorizedArray<double>,
-               static_cast<unsigned int>(MaterialState::SIZE)>
+    std::array<dealii::VectorizedArray<double>, g_n_material_states>
         &face_state_ratios) const
 {
   unsigned int constexpr liquid =
@@ -330,8 +328,7 @@ dealii::VectorizedArray<double>
 ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
     std::array<dealii::types::material_id,
                dealii::VectorizedArray<double>::size()> const &material_id,
-    std::array<dealii::VectorizedArray<double>,
-               static_cast<unsigned int>(MaterialState::SIZE)> const
+    std::array<dealii::VectorizedArray<double>, g_n_material_states> const
         &state_ratios,
     dealii::VectorizedArray<double> const &temperature,
     dealii::AlignedVector<dealii::VectorizedArray<double>> const
@@ -388,8 +385,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
       data.create_cell_subrange_hp_by_index(cell_range, 0);
 
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(data);
-  std::array<dealii::VectorizedArray<double>,
-             static_cast<unsigned int>(MaterialState::SIZE)>
+  std::array<dealii::VectorizedArray<double>, g_n_material_states>
       state_ratios = {{dealii::make_vectorized_array(-1.0),
                        dealii::make_vectorized_array(-1.0),
                        dealii::make_vectorized_array(-1.0)}};
@@ -550,8 +546,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::face_local_apply(
   // to decided which cell the face should be exterior to.
   dealii::FEFaceEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
       fe_face_eval(data, adjacent_cells_fe_index.first == 0);
-  std::array<dealii::VectorizedArray<double>,
-             static_cast<unsigned int>(MaterialState::SIZE)>
+  std::array<dealii::VectorizedArray<double>, g_n_material_states>
       face_state_ratios = {{dealii::make_vectorized_array(-1.0),
                             dealii::make_vectorized_array(-1.0),
                             dealii::make_vectorized_array(-1.0)}};

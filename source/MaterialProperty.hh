@@ -222,36 +222,6 @@ public:
 
 private:
   /**
-   * Maximum different number of states a given material can be.
-   */
-  static unsigned int constexpr _n_material_states =
-      static_cast<unsigned int>(MaterialState::SIZE);
-
-  /**
-   * Number of StateProperty defined.
-   */
-  static unsigned int constexpr _n_state_properties =
-      static_cast<unsigned int>(StateProperty::SIZE);
-
-  /**
-   * Number of mechanical StateProperty.
-   */
-  static unsigned int constexpr _n_mechanical_state_properties =
-      static_cast<unsigned int>(StateProperty::SIZE_MECHANICAL);
-
-  /**
-   * Number of thermal StateProperty..
-   */
-  static unsigned int constexpr _n_thermal_state_properties =
-      _n_state_properties - _n_mechanical_state_properties;
-
-  /**
-   * Number of Property defined.
-   */
-  static unsigned int constexpr _n_properties =
-      static_cast<unsigned int>(Property::SIZE);
-
-  /**
    * Fill the _properties map.
    */
   void fill_properties(boost::property_tree::ptree const &database);
