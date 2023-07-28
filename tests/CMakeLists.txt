@@ -22,8 +22,6 @@ list(APPEND
      test_timer
      test_utils
      test_integration_3d_amr
-     test_integration_da
-     test_integration_da_augmented
      test_validate_input_database
      )
 
@@ -33,6 +31,8 @@ list(APPEND
      test_experimental_data
      test_integration_2d
      test_integration_3d
+     test_integration_da
+     test_integration_da_augmented
      test_material_deposition
      test_thermal_physics
      test_ensemble_management

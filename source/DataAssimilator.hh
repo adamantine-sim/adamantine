@@ -66,7 +66,9 @@ public:
   /**
    * Constructor.
    */
-  DataAssimilator(boost::property_tree::ptree const &database);
+  DataAssimilator(MPI_Comm const &global_communicator,
+                  MPI_Comm const &local_communicator, int my_color,
+                  boost::property_tree::ptree const &database);
 
   /**
    * This is the main public interface for the class and is called to perform
@@ -83,8 +85,7 @@ public:
    * u is a perturbation to the observed solution
    * H is the observation matrix
    */
-  void update_ensemble(MPI_Comm const &communicator,
-                       std::vector<dealii::LA::distributed::BlockVector<double>>
+  void update_ensemble(std::vector<dealii::LA::distributed::BlockVector<double>>
                            &augmented_state_ensemble,
                        std::vector<double> const &expt_data,
                        dealii::SparseMatrix<double> const &R);
@@ -159,25 +160,34 @@ private:
       std::vector<dealii::LA::distributed::BlockVector<double>> const
           &vec_ensemble) const;
 
+  // TODO
+  MPI_Comm _global_communicator;
+
+  MPI_Comm _local_communicator;
+
+  int _global_rank = -1;
+
+  int _color = -1;
+
   /**
    * The number of ensemble members in the simulation.
    */
-  unsigned int _num_ensemble_members;
+  unsigned int _num_ensemble_members = 0;
 
   /**
    * The length of the data vector for each simulation ensemble member.
    */
-  unsigned int _sim_size;
+  unsigned int _sim_size = 0;
 
   /**
    * The length of the parameter vector for each simulation ensemble member.
    */
-  unsigned int _parameter_size;
+  unsigned int _parameter_size = 0;
 
   /**
    * The length of the data vector the experimental observations.
    */
-  unsigned int _expt_size;
+  unsigned int _expt_size = 0;
 
   /**
    * The sparsity pattern for the localized covariance matrix.

@@ -1,4 +1,4 @@
-/* Copyright (c) 2021, the adamantine authors.
+/* Copyright (c) 2021-2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -6,30 +6,28 @@
  */
 
 #include <ensemble_management.hh>
+#include <utils.hh>
 
 namespace adamantine
 {
-std::vector<double> fill_and_sync_random_vector(unsigned int length,
-                                                double mean, double stddev)
+std::vector<double> get_normal_random_vector(unsigned int length,
+                                             unsigned int n_rejected_draws,
+                                             double mean, double stddev)
 {
-  std::vector<double> output_vector(length);
+  ASSERT(stddev >= 0., "Internal Error");
 
-  unsigned int rank = dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD);
-
-  if (rank == 0)
+  std::mt19937 pseudorandom_number_generator;
+  std::normal_distribution<> normal_dist_generator(mean, stddev);
+  for (unsigned int i = 0; i < n_rejected_draws; ++i)
   {
-    std::mt19937 pseudorandom_number_generator;
-    std::normal_distribution<> normal_dist_generator(0.0, 1.0);
-
-    for (unsigned int member = 0; member < length; ++member)
-    {
-      output_vector[member] =
-          mean + stddev * normal_dist_generator(pseudorandom_number_generator);
-    }
+    normal_dist_generator(pseudorandom_number_generator);
   }
 
-  output_vector =
-      dealii::Utilities::MPI::broadcast(MPI_COMM_WORLD, output_vector, 0);
+  std::vector<double> output_vector(length);
+  for (unsigned int i = 0; i < length; ++i)
+  {
+    output_vector[i] = normal_dist_generator(pseudorandom_number_generator);
+  }
 
   return output_vector;
 }

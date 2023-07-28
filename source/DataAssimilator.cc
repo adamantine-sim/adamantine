@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2022, the adamantine authors.
+/* Copyright (c) 2021-2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -9,11 +9,16 @@
 #include <utils.hh>
 
 #include <deal.II/arborx/distributed_tree.h>
+#include <deal.II/base/index_set.h>
+#include <deal.II/base/mpi.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/mapping_q1.h>
 #include <deal.II/lac/block_vector.h>
+#include <deal.II/lac/la_parallel_block_vector.h>
 #include <deal.II/lac/linear_operator_tools.h>
+#include <deal.II/lac/read_write_vector.h>
 #include <deal.II/lac/trilinos_sparse_matrix.h>
+#include <deal.II/lac/vector_operation.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -26,146 +31,344 @@
 namespace adamantine
 {
 
-DataAssimilator::DataAssimilator(boost::property_tree::ptree const &database)
+DataAssimilator::DataAssimilator(MPI_Comm const &global_communicator,
+                                 MPI_Comm const &local_communicator, int color,
+                                 boost::property_tree::ptree const &database)
+    : _global_communicator(global_communicator),
+      _local_communicator(local_communicator), _color(color)
 {
-  // Set the solver parameters from the input database
-  // PropertyTreeInput data_assimilation.solver.max_number_of_temp_vectors
-  if (boost::optional<unsigned int> max_num_temp_vectors =
-          database.get_optional<unsigned int>(
-              "solver.max_number_of_temp_vectors"))
-    _additional_data.max_n_tmp_vectors = *max_num_temp_vectors;
+  _global_rank = dealii::Utilities::MPI::this_mpi_process(_global_communicator);
 
-  // PropertyTreeInput data_assimilation.solver.max_iterations
-  if (boost::optional<unsigned int> max_iterations =
-          database.get_optional<unsigned int>("solver.max_iterations"))
-    _solver_control.set_max_steps(*max_iterations);
-
-  // PropertyTreeInput data_assimilation.solver.convergence_tolerance
-  if (boost::optional<double> tolerance =
-          database.get_optional<double>("solver.convergence_tolerance"))
-    _solver_control.set_tolerance(*tolerance);
-
-  // PropertyTreeInput data_assimilation.localization_cutoff_distance
-  _localization_cutoff_distance = database.get(
-      "localization_cutoff_distance", std::numeric_limits<double>::max());
-
-  // PropertyTreeInput data_assimilation.localization_cutoff_function
-  std::string localization_cutoff_function_str =
-      database.get("localization_cutoff_function", "none");
-
-  if (boost::iequals(localization_cutoff_function_str, "gaspari_cohn"))
+  if (_global_rank == 0)
   {
-    _localization_cutoff_function = LocalizationCutoff::gaspari_cohn;
-  }
-  else if (boost::iequals(localization_cutoff_function_str, "step_function"))
-  {
-    _localization_cutoff_function = LocalizationCutoff::step_function;
-  }
-  else if (boost::iequals(localization_cutoff_function_str, "none"))
-  {
-    _localization_cutoff_function = LocalizationCutoff::none;
-  }
-  else
-  {
-    ASSERT_THROW(false,
-                 "Error: Unknown localization cutoff function. Valid options "
-                 "are 'gaspari_cohn', 'step_function', and 'none'.");
+    // Set the solver parameters from the input database
+    // PropertyTreeInput data_assimilation.solver.max_number_of_temp_vectors
+    if (boost::optional<unsigned int> max_num_temp_vectors =
+            database.get_optional<unsigned int>(
+                "solver.max_number_of_temp_vectors"))
+      _additional_data.max_n_tmp_vectors = *max_num_temp_vectors;
+
+    // PropertyTreeInput data_assimilation.solver.max_iterations
+    if (boost::optional<unsigned int> max_iterations =
+            database.get_optional<unsigned int>("solver.max_iterations"))
+      _solver_control.set_max_steps(*max_iterations);
+
+    // PropertyTreeInput data_assimilation.solver.convergence_tolerance
+    if (boost::optional<double> tolerance =
+            database.get_optional<double>("solver.convergence_tolerance"))
+      _solver_control.set_tolerance(*tolerance);
+
+    // PropertyTreeInput data_assimilation.localization_cutoff_distance
+    _localization_cutoff_distance = database.get(
+        "localization_cutoff_distance", std::numeric_limits<double>::max());
+
+    // PropertyTreeInput data_assimilation.localization_cutoff_function
+    std::string localization_cutoff_function_str =
+        database.get("localization_cutoff_function", "none");
+
+    if (boost::iequals(localization_cutoff_function_str, "gaspari_cohn"))
+    {
+      _localization_cutoff_function = LocalizationCutoff::gaspari_cohn;
+    }
+    else if (boost::iequals(localization_cutoff_function_str, "step_function"))
+    {
+      _localization_cutoff_function = LocalizationCutoff::step_function;
+    }
+    else if (boost::iequals(localization_cutoff_function_str, "none"))
+    {
+      _localization_cutoff_function = LocalizationCutoff::none;
+    }
+    else
+    {
+      ASSERT_THROW(false,
+                   "Error: Unknown localization cutoff function. Valid options "
+                   "are 'gaspari_cohn', 'step_function', and 'none'.");
+    }
   }
 }
 
 void DataAssimilator::update_ensemble(
-    MPI_Comm const &communicator,
     std::vector<dealii::LA::distributed::BlockVector<double>>
         &augmented_state_ensemble,
     std::vector<double> const &expt_data, dealii::SparseMatrix<double> const &R)
 {
-  unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
+  // We need to gather the augmented_state_ensemble from the other processors.
+  // BlockVector is a complex structure with its own communicator and so we
+  // cannot simple use dealii's gather to perform the communication. Instead, we
+  // extract the locally owned data and gather it to processor zero. We do this
+  // in a two step process. First, we move the data to local rank zero. Second,
+  // we move the data to global rank zero. The first step allows to simply move
+  // complete vectors to global rank zero. Otherwise, we have the vector data
+  // divided in multiple chunks when gathered on global rank zero and we have to
+  // reconstruct the vector. Finally we can build new BlockVector using the
+  // local communicator.
 
-  // Give names to the blocks in the augmented state vector
-  int constexpr base_state = 0;
-  int constexpr augmented_state = 1;
-
-  // Set some constants
-  _num_ensemble_members = augmented_state_ensemble.size();
-  if (_num_ensemble_members > 0)
+  // Extract relevant data
+  unsigned int const n_local_ensemble_members = augmented_state_ensemble.size();
+  std::vector<std::vector<std::vector<double>>> block_data(
+      n_local_ensemble_members, std::vector<std::vector<double>>(2));
+  for (unsigned int i = 0; i < n_local_ensemble_members; ++i)
   {
-    _sim_size = augmented_state_ensemble[0].block(base_state).size();
-    _parameter_size = augmented_state_ensemble[0].block(augmented_state).size();
-  }
-  else
-  {
-    _sim_size = 0;
-    _parameter_size = 0;
-  }
-
-  adamantine::ASSERT_THROW(_expt_size == expt_data.size(),
-                           "Error: Unexpected experiment vector size.");
-
-  // Check if R is diagonal, needed for filling the noise vector
-  auto bandwidth = R.get_sparsity_pattern().bandwidth();
-  bool const R_is_diagonal = bandwidth == 0 ? true : false;
-
-  // Get the perturbed innovation, ( y+u - Hx )
-  // This is determined using the unaugmented state because the parameters are
-  // not observable
-  if (rank == 0)
-    std::cout << "Getting the perturbed innovation..." << std::endl;
-
-#ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_BEGIN("da_get_pert_inno");
-#endif
-
-  std::vector<dealii::Vector<double>> perturbed_innovation(
-      _num_ensemble_members);
-  for (unsigned int member = 0; member < _num_ensemble_members; ++member)
-  {
-    perturbed_innovation[member].reinit(_expt_size);
-    fill_noise_vector(perturbed_innovation[member], R, R_is_diagonal);
-    dealii::Vector<double> temporary =
-        calc_Hx(augmented_state_ensemble[member].block(base_state));
-
-    for (unsigned int i = 0; i < _expt_size; ++i)
+    for (unsigned int j = 0; j < 2; ++j)
     {
-      perturbed_innovation[member][i] += expt_data[i] - temporary[i];
+      auto data_ptr = augmented_state_ensemble[i].block(j).get_values();
+      block_data[i][j].insert(
+          block_data[i][j].end(), data_ptr,
+          data_ptr + augmented_state_ensemble[i].block(j).locally_owned_size());
     }
   }
 
-#ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_END("da_get_pert_inno");
-#endif
-
-  // Apply the Kalman gain to update the augmented state ensemble
-  if (rank == 0)
-    std::cout << "Applying the Kalman gain..." << std::endl;
-
-#ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_BEGIN("da_apply_K");
-#endif
-
-  // Apply the Kalman filter to the perturbed innovation, K ( y+u - Hx )
-  std::vector<dealii::LA::distributed::BlockVector<double>> forecast_shift =
-      apply_kalman_gain(augmented_state_ensemble, R, perturbed_innovation);
-
-#ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_END("da_apply_K");
-#endif
-
-  // Update the ensemble, x = x + K ( y+u - Hx )
-  if (rank == 0)
-    std::cout << "Updating the ensemble members..." << std::endl;
-
-#ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_BEGIN("da_update_members");
-#endif
-
-  for (unsigned int member = 0; member < _num_ensemble_members; ++member)
+  // Perform the communications on the local communicator
+  auto local_block_data =
+      dealii::Utilities::MPI::gather(_local_communicator, block_data);
+  auto local_indexsets_block_0 = dealii::Utilities::MPI::gather(
+      _local_communicator,
+      augmented_state_ensemble[0].block(0).locally_owned_elements());
+  auto local_indexsets_block_1 = dealii::Utilities::MPI::gather(
+      _local_communicator,
+      augmented_state_ensemble[0].block(1).locally_owned_elements());
+  // The local processor zero has all the data. Reorder the data before sending
+  // it to the global processor zero
+  std::vector<std::vector<std::vector<double>>> reordered_local_block_data;
+  using block_size_type =
+      dealii::LA::distributed::BlockVector<double>::size_type;
+  std::vector<block_size_type> block_sizes(2, 0);
+  if (dealii::Utilities::MPI::this_mpi_process(_local_communicator) == 0)
   {
-    augmented_state_ensemble[member] += forecast_shift[member];
+    reordered_local_block_data.resize(n_local_ensemble_members,
+                                      std::vector<std::vector<double>>(2));
+
+    for (unsigned int i = 0; i < local_indexsets_block_0.size(); ++i)
+    {
+      block_sizes[0] += local_indexsets_block_0[i].n_elements();
+    }
+    // The augmented parameters are not distributed.
+    block_sizes[1] = local_indexsets_block_1[0].n_elements();
+
+    // Loop over the ensemble members
+    for (unsigned int i = 0; i < n_local_ensemble_members; ++i)
+    {
+      // Loop over the processors
+      for (unsigned int j = 0; j < local_block_data.size(); ++j)
+      {
+        // Loop over the blocks
+        for (unsigned int k = 0; k < 2; ++k)
+        {
+          reordered_local_block_data[i][k].resize(block_sizes[k]);
+          // Loop over the dofs
+          for (std::size_t m = 0; m < local_block_data[j][i][k].size(); ++m)
+          {
+            auto pos = k == 0 ? local_indexsets_block_0[j].nth_index_in_set(m)
+                              : local_indexsets_block_1[j].nth_index_in_set(m);
+            reordered_local_block_data[i][k][pos] =
+                local_block_data[j][i][k][m];
+          }
+        }
+      }
+    }
   }
 
+  // Perform the global communication.
+  auto all_local_block_data = dealii::Utilities::MPI::gather(
+      _global_communicator, reordered_local_block_data);
+
+  std::vector<dealii::LA::distributed::BlockVector<double>>
+      global_augmented_state_ensemble;
+  unsigned int const global_comm_size =
+      dealii::Utilities::MPI::n_mpi_processes(_global_communicator);
+  std::vector<unsigned int> local_n_ensemble_members(global_comm_size);
+
+  if (_global_rank == 0)
+  {
+    // Build the new BlockVector
+    for (unsigned int i = 0; i < all_local_block_data.size(); ++i)
+    {
+      auto const &data = all_local_block_data[i];
+      local_n_ensemble_members[i] = data.size();
+      if (data.size())
+      {
+        // Loop over the ensemble members
+        for (unsigned int j = 0; j < data.size(); ++j)
+        {
+          dealii::LA::distributed::BlockVector<double> ensemble_member(
+              block_sizes);
+          // Copy the values in data to ensemble_member
+          for (unsigned int k = 0; k < data[j].size(); ++k)
+          {
+            for (unsigned int m = 0; m < data[j][k].size(); ++m)
+            {
+              ensemble_member.block(k)[m] = data[j][k][m];
+            }
+          }
+          global_augmented_state_ensemble.push_back(ensemble_member);
+        }
+      }
+    }
+
+    // Set some constants
+    _num_ensemble_members = global_augmented_state_ensemble.size();
+    _sim_size = block_sizes[0];
+    _parameter_size = block_sizes[1];
+
+    adamantine::ASSERT_THROW(_expt_size == expt_data.size(),
+                             "Error: Unexpected experiment vector size.");
+
+    // Check if R is diagonal, needed for filling the noise vector
+    auto bandwidth = R.get_sparsity_pattern().bandwidth();
+    bool const R_is_diagonal = bandwidth == 0 ? true : false;
+
+    // Get the perturbed innovation, ( y+u - Hx )
+    // This is determined using the unaugmented state because the parameters are
+    // not observable
+    if (_global_rank == 0)
+      std::cout << "Getting the perturbed innovation..." << std::endl;
+
 #ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_END("da_update_members");
+    CALI_MARK_BEGIN("da_get_pert_inno");
 #endif
+
+    int constexpr base_state = 0;
+    std::vector<dealii::Vector<double>> perturbed_innovation(
+        _num_ensemble_members);
+    for (unsigned int member = 0; member < _num_ensemble_members; ++member)
+    {
+      perturbed_innovation[member].reinit(_expt_size);
+      fill_noise_vector(perturbed_innovation[member], R, R_is_diagonal);
+      dealii::Vector<double> temporary =
+          calc_Hx(global_augmented_state_ensemble[member].block(base_state));
+
+      for (unsigned int i = 0; i < _expt_size; ++i)
+      {
+        perturbed_innovation[member][i] += expt_data[i] - temporary[i];
+      }
+    }
+
+#ifdef ADAMANTINE_WITH_CALIPER
+    CALI_MARK_END("da_get_pert_inno");
+#endif
+
+    // Apply the Kalman gain to update the augmented state ensemble
+    if (_global_rank == 0)
+      std::cout << "Applying the Kalman gain..." << std::endl;
+
+#ifdef ADAMANTINE_WITH_CALIPER
+    CALI_MARK_BEGIN("da_apply_K");
+#endif
+
+    // Apply the Kalman filter to the perturbed innovation, K ( y+u - Hx )
+    std::vector<dealii::LA::distributed::BlockVector<double>> forecast_shift =
+        apply_kalman_gain(global_augmented_state_ensemble, R,
+                          perturbed_innovation);
+
+#ifdef ADAMANTINE_WITH_CALIPER
+    CALI_MARK_END("da_apply_K");
+#endif
+
+    // Update the ensemble, x = x + K ( y+u - Hx )
+    if (_global_rank == 0)
+      std::cout << "Updating the ensemble members..." << std::endl;
+
+#ifdef ADAMANTINE_WITH_CALIPER
+    CALI_MARK_BEGIN("da_update_members");
+#endif
+
+    for (unsigned int member = 0; member < _num_ensemble_members; ++member)
+    {
+      global_augmented_state_ensemble[member] += forecast_shift[member];
+    }
+
+#ifdef ADAMANTINE_WITH_CALIPER
+    CALI_MARK_END("da_update_members");
+#endif
+  }
+
+  // Scatter global_augmented_state_ensemble to augmented_state_ensemble.
+  // First we split the data to the root of the local communicators and then,
+  // the data is moved inside each local communicator.
+  // deal.II has isend and irecv functions but we cannot them. Using these
+  // functions will result in a deadlock because the future returned by isend is
+  // blocking until we call the get function of the future returned by irecv.
+  std::vector<char> packed_recv_buffer;
+  if (_global_rank == 0)
+  {
+    unsigned int const n_local_roots = all_local_block_data.size();
+    std::vector<std::vector<char>> packed_send_buffers(n_local_roots);
+    std::vector<MPI_Request> mpi_requests(n_local_roots);
+    unsigned int global_member_id = 0;
+    unsigned int local_root_id = 0;
+    for (unsigned int i = 0; i < global_comm_size; ++i)
+    {
+      unsigned int const local_size = local_n_ensemble_members[i];
+      std::vector<std::vector<double>> send_buffer(local_size);
+      for (unsigned int j = 0; j < local_size; ++j)
+      {
+        auto const &global_state =
+            global_augmented_state_ensemble[global_member_id];
+        send_buffer[j].reserve(global_state.size());
+        for (auto block_vector_it = global_state.begin();
+             block_vector_it != global_state.end(); ++block_vector_it)
+        {
+          send_buffer[j].push_back(*block_vector_it);
+        }
+        ++global_member_id;
+      }
+      // Pack and send the data to the local root rank
+      packed_send_buffers[local_root_id] = dealii::Utilities::pack(send_buffer);
+      MPI_Isend(packed_send_buffers[local_root_id].data(),
+                packed_send_buffers[local_root_id].size(), MPI_CHAR, i, 0,
+                _global_communicator, &mpi_requests[local_root_id]);
+
+      ++local_root_id;
+    }
+
+    // Receive the data. First, call MPI_Probe to get the size of the message.
+    MPI_Status status;
+    MPI_Probe(0, 0, _global_communicator, &status);
+    int packed_recv_buffer_size = -1;
+    MPI_Get_count(&status, MPI_CHAR, &packed_recv_buffer_size);
+    packed_recv_buffer.resize(packed_recv_buffer_size);
+    MPI_Recv(packed_recv_buffer.data(), packed_recv_buffer_size, MPI_CHAR, 0, 0,
+             _global_communicator, MPI_STATUS_IGNORE);
+
+    // Wait for all the sends to be over before freeing the buffers
+    for (auto &request : mpi_requests)
+    {
+      MPI_Wait(&request, MPI_STATUS_IGNORE);
+    }
+  }
+  else
+  {
+    MPI_Status status;
+    MPI_Probe(0, 0, _global_communicator, &status);
+    int packed_recv_buffer_size = -1;
+    MPI_Get_count(&status, MPI_CHAR, &packed_recv_buffer_size);
+    packed_recv_buffer.resize(packed_recv_buffer_size);
+    MPI_Recv(packed_recv_buffer.data(), packed_recv_buffer_size, MPI_CHAR, 0, 0,
+             _global_communicator, MPI_STATUS_IGNORE);
+  }
+
+  // Unpack the data
+  auto recv_buffer =
+      dealii::Utilities::unpack<std::vector<std::vector<double>>>(
+          packed_recv_buffer);
+
+  // The local root ranks have all the data, now we need to update
+  // augmented_state_ensemble. This communication is easier to do than the other
+  // communications because we can use deal.II's built-in functions.
+  for (unsigned int m = 0; m < augmented_state_ensemble.size(); ++m)
+  {
+    for (unsigned int b = 0; b < 2; ++b)
+    {
+      dealii::LA::ReadWriteVector<double> rw_vector(block_sizes[b]);
+      unsigned int offset = b == 0 ? 0 : block_sizes[0];
+      for (std::size_t i = 0; i < block_sizes[b]; ++i)
+      {
+        rw_vector[i] = recv_buffer[m][offset + i];
+      }
+      augmented_state_ensemble[m].block(b).import(
+          rw_vector, dealii::VectorOperation::insert);
+    }
+  }
 }
 
 std::vector<dealii::LA::distributed::BlockVector<double>>
@@ -281,82 +484,98 @@ void DataAssimilator::update_covariance_sparsity_pattern(
     dealii::DoFHandler<dim> const &dof_handler,
     const unsigned int parameter_size)
 {
-  _sim_size = dof_handler.n_dofs();
-  _parameter_size = parameter_size;
-  unsigned int augmented_state_size = _sim_size + _parameter_size;
-
-  auto [dof_indices, support_points] = get_dof_to_support_mapping(dof_handler);
-
-  // Perform the spatial search using ArborX
-  auto communicator = dof_handler.get_communicator();
-  dealii::ArborXWrappers::DistributedTree distributed_tree(communicator,
-                                                           support_points);
-
-  std::vector<std::pair<dealii::Point<dim, double>, double>> spheres;
-  if (dim == 2)
-    for (auto const pt : support_points)
-      spheres.push_back({{pt[0], pt[1]}, _localization_cutoff_distance});
-  else
-    for (auto const pt : support_points)
-      spheres.push_back({{pt[0], pt[1], pt[2]}, _localization_cutoff_distance});
-  dealii::ArborXWrappers::SphereIntersectPredicate sph_intersect(spheres);
-  auto [indices_ranks, offsets] = distributed_tree.query(sph_intersect);
-  ASSERT(offsets.size() == spheres.size() + 1,
-         "There was a problem in ArborX.");
-
-  // We need IndexSet to build the sparsity pattern. The IndexSet is the same as
-  // the one from the DoFHandler but augmented by parameter size;
-  dealii::IndexSet parallel_partitioning(augmented_state_size);
-  auto locally_owned_dofs = dof_handler.locally_owned_dofs();
-  parallel_partitioning.add_indices(locally_owned_dofs);
-  int const my_rank = dealii::Utilities::MPI::this_mpi_process(communicator);
-  if (my_rank == 0)
-    parallel_partitioning.add_range(_sim_size, augmented_state_size);
-  parallel_partitioning.compress();
-  _covariance_sparsity_pattern.reinit(parallel_partitioning, communicator);
-
-  // Fill in the SparsityPattern
-  if (offsets.size() != 0)
+  if (_color == 0)
   {
-    for (unsigned int i = 0; i < offsets.size() - 1; ++i)
+    _sim_size = dof_handler.n_dofs();
+    _parameter_size = parameter_size;
+    unsigned int augmented_state_size = _sim_size + _parameter_size;
+
+    auto [dof_indices, support_points] =
+        get_dof_to_support_mapping(dof_handler);
+
+    // Perform the spatial search using ArborX
+    dealii::ArborXWrappers::DistributedTree distributed_tree(
+        _local_communicator, support_points);
+
+    std::vector<std::pair<dealii::Point<dim, double>, double>> spheres;
+    if (dim == 2)
+      for (auto const pt : support_points)
+        spheres.push_back({{pt[0], pt[1]}, _localization_cutoff_distance});
+    else
+      for (auto const pt : support_points)
+        spheres.push_back(
+            {{pt[0], pt[1], pt[2]}, _localization_cutoff_distance});
+    dealii::ArborXWrappers::SphereIntersectPredicate sph_intersect(spheres);
+    auto [indices_ranks, offsets] = distributed_tree.query(sph_intersect);
+    ASSERT(offsets.size() == spheres.size() + 1,
+           "There was a problem in ArborX.");
+
+    auto locally_owned_dofs_per_rank = dealii::Utilities::MPI::gather(
+        _local_communicator, dof_handler.locally_owned_dofs());
+    auto support_points_per_rank =
+        dealii::Utilities::MPI::gather(_local_communicator, support_points);
+    auto indices_ranks_per_rank =
+        dealii::Utilities::MPI::gather(_local_communicator, indices_ranks);
+    auto offsets_per_rank =
+        dealii::Utilities::MPI::gather(_local_communicator, offsets);
+
+    if (_global_rank == 0)
     {
-      for (int j = offsets[i]; j < offsets[i + 1]; ++j)
+      // We need IndexSet to build the sparsity pattern. Since the data
+      // assimilation is done is serial, the IndexSet just contains everything.
+      dealii::IndexSet parallel_partitioning =
+          dealii::complete_index_set(augmented_state_size);
+      parallel_partitioning.compress();
+      _covariance_sparsity_pattern.reinit(parallel_partitioning, MPI_COMM_SELF);
+
+      // Fill in the SparsityPattern
+      unsigned int const local_comm_size =
+          dealii::Utilities::MPI::n_mpi_processes(_local_communicator);
+      for (unsigned int rank = 0; rank < local_comm_size; ++rank)
       {
-        if (indices_ranks[j].second == my_rank)
+        if (offsets_per_rank[rank].size() != 0)
         {
-          int k = indices_ranks[j].first;
-          _covariance_distance_map[std::make_pair(i, k)] =
-              support_points[i].distance(support_points[k]);
-          // We would like to use the add_entries functions but we cannot
-          // because deal.II only accepts unsigned int but ArborX returns int.
-          // Note that the entries are unique but not sorted.
-          _covariance_sparsity_pattern.add(i, k);
+          for (unsigned int i = 0; i < offsets_per_rank[rank].size() - 1; ++i)
+          {
+            for (int j = offsets_per_rank[rank][i];
+                 j < offsets_per_rank[rank][i + 1]; ++j)
+            {
+              unsigned int row =
+                  locally_owned_dofs_per_rank[rank].nth_index_in_set(i);
+              unsigned int other_rank = indices_ranks[j].second;
+              unsigned int other_i = indices_ranks[j].first;
+              unsigned int column =
+                  locally_owned_dofs_per_rank[other_rank].nth_index_in_set(
+                      other_i);
+              _covariance_distance_map[std::make_pair(row, column)] =
+                  support_points_per_rank[rank][i].distance(
+                      support_points_per_rank[other_rank][other_i]);
+              _covariance_sparsity_pattern.add(row, column);
+            }
+          }
         }
       }
+
+      // Add entries for the parameter augmentation
+      for (unsigned int i1 = _sim_size; i1 < augmented_state_size; ++i1)
+      {
+        for (unsigned int j1 = 0; j1 < augmented_state_size; ++j1)
+        {
+          _covariance_sparsity_pattern.add(i1, j1);
+        }
+      }
+
+      for (unsigned int i1 = 0; i1 < _sim_size; ++i1)
+      {
+        for (unsigned int j1 = _sim_size; j1 < augmented_state_size; ++j1)
+        {
+          _covariance_sparsity_pattern.add(i1, j1);
+        }
+      }
+
+      _covariance_sparsity_pattern.compress();
     }
   }
-
-  if (my_rank == 0)
-  {
-    // Add entries for the parameter augmentation
-    for (unsigned int i1 = _sim_size; i1 < augmented_state_size; ++i1)
-    {
-      for (unsigned int j1 = 0; j1 < augmented_state_size; ++j1)
-      {
-        _covariance_sparsity_pattern.add(i1, j1);
-      }
-    }
-
-    for (unsigned int i1 = 0; i1 < _sim_size; ++i1)
-    {
-      for (unsigned int j1 = _sim_size; j1 < augmented_state_size; ++j1)
-      {
-        _covariance_sparsity_pattern.add(i1, j1);
-      }
-    }
-  }
-
-  _covariance_sparsity_pattern.compress();
 }
 
 dealii::Vector<double> DataAssimilator::calc_Hx(

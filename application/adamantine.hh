@@ -1238,17 +1238,71 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   }
 }
 
+void split_global_communicator(MPI_Comm global_communicator,
+                               unsigned int global_ensemble_size,
+                               MPI_Comm &local_communicator,
+                               unsigned int &local_ensemble_size,
+                               unsigned int &first_local_member, int &my_color)
+{
+  unsigned int const global_rank =
+      dealii::Utilities::MPI::this_mpi_process(global_communicator);
+  unsigned int const global_n_procs =
+      dealii::Utilities::MPI::n_mpi_processes(global_communicator);
+
+  double const avg_n_procs_per_member =
+      static_cast<double>(global_n_procs) /
+      static_cast<double>(global_ensemble_size);
+  if (avg_n_procs_per_member > 1)
+  {
+    // FIXME This branch does not work currently
+    adamantine::ASSERT_THROW(false, "Number of MPI ranks should be less than "
+                                    "the number of ensemble members");
+
+    local_ensemble_size = 1;
+    // We need all the members to use the same partitioning otherwise the dofs
+    // may be number differently which is problematic for the data assimulation.
+    adamantine::ASSERT_THROW(
+        avg_n_procs_per_member == std::floor(avg_n_procs_per_member),
+        "Number of MPI ranks should be less than the number of ensemble "
+        "members or a multiple of this number.");
+    // Assign color
+    my_color = global_rank / avg_n_procs_per_member;
+
+    first_local_member = my_color;
+  }
+  else
+  {
+    my_color = global_rank;
+    // Compute the local ensemble size
+    unsigned int const members_per_proc = global_ensemble_size / global_n_procs;
+    unsigned int const leftover_members =
+        global_ensemble_size - global_n_procs * members_per_proc;
+    // We assign all the leftover members to processor 0. We could do a
+    // better job distributing the leftover
+    local_ensemble_size = members_per_proc;
+    if (global_rank == 0)
+    {
+      local_ensemble_size += leftover_members;
+      first_local_member = 0;
+    }
+    else
+    {
+      first_local_member = global_rank * local_ensemble_size + leftover_members;
+    }
+  }
+
+  MPI_Comm_split(global_communicator, my_color, 0, &local_communicator);
+}
+
 template <int dim, typename MemorySpaceType>
 std::vector<dealii::LA::distributed::BlockVector<double>>
-run_ensemble(MPI_Comm const &communicator,
+run_ensemble(MPI_Comm const &global_communicator,
              boost::property_tree::ptree const &database,
              std::vector<adamantine::Timer> &timers)
 {
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
 #endif
-
-  unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
   // ------ Extract child property trees -----
   // Mandatory subtrees
@@ -1312,55 +1366,68 @@ run_ensemble(MPI_Comm const &communicator,
         database.get<double>("sources.beam_0.absorption_efficiency");
   }
 
+  // ------ Split MPI communicator -----
+  // PropertyTreeInput ensemble.ensemble_size
+  unsigned int const global_ensemble_size =
+      ensemble_database.get("ensemble_size", 5);
+  // Distribute the processors among the ensemble members
+  MPI_Comm local_communicator;
+  unsigned int local_ensemble_size = -1;
+  unsigned int first_local_member = -1;
+  int my_color = -1;
+  split_global_communicator(global_communicator, global_ensemble_size,
+                            local_communicator, local_ensemble_size,
+                            first_local_member, my_color);
+
   // ------ Set up the ensemble members -----
   // There might be a more efficient way to share some of these objects
   // between ensemble members. For now, we'll do the simpler approach of
-  // duplicating everything. PropertyTreeInput ensemble.ensemble_size
-  const unsigned int ensemble_size = ensemble_database.get("ensemble_size", 5);
+  // duplicating everything.
 
   // PropertyTreeInput ensemble.initial_temperature_stddev
   const double initial_temperature_stddev =
       ensemble_database.get("initial_temperature_stddev", 0.0);
 
   std::vector<double> initial_temperature =
-      adamantine::fill_and_sync_random_vector(
-          ensemble_size, initial_temperature_mean, initial_temperature_stddev);
+      adamantine::get_normal_random_vector(
+          local_ensemble_size, first_local_member, initial_temperature_mean,
+          initial_temperature_stddev);
 
   // PropertyTreeInput ensemble.new_material_temperature_stddev
   const double new_material_temperature_stddev =
       ensemble_database.get("new_material_temperature_stddev", 0.0);
 
   std::vector<double> new_material_temperature =
-      adamantine::fill_and_sync_random_vector(ensemble_size,
-                                              new_material_temperature_mean,
-                                              new_material_temperature_stddev);
+      adamantine::get_normal_random_vector(
+          local_ensemble_size, first_local_member,
+          new_material_temperature_mean, new_material_temperature_stddev);
 
   // PropertyTreeInput ensemble.beam_0_max_power_stddev
   const double beam_0_max_power_stddev =
       ensemble_database.get("beam_0_max_power_stddev", 0.0);
 
-  std::vector<double> beam_0_max_power =
-      adamantine::fill_and_sync_random_vector(
-          ensemble_size, beam_0_max_power_mean, beam_0_max_power_stddev);
+  std::vector<double> beam_0_max_power = adamantine::get_normal_random_vector(
+      local_ensemble_size, first_local_member, beam_0_max_power_mean,
+      beam_0_max_power_stddev);
 
   // PropertyTreeInput ensemble.beam_0_absorption_stddev
   const double beam_0_absorption_stddev =
       ensemble_database.get("beam_0_absorption_stddev", 0.0);
 
-  std::vector<double> beam_0_absorption =
-      adamantine::fill_and_sync_random_vector(
-          ensemble_size, beam_0_absorption_mean, beam_0_absorption_stddev);
+  std::vector<double> beam_0_absorption = adamantine::get_normal_random_vector(
+      local_ensemble_size, first_local_member, beam_0_absorption_mean,
+      beam_0_absorption_stddev);
 
   // Create a new property tree database for each ensemble member
-  std::vector<boost::property_tree::ptree> database_ensemble(ensemble_size,
-                                                             database);
+  std::vector<boost::property_tree::ptree> database_ensemble(
+      local_ensemble_size, database);
 
   std::vector<std::unique_ptr<
       adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>>
-      thermal_physics_ensemble(ensemble_size);
+      thermal_physics_ensemble(local_ensemble_size);
 
   std::vector<std::vector<std::shared_ptr<adamantine::HeatSource<dim>>>>
-      heat_sources_ensemble(ensemble_size);
+      heat_sources_ensemble(local_ensemble_size);
 
   std::vector<std::unique_ptr<adamantine::Geometry<dim>>> geometry_ensemble;
 
@@ -1373,7 +1440,7 @@ run_ensemble(MPI_Comm const &communicator,
 
   // Create the vector of augmented state vectors
   std::vector<dealii::LA::distributed::BlockVector<double>>
-      solution_augmented_ensemble(ensemble_size);
+      solution_augmented_ensemble(local_ensemble_size);
 
   // Give names to the blocks in the augmented state vector
   int constexpr base_state = 0;
@@ -1410,9 +1477,11 @@ run_ensemble(MPI_Comm const &communicator,
       }
     }
   }
-  adamantine::DataAssimilator data_assimilator(data_assimilation_database);
+  adamantine::DataAssimilator data_assimilator(global_communicator,
+                                               local_communicator, my_color,
+                                               data_assimilation_database);
 
-  for (unsigned int member = 0; member < ensemble_size; ++member)
+  for (unsigned int member = 0; member < local_ensemble_size; ++member)
   {
     // Resize the augmented ensemble block vector to have two blocks
     solution_augmented_ensemble[member].reinit(2);
@@ -1461,16 +1530,17 @@ run_ensemble(MPI_Comm const &communicator,
     solution_augmented_ensemble[member].collect_sizes();
 
     geometry_ensemble.push_back(std::make_unique<adamantine::Geometry<dim>>(
-        communicator, geometry_database));
+        local_communicator, geometry_database));
 
     material_properties_ensemble.push_back(
         std::make_unique<adamantine::MaterialProperty<dim, MemorySpaceType>>(
-            communicator, geometry_ensemble.back()->get_triangulation(),
+            local_communicator, geometry_ensemble.back()->get_triangulation(),
             material_database));
 
     thermal_physics_ensemble[member] = initialize_thermal_physics<dim>(
-        fe_degree, quadrature_type, communicator, database_ensemble[member],
-        *geometry_ensemble[member], *material_properties_ensemble[member]);
+        fe_degree, quadrature_type, local_communicator,
+        database_ensemble[member], *geometry_ensemble[member],
+        *material_properties_ensemble[member]);
     heat_sources_ensemble[member] =
         thermal_physics_ensemble[member]->get_heat_sources();
 
@@ -1490,8 +1560,9 @@ run_ensemble(MPI_Comm const &communicator,
     post_processor_database.put("thermal_output", true);
     post_processor_ensemble.push_back(
         std::make_unique<adamantine::PostProcessor<dim>>(
-            communicator, post_processor_database,
-            thermal_physics_ensemble[member]->get_dof_handler(), member));
+            local_communicator, post_processor_database,
+            thermal_physics_ensemble[member]->get_dof_handler(),
+            first_local_member + member));
   }
 
   // PostProcessor for outputting the experimental data
@@ -1502,10 +1573,12 @@ run_ensemble(MPI_Comm const &communicator,
   post_processor_expt_database.put("filename_prefix", expt_file_prefix);
   post_processor_expt_database.put("thermal_output", true);
   adamantine::PostProcessor<dim> post_processor_expt(
-      communicator, post_processor_expt_database,
+      global_communicator, post_processor_expt_database,
       thermal_physics_ensemble[0]->get_dof_handler());
 
   // ----- Read the experimental data -----
+  unsigned int const global_rank =
+      dealii::Utilities::MPI::this_mpi_process(global_communicator);
   std::vector<std::vector<double>> frame_time_stamps;
   std::unique_ptr<adamantine::ExperimentalData<dim>> experimental_data;
   unsigned int experimental_frame_index = -1;
@@ -1520,7 +1593,7 @@ run_ensemble(MPI_Comm const &communicator,
 
     if (read_in_experimental_data)
     {
-      if (rank == 0)
+      if (global_rank == 0)
         std::cout << "Reading the experimental log file..." << std::endl;
 
       frame_time_stamps =
@@ -1535,7 +1608,7 @@ run_ensemble(MPI_Comm const &communicator,
           "Error: Experimental data parsing is activated, but "
           "the log shows zero data frames.");
 
-      if (rank == 0)
+      if (global_rank == 0)
         std::cout << "Done. Log entries found for " << frame_time_stamps.size()
                   << " camera(s), with " << frame_time_stamps[0].size()
                   << " frame(s)." << std::endl;
@@ -1576,7 +1649,7 @@ run_ensemble(MPI_Comm const &communicator,
       mechanical_physics;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       displacement;
-  for (unsigned int member = 0; member < ensemble_size; ++member)
+  for (unsigned int member = 0; member < local_ensemble_size; ++member)
   {
     output_pvtu(*post_processor_ensemble[member], n_time_step, time,
                 thermal_physics_ensemble[member],
@@ -1613,8 +1686,8 @@ run_ensemble(MPI_Comm const &communicator,
   timers[adamantine::add_material_search].start();
   std::vector<std::vector<
       std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>>
-      elements_to_activate_ensemble(ensemble_size);
-  for (unsigned int member = 0; member < ensemble_size; ++member)
+      elements_to_activate_ensemble(local_ensemble_size);
+  for (unsigned int member = 0; member < local_ensemble_size; ++member)
   {
     elements_to_activate_ensemble[member] =
         adamantine::get_elements_to_activate(
@@ -1624,7 +1697,7 @@ run_ensemble(MPI_Comm const &communicator,
   timers[adamantine::add_material_search].stop();
 
   // ----- Main time stepping loop -----
-  if (rank == 0)
+  if (global_rank == 0)
     std::cout << "Starting the main time stepping loop..." << std::endl;
 
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -1648,7 +1721,7 @@ run_ensemble(MPI_Comm const &communicator,
       next_refinement_time = time + time_steps_refinement * time_step;
       timers[adamantine::refine].start();
 
-      for (unsigned int member = 0; member < ensemble_size; ++member)
+      for (unsigned int member = 0; member < local_ensemble_size; ++member)
       {
         refine_mesh(thermal_physics_ensemble[member],
                     *material_properties_ensemble[member],
@@ -1659,7 +1732,7 @@ run_ensemble(MPI_Comm const &communicator,
       }
 
       timers[adamantine::refine].stop();
-      if ((rank == 0) && (verbose_output == true))
+      if ((global_rank == 0) && (verbose_output == true))
         std::cout << "n_dofs: "
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
@@ -1683,7 +1756,7 @@ run_ensemble(MPI_Comm const &communicator,
                            activation_time_end) -
           deposition_times.begin();
       if (activation_start < activation_end)
-        for (unsigned int member = 0; member < ensemble_size; ++member)
+        for (unsigned int member = 0; member < local_ensemble_size; ++member)
         {
           // Compute the elements to activate.
           // TODO Right now, we compute the list of cells that get activated
@@ -1706,7 +1779,7 @@ run_ensemble(MPI_Comm const &communicator,
           solution_augmented_ensemble[member].collect_sizes();
         }
 
-      if ((rank == 0) && (verbose_output == true) &&
+      if ((global_rank == 0) && (verbose_output == true) &&
           (activation_end - activation_start > 0))
         std::cout << "n_dofs: "
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
@@ -1717,7 +1790,8 @@ run_ensemble(MPI_Comm const &communicator,
     // ----- Evolve the solution by one time step -----
     double const old_time = time;
     timers[adamantine::evol_time].start();
-    for (unsigned int member = 0; member < ensemble_size; ++member)
+
+    for (unsigned int member = 0; member < local_ensemble_size; ++member)
     {
       time = thermal_physics_ensemble[member]->evolve_one_time_step(
           old_time, time_step,
@@ -1733,7 +1807,7 @@ run_ensemble(MPI_Comm const &communicator,
     // ----- Perform data assimilation -----
     if (assimilate_data)
     {
-      for (unsigned int member = 0; member < ensemble_size; ++member)
+      for (unsigned int member = 0; member < local_ensemble_size; ++member)
       {
         thermal_physics_ensemble[member]->get_affine_constraints().distribute(
             solution_augmented_ensemble[member].block(base_state));
@@ -1758,21 +1832,20 @@ run_ensemble(MPI_Comm const &communicator,
         adamantine::ASSERT_THROW(
             frame_time > old_time || n_time_step == 1,
             "Unexpectedly missed a data assimilation frame.");
-        if (rank == 0)
+        if (global_rank == 0)
           std::cout << "Performing data assimilation at time " << time << "..."
                     << std::endl;
 
         // Print out the augmented parameters
-        if (rank == 0)
+        for (unsigned int member = 0; member < local_ensemble_size; ++member)
         {
-          for (unsigned int member = 0; member < ensemble_size; ++member)
-          {
-            std::cout << "Old parameters for member " << member << ": ";
-            for (auto param : solution_augmented_ensemble[member].block(1))
-              std::cout << param << " ";
+          std::cout << "Rank: " << global_rank
+                    << " | Old parameters for member "
+                    << first_local_member + member << ": ";
+          for (auto param : solution_augmented_ensemble[member].block(1))
+            std::cout << param << " ";
 
-            std::cout << std::endl;
-          }
+          std::cout << std::endl;
         }
 
         timers[adamantine::da_experimental_data].start();
@@ -1784,11 +1857,9 @@ run_ensemble(MPI_Comm const &communicator,
             thermal_physics_ensemble[0]->get_dof_handler();
         auto expt_to_dof_mapping = adamantine::get_expt_to_dof_mapping(
             points_values, thermal_dof_handler);
-        if (rank == 0)
-        {
-          std::cout << "Number expt sites mapped to DOFs: "
-                    << expt_to_dof_mapping.first.size() << std::endl;
-        }
+        std::cout << "Rank: " << global_rank
+                  << " | Number expt sites mapped to DOFs: "
+                  << expt_to_dof_mapping.first.size() << std::endl;
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_END("da_experimental_data");
 #endif
@@ -1807,7 +1878,7 @@ run_ensemble(MPI_Comm const &communicator,
               solution_augmented_ensemble[0].block(base_state));
           temperature_expt.add(1.0e10);
           adamantine::set_with_experimental_data(
-              communicator, points_values, expt_to_dof_mapping,
+              global_communicator, points_values, expt_to_dof_mapping,
               temperature_expt, verbose_output);
 
           thermal_physics_ensemble[0]->get_affine_constraints().distribute(
@@ -1883,15 +1954,15 @@ run_ensemble(MPI_Comm const &communicator,
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_BEGIN("da_update_ensemble");
 #endif
-        data_assimilator.update_ensemble(
-            communicator, solution_augmented_ensemble, points_values.values, R);
+        data_assimilator.update_ensemble(solution_augmented_ensemble,
+                                         points_values.values, R);
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_END("da_update_ensemble");
 #endif
         timers[adamantine::da_update_ensemble].stop();
 
         // Extract the parameters from the augmented state
-        for (unsigned int member = 0; member < ensemble_size; ++member)
+        for (unsigned int member = 0; member < local_ensemble_size; ++member)
         {
           for (unsigned int index = 0;
                index < augmented_state_parameters.size(); ++index)
@@ -1918,25 +1989,24 @@ run_ensemble(MPI_Comm const &communicator,
           }
         }
 
-        if (rank == 0)
+        if (global_rank == 0)
           std::cout << "Done." << std::endl;
 
         // Print out the augmented parameters
-        if (rank == 0)
+        for (unsigned int member = 0; member < local_ensemble_size; ++member)
         {
-          for (unsigned int member = 0; member < ensemble_size; ++member)
-          {
-            std::cout << "New parameters for member " << member << ": ";
-            for (auto param : solution_augmented_ensemble[member].block(1))
-              std::cout << param << " ";
+          std::cout << "Rank: " << global_rank
+                    << " | New parameters for member "
+                    << first_local_member + member << ": ";
+          for (auto param : solution_augmented_ensemble[member].block(1))
+            std::cout << param << " ";
 
-            std::cout << std::endl;
-          }
+          std::cout << std::endl;
         }
       }
 
       // Update the heat source in the ThermalPhysics objects
-      for (unsigned int member = 0; member < ensemble_size; ++member)
+      for (unsigned int member = 0; member < local_ensemble_size; ++member)
       {
         thermal_physics_ensemble[member]->update_physics_parameters(
             database_ensemble[member].get_child("sources"));
@@ -1944,7 +2014,7 @@ run_ensemble(MPI_Comm const &communicator,
     }
 
     // ----- Output progress on screen -----
-    if (rank == 0)
+    if (global_rank == 0)
     {
       double adim_time = time / (duration / 10.);
       double int_part = 0;
@@ -1959,7 +2029,7 @@ run_ensemble(MPI_Comm const &communicator,
     // ----- Output the solution -----
     if (n_time_step % time_steps_output == 0)
     {
-      for (unsigned int member = 0; member < ensemble_size; ++member)
+      for (unsigned int member = 0; member < local_ensemble_size; ++member)
       {
         thermal_physics_ensemble[member]->set_state_to_material_properties();
         output_pvtu(*post_processor_ensemble[member], n_time_step, time,
@@ -1977,7 +2047,7 @@ run_ensemble(MPI_Comm const &communicator,
   CALI_CXX_MARK_LOOP_END(main_loop_id);
 #endif
 
-  for (unsigned int member = 0; member < ensemble_size; ++member)
+  for (unsigned int member = 0; member < local_ensemble_size; ++member)
   {
     post_processor_ensemble[member]->write_pvd();
   }
@@ -1985,7 +2055,7 @@ run_ensemble(MPI_Comm const &communicator,
   // This is only used for integration test
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
   {
-    for (unsigned int member = 0; member < ensemble_size; ++member)
+    for (unsigned int member = 0; member < local_ensemble_size; ++member)
     {
       thermal_physics_ensemble[member]->get_affine_constraints().distribute(
           solution_augmented_ensemble[member].block(base_state));
@@ -1997,9 +2067,9 @@ run_ensemble(MPI_Comm const &communicator,
     // NOTE: Currently unused. Added for the future case where run_ensemble is
     // functional on the device.
     std::vector<dealii::LA::distributed::BlockVector<double>>
-        solution_augmented_ensemble_host(ensemble_size);
+        solution_augmented_ensemble_host(local_ensemble_size);
 
-    for (unsigned int member = 0; member < ensemble_size; ++member)
+    for (unsigned int member = 0; member < local_ensemble_size; ++member)
     {
       solution_augmented_ensemble[member].reinit(2);
 
