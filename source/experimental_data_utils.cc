@@ -15,8 +15,8 @@
 #include <deal.II/hp/fe_values.h>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
 
+#include <filesystem>
 #include <fstream>
 #include <unordered_set>
 
@@ -121,7 +121,7 @@ read_frame_timestamps(boost::property_tree::ptree const &experiment_database)
 
   [[maybe_unused]] std::string error_message =
       "The file " + log_filename + " does not exist.";
-  ASSERT(boost::filesystem::exists(log_filename), error_message.c_str());
+  ASSERT(std::filesystem::exists(log_filename), error_message.c_str());
 
   // PropertyTreeInput experiment.first_frame_temporal_offset
   double first_frame_offset =

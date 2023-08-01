@@ -1,4 +1,4 @@
-/* Copyright (c) 2021, the adamantine authors.
+/* Copyright (c) 2021 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -12,9 +12,9 @@
 #include <deal.II/grid/filtered_iterator.h>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
 
 #include <algorithm>
+#include <filesystem>
 #include <fstream>
 #include <tuple>
 
@@ -72,7 +72,7 @@ read_material_deposition(boost::property_tree::ptree const &geometry_database)
   std::vector<double> material_deposition_sin;
 
   // Read file
-  ASSERT_THROW(boost::filesystem::exists(material_deposition_filename),
+  ASSERT_THROW(std::filesystem::exists(material_deposition_filename),
                "The file " + material_deposition_filename + " does not exist.");
   std::ifstream file;
   file.open(material_deposition_filename);

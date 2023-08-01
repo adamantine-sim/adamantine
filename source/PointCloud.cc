@@ -8,8 +8,7 @@
 #include <PointCloud.hh>
 #include <instantiation.hh>
 
-#include <boost/filesystem.hpp>
-
+#include <filesystem>
 #include <fstream>
 #include <regex>
 
@@ -47,7 +46,7 @@ unsigned int PointCloud<dim>::read_next_frame()
                                                std::to_string(camera_id))),
                            frame_regex, std::to_string(_next_frame));
     unsigned int counter = 1;
-    while (!boost::filesystem::exists(filename))
+    while (!std::filesystem::exists(filename))
     {
       // Spin loop waiting for the file to appear (message printed if counter
       // overflows)

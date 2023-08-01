@@ -11,10 +11,9 @@
 #include <deal.II/arborx/distributed_tree.h>
 #include <deal.II/grid/filtered_iterator.h>
 
-#include <boost/filesystem.hpp>
-
 #include <Kokkos_HostSpace.hpp>
 
+#include <filesystem>
 #include <fstream>
 #include <regex>
 
@@ -112,7 +111,7 @@ unsigned int RayTracing::read_next_frame()
                                                std::to_string(camera_id))),
                            frame_regex, std::to_string(_next_frame));
     unsigned int counter = 1;
-    while (!boost::filesystem::exists(filename))
+    while (!std::filesystem::exists(filename))
     {
       // Spin loop waiting for the file to appear (message printed if counter
       // overflows)

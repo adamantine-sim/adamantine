@@ -7,7 +7,6 @@ if (DEFINED BOOST_DIR)
 endif()
 set(Boost_COMPONENTS
     chrono
-    filesystem
     program_options
     timer
     unit_test_framework

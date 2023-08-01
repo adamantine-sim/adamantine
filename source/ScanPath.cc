@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -9,8 +9,8 @@
 #include <utils.hh>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
 
+#include <filesystem>
 #include <fstream>
 
 namespace adamantine
@@ -18,7 +18,7 @@ namespace adamantine
 ScanPath::ScanPath(std::string scan_path_file, std::string file_format)
 {
   // Parse the scan path
-  ASSERT_THROW(boost::filesystem::exists(scan_path_file),
+  ASSERT_THROW(std::filesystem::exists(scan_path_file),
                "The file " + scan_path_file + " does not exist.");
 
   if (file_format == "segment")

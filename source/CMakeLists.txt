@@ -94,7 +94,6 @@ endif()
 
 target_link_libraries(Adamantine Boost::boost)
 target_link_libraries(Adamantine Boost::chrono)
-target_link_libraries(Adamantine Boost::filesystem)
 target_link_libraries(Adamantine Boost::program_options)
 target_link_libraries(Adamantine MPI::MPI_CXX)
 target_include_directories(Adamantine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

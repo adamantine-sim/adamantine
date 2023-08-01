@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -18,6 +18,8 @@
 #endif
 
 #include <Kokkos_Core.hpp>
+
+#include <filesystem>
 
 int main(int argc, char *argv[])
 {
@@ -71,7 +73,7 @@ int main(int argc, char *argv[])
 
     // Read the input.
     std::string const filename = map["input-file"].as<std::string>();
-    adamantine::ASSERT_THROW(boost::filesystem::exists(filename) == true,
+    adamantine::ASSERT_THROW(std::filesystem::exists(filename) == true,
                              "The file " + filename + " does not exist.");
     boost::property_tree::ptree database;
     boost::property_tree::info_parser::read_info(filename, database);
