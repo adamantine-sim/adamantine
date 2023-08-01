@@ -9,6 +9,7 @@
 
 #include "../application/adamantine.hh"
 
+#include <filesystem>
 #include <fstream>
 
 #include "main.cc"
@@ -24,7 +25,7 @@ BOOST_AUTO_TEST_CASE(integration_3D_amr_device, *utf::tolerance(0.1))
 
   // Read the input.
   std::string const filename = "amr_test.info";
-  adamantine::ASSERT_THROW(boost::filesystem::exists(filename) == true,
+  adamantine::ASSERT_THROW(std::filesystem::exists(filename) == true,
                            "The file " + filename + " does not exist.");
   boost::property_tree::ptree database;
   boost::property_tree::info_parser::read_info(filename, database);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -20,7 +20,7 @@
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/numerics/vector_tools.h>
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include "main.cc"
 
@@ -117,13 +117,13 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
   post_processor.write_pvd();
 
   // Check that the files exist
-  BOOST_CHECK(boost::filesystem::exists("test.pvd"));
-  BOOST_CHECK(boost::filesystem::exists("test.01.000000.pvtu"));
-  BOOST_CHECK(boost::filesystem::exists("test.01.000001.pvtu"));
-  BOOST_CHECK(boost::filesystem::exists("test.01.000002.pvtu"));
-  BOOST_CHECK(boost::filesystem::exists("test.01.000000.000000.vtu"));
-  BOOST_CHECK(boost::filesystem::exists("test.01.000001.000000.vtu"));
-  BOOST_CHECK(boost::filesystem::exists("test.01.000002.000000.vtu"));
+  BOOST_CHECK(std::filesystem::exists("test.pvd"));
+  BOOST_CHECK(std::filesystem::exists("test.01.000000.pvtu"));
+  BOOST_CHECK(std::filesystem::exists("test.01.000001.pvtu"));
+  BOOST_CHECK(std::filesystem::exists("test.01.000002.pvtu"));
+  BOOST_CHECK(std::filesystem::exists("test.01.000000.000000.vtu"));
+  BOOST_CHECK(std::filesystem::exists("test.01.000001.000000.vtu"));
+  BOOST_CHECK(std::filesystem::exists("test.01.000002.000000.vtu"));
 
   // Delete the files
   std::remove("test.pvd");
@@ -217,13 +217,13 @@ BOOST_AUTO_TEST_CASE(mechanical_post_processor)
   post_processor.write_pvd();
 
   // Check that the files exist
-  BOOST_TEST(boost::filesystem::exists("test.pvd"));
-  BOOST_TEST(boost::filesystem::exists("test.01.000000.pvtu"));
-  BOOST_TEST(boost::filesystem::exists("test.01.000001.pvtu"));
-  BOOST_TEST(boost::filesystem::exists("test.01.000002.pvtu"));
-  BOOST_TEST(boost::filesystem::exists("test.01.000000.000000.vtu"));
-  BOOST_TEST(boost::filesystem::exists("test.01.000001.000000.vtu"));
-  BOOST_TEST(boost::filesystem::exists("test.01.000002.000000.vtu"));
+  BOOST_TEST(std::filesystem::exists("test.pvd"));
+  BOOST_TEST(std::filesystem::exists("test.01.000000.pvtu"));
+  BOOST_TEST(std::filesystem::exists("test.01.000001.pvtu"));
+  BOOST_TEST(std::filesystem::exists("test.01.000002.pvtu"));
+  BOOST_TEST(std::filesystem::exists("test.01.000000.000000.vtu"));
+  BOOST_TEST(std::filesystem::exists("test.01.000001.000000.vtu"));
+  BOOST_TEST(std::filesystem::exists("test.01.000002.000000.vtu"));
 
   // Delete the files
   std::remove("test.pvd");
