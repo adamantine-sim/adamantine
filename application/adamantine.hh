@@ -874,6 +874,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   boost::property_tree::ptree post_processor_database =
       database.get_child("post_processor");
 
+  // Extract the verbosity
+  // PropertyTreeInput verbose_output
+  bool const verbose_output = database.get("verbose_output", false);
+
   // Create ThermalPhysics if necessary
   std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
       thermal_physics;
@@ -1018,8 +1022,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // Extract the refinement database
   boost::property_tree::ptree refinement_database =
       database.get_child("refinement");
-  // PropertyTreeInput refinement.verbose
-  bool const verbose_refinement = refinement_database.get("verbose", false);
   // PropertyTreeInput refinement.time_steps_between_refinement
   unsigned int const time_steps_refinement =
       refinement_database.get("time_steps_between_refinement", 10);
@@ -1057,7 +1059,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                   heat_sources, time, next_refinement_time,
                   time_steps_refinement, refinement_database);
       timers[adamantine::refine].stop();
-      if ((rank == 0) && (verbose_refinement == true))
+      if ((rank == 0) && (verbose_output == true))
         std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
                   << std::endl;
 
@@ -1098,7 +1100,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       }
     }
 
-    if ((rank == 0) && (verbose_refinement == true) &&
+    if ((rank == 0) && (verbose_output == true) &&
         (activation_end - activation_start > 0) && use_thermal_physics)
     {
       std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
@@ -1275,6 +1277,10 @@ run_ensemble(MPI_Comm const &communicator,
   boost::optional<const boost::property_tree::ptree &>
       data_assimilation_optional_database =
           database.get_child_optional("data_assimilation");
+
+  // Verbosity
+  // PropertyTreeInput verbose_output
+  bool const verbose_output = database.get("verbose_output", false);
 
   // ------ Get finite element implementation parameters -----
   // PropertyTreeInput discretization.fe_degree
@@ -1494,7 +1500,10 @@ run_ensemble(MPI_Comm const &communicator,
 
   // PostProcessor for outputting the experimental data
   boost::property_tree::ptree post_processor_expt_database;
-  post_processor_expt_database.put("filename_prefix", "expt");
+  // PropertyTreeInput post_processor.file_name
+  std::string expt_file_prefix =
+      post_processor_database.get<std::string>("filename_prefix") + ".expt";
+  post_processor_expt_database.put("filename_prefix", expt_file_prefix);
   post_processor_expt_database.put("thermal_output", true);
   adamantine::PostProcessor<dim> post_processor_expt(
       communicator, post_processor_expt_database,
@@ -1581,8 +1590,6 @@ run_ensemble(MPI_Comm const &communicator,
   ++n_time_step;
 
   // ----- Get refinement and time stepping parameters -----
-  // PropertyTreeInput refinement.verbose
-  bool const verbose_refinement = refinement_database.get("verbose", false);
   // PropertyTreeInput refinement.time_steps_between_refinement
   unsigned int const time_steps_refinement =
       refinement_database.get("time_steps_between_refinement", 10);
@@ -1657,7 +1664,7 @@ run_ensemble(MPI_Comm const &communicator,
       }
 
       timers[adamantine::refine].stop();
-      if ((rank == 0) && (verbose_refinement == true))
+      if ((rank == 0) && (verbose_output == true))
         std::cout << "n_dofs: "
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
@@ -1705,7 +1712,7 @@ run_ensemble(MPI_Comm const &communicator,
         solution_augmented_ensemble[member].collect_sizes();
       }
 
-    if ((rank == 0) && (verbose_refinement == true) &&
+    if ((rank == 0) && (verbose_output == true) &&
         (activation_end - activation_start > 0))
       std::cout << "n_dofs: "
                 << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
@@ -1797,8 +1804,11 @@ run_ensemble(MPI_Comm const &communicator,
             thermal_physics_ensemble[0]->get_dof_handler();
         auto expt_to_dof_mapping = adamantine::get_expt_to_dof_mapping(
             points_values, thermal_dof_handler);
-        std::cout << "Number expt sites mapped to DOFs: "
-                  << expt_to_dof_mapping.first.size() << std::endl;
+        if (rank == 0)
+        {
+          std::cout << "Number expt sites mapped to DOFs: "
+                    << expt_to_dof_mapping.first.size() << std::endl;
+        }
 #ifdef ADAMANTINE_WITH_CALIPER
         CALI_MARK_END("da_experimental_data");
 #endif
@@ -1816,8 +1826,9 @@ run_ensemble(MPI_Comm const &communicator,
           temperature_expt.reinit(
               solution_augmented_ensemble[0].block(base_state));
           temperature_expt.add(1.0e10);
-          adamantine::set_with_experimental_data(
-              points_values, expt_to_dof_mapping, temperature_expt);
+          adamantine::set_with_experimental_data(communicator,
+              points_values, expt_to_dof_mapping, temperature_expt,
+              verbose_output);
 
           thermal_physics_ensemble[0]->get_affine_constraints().distribute(
               temperature_expt);

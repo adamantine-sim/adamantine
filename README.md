@@ -142,7 +142,6 @@ The following options are available:
   * max\_level: maximum number of times a cell can be refined
   * time\_steps\_between\_refinement: number of time steps after which the
   refinement process is performed (default value: 2)
-  * verbose: true or false (default value: false)
 * sources (required):
   * n\_beams: number of heat source beams (required)
   * beam\_X: property tree for the beam with number X
@@ -224,6 +223,8 @@ The following options are available:
 * profiling (optional):
   * timer: output timing information (default value: false)
   * caliper: configuration string for Caliper (optional)
+* verbose_output: true or false (default value: false)
+
 
 
 ### Scan path

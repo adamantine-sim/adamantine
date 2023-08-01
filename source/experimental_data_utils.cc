@@ -100,15 +100,20 @@ get_expt_to_dof_mapping(PointsValues<dim> const &points_values,
 
 template <int dim>
 void set_with_experimental_data(
-    PointsValues<dim> const &points_values,
+    MPI_Comm const &communicator, PointsValues<dim> const &points_values,
     std::pair<std::vector<int>, std::vector<int>> &expt_to_dof_mapping,
-    dealii::LinearAlgebra::distributed::Vector<double> &temperature)
+    dealii::LinearAlgebra::distributed::Vector<double> &temperature,
+    bool verbose_output)
 {
-  std::cout << "Number of unique experimental points is "
-            << std::set<double>(expt_to_dof_mapping.second.begin(),
-                                expt_to_dof_mapping.second.end())
-                   .size()
-            << std::endl;
+  unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
+  if ((rank == 0) && verbose_output)
+  {
+    std::cout << "Number of unique experimental points is "
+              << std::set<double>(expt_to_dof_mapping.second.begin(),
+                                  expt_to_dof_mapping.second.end())
+                     .size()
+              << std::endl;
+  }
 
   for (unsigned int i = 0; i < points_values.values.size(); ++i)
   {
@@ -200,13 +205,15 @@ read_frame_timestamps(boost::property_tree::ptree const &experiment_database)
 namespace adamantine
 {
 template void set_with_experimental_data(
-    PointsValues<2> const &points_values,
+    MPI_Comm const &communicator, PointsValues<2> const &points_values,
     std::pair<std::vector<int>, std::vector<int>> &expt_to_dof_mapping,
-    dealii::LinearAlgebra::distributed::Vector<double> &temperature);
+    dealii::LinearAlgebra::distributed::Vector<double> &temperature,
+    bool verbose_output);
 template void set_with_experimental_data(
-    PointsValues<3> const &points_values,
+    MPI_Comm const &communicator, PointsValues<3> const &points_values,
     std::pair<std::vector<int>, std::vector<int>> &expt_to_dof_mapping,
-    dealii::LinearAlgebra::distributed::Vector<double> &temperature);
+    dealii::LinearAlgebra::distributed::Vector<double> &temperature,
+    bool verbose_output);
 template std::pair<std::vector<int>, std::vector<int>>
 get_expt_to_dof_mapping(PointsValues<2> const &points_values,
                         dealii::DoFHandler<2> const &dof_handler);
