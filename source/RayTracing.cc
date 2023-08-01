@@ -153,7 +153,10 @@ unsigned int RayTracing::read_next_frame()
           }
           else if (i < 2 * dim)
           {
-            direction[i - dim] = std::strtod(line.data() + last_pos, &end);
+            // Calculate the direction from the first and second points in the
+            // file
+            direction[i - dim] =
+                std::strtod(line.data() + last_pos, &end) - point[i - dim];
           }
           else
           {
@@ -231,7 +234,7 @@ PointsValues<3> RayTracing::get_points_values()
   points_values.points.reserve(n_intersections);
   points_values.values.reserve(n_intersections);
   auto constexpr reference_cell = dealii::ReferenceCells::get_hypercube<dim>();
-  double constexpr tol = 1e-6;
+  double constexpr tol = 1e-10;
   for (unsigned int i = 0; i < n_rays; ++i)
   {
     for (int j = offset[i]; j < offset[i + 1]; ++j)

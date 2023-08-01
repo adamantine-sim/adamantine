@@ -71,6 +71,10 @@ PostProcessor<dim>::PostProcessor(MPI_Comm const &communicator,
     _filename_prefix =
         _filename_prefix + "_m" + std::to_string(ensemble_member_index);
   }
+
+  // PropertyTreeInput post_processor.additional_output_refinement
+  _additional_output_refinement =
+      database.get<unsigned int>("additional_output_refinement", 0);
 }
 
 template <int dim>
@@ -94,6 +98,10 @@ PostProcessor<dim>::PostProcessor(
     _filename_prefix =
         _filename_prefix + "_m" + std::to_string(ensemble_member_index);
   }
+
+  // PropertyTreeInput post_processor.additional_output_refinement
+  _additional_output_refinement =
+      database.get<unsigned int>("additional_output_refinement", 0);
 }
 
 template <int dim>
@@ -250,7 +258,7 @@ void PostProcessor<dim>::write_pvtu(unsigned int cycle, unsigned int time_step,
       (_thermal_dof_handler) ? _thermal_dof_handler : _mechanical_dof_handler;
   dealii::types::subdomain_id subdomain_id =
       dof_handler->get_triangulation().locally_owned_subdomain();
-  _data_out.build_patches();
+  _data_out.build_patches(_additional_output_refinement);
   std::string local_filename =
       _filename_prefix + "." + dealii::Utilities::int_to_string(cycle, 2) +
       "." + dealii::Utilities::int_to_string(time_step, 6) + "." +

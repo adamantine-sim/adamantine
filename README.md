@@ -130,6 +130,7 @@ The following options are available:
   * filename\_prefix: prefix of output files (required)
   * time\_steps\_between\_output: number of time steps between the
   fields being written to the output files (default value: 1)
+  * additional\_output\_refinement: additional levels of refinement for the output (default: 0)
 * refinement (required):
   * n\_heat\_refinements: number of coarsening/refinement to execute (default value: 2)
   * heat\_cell\_ratio: this is the ratio (n new cells)/(n old cells) after heat
@@ -141,7 +142,6 @@ The following options are available:
   * max\_level: maximum number of times a cell can be refined
   * time\_steps\_between\_refinement: number of time steps after which the
   refinement process is performed (default value: 2)
-  * verbose: true or false (default value: false)
 * sources (required):
   * n\_beams: number of heat source beams (required)
   * beam\_X: property tree for the beam with number X
@@ -189,7 +189,7 @@ The following options are available:
     * file: format of the file names. The format is pretty arbitrary, the keywords \#frame
     and \#camera are replaced by the frame and the camera number. The format of
     the file itself should be csv with a header line. (required)
-    * format: The format of the experimental data, either "point_cloud", with (x,y,z,value) per line, or "ray", with the origin (origin_x,origin_y,origin_z,direction_x,direction_y,direction_z,value) per line. (required)
+    * format: The format of the experimental data, either "point_cloud", with (x,y,z,value) per line, or "ray", with (pt0_x,pt0_y,pt0_z,pt1_x,pt1_y,pt1_z,value) per line, where the ray starts at pt0 and passes through pt1. (required)
     * first\_frame: number associated to the first frame (default value: 0)
     * last\_frame: number associated to the last frame (required)
     * first\_camera\_id: number associated to the first camera (required)
@@ -202,6 +202,7 @@ The following options are available:
     * estimated\_uncertainty: The estimate of the uncertainty in the experimental data points as 
     given by a standard deviation (under the simplifying assumption that the error is normally 
     distributed and independent for each data point) (default value: 0.0).
+    * output\_experiment\_on\_mesh: Whether to output the experimental data projected onto the simulation mesh at each experiment time stamp (default: true).
 * ensemble: (optional)
   * ensemble\_simulation: whether to perform an ensemble of simulations (default value: false)
   * ensemble\_size: the number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
@@ -222,6 +223,8 @@ The following options are available:
 * profiling (optional):
   * timer: output timing information (default value: false)
   * caliper: configuration string for Caliper (optional)
+* verbose_output: true or false (default value: false)
+
 
 
 ### Scan path
