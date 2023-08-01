@@ -8,9 +8,6 @@
 #include <ScanPath.hh>
 #include <utils.hh>
 
-#include <boost/algorithm/string.hpp>
-
-#include <filesystem>
 #include <fstream>
 
 namespace adamantine
@@ -18,8 +15,8 @@ namespace adamantine
 ScanPath::ScanPath(std::string scan_path_file, std::string file_format)
 {
   // Parse the scan path
-  ASSERT_THROW(std::filesystem::exists(scan_path_file),
-               "The file " + scan_path_file + " does not exist.");
+  wait_for_file(scan_path_file,
+                "Waiting for scan path file: " + scan_path_file);
 
   if (file_format == "segment")
   {

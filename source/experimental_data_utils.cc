@@ -16,7 +16,6 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include <filesystem>
 #include <fstream>
 #include <unordered_set>
 
@@ -119,9 +118,7 @@ read_frame_timestamps(boost::property_tree::ptree const &experiment_database)
   std::string log_filename =
       experiment_database.get<std::string>("log_filename");
 
-  [[maybe_unused]] std::string error_message =
-      "The file " + log_filename + " does not exist.";
-  ASSERT(std::filesystem::exists(log_filename), error_message.c_str());
+  wait_for_file(log_filename, "Waiting for frame time stamps: " + log_filename);
 
   // PropertyTreeInput experiment.first_frame_temporal_offset
   double first_frame_offset =
@@ -163,8 +160,8 @@ read_frame_timestamps(boost::property_tree::ptree const &experiment_database)
 
       if (entry_index == 0)
       {
-        error_message = "The file " + log_filename +
-                        " does not have consecutive frame indices.";
+        std::string error_message = "The file " + log_filename +
+                                    " does not have consecutive frame indices.";
         ASSERT_THROW(std::stoi(substring) - frame == 1 ||
                          frame == std::numeric_limits<unsigned int>::max(),
                      error_message.c_str());

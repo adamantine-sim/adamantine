@@ -14,7 +14,6 @@
 #include <boost/algorithm/string.hpp>
 
 #include <algorithm>
-#include <filesystem>
 #include <fstream>
 #include <tuple>
 
@@ -72,8 +71,9 @@ read_material_deposition(boost::property_tree::ptree const &geometry_database)
   std::vector<double> material_deposition_sin;
 
   // Read file
-  ASSERT_THROW(std::filesystem::exists(material_deposition_filename),
-               "The file " + material_deposition_filename + " does not exist.");
+  wait_for_file(material_deposition_filename,
+                "Waiting for material deposition file: " +
+                    material_deposition_filename);
   std::ifstream file;
   file.open(material_deposition_filename);
   std::string line;

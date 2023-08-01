@@ -7,6 +7,7 @@
 
 #include "adamantine.hh"
 
+#include "utils.hh"
 #include <validate_input_database.hh>
 
 #ifdef ADAMANTINE_WITH_ADIAK
@@ -18,8 +19,6 @@
 #endif
 
 #include <Kokkos_Core.hpp>
-
-#include <filesystem>
 
 int main(int argc, char *argv[])
 {
@@ -73,8 +72,7 @@ int main(int argc, char *argv[])
 
     // Read the input.
     std::string const filename = map["input-file"].as<std::string>();
-    adamantine::ASSERT_THROW(std::filesystem::exists(filename) == true,
-                             "The file " + filename + " does not exist.");
+    adamantine::wait_for_file(filename, "Waiting for input file: " + filename);
     boost::property_tree::ptree database;
     boost::property_tree::info_parser::read_info(filename, database);
     try
