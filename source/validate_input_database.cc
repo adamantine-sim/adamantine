@@ -164,10 +164,10 @@ void validate_input_database(boost::property_tree::ptree &database)
   bool import_mesh = database.get<bool>("geometry.import_mesh");
   if (import_mesh)
   {
-    ASSERT_THROW(database.count("geometry.mesh_file") != 0,
+    ASSERT_THROW(database.get_child("geometry").count("mesh_file") != 0,
                  "Error: If the the mesh is imported, "
                  "'mesh_file' must be given.");
-    ASSERT_THROW(database.count("geometry.mesh_format") != 0,
+    ASSERT_THROW(database.get_child("geometry").count("mesh_format") != 0,
                  "Error: If the the mesh is imported, "
                  "'mesh_format' must be given.");
   }
