@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -66,7 +66,7 @@ public:
    * Write the different vtu and pvtu files for a thermal problem.
    */
   void write_thermal_output(
-      unsigned int cycle, unsigned int time_step, double time,
+      unsigned int time_step, double time,
       dealii::LA::distributed::Vector<double> const &temperature,
       MemoryBlockView<double, dealii::MemorySpace::Host> state,
       std::unordered_map<dealii::types::global_dof_index, unsigned int> const
@@ -77,7 +77,7 @@ public:
    * Write the different vtu and pvtu files for a mechanical problem.
    */
   void write_mechanical_output(
-      unsigned int cycle, unsigned int time_step, double time,
+      unsigned int time_step, double time,
       dealii::LA::distributed::Vector<double> const &displacement,
       MemoryBlockView<double, dealii::MemorySpace::Host> state,
       std::unordered_map<dealii::types::global_dof_index, unsigned int> const
@@ -87,7 +87,7 @@ public:
   /**
    * Write the different vtu and pvtu files for themo-mechanical problems.
    */
-  void write_output(unsigned int cycle, unsigned int time_step, double time,
+  void write_output(unsigned int time_step, double time,
                     dealii::LA::distributed::Vector<double> const &temperature,
                     dealii::LA::distributed::Vector<double> const &displacement,
                     MemoryBlockView<double, dealii::MemorySpace::Host> state,
@@ -127,7 +127,7 @@ private:
   /**
    * Write pvtu file.
    */
-  void write_pvtu(unsigned int cycle, unsigned int time_step, double time);
+  void write_pvtu(unsigned int time_step, double time);
 
   /**
    * MPI communicator.

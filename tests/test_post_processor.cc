@@ -105,34 +105,34 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
   for (unsigned int i = 0; i < src.size(); ++i)
     src[i] = 1.;
 
-  post_processor.write_thermal_output(1, 0, 0., src, mat_properties.get_state(),
+  post_processor.write_thermal_output(0, 0., src, mat_properties.get_state(),
                                       mat_properties.get_dofs_map(),
                                       mat_properties.get_dof_handler());
-  post_processor.write_thermal_output(
-      1, 1, 0.1, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
-      mat_properties.get_dof_handler());
-  post_processor.write_thermal_output(
-      1, 2, 0.2, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
-      mat_properties.get_dof_handler());
+  post_processor.write_thermal_output(1, 0.1, src, mat_properties.get_state(),
+                                      mat_properties.get_dofs_map(),
+                                      mat_properties.get_dof_handler());
+  post_processor.write_thermal_output(2, 0.2, src, mat_properties.get_state(),
+                                      mat_properties.get_dofs_map(),
+                                      mat_properties.get_dof_handler());
   post_processor.write_pvd();
 
   // Check that the files exist
   BOOST_CHECK(std::filesystem::exists("test.pvd"));
-  BOOST_CHECK(std::filesystem::exists("test.01.000000.pvtu"));
-  BOOST_CHECK(std::filesystem::exists("test.01.000001.pvtu"));
-  BOOST_CHECK(std::filesystem::exists("test.01.000002.pvtu"));
-  BOOST_CHECK(std::filesystem::exists("test.01.000000.000000.vtu"));
-  BOOST_CHECK(std::filesystem::exists("test.01.000001.000000.vtu"));
-  BOOST_CHECK(std::filesystem::exists("test.01.000002.000000.vtu"));
+  BOOST_CHECK(std::filesystem::exists("test.0.pvtu"));
+  BOOST_CHECK(std::filesystem::exists("test.1.pvtu"));
+  BOOST_CHECK(std::filesystem::exists("test.2.pvtu"));
+  BOOST_CHECK(std::filesystem::exists("test.0.0.vtu"));
+  BOOST_CHECK(std::filesystem::exists("test.1.0.vtu"));
+  BOOST_CHECK(std::filesystem::exists("test.2.0.vtu"));
 
   // Delete the files
   std::remove("test.pvd");
-  std::remove("test.01.000000.pvtu");
-  std::remove("test.01.000001.pvtu");
-  std::remove("test.01.000002.pvtu");
-  std::remove("test.01.000000.000000.vtu");
-  std::remove("test.01.000001.000000.vtu");
-  std::remove("test.01.000002.000000.vtu");
+  std::remove("test.0.pvtu");
+  std::remove("test.1.pvtu");
+  std::remove("test.2.pvtu");
+  std::remove("test.0.0.vtu");
+  std::remove("test.1.0.vtu");
+  std::remove("test.2.0.vtu");
 }
 
 BOOST_AUTO_TEST_CASE(mechanical_post_processor)
@@ -205,32 +205,32 @@ BOOST_AUTO_TEST_CASE(mechanical_post_processor)
   for (unsigned int i = 0; i < src.size(); ++i)
     src[i] = i % (dim + 1);
 
+  post_processor.write_mechanical_output(0, 0., src, mat_properties.get_state(),
+                                         mat_properties.get_dofs_map(),
+                                         mat_properties.get_dof_handler());
   post_processor.write_mechanical_output(
-      1, 0, 0., src, mat_properties.get_state(), mat_properties.get_dofs_map(),
+      1, 0.1, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
       mat_properties.get_dof_handler());
   post_processor.write_mechanical_output(
-      1, 1, 0.1, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
-      mat_properties.get_dof_handler());
-  post_processor.write_mechanical_output(
-      1, 2, 0.2, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
+      2, 0.2, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
       mat_properties.get_dof_handler());
   post_processor.write_pvd();
 
   // Check that the files exist
   BOOST_TEST(std::filesystem::exists("test.pvd"));
-  BOOST_TEST(std::filesystem::exists("test.01.000000.pvtu"));
-  BOOST_TEST(std::filesystem::exists("test.01.000001.pvtu"));
-  BOOST_TEST(std::filesystem::exists("test.01.000002.pvtu"));
-  BOOST_TEST(std::filesystem::exists("test.01.000000.000000.vtu"));
-  BOOST_TEST(std::filesystem::exists("test.01.000001.000000.vtu"));
-  BOOST_TEST(std::filesystem::exists("test.01.000002.000000.vtu"));
+  BOOST_TEST(std::filesystem::exists("test.0.pvtu"));
+  BOOST_TEST(std::filesystem::exists("test.1.pvtu"));
+  BOOST_TEST(std::filesystem::exists("test.2.pvtu"));
+  BOOST_TEST(std::filesystem::exists("test.0.0.vtu"));
+  BOOST_TEST(std::filesystem::exists("test.1.0.vtu"));
+  BOOST_TEST(std::filesystem::exists("test.2.0.vtu"));
 
   // Delete the files
   std::remove("test.pvd");
-  std::remove("test.01.000000.pvtu");
-  std::remove("test.01.000001.pvtu");
-  std::remove("test.01.000002.pvtu");
-  std::remove("test.01.000000.000000.vtu");
-  std::remove("test.01.000001.000000.vtu");
-  std::remove("test.01.000002.000000.vtu");
+  std::remove("test.0.pvtu");
+  std::remove("test.1.pvtu");
+  std::remove("test.2.pvtu");
+  std::remove("test.0.0.vtu");
+  std::remove("test.1.0.vtu");
+  std::remove("test.2.0.vtu");
 }

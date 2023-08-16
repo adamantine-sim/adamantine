@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -106,7 +106,7 @@ PostProcessor<dim>::PostProcessor(
 
 template <int dim>
 void PostProcessor<dim>::write_thermal_output(
-    unsigned int cycle, unsigned int time_step, double time,
+    unsigned int time_step, double time,
     dealii::LA::distributed::Vector<double> const &temperature,
     MemoryBlockView<double, dealii::MemorySpace::Host> state,
     std::unordered_map<dealii::types::global_dof_index, unsigned int> const
@@ -118,12 +118,12 @@ void PostProcessor<dim>::write_thermal_output(
   thermal_dataout(temperature);
   material_dataout(state, dofs_map, material_dof_handler);
   subdomain_dataout();
-  write_pvtu(cycle, time_step, time);
+  write_pvtu(time_step, time);
 }
 
 template <int dim>
 void PostProcessor<dim>::write_mechanical_output(
-    unsigned int cycle, unsigned int time_step, double time,
+    unsigned int time_step, double time,
     dealii::LA::distributed::Vector<double> const &displacement,
     MemoryBlockView<double, dealii::MemorySpace::Host> state,
     std::unordered_map<dealii::types::global_dof_index, unsigned int> const
@@ -137,12 +137,12 @@ void PostProcessor<dim>::write_mechanical_output(
   mechanical_dataout(displacement, strain);
   material_dataout(state, dofs_map, material_dof_handler);
   subdomain_dataout();
-  write_pvtu(cycle, time_step, time);
+  write_pvtu(time_step, time);
 }
 
 template <int dim>
 void PostProcessor<dim>::write_output(
-    unsigned int cycle, unsigned int time_step, double time,
+    unsigned int time_step, double time,
     dealii::LA::distributed::Vector<double> const &temperature,
     dealii::LA::distributed::Vector<double> const &displacement,
     MemoryBlockView<double, dealii::MemorySpace::Host> state,
@@ -159,7 +159,7 @@ void PostProcessor<dim>::write_output(
   mechanical_dataout(displacement, strain);
   material_dataout(state, dofs_map, material_dof_handler);
   subdomain_dataout();
-  write_pvtu(cycle, time_step, time);
+  write_pvtu(time_step, time);
 }
 
 template <int dim>
@@ -251,20 +251,18 @@ void PostProcessor<dim>::subdomain_dataout()
 }
 
 template <int dim>
-void PostProcessor<dim>::write_pvtu(unsigned int cycle, unsigned int time_step,
-                                    double time)
+void PostProcessor<dim>::write_pvtu(unsigned int time_step, double time)
 {
   dealii::DoFHandler<dim> *dof_handler =
       (_thermal_dof_handler) ? _thermal_dof_handler : _mechanical_dof_handler;
   dealii::types::subdomain_id subdomain_id =
       dof_handler->get_triangulation().locally_owned_subdomain();
   _data_out.build_patches(_additional_output_refinement);
-  std::string local_filename =
-      _filename_prefix + "." + dealii::Utilities::int_to_string(cycle, 2) +
-      "." + dealii::Utilities::int_to_string(time_step, 6) + "." +
-      dealii::Utilities::int_to_string(subdomain_id, 6);
+  std::string local_filename = _filename_prefix + "." +
+                               dealii::Utilities::to_string(time_step) + "." +
+                               dealii::Utilities::to_string(subdomain_id);
   std::ofstream output((local_filename + ".vtu").c_str());
-  dealii::DataOutBase::VtkFlags flags(time, cycle);
+  dealii::DataOutBase::VtkFlags flags(time);
   _data_out.set_flags(flags);
   _data_out.write_vtu(output);
 
@@ -276,15 +274,14 @@ void PostProcessor<dim>::write_pvtu(unsigned int cycle, unsigned int time_step,
         dealii::Utilities::MPI::n_mpi_processes(_communicator);
     for (unsigned int i = 0; i < comm_size; ++i)
     {
-      std::string local_name =
-          _filename_prefix + "." + dealii::Utilities::int_to_string(cycle, 2) +
-          "." + dealii::Utilities::int_to_string(time_step, 6) + "." +
-          dealii::Utilities::int_to_string(i, 6) + ".vtu";
+      std::string local_name = _filename_prefix + "." +
+                               dealii::Utilities::to_string(time_step) + "." +
+                               dealii::Utilities::to_string(i) + ".vtu";
       filenames.push_back(local_name);
     }
-    std::string pvtu_filename =
-        _filename_prefix + "." + dealii::Utilities::int_to_string(cycle, 2) +
-        "." + dealii::Utilities::int_to_string(time_step, 6) + ".pvtu";
+    std::string pvtu_filename = _filename_prefix + "." +
+                                dealii::Utilities::to_string(time_step) +
+                                ".pvtu";
     std::ofstream pvtu_output(pvtu_filename.c_str());
     _data_out.write_pvtu_record(pvtu_output, filenames);
 
