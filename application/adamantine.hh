@@ -56,8 +56,8 @@ template <int dim, typename MemorySpaceType,
               std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value,
               int> = 0>
 void output_pvtu(
-    adamantine::PostProcessor<dim> &post_processor, unsigned int cycle,
-    unsigned int n_time_step, double time,
+    adamantine::PostProcessor<dim> &post_processor, unsigned int n_time_step,
+    double time,
     std::unique_ptr<
         adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>> const
         &thermal_physics,
@@ -81,16 +81,16 @@ void output_pvtu(
     if (mechanical_physics)
     {
       mechanical_physics->get_affine_constraints().distribute(displacement);
-      post_processor.write_output(cycle, n_time_step, time, temperature,
-                                  displacement, material_properties.get_state(),
+      post_processor.write_output(n_time_step, time, temperature, displacement,
+                                  material_properties.get_state(),
                                   material_properties.get_dofs_map(),
                                   material_properties.get_dof_handler());
     }
     else
     {
       post_processor.write_thermal_output(
-          cycle, n_time_step, time, temperature,
-          material_properties.get_state(), material_properties.get_dofs_map(),
+          n_time_step, time, temperature, material_properties.get_state(),
+          material_properties.get_dofs_map(),
           material_properties.get_dof_handler());
     }
   }
@@ -98,7 +98,7 @@ void output_pvtu(
   {
     mechanical_physics->get_affine_constraints().distribute(displacement);
     post_processor.write_mechanical_output(
-        cycle, n_time_step, time, displacement, material_properties.get_state(),
+        n_time_step, time, displacement, material_properties.get_state(),
         material_properties.get_dofs_map(),
         material_properties.get_dof_handler());
   }
@@ -111,8 +111,8 @@ template <int dim, typename MemorySpaceType,
               std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
               int> = 0>
 void output_pvtu(
-    adamantine::PostProcessor<dim> &post_processor, unsigned int cycle,
-    unsigned int n_time_step, double time,
+    adamantine::PostProcessor<dim> &post_processor, unsigned int n_time_step,
+    double time,
     std::unique_ptr<
         adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>> const
         &thermal_physics,
@@ -146,7 +146,7 @@ void output_pvtu(
     if (mechanical_physics)
     {
       mechanical_physics->get_affine_constraints().distribute(displacement);
-      post_processor.write_output(cycle, n_time_step, time, temperature_host,
+      post_processor.write_output(n_time_step, time, temperature_host,
                                   displacement, state_host_view,
                                   material_properties.get_dofs_map(),
                                   material_properties.get_dof_handler());
@@ -154,7 +154,7 @@ void output_pvtu(
     else
     {
       post_processor.write_thermal_output(
-          cycle, n_time_step, time, temperature_host, state_host_view,
+          n_time_step, time, temperature_host, state_host_view,
           material_properties.get_dofs_map(),
           material_properties.get_dof_handler());
     }
@@ -163,7 +163,7 @@ void output_pvtu(
   {
     mechanical_physics->get_affine_constraints().distribute(displacement);
     post_processor.write_mechanical_output(
-        cycle, n_time_step, time, displacement, state_host_view,
+        n_time_step, time, displacement, state_host_view,
         material_properties.get_dofs_map(),
         material_properties.get_dof_handler());
   }
@@ -986,14 +986,12 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   }
 
   unsigned int progress = 0;
-  unsigned int cycle = 0;
   unsigned int n_time_step = 0;
   double time = 0.;
 
   // Output the initial solution
-  output_pvtu(*post_processor, cycle, n_time_step, time, thermal_physics,
-              temperature, mechanical_physics, displacement,
-              material_properties, timers);
+  output_pvtu(*post_processor, n_time_step, time, thermal_physics, temperature,
+              mechanical_physics, displacement, material_properties, timers);
   ++n_time_step;
 
   // Create the bounding boxes used for material deposition
@@ -1199,7 +1197,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       {
         thermal_physics->set_state_to_material_properties();
       }
-      output_pvtu(*post_processor, cycle, n_time_step, time, thermal_physics,
+      output_pvtu(*post_processor, n_time_step, time, thermal_physics,
                   temperature, mechanical_physics, displacement,
                   material_properties, timers);
     }
@@ -1568,7 +1566,6 @@ run_ensemble(MPI_Comm const &communicator,
 
   // ----- Initialize time and time stepping counters -----
   unsigned int progress = 0;
-  unsigned int cycle = 0;
   unsigned int n_time_step = 0;
   double time = 0.;
 
@@ -1579,7 +1576,7 @@ run_ensemble(MPI_Comm const &communicator,
       displacement;
   for (unsigned int member = 0; member < ensemble_size; ++member)
   {
-    output_pvtu(*post_processor_ensemble[member], cycle, n_time_step, time,
+    output_pvtu(*post_processor_ensemble[member], n_time_step, time,
                 thermal_physics_ensemble[member],
                 solution_augmented_ensemble[member].block(base_state),
                 mechanical_physics, displacement,
@@ -1826,14 +1823,14 @@ run_ensemble(MPI_Comm const &communicator,
           temperature_expt.reinit(
               solution_augmented_ensemble[0].block(base_state));
           temperature_expt.add(1.0e10);
-          adamantine::set_with_experimental_data(communicator,
-              points_values, expt_to_dof_mapping, temperature_expt,
-              verbose_output);
+          adamantine::set_with_experimental_data(
+              communicator, points_values, expt_to_dof_mapping,
+              temperature_expt, verbose_output);
 
           thermal_physics_ensemble[0]->get_affine_constraints().distribute(
               temperature_expt);
           post_processor_expt.write_thermal_output(
-              cycle, n_time_step, time, temperature_expt,
+              n_time_step, time, temperature_expt,
               material_properties_ensemble[0]->get_state(),
               material_properties_ensemble[0]->get_dofs_map(),
               material_properties_ensemble[0]->get_dof_handler());
@@ -1982,7 +1979,7 @@ run_ensemble(MPI_Comm const &communicator,
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
         thermal_physics_ensemble[member]->set_state_to_material_properties();
-        output_pvtu(*post_processor_ensemble[member], cycle, n_time_step, time,
+        output_pvtu(*post_processor_ensemble[member], n_time_step, time,
                     thermal_physics_ensemble[member],
                     solution_augmented_ensemble[member].block(base_state),
                     mechanical_physics, displacement,
