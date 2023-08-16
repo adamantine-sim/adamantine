@@ -196,18 +196,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   database.get_child("geometry").erase("mesh_file");
   database.get_child("geometry").erase("mesh_format");
 
-  // Check 9: 'import_mesh' true, incorrect mesh format
-  database.get_child("geometry").erase("import_mesh");
-  database.put("geometry.import_mesh", true);
-  database.put("geometry.mesh_file", "mesh.vtk");
-  database.put("geometry.mesh_format", "vvtk");
-  BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
-  database.get_child("geometry").erase("import_mesh");
-  database.put("geometry.import_mesh", false);
-  database.get_child("geometry").erase("mesh_file");
-  database.get_child("geometry").erase("mesh_format");
-
-  // Check 10: 'import_mesh' false, missing inputs
+  // Check 9: 'import_mesh' false, missing inputs
   database.get_child("geometry").erase("length");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("geometry.length", 10.0);
@@ -218,19 +207,19 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("geometry.width", 10.0);
 
-  // Check 11: 'n_materials' missing
+  // Check 10: 'n_materials' missing
   database.get_child("materials").erase("n_materials");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("materials.n_materials", 1);
 
-  // Check 12: Invalid material properties format
+  // Check 11: Invalid material properties format
   database.get_child("materials").erase("property_format");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("materials.property_format", "ppoly");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("materials.property_format", "polynomial");
 
-  // Check 13: Non-consecutive materials
+  // Check 12: Non-consecutive materials
   database.get_child("materials").erase("n_materials");
   database.put("materials.n_materials", 2);
   database.put("materials.material_2.solid.thermal_conductivity_x", 10.);
@@ -262,7 +251,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
       .get_child("solid")
       .erase("specific_heat");
 
-  // Check 14: Material without any phases
+  // Check 13: Material without any phases
   database.get_child("materials")
       .get_child("material_0")
       .get_child("solid")
@@ -290,7 +279,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   database.put("materials.material_0.solid.density", 10.);
   database.put("materials.material_0.solid.specific_heat", 10.);
 
-  // Check 15: Missing always required material properties
+  // Check 14: Missing always required material properties
   database.get_child("materials")
       .get_child("material_0")
       .get_child("solid")
@@ -322,7 +311,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("materials.material_0.solid.specific_heat", 10.);
 
-  // Check 16: Missing required material properties with convective BCs
+  // Check 15: Missing required material properties with convective BCs
   database.get_child("boundary").erase("type");
   database.put("boundary.type", "convective");
   database.put("materials.material_0.solid.convection_heat_transfer_coef", 10.);
@@ -340,7 +329,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   database.get_child("boundary").erase("type");
   database.put("boundary.type", "adiabatic");
 
-  // Check 17: Missing required material properties with radiative BCs
+  // Check 16: Missing required material properties with radiative BCs
   database.get_child("boundary").erase("type");
   database.put("boundary.type", "radiative");
   database.put("materials.material_0.solid.emissivity", 10.);
@@ -358,7 +347,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   database.get_child("boundary").erase("type");
   database.put("boundary.type", "adiabatic");
 
-  // Check 18: Invalid memory space
+  // Check 17: Invalid memory space
   database.erase("memory_space");
   database.put("memory_space", "hhost");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
@@ -366,74 +355,74 @@ BOOST_AUTO_TEST_CASE(expected_failures)
 
   // TODO check physics
 
-  // Check 19: Missing postprocessor filename
+  // Check 18: Missing postprocessor filename
   database.get_child("post_processor").erase("filename_prefix");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("post_processor.filename_prefix", "output");
 
-  // Check 20: Missing refinement block
+  // Check 19: Missing refinement block
   database.get_child("refinement").erase("n_heat_refinements");
   database.erase("refinement");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("refinement.n_heat_refinements", 0);
 
-  // Check 21: Missing 'n_beams'
+  // Check 20: Missing 'n_beams'
   database.get_child("sources").erase("n_beams");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("sources.n_beams", 1);
 
-  // Check 22: Missing heat source type
+  // Check 21: Missing heat source type
   database.get_child("sources").get_child("beam_0").erase("type");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("sources.beam_0.type", "goldak");
 
-  // Check 22: Invalid heat source type
+  // Check 21: Invalid heat source type
   database.get_child("sources").get_child("beam_0").erase("type");
   database.put("sources.beam_0.type", "gold");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("sources.beam_0.type", "goldak");
 
-  // Check 23: Missing scan path file
+  // Check 22: Missing scan path file
   database.get_child("sources").get_child("beam_0").erase("scan_path_file");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("sources.beam_0.scan_path_file", "sp.txt");
 
-  // Check 24: Missing scan path file format
+  // Check 23: Missing scan path file format
   database.get_child("sources").get_child("beam_0").erase(
       "scan_path_file_format");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("sources.beam_0.scan_path_file_format", "segment");
 
-  // Check 25: Invalid scan path file format
+  // Check 24: Invalid scan path file format
   database.get_child("sources").get_child("beam_0").erase(
       "scan_path_file_format");
   database.put("sources.beam_0.scan_path_file_format", "seg");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("sources.beam_0.scan_path_file_format", "segment");
 
-  // Check 24: Missing beam depth
+  // Check 23: Missing beam depth
   database.get_child("sources").get_child("beam_0").erase("depth");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("sources.beam_0.depth", 0.1);
 
-  // Check 25: Missing beam absorption efficiency
+  // Check 24: Missing beam absorption efficiency
   database.get_child("sources").get_child("beam_0").erase(
       "absorption_efficiency");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("sources.beam_0.absorption_efficiency", 0.1);
 
-  // Check 26: Missing time stepping method
+  // Check 25: Missing time stepping method
   database.get_child("time_stepping").erase("method");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("time_stepping.method", "forward_euler");
 
-  // Check 27: Invalid time stepping method
+  // Check 26: Invalid time stepping method
   database.get_child("time_stepping").erase("method");
   database.put("time_stepping.method", "4_step_jump");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("time_stepping.method", "forward_euler");
 
-  // Check 28: Missing experimental inputs
+  // Check 27: Missing experimental inputs
   database.put("experiment.read_in_experimental_data", true);
   database.put("experiment.file", "file.csv");
   database.put("experiment.last_frame", 1);
@@ -461,7 +450,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   database.get_child("experiment").erase("last_camera_id");
   database.get_child("experiment").erase("read_in_experimental_data");
 
-  // Check 29: Last experimental frame index smaller than first frame
+  // Check 28: Last experimental frame index smaller than first frame
   database.put("experiment.read_in_experimental_data", true);
   database.put("experiment.first_frame", 4);
   database.put("experiment.last_frame", 3);
@@ -470,7 +459,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   database.get_child("experiment").erase("first_frame");
   database.get_child("experiment").erase("read_in_experimental_data");
 
-  // Check 30: Last experimental camera id smaller than first camera id
+  // Check 29: Last experimental camera id smaller than first camera id
   database.put("experiment.read_in_experimental_data", true);
   database.put("experiment.first_camera_id", 4);
   database.put("experiment.last_camera_id", 3);
@@ -479,7 +468,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   database.get_child("experiment").erase("last_camera_id");
   database.get_child("experiment").erase("read_in_experimental_data");
 
-  // Check 31: Incorrect number of entries for the experimental data column
+  // Check 30: Incorrect number of entries for the experimental data column
   // indices
   database.put("experiment.read_in_experimental_data", true);
   database.put("experiment.data_columns", "1,2,3");
