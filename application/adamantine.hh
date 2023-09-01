@@ -8,6 +8,7 @@
 #ifndef ADAMANTINE_HH
 #define ADAMANTINE_HH
 
+#include "types.hh"
 #include <DataAssimilator.hh>
 #include <ExperimentalData.hh>
 #include <Geometry.hh>
@@ -375,8 +376,7 @@ void refine_and_transfer(
   // Transfer material state
   unsigned int const direction_data_size = 2;
   unsigned int const phase_history_data_size = 1;
-  unsigned int constexpr n_material_states =
-      static_cast<unsigned int>(adamantine::MaterialState::SIZE);
+  unsigned int constexpr n_material_states = adamantine::g_n_material_states;
   std::vector<std::vector<double>> data_to_transfer;
   std::vector<double> dummy_cell_data(n_material_states + direction_data_size +
                                           phase_history_data_size,
