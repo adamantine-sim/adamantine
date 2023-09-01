@@ -33,8 +33,9 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
     std::string mesh_file = database.get<std::string>("mesh_file");
     // PropertyTreeInput geometry.mesh_format
     std::string mesh_format = database.get<std::string>("mesh_format");
+    dealii::Triangulation<dim> serial_triangulation;
     dealii::GridIn<dim> grid_in;
-    grid_in.attach_triangulation(_triangulation);
+    grid_in.attach_triangulation(serial_triangulation);
     typename dealii::GridIn<dim>::Format grid_in_format;
     if (mesh_format == "abaqus")
     {
@@ -86,6 +87,7 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
     }
 
     grid_in.read(mesh_file, grid_in_format);
+    _triangulation.copy_triangulation(serial_triangulation);
   }
   else
   {
