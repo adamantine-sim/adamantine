@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -61,11 +61,15 @@ enum class StateProperty
   lame_first_parameter,
   lame_second_parameter,
   thermal_expansion_coef,
-  density_s, // density is used both by the thermal and the mechanical
-             // simulation. We need to duplicate the property because the
-             // mechanical code cannot run on the GPU.
+  // Density is used both by the thermal and the mechanical simulation. We need
+  // to duplicate the property because the mechanical code cannot run on the
+  // GPU.
+  density_s,
+  plastic_modulus,
+  isotropic_hardening,
+  elastic_limit,
   SIZE,
-  SIZE_MECHANICAL = 4
+  SIZE_MECHANICAL = 7
 };
 
 /**
@@ -124,12 +128,12 @@ static std::array<std::string, 5> const property_names = {
  * Array containing the possible material properties that depend on the
  * state of the material.
  */
-static std::array<std::string, 12> const state_property_names = {
+static std::array<std::string, 15> const state_property_names = {
     {"density", "specific_heat", "thermal_conductivity_x",
      "thermal_conductivity_y", "thermal_conductivity_z", "emissivity",
      "radiation_heat_transfer_coef", "convection_heat_transfer_coef",
      "lame_first_parameter", "lame_second_parameter", "thermal_expansion_coef",
-     "density"}};
+     "density", "plastic_modulus", "isotropic_hardening", "elastic_limit"}};
 
 /**
  * Enum on the possible timers.

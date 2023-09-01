@@ -28,6 +28,7 @@
 
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/mpi.h>
+#include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/base/types.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
 #include <deal.II/distributed/solution_transfer.h>
@@ -66,8 +67,8 @@ void output_pvtu(
         &temperature,
     std::unique_ptr<adamantine::MechanicalPhysics<dim, MemorySpaceType>> const
         &mechanical_physics,
-    [[maybe_unused]] dealii::LA::distributed::Vector<
-        double, dealii::MemorySpace::Host> &displacement,
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+        &displacement,
     adamantine::MaterialProperty<dim, MemorySpaceType> const
         &material_properties,
     std::vector<adamantine::Timer> &timers)
@@ -83,6 +84,7 @@ void output_pvtu(
     {
       mechanical_physics->get_affine_constraints().distribute(displacement);
       post_processor.write_output(n_time_step, time, temperature, displacement,
+                                  mechanical_physics->get_stress_tensor(),
                                   material_properties.get_state(),
                                   material_properties.get_dofs_map(),
                                   material_properties.get_dof_handler());
@@ -99,8 +101,9 @@ void output_pvtu(
   {
     mechanical_physics->get_affine_constraints().distribute(displacement);
     post_processor.write_mechanical_output(
-        n_time_step, time, displacement, material_properties.get_state(),
-        material_properties.get_dofs_map(),
+        n_time_step, time, displacement,
+        mechanical_physics->get_stress_tensor(),
+        material_properties.get_state(), material_properties.get_dofs_map(),
         material_properties.get_dof_handler());
   }
   timers[adamantine::output].stop();
@@ -147,10 +150,11 @@ void output_pvtu(
     if (mechanical_physics)
     {
       mechanical_physics->get_affine_constraints().distribute(displacement);
-      post_processor.write_output(n_time_step, time, temperature_host,
-                                  displacement, state_host_view,
-                                  material_properties.get_dofs_map(),
-                                  material_properties.get_dof_handler());
+      post_processor.write_output(
+          n_time_step, time, temperature_host, displacement,
+          mechanical_physics->get_stress_tensor(), state_host_view,
+          material_properties.get_dofs_map(),
+          material_properties.get_dof_handler());
     }
     else
     {
@@ -164,7 +168,8 @@ void output_pvtu(
   {
     mechanical_physics->get_affine_constraints().distribute(displacement);
     post_processor.write_mechanical_output(
-        n_time_step, time, displacement, state_host_view,
+        n_time_step, time, displacement,
+        mechanical_physics->get_stress_tensor(), state_host_view,
         material_properties.get_dofs_map(),
         material_properties.get_dof_handler());
   }
@@ -357,6 +362,9 @@ void refine_and_transfer(
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
 #endif
+
+  // TODO transfer mechanical data is present, need to be aware that the data
+  // does not exist on some cells because it's liquid
 
   dealii::parallel::distributed::Triangulation<dim> &triangulation =
       dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
