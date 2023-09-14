@@ -11,7 +11,6 @@ experiment
   log_filename integration_da_add_material_expt_log.txt
   file integration_da_add_material_expt_pc_#camera_#frame.csv
   format point_cloud
-  data_columns 1,2,3,4
   first_frame 0
   last_frame 0
   first_camera_id 0
