@@ -189,14 +189,13 @@ The following options are available:
     * file: format of the file names. The format is pretty arbitrary, the keywords \#frame
     and \#camera are replaced by the frame and the camera number. The format of
     the file itself should be csv with a header line. (required)
-    * format: The format of the experimental data, either "point_cloud", with (x,y,z,value) per line, or "ray", with (pt0_x,pt0_y,pt0_z,pt1_x,pt1_y,pt1_z,value) per line, where the ray starts at pt0 and passes through pt1. (required)
+    * format: The format of the experimental data, either `point_cloud`, with (x,y,z,value) per line, or `ray`, with (pt0_x,pt0_y,pt0_z,pt1_x,pt1_y,pt1_z,value) per line, where the ray starts at pt0 and passes through pt1. (required)
     * first\_frame: number associated to the first frame (default value: 0)
     * last\_frame: number associated to the last frame (required)
     * first\_camera\_id: number associated to the first camera (required)
     * last\_camera\_id: number associated to the last camera (required)
-    * data\_columns: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D) (required)
     * log\_filename: The (full) filename of the log file that lists the timestamp for each frame 
-    from each camera. Note that the timestamps are not assumed to match the simulation time frame. The `first\_frame\_temporal\_offset` parameter (below) controls the simulation time corresponding to the first camera frame. (required)
+    from each camera. Note that the timestamps are not assumed to match the simulation time frame. The `first_frame_temporal_offset` parameter (below) controls the simulation time corresponding to the first camera frame. (required)
     * first\_frame\_temporal\_offset: A uniform shift to the timestamps from all cameras to match 
     the simulation time (default value: 0.0)
     * estimated\_uncertainty: The estimate of the uncertainty in the experimental data points as 

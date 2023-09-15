@@ -428,7 +428,6 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   database.put("experiment.last_frame", 1);
   database.put("experiment.first_camera_id", 0);
   database.put("experiment.last_camera_id", 1);
-  database.put("experiment.data_columns", "1,2,3,4");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.get_child("experiment").erase("file");
   database.put("experiment.log_filename", "log.txt");
@@ -442,7 +441,6 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   database.get_child("experiment").erase("last_camera_id");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("experiment.first_camera_id", 0);
-  database.get_child("experiment").erase("data_columns");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.get_child("experiment").erase("file");
   database.get_child("experiment").erase("last_frame");
@@ -471,12 +469,9 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   // Check 30: Incorrect number of entries for the experimental data column
   // indices
   database.put("experiment.read_in_experimental_data", true);
-  database.put("experiment.data_columns", "1,2,3");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
-  database.put("experiment.data_columns", "1,2,3,4");
   database.put("geometry.dim", 2);
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
-  database.get_child("experiment").erase("data_columns");
   database.get_child("geometry").erase("dim");
   database.put("geometry.dim", 3);
   database.get_child("experiment").erase("read_in_experimental_data");

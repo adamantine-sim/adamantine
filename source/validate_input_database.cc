@@ -440,13 +440,6 @@ void validate_input_database(boost::property_tree::ptree &database)
                    "Error: When reading experimental data, the last camera id "
                    "cannot be lower than the first camera id.");
 
-      std::string data_columns =
-          database.get<std::string>("experiment.data_columns");
-      ASSERT_THROW(std::count(data_columns.begin(), data_columns.end(), ',') ==
-                       dim,
-                   "Error: The experimental data column indices in the input "
-                   "file do not have the correct number of entries.");
-
       ASSERT_THROW(database.get_child("experiment").count("log_filename") != 0,
                    "Error: If reading experimental data, a log filename must "
                    "be given.");
