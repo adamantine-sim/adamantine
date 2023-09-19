@@ -37,7 +37,7 @@ void ScanPath::load_segment_scan_path(std::string scan_path_file)
   std::ifstream file;
   file.open(scan_path_file);
   std::string line;
-  unsigned int line_index = 3;
+  unsigned int data_index = 0;
   // Skip first line
   getline(file, line);
   // Read the number of path segments
@@ -47,7 +47,7 @@ void ScanPath::load_segment_scan_path(std::string scan_path_file)
   getline(file, line);
   // Read file as long as there are lines to read or we reached the number of
   // segments to read, whichever comes first
-  while ((getline(file, line)) || (line_index - 2 < n_segments))
+  while ((data_index < n_segments) && (getline(file, line)))
   {
     std::vector<std::string> split_line;
     boost::split(split_line, line, boost::is_any_of(" "),
@@ -70,7 +70,7 @@ void ScanPath::load_segment_scan_path(std::string scan_path_file)
     else
     {
       ASSERT_THROW(false, "Error: Mode type in scan path file line " +
-                              std::to_string(line_index) + " not recognized.");
+                              std::to_string(data_index + 4) + " not recognized.");
     }
 
     // Set the segment end position
@@ -103,7 +103,7 @@ void ScanPath::load_segment_scan_path(std::string scan_path_file)
           _segment_list.back().end_time + std::abs(line_length / velocity);
     }
     _segment_list.push_back(segment);
-    line_index++;
+    data_index++;
   }
   file.close();
 }
