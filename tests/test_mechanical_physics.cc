@@ -230,8 +230,13 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   std::vector<double> empty_vector;
   adamantine::MechanicalPhysics<3, dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, material_properties,
-                         empty_vector, true);
-  mechanical_physics.setup_dofs();
+                         empty_vector);
+  std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
+  auto gravity_force =
+      std::make_shared<adamantine::GravityForce<3, dealii::MemorySpace::Host>>(
+          material_properties);
+  body_forces.push_back(gravity_force);
+  mechanical_physics.setup_dofs(body_forces);
   auto solution = mechanical_physics.solve();
 
   // Reference computation
@@ -292,8 +297,13 @@ BOOST_AUTO_TEST_CASE(fe_nothing)
   std::vector<double> empty_vector;
   adamantine::MechanicalPhysics<3, dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, material_properties,
-                         empty_vector, true);
-  mechanical_physics.setup_dofs();
+                         empty_vector);
+  std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
+  auto gravity_force =
+      std::make_shared<adamantine::GravityForce<3, dealii::MemorySpace::Host>>(
+          material_properties);
+  body_forces.push_back(gravity_force);
+  mechanical_physics.setup_dofs(body_forces);
   auto solution = mechanical_physics.solve();
 
   // Reference computation

@@ -22,10 +22,9 @@ MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
     MPI_Comm const &communicator, unsigned int fe_degree,
     Geometry<dim> &geometry,
     MaterialProperty<dim, MemorySpaceType> &material_properties,
-    std::vector<double> reference_temperatures, bool include_gravity)
+    std::vector<double> reference_temperatures)
     : _geometry(geometry), _material_properties(material_properties),
-      _dof_handler(_geometry.get_triangulation()),
-      _include_gravity(include_gravity)
+      _dof_handler(_geometry.get_triangulation())
 {
   // Create the FECollection
   _fe_collection.push_back(
@@ -56,12 +55,12 @@ MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
   // Create the mechanical operator
   _mechanical_operator =
       std::make_unique<MechanicalOperator<dim, MemorySpaceType>>(
-          communicator, _material_properties, reference_temperatures,
-          include_gravity);
+          communicator, _material_properties, reference_temperatures);
 }
 
 template <int dim, typename MemorySpaceType>
-void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs()
+void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
+    std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   _dof_handler.distribute_dofs(_fe_collection);
   dealii::IndexSet locally_relevant_dofs;
@@ -81,8 +80,8 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs()
       _affine_constraints);
   _affine_constraints.close();
 
-  _mechanical_operator->reinit(_dof_handler, _affine_constraints,
-                               _q_collection);
+  _mechanical_operator->reinit(_dof_handler, _affine_constraints, _q_collection,
+                               body_forces);
 }
 
 template <int dim, typename MemorySpaceType>
@@ -90,7 +89,8 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
     dealii::DoFHandler<dim> const &thermal_dof_handler,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
         &temperature,
-    std::vector<bool> const &has_melted)
+    std::vector<bool> const &has_melted,
+    std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
                                            has_melted);
@@ -113,7 +113,7 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
       cell->set_active_fe_index(1);
     }
   }
-  setup_dofs();
+  setup_dofs(body_forces);
 }
 
 template <int dim, typename MemorySpaceType>

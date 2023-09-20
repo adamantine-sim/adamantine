@@ -5,8 +5,6 @@
  * for the text and further information on this license.
  */
 
-#include <deal.II/dofs/dof_handler.h>
-#include <deal.II/lac/sparsity_pattern.h>
 #define BOOST_TEST_MODULE MechanicalOperator
 
 #include <Geometry.hh>
@@ -103,9 +101,14 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
   std::vector<double> empty_vector;
 
   adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
-      mechanical_operator(communicator, material_properties, empty_vector,
-                          true);
-  mechanical_operator.reinit(dof_handler, affine_constraints, q_collection);
+      mechanical_operator(communicator, material_properties, empty_vector);
+  std::vector<std::shared_ptr<adamantine::BodyForce<dim>>> body_forces;
+  auto gravity_force = std::make_shared<
+      adamantine::GravityForce<dim, dealii::MemorySpace::Host>>(
+      material_properties);
+  body_forces.push_back(gravity_force);
+  mechanical_operator.reinit(dof_handler, affine_constraints, q_collection,
+                             body_forces);
 
   // deal.II reference implementation
   dealii::SparsityPattern sparsity_pattern;
@@ -297,13 +300,18 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
   std::vector<double> reference_temperatures = {0.0, 0.0};
   adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
       mechanical_operator(communicator, material_properties,
-                          reference_temperatures, true);
+                          reference_temperatures);
   std::vector<bool> has_melted(triangulation.n_active_cells(), false);
   mechanical_operator.update_temperature(thermal_dof_handler, temperature,
                                          has_melted);
+  std::vector<std::shared_ptr<adamantine::BodyForce<dim>>> body_forces;
+  auto gravity_force = std::make_shared<
+      adamantine::GravityForce<dim, dealii::MemorySpace::Host>>(
+      material_properties);
+  body_forces.push_back(gravity_force);
   mechanical_operator.reinit(mechanical_dof_handler,
                              mechanical_affine_constraints,
-                             mechanical_q_collection);
+                             mechanical_q_collection, body_forces);
 
   // TODO Need to check the result
 }
