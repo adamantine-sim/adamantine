@@ -1,5 +1,5 @@
 Number of path segments
-3
+2
 Mode    x       y     z   pmod    param
 1       16.0e-3   3.0e-3  8.0e-3   0       1e-6
 0       16.2e-3   3.0e-3  8.0e-3   1       0.001667
