@@ -999,16 +999,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         deposition_sin] =
       adamantine::create_material_deposition_boxes<dim>(geometry_database,
                                                         heat_sources);
-
-  // Unless we use an embedded method, we know in advance the time step.
-  // Thus we can get for each time step, the list of elements that we will
-  // need to activate. This list will be invalidated every time we refine the
-  // mesh.
-  timers[adamantine::add_material_search].start();
-  auto elements_to_activate = adamantine::get_elements_to_activate(
-      thermal_physics->get_dof_handler(), material_deposition_boxes);
-  timers[adamantine::add_material_search].stop();
-
   // Extract the time-stepping database
   boost::property_tree::ptree time_stepping_database =
       database.get_child("time_stepping");
@@ -1060,12 +1050,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       if ((rank == 0) && (verbose_output == true))
         std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
                   << std::endl;
-
-      timers[adamantine::add_material_search].start();
-      elements_to_activate = adamantine::get_elements_to_activate(
-          thermal_physics->get_dof_handler(), material_deposition_boxes);
-
-      timers[adamantine::add_material_search].stop();
     }
 
     // Add material if necessary.
@@ -1087,6 +1071,16 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     {
       if (use_thermal_physics)
       {
+        // Compute the elements to activate.
+        // TODO Right now, we compute the list of cells that get activated for
+        // the entire material deposition. We should restrict the list to the
+        // cells that are activated between activation_start and activation_end.
+        timers[adamantine::add_material_search].start();
+        auto elements_to_activate = adamantine::get_elements_to_activate(
+            thermal_physics->get_dof_handler(), material_deposition_boxes);
+
+        timers[adamantine::add_material_search].stop();
+
         // For now assume that all deposited material has never been melted
         // (may or may not be reasonable)
         std::vector<bool> has_melted(deposition_cos.size(), false);
@@ -1608,11 +1602,6 @@ run_ensemble(MPI_Comm const &communicator,
       adamantine::create_material_deposition_boxes<dim>(
           geometry_database, heat_sources_ensemble[0]);
 
-  // Unless we use an embedded method, we know in advance the time step.
-
-  // Thus we can get for each time step, the list of elements that we will
-  // need to activate. This list will be invalidated every time we refine the
-  // mesh.
   timers[adamantine::add_material_search].start();
   std::vector<std::vector<
       std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>>
@@ -1658,6 +1647,7 @@ run_ensemble(MPI_Comm const &communicator,
                     solution_augmented_ensemble[member].block(base_state),
                     heat_sources_ensemble[member], time, next_refinement_time,
                     time_steps_refinement, refinement_database);
+        solution_augmented_ensemble[member].collect_sizes();
       }
 
       timers[adamantine::refine].stop();
@@ -1665,18 +1655,6 @@ run_ensemble(MPI_Comm const &communicator,
         std::cout << "n_dofs: "
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
-
-      // ----- Add material if necessary -----
-      timers[adamantine::add_material_search].start();
-      for (unsigned int member = 0; member < ensemble_size; ++member)
-      {
-        elements_to_activate_ensemble[member] =
-            adamantine::get_elements_to_activate(
-                thermal_physics_ensemble[member]->get_dof_handler(),
-                material_deposition_boxes);
-        solution_augmented_ensemble[member].collect_sizes();
-      }
-      timers[adamantine::add_material_search].stop();
     }
 
     // We use an epsilon to get the "expected" behavior when the deposition
@@ -1696,14 +1674,20 @@ run_ensemble(MPI_Comm const &communicator,
     if (activation_start < activation_end)
       for (unsigned int member = 0; member < ensemble_size; ++member)
       {
+        // Compute the elements to activate.
+        // TODO Right now, we compute the list of cells that get activated for
+        // the entire material deposition. We should restrict the list to the
+        // cells that are activated between activation_start and activation_end.
+        auto elements_to_activate = adamantine::get_elements_to_activate(
+            thermal_physics_ensemble[member]->get_dof_handler(),
+            material_deposition_boxes);
         // For now assume that all deposited material has never been melted
         // (may or may not be reasonable)
         std::vector<bool> has_melted(deposition_cos.size(), false);
 
         thermal_physics_ensemble[member]->add_material(
-            elements_to_activate_ensemble[member], deposition_cos,
-            deposition_sin, has_melted, activation_start, activation_end,
-            new_material_temperature[member],
+            elements_to_activate, deposition_cos, deposition_sin, has_melted,
+            activation_start, activation_end, new_material_temperature[member],
             solution_augmented_ensemble[member].block(base_state));
 
         solution_augmented_ensemble[member].collect_sizes();
