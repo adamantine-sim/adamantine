@@ -49,10 +49,10 @@ The following options are available:
     * if material\_deposition\_method is file:
         * **material\_deposition\_file**: material deposition filename
     * if material\_deposition\_method is scan\_paths:
-        * **deposition\_length**: length of material deposition boxes along the scan direction
-        * **deposition\_width**: width of material deposition boxes (in the plane of the material, normal to the scan direction, 3D only)
-        * **deposition\_height**: height of material deposition boxes (out of the plane of the material)
-        * **deposition\_lead\_time**: amount of time before the scan path reaches a point that the material is added
+        * **deposition\_length**: length of material deposition boxes along the scan direction (required)
+        * **deposition\_width**: width of material deposition boxes (in the plane of the material, normal to the scan direction, 3D only) (required)
+        * **deposition\_height**: height of material deposition boxes (out of the plane of the material) (required)
+        * **deposition\_lead\_time**: amount of time before the scan path reaches a point that the material is added (required)
   * **import\_mesh**: true or false (required)
   * if import\_mesh is true:
     * **mesh\_file**: The filename for the mesh file (required)
@@ -96,7 +96,6 @@ The following options are available:
   * **max\_level**: maximum number of times a cell can be refined
   * **time\_steps\_between\_refinement**: number of time steps after which the
   refinement process is performed (default value: 2)
-  * **verbose**: true or false (default value: false)
 * **sources** (required):
   * **n\_beams**: number of heat source beams (required)
   * **beam\_X**: property tree for the beam with number X
@@ -144,15 +143,21 @@ The following options are available:
   * **file**: format of the file names. The format is pretty arbitrary, the keywords \#frame
   and \#camera are replaced by the frame and the camera number. The format of
   the file itself should be csv. (required)
+  * **format**: format of the experimental data, either `point\_cloud`, with
+      `(x, y, z, value)` per line, or `ray`, with `(pt0\_x, pt0\_y, pt0_z,
+       pt1\_x, pt1\_y, pt1\_z, value )` per line, where the ray starts at `pt0`
+      and passes through `pt1` (required)
   * **first\_frame**: number associated to the first frame (default value: 0)
   * **last\_frame**: number associated to the last frame (required)
   * **first\_camera\_id**: number associated to the first camera (required)
   * **last\_camera\_id**: number associated to the last camera (required)
   * **data\_columns**: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D) (required)
-  * **log\_filename**: the (full) filename of the log file that lists the timestamp for each frame from each camera. (required)
+  * **log\_filename**: the (full) filename of the log file that lists the timestamps for each frame from each camera. Note that the timestamps are not assumed to match the simulation time frame. The `first\_frame\_temporal\_offset` parameter controls the simulation time corresponding to the first camera frame (required)
   * **first\_frame\_temporal\_offset**: a uniform shift to the timestamps from all cameras to match the simulation time (default value: 0.0)
   * **estimated\_uncertainty**: the estimate of the uncertainty in the experimental data points as given by a standard deviation 
     (under the simplifying assumption that the error is normally distributed and independent for each data point) (default value: 0.0).
+  * **output\_experiment\_on\_mesh**: whether to output the experimental data
+      projected onto the simulation mesh at each experiment time stamp (default: true)
 * **ensemble**: (optional)
   * **ensemble\_simulation**: whether to perform an ensemble of simulations (default value: false)
   * **ensemble\_size**: number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
@@ -173,6 +178,7 @@ The following options are available:
 * **profiling** (optional):
   * **timer**: output timing information (default value: false)
   * **caliper**: configuration string for Caliper (optional)
+* **verbose\_output** (optional): true or false (default value: false)
 
 
 ## Scan path
