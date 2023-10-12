@@ -27,13 +27,15 @@ public:
   MechanicalPhysics(MPI_Comm const &communicator, unsigned int fe_degree,
                     Geometry<dim> &geometry,
                     MaterialProperty<dim, MemorySpaceType> &material_properties,
-                    std::vector<double> initial_temperatures,
-                    bool include_gravity = false);
+                    std::vector<double> initial_temperatures);
 
   /**
-   * Setup the DoFHandler, the AffineConstraints, and the MechanicalOperator.
+   * Setup the DoFHandler, the AffineConstraints, and the
+   * MechanicalOperator.
    */
-  void setup_dofs();
+  void
+  setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
+                 std::vector<std::shared_ptr<BodyForce<dim>>>());
 
   /**
    * Same as above when solving a thermo-mechanical problem.
@@ -42,7 +44,9 @@ public:
       dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &temperature,
-      std::vector<bool> const &has_melted);
+      std::vector<bool> const &has_melted,
+      std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
+          std::vector<std::shared_ptr<BodyForce<dim>>>());
 
   /**
    * Solve the mechanical problem and return the solution.

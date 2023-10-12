@@ -8,6 +8,7 @@
 #ifndef MECHANICAL_OPERATOR_HH
 #define MECHANICAL_OPERATOR_HH
 
+#include <BodyForce.hh>
 #include <MaterialProperty.hh>
 #include <Operator.hh>
 
@@ -39,11 +40,13 @@ public:
   MechanicalOperator(
       MPI_Comm const &communicator,
       MaterialProperty<dim, MemorySpaceType> &material_properties,
-      std::vector<double> reference_temperatures, bool include_gravity = false);
+      std::vector<double> reference_temperatures);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
-              dealii::hp::QCollection<dim> const &quad);
+              dealii::hp::QCollection<dim> const &quad,
+              std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
+                  std::vector<std::shared_ptr<BodyForce<dim>>>());
 
   dealii::types::global_dof_index m() const override;
 
@@ -88,16 +91,13 @@ private:
    * @Note The 2D case does not represent any physical model but it is
    * convenient for testing.
    */
-  void assemble_system();
+  void assemble_system(
+      std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces);
 
   /**
    * MPI communicator.
    */
   MPI_Comm const &_communicator;
-  /**
-   * Whether to include a gravitional body force in the calculation.
-   */
-  bool _include_gravity = false;
   /**
    * List of initial temperatures of the material. If the length of the vector
    * is nonzero, we solve a thermo-mechanical problem.

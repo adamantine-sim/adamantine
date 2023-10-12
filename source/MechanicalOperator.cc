@@ -30,8 +30,8 @@ template <int dim, typename MemorySpaceType>
 MechanicalOperator<dim, MemorySpaceType>::MechanicalOperator(
     MPI_Comm const &communicator,
     MaterialProperty<dim, MemorySpaceType> &material_properties,
-    std::vector<double> const reference_temperatures, bool include_gravity)
-    : _communicator(communicator), _include_gravity(include_gravity),
+    std::vector<double> const reference_temperatures)
+    : _communicator(communicator),
       _reference_temperatures(reference_temperatures),
       _material_properties(material_properties)
 {
@@ -41,12 +41,13 @@ template <int dim, typename MemorySpaceType>
 void MechanicalOperator<dim, MemorySpaceType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
-    dealii::hp::QCollection<dim> const &q_collection)
+    dealii::hp::QCollection<dim> const &q_collection,
+    std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   _dof_handler = &dof_handler;
   _affine_constraints = &affine_constraints;
   _q_collection = &q_collection;
-  assemble_system();
+  assemble_system(body_forces);
 }
 
 template <int dim, typename MemorySpaceType>
@@ -98,7 +99,8 @@ void MechanicalOperator<dim, MemorySpaceType>::update_temperature(
 }
 
 template <int dim, typename MemorySpaceType>
-void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
+void MechanicalOperator<dim, MemorySpaceType>::assemble_system(
+    std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   // Create the sparsity pattern. Since we use a Trilinos matrix we don't need
   // the sparsity pattern to outlive the sparse matrix.
@@ -285,7 +287,7 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
   }
 
   // Add gravitational body force
-  if (_include_gravity)
+  if (body_forces.size())
   {
     for (auto const &cell :
          _dof_handler->active_cell_iterators() |
@@ -296,12 +298,11 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system()
       displacement_hp_fe_values.reinit(cell);
       auto const &fe_values = displacement_hp_fe_values.get_present_fe_values();
 
-      // Note that that the density is independent of the temperature
-      double density = this->_material_properties.get_mechanical_property(
-          cell, StateProperty::density_s);
-      double const g = 9.80665;
       dealii::Tensor<1, dim, double> body_force;
-      body_force[axis<dim>::z] = -density * g;
+      for (auto &force : body_forces)
+      {
+        body_force += force->eval(cell);
+      }
 
       dealii::FEValuesExtractors::Vector const displacements(0);
 
