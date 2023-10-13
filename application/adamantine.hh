@@ -988,6 +988,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   unsigned int progress = 0;
   unsigned int n_time_step = 0;
   double time = 0.;
+  double activation_time_end = -1.;
+  // PropertyTreeInput geometry.deposition_time
+  double const activation_time =
+      geometry_database.get<double>("deposition_time", 0.);
 
   // Output the initial solution
   output_pvtu(*post_processor, n_time_step, time, thermal_physics, temperature,
@@ -1057,46 +1061,51 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // time and the time match should match exactly but don't because of
     // floating point accuracy.
     timers[adamantine::add_material_activate].start();
-
-    double const eps = time_step / 1e12;
-    auto activation_start =
-        std::lower_bound(deposition_times.begin(), deposition_times.end(),
-                         time - eps) -
-        deposition_times.begin();
-    auto activation_end =
-        std::lower_bound(deposition_times.begin(), deposition_times.end(),
-                         time + time_step - eps) -
-        deposition_times.begin();
-    if (activation_start < activation_end)
+    if (time > activation_time_end)
     {
-      if (use_thermal_physics)
+      double const eps = time_step / 1e12;
+      auto activation_start =
+          std::lower_bound(deposition_times.begin(), deposition_times.end(),
+                           time - eps) -
+          deposition_times.begin();
+      activation_time_end =
+          std::min(time + std::max(activation_time, time_step), duration) - eps;
+      auto activation_end =
+          std::lower_bound(deposition_times.begin(), deposition_times.end(),
+                           activation_time_end) -
+          deposition_times.begin();
+      if (activation_start < activation_end)
       {
-        // Compute the elements to activate.
-        // TODO Right now, we compute the list of cells that get activated for
-        // the entire material deposition. We should restrict the list to the
-        // cells that are activated between activation_start and activation_end.
-        timers[adamantine::add_material_search].start();
-        auto elements_to_activate = adamantine::get_elements_to_activate(
-            thermal_physics->get_dof_handler(), material_deposition_boxes);
+        if (use_thermal_physics)
+        {
+          // Compute the elements to activate.
+          // TODO Right now, we compute the list of cells that get activated for
+          // the entire material deposition. We should restrict the list to the
+          // cells that are activated between activation_start and
+          // activation_end.
+          timers[adamantine::add_material_search].start();
+          auto elements_to_activate = adamantine::get_elements_to_activate(
+              thermal_physics->get_dof_handler(), material_deposition_boxes);
 
-        timers[adamantine::add_material_search].stop();
+          timers[adamantine::add_material_search].stop();
 
-        // For now assume that all deposited material has never been melted
-        // (may or may not be reasonable)
-        std::vector<bool> has_melted(deposition_cos.size(), false);
+          // For now assume that all deposited material has never been melted
+          // (may or may not be reasonable)
+          std::vector<bool> has_melted(deposition_cos.size(), false);
 
-        thermal_physics->add_material(elements_to_activate, deposition_cos,
-                                      deposition_sin, has_melted,
-                                      activation_start, activation_end,
-                                      new_material_temperature, temperature);
+          thermal_physics->add_material(elements_to_activate, deposition_cos,
+                                        deposition_sin, has_melted,
+                                        activation_start, activation_end,
+                                        new_material_temperature, temperature);
+        }
       }
-    }
 
-    if ((rank == 0) && (verbose_output == true) &&
-        (activation_end - activation_start > 0) && use_thermal_physics)
-    {
-      std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
-                << std::endl;
+      if ((rank == 0) && (verbose_output == true) &&
+          (activation_end - activation_start > 0) && use_thermal_physics)
+      {
+        std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
+                  << std::endl;
+      }
     }
     timers[adamantine::add_material_activate].stop();
 
@@ -1111,15 +1120,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                                        temperature);
     }
 
-    // Time can be different than time + time_step if an embedded scheme is
-    // used. Note that this is a problem when adding material because it
-    // means that the amount of material that needs to be added is not
-    // known.
-#if ADAMANTINE_DEBUG
-    double const old_time = time;
-    bool const adding_material =
-        (activation_start == activation_end) ? false : true;
-#endif
     timers[adamantine::evol_time].start();
 
     // Solve the thermal problem
@@ -1155,10 +1155,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       }
     }
 
-#if ADAMANTINE_DEBUG
-    ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),
-           "Unexpected time step while adding material.");
-#endif
     timers[adamantine::evol_time].stop();
 
     // Get the new time step
@@ -1562,6 +1558,10 @@ run_ensemble(MPI_Comm const &communicator,
   unsigned int progress = 0;
   unsigned int n_time_step = 0;
   double time = 0.;
+  double activation_time_end = -1.;
+  // PropertyTreeInput geometry.deposition_time
+  double const activation_time =
+      geometry_database.get<double>("deposition_time", 0.);
 
   // ----- Output the initial solution -----
   std::unique_ptr<adamantine::MechanicalPhysics<dim, MemorySpaceType>>
@@ -1661,69 +1661,60 @@ run_ensemble(MPI_Comm const &communicator,
     // time and the time match should match exactly but don't because of
     // floating point accuracy.
     timers[adamantine::add_material_activate].start();
+    if (time > activation_time_end)
+    {
+      double const eps = time_step / 1e12;
+      auto activation_start =
+          std::lower_bound(deposition_times.begin(), deposition_times.end(),
+                           time - eps) -
+          deposition_times.begin();
+      activation_time_end =
+          std::min(time + std::max(activation_time, time_step), duration) - eps;
+      auto activation_end =
+          std::lower_bound(deposition_times.begin(), deposition_times.end(),
+                           activation_time_end) -
+          deposition_times.begin();
+      if (activation_start < activation_end)
+        for (unsigned int member = 0; member < ensemble_size; ++member)
+        {
+          // Compute the elements to activate.
+          // TODO Right now, we compute the list of cells that get activated
+          // for the entire material deposition. We should restrict the list
+          // to the cells that are activated between activation_start and
+          // activation_end.
+          auto elements_to_activate = adamantine::get_elements_to_activate(
+              thermal_physics_ensemble[member]->get_dof_handler(),
+              material_deposition_boxes);
+          // For now assume that all deposited material has never been
+          // melted (may or may not be reasonable)
+          std::vector<bool> has_melted(deposition_cos.size(), false);
 
-    double const eps = time_step / 1e12;
-    auto activation_start =
-        std::lower_bound(deposition_times.begin(), deposition_times.end(),
-                         time - eps) -
-        deposition_times.begin();
-    auto activation_end =
-        std::lower_bound(deposition_times.begin(), deposition_times.end(),
-                         time + time_step - eps) -
-        deposition_times.begin();
-    if (activation_start < activation_end)
-      for (unsigned int member = 0; member < ensemble_size; ++member)
-      {
-        // Compute the elements to activate.
-        // TODO Right now, we compute the list of cells that get activated for
-        // the entire material deposition. We should restrict the list to the
-        // cells that are activated between activation_start and activation_end.
-        auto elements_to_activate = adamantine::get_elements_to_activate(
-            thermal_physics_ensemble[member]->get_dof_handler(),
-            material_deposition_boxes);
-        // For now assume that all deposited material has never been melted
-        // (may or may not be reasonable)
-        std::vector<bool> has_melted(deposition_cos.size(), false);
+          thermal_physics_ensemble[member]->add_material(
+              elements_to_activate, deposition_cos, deposition_sin, has_melted,
+              activation_start, activation_end,
+              new_material_temperature[member],
+              solution_augmented_ensemble[member].block(base_state));
 
-        thermal_physics_ensemble[member]->add_material(
-            elements_to_activate, deposition_cos, deposition_sin, has_melted,
-            activation_start, activation_end, new_material_temperature[member],
-            solution_augmented_ensemble[member].block(base_state));
+          solution_augmented_ensemble[member].collect_sizes();
+        }
 
-        solution_augmented_ensemble[member].collect_sizes();
-      }
-
-    if ((rank == 0) && (verbose_output == true) &&
-        (activation_end - activation_start > 0))
-      std::cout << "n_dofs: "
-                << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
-                << std::endl;
-
+      if ((rank == 0) && (verbose_output == true) &&
+          (activation_end - activation_start > 0))
+        std::cout << "n_dofs: "
+                  << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
+                  << std::endl;
+    }
     timers[adamantine::add_material_activate].stop();
 
     // ----- Evolve the solution by one time step -----
-    // Time can be different than time + time_step if an embedded scheme is
-    // used. Note that this is a problem when adding material because it
-    // means that the amount of material that needs to be added is not
-    // known.
     double const old_time = time;
-#if ADAMANTINE_DEBUG
-    bool const adding_material =
-        (activation_start == activation_end) ? false : true;
-#endif
     timers[adamantine::evol_time].start();
-
     for (unsigned int member = 0; member < ensemble_size; ++member)
     {
       time = thermal_physics_ensemble[member]->evolve_one_time_step(
           old_time, time_step,
           solution_augmented_ensemble[member].block(base_state), timers);
     }
-
-#if ADAMANTINE_DEBUG
-    ASSERT(!adding_material || ((time - old_time) < time_step / 1e-9),
-           "Unexpected time step while adding material.");
-#endif
     timers[adamantine::evol_time].stop();
 
     // ----- Get the new time step size -----
