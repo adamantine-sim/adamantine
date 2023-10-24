@@ -53,6 +53,7 @@ The following options are available:
         * **deposition\_width**: width of material deposition boxes (in the plane of the material, normal to the scan direction, 3D only) (required)
         * **deposition\_height**: height of material deposition boxes (out of the plane of the material) (required)
         * **deposition\_lead\_time**: amount of time before the scan path reaches a point that the material is added (required)
+        * **deposition\_time**: add the material in bigger lumps (optional)
   * **import\_mesh**: true or false (required)
   * if import\_mesh is true:
     * **mesh\_file**: The filename for the mesh file (required)
