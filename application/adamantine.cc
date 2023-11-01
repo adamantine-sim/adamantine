@@ -30,8 +30,6 @@ int main(int argc, char *argv[])
       argc, argv, dealii::numbers::invalid_unsigned_int);
   MPI_Comm communicator = MPI_COMM_WORLD;
 
-  Kokkos::ScopeGuard guard(argc, argv);
-
 #ifdef ADAMANTINE_WITH_ADIAK
   adiak_init(&communicator);
   adiak::user();
