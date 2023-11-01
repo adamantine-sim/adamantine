@@ -156,19 +156,19 @@ class LocalThermalOperatorDevice
 public:
   LocalThermalOperatorDevice(
       bool use_table, unsigned int polynomial_order, double *cos, double *sin,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+      adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
           powder_ratio_view,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+      adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
           liquid_ratio_view,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+      adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
           material_id_view,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+      adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
           inv_rho_cp_view,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+      adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
           properties_view,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+      adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
           state_property_tables_view,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+      adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
           state_property_polynomials_view)
       : _use_table(use_table), _polynomial_order(polynomial_order), _cos(cos),
         _sin(sin), _powder_ratio_view(powder_ratio_view),
@@ -212,19 +212,19 @@ private:
       static_cast<unsigned int>(adamantine::MaterialState::SIZE);
   double *_cos;
   double *_sin;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
       _powder_ratio_view;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
       _liquid_ratio_view;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
       _material_id_view;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
       _inv_rho_cp_view;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
       _properties_view;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
       _state_property_tables_view;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
       _state_property_polynomials_view;
 };
 
@@ -293,7 +293,7 @@ LocalThermalOperatorDevice<dim, fe_degree>::compute_material_property(
       const dealii::types::material_id m_id = material_id;
 
       value += state_ratios[material_state] *
-               adamantine::MaterialProperty<dim, dealii::MemorySpace::CUDA>::
+               adamantine::MaterialProperty<dim, dealii::MemorySpace::Default>::
                    compute_property_from_table(_state_property_tables_view,
                                                m_id, material_state,
                                                property_index, temperature);
@@ -530,11 +530,11 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::vmult_add(
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
 
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
       powder_ratio_view(_powder_ratio);
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
       liquid_ratio_view(_liquid_ratio);
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
+  adamantine::MemoryBlockView<double, dealii::MemorySpace::Default>
       material_id_view(_material_id);
   ASSERT(material_id_view.extent(0), "material_id has not been initialized");
 
@@ -714,25 +714,25 @@ void ThermalOperatorDevice<dim, fe_degree,
 // instantiate by hand
 namespace adamantine
 {
-template class ThermalOperatorDevice<2, 1, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 3, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 4, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 5, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 6, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 7, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 8, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 9, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 10, dealii::MemorySpace::CUDA>;
+template class ThermalOperatorDevice<2, 1, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 2, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 3, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 4, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 5, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 6, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 7, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 8, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 9, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 10, dealii::MemorySpace::Default>;
 
-template class ThermalOperatorDevice<3, 1, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 2, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 3, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 4, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 5, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 6, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 7, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 8, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 9, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 10, dealii::MemorySpace::CUDA>;
+template class ThermalOperatorDevice<3, 1, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 2, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 3, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 4, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 5, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 6, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 7, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 8, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 9, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 10, dealii::MemorySpace::Default>;
 } // namespace adamantine

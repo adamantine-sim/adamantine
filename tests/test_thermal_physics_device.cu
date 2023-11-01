@@ -23,7 +23,7 @@ BOOST_AUTO_TEST_CASE(thermal_2d_explicit_device)
   database.put("sources.beam_0.type", "electron_beam");
   database.put("sources.beam_0.scan_path_file_format", "segment");
 
-  thermal_2d<dealii::MemorySpace::CUDA>(database, 0.05);
+  thermal_2d<dealii::MemorySpace::Default>(database, 0.05);
 }
 
 BOOST_AUTO_TEST_CASE(thermal_2d_implicit_device)
@@ -39,20 +39,20 @@ BOOST_AUTO_TEST_CASE(thermal_2d_implicit_device)
   database.put("sources.beam_0.type", "electron_beam");
   database.put("sources.beam_0.scan_path_file_format", "segment");
 
-  thermal_2d<dealii::MemorySpace::CUDA>(database, 0.025);
+  thermal_2d<dealii::MemorySpace::Default>(database, 0.025);
 }
 
 BOOST_AUTO_TEST_CASE(thermal_2d_manufactured_solution_device)
 {
-  thermal_2d_manufactured_solution<dealii::MemorySpace::CUDA>();
+  thermal_2d_manufactured_solution<dealii::MemorySpace::Default>();
 }
 
 BOOST_AUTO_TEST_CASE(initial_temperature_device)
 {
-  initial_temperature<dealii::MemorySpace::CUDA>();
+  initial_temperature<dealii::MemorySpace::Default>();
 }
 
 BOOST_AUTO_TEST_CASE(energy_conservation_device)
 {
-  energy_conservation<dealii::MemorySpace::CUDA>();
+  energy_conservation<dealii::MemorySpace::Default>();
 }

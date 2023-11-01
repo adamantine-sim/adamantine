@@ -72,6 +72,6 @@ void ImplicitOperator<MemorySpaceType>::Tvmult_add(
 // Instantiation
 template class ImplicitOperator<dealii::MemorySpace::Host>;
 #ifdef ADAMANTINE_HAVE_CUDA
-template class ImplicitOperator<dealii::MemorySpace::CUDA>;
+template class ImplicitOperator<dealii::MemorySpace::Default>;
 #endif
 } // namespace adamantine

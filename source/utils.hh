@@ -35,7 +35,7 @@ inline void deep_copy(Number *output, dealii::MemorySpace::Host const &,
 #ifdef __CUDACC__
 template <typename Number>
 inline void deep_copy(Number *output, dealii::MemorySpace::Host const &,
-                      Number const *input, dealii::MemorySpace::CUDA const &,
+                      Number const *input, dealii::MemorySpace::Default const &,
                       unsigned int size)
 {
   cudaError_t const error_code =
@@ -45,7 +45,7 @@ inline void deep_copy(Number *output, dealii::MemorySpace::Host const &,
 }
 
 template <typename Number>
-inline void deep_copy(Number *output, dealii::MemorySpace::CUDA const &,
+inline void deep_copy(Number *output, dealii::MemorySpace::Default const &,
                       Number const *input, dealii::MemorySpace::Host const &,
                       unsigned int size)
 {
@@ -56,8 +56,8 @@ inline void deep_copy(Number *output, dealii::MemorySpace::CUDA const &,
 }
 
 template <typename Number>
-inline void deep_copy(Number *output, dealii::MemorySpace::CUDA const &,
-                      Number const *input, dealii::MemorySpace::CUDA const &,
+inline void deep_copy(Number *output, dealii::MemorySpace::Default const &,
+                      Number const *input, dealii::MemorySpace::Default const &,
                       unsigned int size)
 {
   cudaError_t const error_code =
@@ -110,7 +110,7 @@ void for_each(dealii::MemorySpace::Host, unsigned int const size, Functor f)
 
 #ifdef __CUDACC__
 template <typename Number>
-struct Memory<Number, dealii::MemorySpace::CUDA>
+struct Memory<Number, dealii::MemorySpace::Default>
 {
   static Number *allocate_data(std::size_t const size)
   {
@@ -144,7 +144,7 @@ __global__ void for_each_impl(int size, Functor f)
 }
 
 template <typename Functor>
-void for_each(dealii::MemorySpace::CUDA, unsigned int const size,
+void for_each(dealii::MemorySpace::Default, unsigned int const size,
               Functor const &f)
 {
   const int n_blocks = 1 + size / dealii::CUDAWrappers::block_size;

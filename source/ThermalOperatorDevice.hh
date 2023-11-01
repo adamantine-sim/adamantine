@@ -121,10 +121,10 @@ private:
    */
   MaterialProperty<dim, MemorySpaceType> &_material_properties;
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
-  MemoryBlock<double, dealii::MemorySpace::CUDA> _liquid_ratio;
-  MemoryBlock<double, dealii::MemorySpace::CUDA> _powder_ratio;
-  MemoryBlock<double, dealii::MemorySpace::CUDA> _material_id;
-  MemoryBlock<double, dealii::MemorySpace::CUDA> _inv_rho_cp;
+  MemoryBlock<double, dealii::MemorySpace::Default> _liquid_ratio;
+  MemoryBlock<double, dealii::MemorySpace::Default> _powder_ratio;
+  MemoryBlock<double, dealii::MemorySpace::Default> _material_id;
+  MemoryBlock<double, dealii::MemorySpace::Default> _inv_rho_cp;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _deposition_cos;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _deposition_sin;
   std::map<typename dealii::DoFHandler<dim>::cell_iterator,

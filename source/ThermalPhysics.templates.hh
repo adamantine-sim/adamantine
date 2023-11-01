@@ -88,9 +88,9 @@ void init_dof_vector(
 
 #if defined(ADAMANTINE_HAVE_CUDA) && defined(__CUDACC__)
 template <int dim, int fe_degree, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
-              int> = 0>
+          std::enable_if_t<std::is_same<MemorySpaceType,
+                                        dealii::MemorySpace::Default>::value,
+                           int> = 0>
 dealii::LA::distributed::Vector<double, MemorySpaceType>
 evaluate_thermal_physics_impl(
     std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> const
@@ -231,8 +231,8 @@ evaluate_thermal_physics_impl(
   source.compress(dealii::VectorOperation::add);
 
   // Add source
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> source_dev(
-      source.get_partitioner());
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
+      source_dev(source.get_partitioner());
   source_dev.import(source, dealii::VectorOperation::insert);
   value_dev += source_dev;
 
@@ -245,9 +245,9 @@ evaluate_thermal_physics_impl(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
-              int> = 0>
+          std::enable_if_t<std::is_same<MemorySpaceType,
+                                        dealii::MemorySpace::Default>::value,
+                           int> = 0>
 void init_dof_vector(
     double const value,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType> &vector)

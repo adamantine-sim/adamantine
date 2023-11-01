@@ -91,9 +91,9 @@ void compute_average(
     dealii::DoFHandler<dim> const &mp_dof_handler,
     dealii::DoFHandler<dim> const &temperature_dof_handler,
     dealii::hp::FEValues<dim> &hp_fe_values,
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> const
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> const
         &temperature,
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA>
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
         &temperature_average)
 {
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -111,8 +111,8 @@ void compute_average(
 }
 
 template <>
-double get_value<dealii::MemorySpace::CUDA>(
-    MemoryBlock<double, dealii::MemorySpace::CUDA> const &memory_block,
+double get_value<dealii::MemorySpace::Default>(
+    MemoryBlock<double, dealii::MemorySpace::Default> const &memory_block,
     unsigned int i, unsigned int j)
 {
   MemoryBlock<double, dealii::MemorySpace::Host> memory_block_host(
@@ -670,16 +670,17 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
     ++cell_i;
   }
 
-  MemoryBlock<unsigned int, dealii::MemorySpace::CUDA> mapping(mapping_host);
-  MemoryBlockView<unsigned, dealii::MemorySpace::CUDA> mapping_view(mapping);
-  MemoryBlockView<double, dealii::MemorySpace::CUDA> liquid_ratio_view(
+  MemoryBlock<unsigned int, dealii::MemorySpace::Default> mapping(mapping_host);
+  MemoryBlockView<unsigned, dealii::MemorySpace::Default> mapping_view(mapping);
+  MemoryBlockView<double, dealii::MemorySpace::Default> liquid_ratio_view(
       liquid_ratio);
-  MemoryBlockView<double, dealii::MemorySpace::CUDA> powder_ratio_view(
+  MemoryBlockView<double, dealii::MemorySpace::Default> powder_ratio_view(
       powder_ratio);
-  MemoryBlock<double, dealii::MemorySpace::CUDA> mp_dof_block(
+  MemoryBlock<double, dealii::MemorySpace::Default> mp_dof_block(
       mp_dof_host_block);
-  MemoryBlockView<double, dealii::MemorySpace::CUDA> mp_dof_view(mp_dof_block);
-  MemoryBlockView<double, dealii::MemorySpace::CUDA> state_view(_state);
+  MemoryBlockView<double, dealii::MemorySpace::Default> mp_dof_view(
+      mp_dof_block);
+  MemoryBlockView<double, dealii::MemorySpace::Default> state_view(_state);
   auto const powder_state = static_cast<unsigned int>(MaterialState::powder);
   auto const liquid_state = static_cast<unsigned int>(MaterialState::liquid);
   auto const solid_state = static_cast<unsigned int>(MaterialState::solid);

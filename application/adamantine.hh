@@ -111,9 +111,9 @@ void output_pvtu(
 
 #ifdef ADAMANTINE_HAVE_CUDA
 template <int dim, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
-              int> = 0>
+          std::enable_if_t<std::is_same<MemorySpaceType,
+                                        dealii::MemorySpace::Default>::value,
+                           int> = 0>
 void output_pvtu(
     adamantine::PostProcessor<dim> &post_processor, unsigned int n_time_step,
     double time,
@@ -200,9 +200,9 @@ dealii::Vector<float> estimate_error(
 
 #ifdef ADAMANTINE_HAVE_CUDA
 template <int dim, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
-              int> = 0>
+          std::enable_if_t<std::is_same<MemorySpaceType,
+                                        dealii::MemorySpace::Default>::value,
+                           int> = 0>
 dealii::Vector<float> estimate_error(
     dealii::parallel::distributed::Triangulation<dim> const &triangulation,
     dealii::DoFHandler<dim> const &dof_handler, int fe_degree,
