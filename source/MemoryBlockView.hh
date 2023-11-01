@@ -25,77 +25,77 @@ public:
   /**
    * Default constructor.
    */
-  ADAMANTINE_HOST_DEV
+  KOKKOS_FUNCTION
   MemoryBlockView() = default;
 
   /**
    * Constructor.
    */
-  ADAMANTINE_HOST_DEV
+  KOKKOS_FUNCTION
   MemoryBlockView(MemoryBlock<Number, MemorySpaceType> const &memory_block);
 
   /**
    * Copy constructor.
    */
-  ADAMANTINE_HOST_DEV MemoryBlockView(
+  KOKKOS_FUNCTION MemoryBlockView(
       MemoryBlockView<Number, MemorySpaceType> const &memory_block_view);
 
   /**
    * Reinitialize the pointer to the underlying data and the size.
    */
-  ADAMANTINE_HOST_DEV
+  KOKKOS_FUNCTION
   void reinit(MemoryBlock<Number, MemorySpaceType> const &memory_block);
 
   /**
    * Assignment operator.
    */
-  ADAMANTINE_HOST_DEV
+  KOKKOS_FUNCTION
   MemoryBlockView<Number, MemorySpaceType> &
   operator=(MemoryBlockView<Number, MemorySpaceType> const &memory_block_view);
 
   /**
    * Access operator for a 1D MemoryBlock.
    */
-  ADAMANTINE_HOST_DEV Number &operator()(unsigned int i) const;
+  KOKKOS_FUNCTION Number &operator()(unsigned int i) const;
 
   /**
    * Access operator for a 2D MemoryBlock.
    */
-  ADAMANTINE_HOST_DEV Number &operator()(unsigned int i, unsigned int j) const;
+  KOKKOS_FUNCTION Number &operator()(unsigned int i, unsigned int j) const;
 
   /**
    * Access operator for a 3D MemoryBlock.
    */
-  ADAMANTINE_HOST_DEV Number &operator()(unsigned int i, unsigned int j,
-                                         unsigned int k) const;
+  KOKKOS_FUNCTION Number &operator()(unsigned int i, unsigned int j,
+                                     unsigned int k) const;
 
   /**
    * Access operator for a 4D MemoryBlock.
    */
-  ADAMANTINE_HOST_DEV Number &operator()(unsigned int i, unsigned int j,
-                                         unsigned int k, unsigned int l) const;
+  KOKKOS_FUNCTION Number &operator()(unsigned int i, unsigned int j,
+                                     unsigned int k, unsigned int l) const;
 
   /**
    * Access operator for a 5D MemoryBlock.
    */
-  ADAMANTINE_HOST_DEV Number &operator()(unsigned int i, unsigned int j,
-                                         unsigned int k, unsigned int l,
-                                         unsigned int m) const;
+  KOKKOS_FUNCTION Number &operator()(unsigned int i, unsigned int j,
+                                     unsigned int k, unsigned int l,
+                                     unsigned int m) const;
 
   /**
    * Return the number of accessible elements.
    */
-  ADAMANTINE_HOST_DEV unsigned int size() const;
+  KOKKOS_FUNCTION unsigned int size() const;
 
   /**
    * Return the @p i dimension.
    */
-  ADAMANTINE_HOST_DEV unsigned int extent(unsigned int i) const;
+  KOKKOS_FUNCTION unsigned int extent(unsigned int i) const;
 
   /**
    * Return the pointer to the underlying data.
    */
-  ADAMANTINE_HOST_DEV Number *data() const;
+  KOKKOS_FUNCTION Number *data() const;
 
 private:
   unsigned int _size = 0;
@@ -108,7 +108,7 @@ private:
 };
 
 template <typename Number, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV MemoryBlockView<Number, MemorySpaceType>::MemoryBlockView(
+KOKKOS_FUNCTION MemoryBlockView<Number, MemorySpaceType>::MemoryBlockView(
     MemoryBlock<Number, MemorySpaceType> const &memory_block)
 {
   _size = memory_block._size;
@@ -121,7 +121,7 @@ ADAMANTINE_HOST_DEV MemoryBlockView<Number, MemorySpaceType>::MemoryBlockView(
 }
 
 template <typename Number, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV MemoryBlockView<Number, MemorySpaceType>::MemoryBlockView(
+KOKKOS_FUNCTION MemoryBlockView<Number, MemorySpaceType>::MemoryBlockView(
     MemoryBlockView<Number, MemorySpaceType> const &memory_block_view)
 {
   _size = memory_block_view._size;
@@ -134,7 +134,7 @@ ADAMANTINE_HOST_DEV MemoryBlockView<Number, MemorySpaceType>::MemoryBlockView(
 }
 
 template <typename Number, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV void MemoryBlockView<Number, MemorySpaceType>::reinit(
+KOKKOS_FUNCTION void MemoryBlockView<Number, MemorySpaceType>::reinit(
     MemoryBlock<Number, MemorySpaceType> const &memory_block)
 {
   _size = memory_block._size;
@@ -147,7 +147,7 @@ ADAMANTINE_HOST_DEV void MemoryBlockView<Number, MemorySpaceType>::reinit(
 }
 
 template <typename Number, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV MemoryBlockView<Number, MemorySpaceType> &
+KOKKOS_FUNCTION MemoryBlockView<Number, MemorySpaceType> &
 MemoryBlockView<Number, MemorySpaceType>::operator=(
     MemoryBlockView<Number, MemorySpaceType> const &memory_block_view)
 {
@@ -163,7 +163,7 @@ MemoryBlockView<Number, MemorySpaceType>::operator=(
 }
 
 template <typename Number, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV Number &
+KOKKOS_FUNCTION Number &
 MemoryBlockView<Number, MemorySpaceType>::operator()(unsigned int i) const
 {
   ASSERT(i < _dim_0, "Out-of-bound access.");
@@ -172,7 +172,7 @@ MemoryBlockView<Number, MemorySpaceType>::operator()(unsigned int i) const
 }
 
 template <typename Number, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV Number &
+KOKKOS_FUNCTION Number &
 MemoryBlockView<Number, MemorySpaceType>::operator()(unsigned int i,
                                                      unsigned int j) const
 {
@@ -183,10 +183,8 @@ MemoryBlockView<Number, MemorySpaceType>::operator()(unsigned int i,
 }
 
 template <typename Number, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV Number &
-MemoryBlockView<Number, MemorySpaceType>::operator()(unsigned int i,
-                                                     unsigned int j,
-                                                     unsigned int k) const
+KOKKOS_FUNCTION Number &MemoryBlockView<Number, MemorySpaceType>::operator()(
+    unsigned int i, unsigned int j, unsigned int k) const
 {
   ASSERT(i < _dim_0, "Out-of-bound access.");
   ASSERT(j < _dim_1, "Out-of-bound access.");
@@ -196,11 +194,8 @@ MemoryBlockView<Number, MemorySpaceType>::operator()(unsigned int i,
 }
 
 template <typename Number, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV Number &
-MemoryBlockView<Number, MemorySpaceType>::operator()(unsigned int i,
-                                                     unsigned int j,
-                                                     unsigned int k,
-                                                     unsigned int l) const
+KOKKOS_FUNCTION Number &MemoryBlockView<Number, MemorySpaceType>::operator()(
+    unsigned int i, unsigned int j, unsigned int k, unsigned int l) const
 {
   ASSERT(i < _dim_0, "Out-of-bound access.");
   ASSERT(j < _dim_1, "Out-of-bound access.");
@@ -212,12 +207,9 @@ MemoryBlockView<Number, MemorySpaceType>::operator()(unsigned int i,
 }
 
 template <typename Number, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV Number &
-MemoryBlockView<Number, MemorySpaceType>::operator()(unsigned int i,
-                                                     unsigned int j,
-                                                     unsigned int k,
-                                                     unsigned int l,
-                                                     unsigned int m) const
+KOKKOS_FUNCTION Number &MemoryBlockView<Number, MemorySpaceType>::operator()(
+    unsigned int i, unsigned int j, unsigned int k, unsigned int l,
+    unsigned int m) const
 {
   ASSERT(i < _dim_0, "Out-of-bound access.");
   ASSERT(j < _dim_1, "Out-of-bound access.");
@@ -231,14 +223,14 @@ MemoryBlockView<Number, MemorySpaceType>::operator()(unsigned int i,
 }
 
 template <typename Number, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV unsigned int
+KOKKOS_FUNCTION unsigned int
 MemoryBlockView<Number, MemorySpaceType>::size() const
 {
   return _size;
 }
 
 template <typename Number, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV unsigned int
+KOKKOS_FUNCTION unsigned int
 MemoryBlockView<Number, MemorySpaceType>::extent(unsigned int i) const
 {
   switch (i)
@@ -259,8 +251,7 @@ MemoryBlockView<Number, MemorySpaceType>::extent(unsigned int i) const
 }
 
 template <typename Number, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV Number *
-MemoryBlockView<Number, MemorySpaceType>::data() const
+KOKKOS_FUNCTION Number *MemoryBlockView<Number, MemorySpaceType>::data() const
 {
   return _data;
 }

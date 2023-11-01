@@ -24,12 +24,6 @@
 
 namespace adamantine
 {
-#ifdef __CUDACC__
-#define ADAMANTINE_HOST_DEV __host__ __device__
-#else
-#define ADAMANTINE_HOST_DEV
-#endif
-
 template <typename Number>
 inline void deep_copy(Number *output, dealii::MemorySpace::Host const &,
                       Number const *input, dealii::MemorySpace::Host const &,

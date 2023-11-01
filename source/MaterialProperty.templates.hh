@@ -277,9 +277,7 @@ void MaterialProperty<dim, MemorySpaceType>::update(
 
   bool use_table = _use_table;
   for_each(
-      MemorySpaceType{}, material_ids_size,
-      [=] ADAMANTINE_HOST_DEV(int i)
-      {
+      MemorySpaceType{}, material_ids_size, KOKKOS_LAMBDA(int i) {
         unsigned int constexpr liquid =
             static_cast<unsigned int>(MaterialState::liquid);
         unsigned int constexpr powder =
@@ -546,7 +544,7 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
 }
 
 template <int dim, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV double
+KOKKOS_FUNCTION double
 MaterialProperty<dim, MemorySpaceType>::compute_material_property(
     StateProperty state_property, dealii::types::material_id const material_id,
     double const *state_ratios, double temperature) const
@@ -685,25 +683,24 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
   auto const powder_state = static_cast<unsigned int>(MaterialState::powder);
   auto const liquid_state = static_cast<unsigned int>(MaterialState::liquid);
   auto const solid_state = static_cast<unsigned int>(MaterialState::solid);
-  for_each(MemorySpaceType{}, cell_i,
-           [=] ADAMANTINE_HOST_DEV(int i) mutable
-           {
-             double liquid_ratio_sum = 0.;
-             double powder_ratio_sum = 0.;
-             for (unsigned int q = 0; q < n_q_points; ++q)
-             {
-               liquid_ratio_sum += liquid_ratio_view(mapping_view(i, q));
-               powder_ratio_sum += powder_ratio_view(mapping_view(i, q));
-             }
-             state_view(liquid_state, mp_dof_view(i)) =
-                 liquid_ratio_sum / n_q_points;
-             state_view(powder_state, mp_dof_view(i)) =
-                 powder_ratio_sum / n_q_points;
-             state_view(solid_state, mp_dof_view(i)) =
-                 std::max(1. - state_view(liquid_state, mp_dof_view(i)) -
-                              state_view(powder_state, mp_dof_view(i)),
-                          0.);
-           });
+  for_each(
+      MemorySpaceType{}, cell_i, KOKKOS_LAMBDA(int i) mutable {
+        double liquid_ratio_sum = 0.;
+        double powder_ratio_sum = 0.;
+        for (unsigned int q = 0; q < n_q_points; ++q)
+        {
+          liquid_ratio_sum += liquid_ratio_view(mapping_view(i, q));
+          powder_ratio_sum += powder_ratio_view(mapping_view(i, q));
+        }
+        state_view(liquid_state, mp_dof_view(i)) =
+            liquid_ratio_sum / n_q_points;
+        state_view(powder_state, mp_dof_view(i)) =
+            powder_ratio_sum / n_q_points;
+        state_view(solid_state, mp_dof_view(i)) =
+            std::max(1. - state_view(liquid_state, mp_dof_view(i)) -
+                         state_view(powder_state, mp_dof_view(i)),
+                     0.);
+      });
 }
 #endif
 
@@ -733,9 +730,10 @@ void MaterialProperty<dim, MemorySpaceType>::set_initial_state()
 
   _state.set_zero();
   MemoryBlockView<double, MemorySpaceType> state_view(_state);
-  for_each(MemorySpaceType{}, user_indices.size(),
-           [=] ADAMANTINE_HOST_DEV(int i) mutable
-           { state_view(user_indices_view(i), mp_dofs_view(i)) = 1.; });
+  for_each(
+      MemorySpaceType{}, user_indices.size(), KOKKOS_LAMBDA(int i) mutable {
+        state_view(user_indices_view(i), mp_dofs_view(i)) = 1.;
+      });
 }
 
 template <int dim, typename MemorySpaceType>
@@ -1052,7 +1050,7 @@ MaterialProperty<dim, MemorySpaceType>::compute_average_temperature(
 }
 
 template <int dim, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV double
+KOKKOS_FUNCTION double
 MaterialProperty<dim, MemorySpaceType>::compute_property_from_table(
     MemoryBlockView<double, MemorySpaceType> const &state_property_tables_view,
     unsigned int const material_id, unsigned int const material_state,

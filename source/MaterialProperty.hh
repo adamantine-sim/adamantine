@@ -141,7 +141,7 @@ public:
   /**
    * Compute a material property at a quadrature point for a mix of states.
    */
-  ADAMANTINE_HOST_DEV
+  KOKKOS_FUNCTION
   double compute_material_property(StateProperty state_property,
                                    dealii::types::material_id const material_id,
                                    double const *state_ratios,
@@ -208,7 +208,7 @@ public:
   /**
    * Compute a property from a table given the temperature.
    */
-  static ADAMANTINE_HOST_DEV double compute_property_from_table(
+  static KOKKOS_FUNCTION double compute_property_from_table(
       MemoryBlockView<double, MemorySpaceType> const
           &state_property_tables_view,
       unsigned int const material_id, unsigned int const material_state,
