@@ -32,12 +32,12 @@ template <int dim, int fe_degree>
 class MassMatrixOperatorQuad
 {
 public:
-  __device__ void
+  KOKKOS_FUNCTION void
   operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const;
 };
 
 template <int dim, int fe_degree>
-__device__ void MassMatrixOperatorQuad<dim, fe_degree>::operator()(
+KOKKOS_FUNCTION void MassMatrixOperatorQuad<dim, fe_degree>::operator()(
     dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const
 {
   fe_eval->submit_value(1.);
@@ -47,7 +47,7 @@ template <int dim, int fe_degree>
 class LocalMassMatrixOperator
 {
 public:
-  __device__ void
+  KOKKOS_FUNCTION void
   operator()(unsigned int const cell,
              typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
                  *gpu_data,
@@ -62,7 +62,7 @@ public:
 };
 
 template <int dim, int fe_degree>
-__device__ void LocalMassMatrixOperator<dim, fe_degree>::operator()(
+KOKKOS_FUNCTION void LocalMassMatrixOperator<dim, fe_degree>::operator()(
     unsigned int const cell,
     typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
         *gpu_data,
@@ -80,10 +80,10 @@ template <int dim, int fe_degree>
 class ThermalOperatorQuad
 {
 public:
-  __device__ ThermalOperatorQuad(double inv_rho_cp, double cos, double sin,
-                                 double thermal_conductivity_x,
-                                 double thermal_conductivity_y,
-                                 double thermal_conductivity_z)
+  KOKKOS_FUNCTION ThermalOperatorQuad(double inv_rho_cp, double cos, double sin,
+                                      double thermal_conductivity_x,
+                                      double thermal_conductivity_y,
+                                      double thermal_conductivity_z)
       : _inv_rho_cp(inv_rho_cp), _cos(cos), _sin(sin),
         _thermal_conductivity_x(thermal_conductivity_x),
         _thermal_conductivity_y(thermal_conductivity_y),
@@ -91,7 +91,7 @@ public:
   {
   }
 
-  __device__ void
+  KOKKOS_FUNCTION void
   operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const;
 
 private:
@@ -104,7 +104,7 @@ private:
 };
 
 template <int dim, int fe_degree>
-__device__ void ThermalOperatorQuad<dim, fe_degree>::operator()(
+KOKKOS_FUNCTION void ThermalOperatorQuad<dim, fe_degree>::operator()(
     dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const
 {
   auto th_conductivity_grad = fe_eval->get_gradient();
@@ -180,19 +180,19 @@ public:
   {
   }
 
-  __device__ void update_state_ratios(unsigned int pos, double temperature,
-                                      double *state_ratios) const;
+  KOKKOS_FUNCTION void update_state_ratios(unsigned int pos, double temperature,
+                                           double *state_ratios) const;
 
-  __device__ double
+  KOKKOS_FUNCTION double
   compute_material_property(adamantine::StateProperty state_property,
                             dealii::types::material_id const material_id,
                             double const *state_ratios,
                             double temperature) const;
 
-  __device__ double get_inv_rho_cp(unsigned int pos, double *state_ratios,
-                                   double temperature) const;
+  KOKKOS_FUNCTION double get_inv_rho_cp(unsigned int pos, double *state_ratios,
+                                        double temperature) const;
 
-  __device__ void
+  KOKKOS_FUNCTION void
   operator()(unsigned int const cell,
              typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
                  *gpu_data,
@@ -229,7 +229,8 @@ private:
 };
 
 template <int dim, int fe_degree>
-__device__ void LocalThermalOperatorDevice<dim, fe_degree>::update_state_ratios(
+KOKKOS_FUNCTION void
+LocalThermalOperatorDevice<dim, fe_degree>::update_state_ratios(
     unsigned int pos, double temperature, double *state_ratios) const
 {
   unsigned int constexpr liquid =
@@ -276,7 +277,7 @@ __device__ void LocalThermalOperatorDevice<dim, fe_degree>::update_state_ratios(
 }
 
 template <int dim, int fe_degree>
-__device__ double
+KOKKOS_FUNCTION double
 LocalThermalOperatorDevice<dim, fe_degree>::compute_material_property(
     adamantine::StateProperty state_property,
     dealii::types::material_id const material_id, double const *state_ratios,
@@ -319,7 +320,8 @@ LocalThermalOperatorDevice<dim, fe_degree>::compute_material_property(
 }
 
 template <int dim, int fe_degree>
-__device__ double LocalThermalOperatorDevice<dim, fe_degree>::get_inv_rho_cp(
+KOKKOS_FUNCTION double
+LocalThermalOperatorDevice<dim, fe_degree>::get_inv_rho_cp(
     unsigned int pos, double *state_ratios, double temperature) const
 {
   // Here we need the specific heat (including the latent heat contribution)
@@ -359,7 +361,7 @@ __device__ double LocalThermalOperatorDevice<dim, fe_degree>::get_inv_rho_cp(
 }
 
 template <int dim, int fe_degree>
-__device__ void LocalThermalOperatorDevice<dim, fe_degree>::operator()(
+KOKKOS_FUNCTION void LocalThermalOperatorDevice<dim, fe_degree>::operator()(
     unsigned int const cell,
     typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
         *gpu_data,
