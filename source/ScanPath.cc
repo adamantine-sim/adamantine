@@ -70,7 +70,8 @@ void ScanPath::load_segment_scan_path(std::string scan_path_file)
     else
     {
       ASSERT_THROW(false, "Error: Mode type in scan path file line " +
-                              std::to_string(data_index + 4) + " not recognized.");
+                              std::to_string(data_index + 4) +
+                              " not recognized.");
     }
 
     // Set the segment end position

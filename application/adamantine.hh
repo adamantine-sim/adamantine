@@ -14,7 +14,6 @@
 #include <Geometry.hh>
 #include <MaterialProperty.hh>
 #include <MechanicalPhysics.hh>
-#include <MemoryBlock.hh>
 #include <PointCloud.hh>
 #include <PostProcessor.hh>
 #include <RayTracing.hh>
@@ -135,11 +134,8 @@ void output_pvtu(
 #endif
   timers[adamantine::output].start();
   auto state = material_properties.get_state();
-  adamantine::MemoryBlock<double, dealii::MemorySpace::Host> state_host(
-      state.extent(0), state.extent(1));
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
-      state_host_view(state_host);
-  adamantine::deep_copy(state_host_view, state);
+  auto state_host = Kokkos::create_mirror_view_and_copy(
+      dealii::MemorySpace::Host::kokkos_space, state);
   if (thermal_physics)
   {
     dealii::LinearAlgebra::distributed::Vector<double,
@@ -152,14 +148,14 @@ void output_pvtu(
       mechanical_physics->get_affine_constraints().distribute(displacement);
       post_processor.write_output(
           n_time_step, time, temperature_host, displacement,
-          mechanical_physics->get_stress_tensor(), state_host_view,
+          mechanical_physics->get_stress_tensor(), state_host,
           material_properties.get_dofs_map(),
           material_properties.get_dof_handler());
     }
     else
     {
       post_processor.write_thermal_output(
-          n_time_step, time, temperature_host, state_host_view,
+          n_time_step, time, temperature_host, state_host,
           material_properties.get_dofs_map(),
           material_properties.get_dof_handler());
     }
@@ -169,7 +165,7 @@ void output_pvtu(
     mechanical_physics->get_affine_constraints().distribute(displacement);
     post_processor.write_mechanical_output(
         n_time_step, time, displacement,
-        mechanical_physics->get_stress_tensor(), state_host_view,
+        mechanical_physics->get_stress_tensor(), state_host,
         material_properties.get_dofs_map(),
         material_properties.get_dof_handler());
   }
@@ -389,18 +385,8 @@ void refine_and_transfer(
   std::vector<double> dummy_cell_data(n_material_states + direction_data_size +
                                           phase_history_data_size,
                                       std::numeric_limits<double>::infinity());
-  adamantine::MemoryBlockView<double, MemorySpaceType> material_state_view =
-      material_properties.get_state();
-  adamantine::MemoryBlock<double, dealii::MemorySpace::Host>
-      material_state_host(material_state_view.extent(0),
-                          material_state_view.extent(1));
-  typename decltype(material_state_view)::memory_space memspace;
-  adamantine::deep_copy(material_state_host.data(), dealii::MemorySpace::Host{},
-                        material_state_view.data(), memspace,
-                        material_state_view.size());
-
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
-      state_host_view(material_state_host);
+  auto state_host = Kokkos::create_mirror_view_and_copy(
+      Kokkos::HostSpace{}, material_properties.get_state());
   unsigned int cell_id = 0;
   unsigned int activated_cell_id = 0;
   for (auto const &cell : dof_handler.active_cell_iterators())
@@ -410,7 +396,7 @@ void refine_and_transfer(
       std::vector<double> cell_data(n_material_states + direction_data_size +
                                     phase_history_data_size);
       for (unsigned int i = 0; i < n_material_states; ++i)
-        cell_data[i] = state_host_view(i, cell_id);
+        cell_data[i] = state_host(i, cell_id);
       if (cell->active_fe_index() == 0)
       {
         cell_data[n_material_states] =
@@ -508,10 +494,8 @@ void refine_and_transfer(
       std::vector<double>(n_material_states + direction_data_size +
                           phase_history_data_size));
   cell_data_trans.unpack(transferred_data);
-  material_state_view = material_properties.get_state();
-  material_state_host.reinit(material_state_view.extent(0),
-                             material_state_view.extent(1));
-  state_host_view.reinit(material_state_host);
+  auto state = material_properties.get_state();
+  state_host = Kokkos::create_mirror_view(state);
   unsigned int total_cell_id = 0;
   cell_id = 0;
   std::vector<double> transferred_cos;
@@ -523,7 +507,7 @@ void refine_and_transfer(
     {
       for (unsigned int i = 0; i < n_material_states; ++i)
       {
-        state_host_view(i, cell_id) = transferred_data[total_cell_id][i];
+        state_host(i, cell_id) = transferred_data[total_cell_id][i];
       }
       if (cell->active_fe_index() == 0)
       {
@@ -552,9 +536,7 @@ void refine_and_transfer(
   thermal_physics->set_has_melted_vector(has_melted);
 
   // Copy the data back to material_property
-  adamantine::deep_copy(material_state_view.data(), memspace,
-                        material_state_host.data(), dealii::MemorySpace::Host{},
-                        material_state_view.size());
+  Kokkos::deep_copy(state, state_host);
 
   // Update the material states in the ThermalOperator
   thermal_physics->get_state_from_material_properties();
@@ -569,7 +551,7 @@ void refine_and_transfer(
       double material_ratio = 0.;
       for (unsigned int i = 0; i < n_material_states; ++i)
       {
-        material_ratio += state_host_view(i, cell_id);
+        material_ratio += state_host(i, cell_id);
       }
       ASSERT(std::abs(material_ratio - 1.) < 1e-14, "Material is lost.");
       ++cell_id;

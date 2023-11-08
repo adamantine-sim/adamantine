@@ -104,6 +104,8 @@ public:
                  unsigned int q) const;
 
 private:
+  using kokkos_default = dealii::MemorySpace::Default::kokkos_space;
+
   /**
    * MPI communicator.
    */
@@ -121,10 +123,10 @@ private:
    */
   MaterialProperty<dim, MemorySpaceType> &_material_properties;
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
-  MemoryBlock<double, dealii::MemorySpace::Default> _liquid_ratio;
-  MemoryBlock<double, dealii::MemorySpace::Default> _powder_ratio;
-  MemoryBlock<double, dealii::MemorySpace::Default> _material_id;
-  MemoryBlock<double, dealii::MemorySpace::Default> _inv_rho_cp;
+  Kokkos::View<double *, kokkos_default> _liquid_ratio;
+  Kokkos::View<double *, kokkos_default> _powder_ratio;
+  Kokkos::View<double *, kokkos_default> _material_id;
+  Kokkos::View<double *, kokkos_default> _inv_rho_cp;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _deposition_cos;
   dealii::LinearAlgebra::CUDAWrappers::Vector<double> _deposition_sin;
   std::map<typename dealii::DoFHandler<dim>::cell_iterator,

@@ -43,6 +43,8 @@ template <int dim>
 class PostProcessor
 {
 public:
+  using kokkos_host = dealii::MemorySpace::Host::kokkos_space;
+
   /**
    * Constructor takes the DoFHandler of the thermal or the mechanical
    * simulation.
@@ -68,7 +70,7 @@ public:
   void write_thermal_output(
       unsigned int time_step, double time,
       dealii::LA::distributed::Vector<double> const &temperature,
-      MemoryBlockView<double, dealii::MemorySpace::Host> state,
+      Kokkos::View<double **, kokkos_host> state,
       std::unordered_map<dealii::types::global_dof_index, unsigned int> const
           &dofs_map,
       dealii::DoFHandler<dim> const &material_dof_handler);
@@ -81,7 +83,7 @@ public:
       dealii::LA::distributed::Vector<double> const &displacement,
       std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
           &stress_tensor,
-      MemoryBlockView<double, dealii::MemorySpace::Host> state,
+      Kokkos::View<double **, kokkos_host> state,
       std::unordered_map<dealii::types::global_dof_index, unsigned int> const
           &dofs_map,
       dealii::DoFHandler<dim> const &material_dof_handler);
@@ -95,7 +97,7 @@ public:
       dealii::LA::distributed::Vector<double> const &displacement,
       std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
           &stress_tensor,
-      MemoryBlockView<double, dealii::MemorySpace::Host> state,
+      Kokkos::View<double **, kokkos_host> state,
       std::unordered_map<dealii::types::global_dof_index, unsigned int> const
           &dofs_map,
       dealii::DoFHandler<dim> const &material_dof_handler);
@@ -128,11 +130,10 @@ private:
   /**
    * Fill _data_out with material data.
    */
-  void material_dataout(
-      MemoryBlockView<double, dealii::MemorySpace::Host> state,
-      std::unordered_map<dealii::types::global_dof_index, unsigned int> const
-          &dofs_map,
-      dealii::DoFHandler<dim> const &material_dof_handler);
+  void material_dataout(Kokkos::View<double **, kokkos_host> state,
+                        std::unordered_map<dealii::types::global_dof_index,
+                                           unsigned int> const &dofs_map,
+                        dealii::DoFHandler<dim> const &material_dof_handler);
   /**
    * Fill _data_out with subdomain data.
    */

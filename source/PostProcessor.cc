@@ -111,7 +111,7 @@ template <int dim>
 void PostProcessor<dim>::write_thermal_output(
     unsigned int time_step, double time,
     dealii::LA::distributed::Vector<double> const &temperature,
-    MemoryBlockView<double, dealii::MemorySpace::Host> state,
+    Kokkos::View<double **, kokkos_host> state,
     std::unordered_map<dealii::types::global_dof_index, unsigned int> const
         &dofs_map,
     dealii::DoFHandler<dim> const &material_dof_handler)
@@ -130,7 +130,7 @@ void PostProcessor<dim>::write_mechanical_output(
     dealii::LA::distributed::Vector<double> const &displacement,
     std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
         &stress_tensor,
-    MemoryBlockView<double, dealii::MemorySpace::Host> state,
+    Kokkos::View<double **, kokkos_host> state,
     std::unordered_map<dealii::types::global_dof_index, unsigned int> const
         &dofs_map,
     dealii::DoFHandler<dim> const &material_dof_handler)
@@ -152,7 +152,7 @@ void PostProcessor<dim>::write_output(
     dealii::LA::distributed::Vector<double> const &displacement,
     std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
         &stress_tensor,
-    MemoryBlockView<double, dealii::MemorySpace::Host> state,
+    Kokkos::View<double **, kokkos_host> state,
     std::unordered_map<dealii::types::global_dof_index, unsigned int> const
         &dofs_map,
     dealii::DoFHandler<dim> const &material_dof_handler)
@@ -240,7 +240,7 @@ void PostProcessor<dim>::mechanical_dataout(
 
 template <int dim>
 void PostProcessor<dim>::material_dataout(
-    MemoryBlockView<double, dealii::MemorySpace::Host> state,
+    Kokkos::View<double **, kokkos_host> state,
     std::unordered_map<dealii::types::global_dof_index, unsigned int> const
         &dofs_map,
     dealii::DoFHandler<dim> const &material_dof_handler)

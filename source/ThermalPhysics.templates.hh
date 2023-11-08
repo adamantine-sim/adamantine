@@ -666,16 +666,6 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 
   solution.update_ghost_values();
 
-  adamantine::MemoryBlockView<double, MemorySpaceType> material_state_view =
-      _material_properties.get_state();
-  adamantine::MemoryBlock<double, dealii::MemorySpace::Host>
-      material_state_host(material_state_view.extent(0),
-                          material_state_view.extent(1));
-  typename decltype(material_state_view)::memory_space memspace;
-  adamantine::deep_copy(material_state_host.data(), dealii::MemorySpace::Host{},
-                        material_state_view.data(), memspace,
-                        material_state_view.size());
-
   // We need to move the solution on the host because we cannot use
   // CellDataTransfer on the device.
   dealii::IndexSet rw_index_set = solution.locally_owned_elements();
@@ -683,8 +673,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   dealii::LA::ReadWriteVector<double> rw_solution(rw_index_set);
   rw_solution.import(solution, dealii::VectorOperation::insert);
 
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
-      state_host_view(material_state_host);
+  auto state_host = Kokkos::create_mirror_view_and_copy(
+      Kokkos::HostSpace{}, _material_properties.get_state());
   unsigned int cell_id = 0;
   unsigned int active_cell_id = 0;
   std::map<typename dealii::DoFHandler<dim>::active_cell_iterator, int>
@@ -710,7 +700,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 
         for (unsigned int i = 0; i < n_material_states; ++i)
           cell_data[n_dofs_per_cell + direction_data_size +
-                    phase_history_data_size + i] = state_host_view(i, cell_id);
+                    phase_history_data_size + i] = state_host(i, cell_id);
         data_to_transfer.push_back(cell_data);
 
         ++cell_id;
@@ -720,7 +710,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         std::vector<double> cell_data = dummy_cell_data;
         for (unsigned int i = 0; i < n_material_states; ++i)
           cell_data[n_dofs_per_cell + direction_data_size +
-                    phase_history_data_size + i] = state_host_view(i, cell_id);
+                    phase_history_data_size + i] = state_host(i, cell_id);
         data_to_transfer.push_back(cell_data);
       }
     }
@@ -791,10 +781,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   std::vector<std::vector<double>> transferred_data(
       triangulation.n_active_cells(), std::vector<double>(data_size_per_cell));
   cell_data_trans.unpack(transferred_data);
-  material_state_view = _material_properties.get_state();
-  material_state_host.reinit(material_state_view.extent(0),
-                             material_state_view.extent(1));
-  state_host_view.reinit(material_state_host);
+  auto state = _material_properties.get_state();
+  state_host = Kokkos::create_mirror_view(state);
   _deposition_cos.clear();
   _deposition_sin.clear();
   _has_melted.clear();
@@ -827,7 +815,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
       }
       for (unsigned int i = 0; i < n_material_states; ++i)
       {
-        state_host_view(i, cell_id) =
+        state_host(i, cell_id) =
             transferred_data[active_cell_id]
                             [n_dofs_per_cell + direction_data_size +
                              phase_history_data_size + i];
@@ -836,7 +824,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     }
     ++active_cell_id;
   }
-  deep_copy(material_state_view, state_host_view);
+  Kokkos::deep_copy(state, state_host);
   get_state_from_material_properties();
   _thermal_operator->set_material_deposition_orientation(_deposition_cos,
                                                          _deposition_sin);

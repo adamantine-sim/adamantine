@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -8,8 +8,6 @@
 #ifndef MATERIAL_PROPERTY_HH
 #define MATERIAL_PROPERTY_HH
 
-#include <MemoryBlock.hh>
-#include <MemoryBlockView.hh>
 #include <types.hh>
 #include <utils.hh>
 
@@ -39,6 +37,17 @@ template <int dim, typename MemorySpaceType>
 class MaterialProperty
 {
 public:
+  /**
+   * Order of the polynomial used to describe the material properties.
+   */
+  static unsigned int constexpr polynomial_order = 4;
+
+  /**
+   * Size of the table, i.e. number of temperature/property pairs, used to
+   * describe the material properties.
+   */
+  static unsigned int constexpr table_size = 4;
+
   /**
    * Constructor.
    */
@@ -85,24 +94,29 @@ public:
       StateProperty prop) const;
 
   /**
-   * Return a MemoryBlockView of the properties of the material that are
-   * independent of the state of the material.
+   * Return the properties of the material that are independent of the state of
+   * the material.
    */
-  MemoryBlockView<double, MemorySpaceType> get_properties();
+  Kokkos::View<double *[g_n_properties], typename MemorySpaceType::kokkos_space>
+  get_properties();
 
   /**
-   * Return a MemoryBlockView of the properties of the material that are
-   * dependent of the state of the material and which have been set using
-   * tables.
+   * Return the properties of the material that are dependent of the state of
+   * the material and which have been set using tables.
    */
-  MemoryBlockView<double, MemorySpaceType> get_state_property_tables();
+  Kokkos::View<double *[g_n_material_states][g_n_thermal_state_properties]
+                                            [table_size][2],
+               typename MemorySpaceType::kokkos_space>
+  get_state_property_tables();
 
   /**
-   * Return a MemoryBlockView of the properties of the material that are
-   * dependent of the state of the material and which have beese set using
-   * polynomials.
+   * Return the properties of the material that are dependent of the state of
+   * the material and which have beese set using polynomials.
    */
-  MemoryBlockView<double, MemorySpaceType> get_state_property_polynomials();
+  Kokkos::View<double *[g_n_material_states][g_n_thermal_state_properties]
+                                            [polynomial_order + 1],
+               typename MemorySpaceType::kokkos_space>
+  get_state_property_polynomials();
 
   /**
    * Reinitialize the DoFHandler associated with MaterialProperty and resize the
@@ -153,7 +167,8 @@ public:
    * correspond to a cell in the mesh and has a value between 0 and 1. The sum
    * of the states for a given cell is equal to 1.
    */
-  MemoryBlockView<double, MemorySpaceType> get_state() const;
+  Kokkos::View<double **, typename MemorySpaceType::kokkos_space>
+  get_state() const;
 
   /**
    * Get the ratio of a given MaterialState for a given cell. The sum
@@ -184,8 +199,10 @@ public:
    * Set the ratio of the material states from ThermalOperatorDevice.
    */
   void set_state_device(
-      MemoryBlock<double, MemorySpaceType> const &liquid_ratio,
-      MemoryBlock<double, MemorySpaceType> const &powder_ratio,
+      Kokkos::View<double *, typename MemorySpaceType::kokkos_space>
+          liquid_ratio,
+      Kokkos::View<double *, typename MemorySpaceType::kokkos_space>
+          powder_ratio,
       std::map<typename dealii::DoFHandler<dim>::cell_iterator,
                std::vector<unsigned int>> const &_cell_it_to_mf_pos,
       dealii::DoFHandler<dim> const &dof_handler);
@@ -209,21 +226,10 @@ public:
    * Compute a property from a table given the temperature.
    */
   static KOKKOS_FUNCTION double compute_property_from_table(
-      MemoryBlockView<double, MemorySpaceType> const
-          &state_property_tables_view,
+      Kokkos::View<double ****[2], typename MemorySpaceType::kokkos_space>
+          state_property_tables,
       unsigned int const material_id, unsigned int const material_state,
       unsigned int const property, double const temperature);
-
-  /**
-   * Order of the polynomial used to describe the material properties.
-   */
-  static unsigned int constexpr polynomial_order = 4;
-
-  /**
-   * Size of the table, i.e. number of temperature/property pairs, used to
-   * describe the material properties.
-   */
-  static unsigned int constexpr table_size = 4;
 
 private:
   /**
@@ -257,52 +263,57 @@ private:
    */
   bool _use_table;
   /**
-   * MemoryBlock that stores the thermal material properties which have been set
-   * using tables.
+   * Thermal material properties which have been set using tables.
    */
-  MemoryBlock<double, MemorySpaceType> _state_property_tables;
+  Kokkos::View<double *[g_n_material_states][g_n_thermal_state_properties]
+                                            [table_size][2],
+               typename MemorySpaceType::kokkos_space>
+      _state_property_tables;
   /**
-   * MemoryBlock that stores the thermal material properties which have been set
+   * Thermal material properties which have been set
    * using polynomials.
    */
-  MemoryBlock<double, MemorySpaceType> _state_property_polynomials;
+  Kokkos::View<double *[g_n_material_states][g_n_thermal_state_properties]
+                                            [polynomial_order + 1],
+               typename MemorySpaceType::kokkos_space>
+      _state_property_polynomials;
   /**
-   * MemoryBlock that stores the properties of the material that are independent
-   * of the state of the material.
+   * Properties of the material that are independent of the state of the
+   * material.
    */
-  MemoryBlock<double, MemorySpaceType> _properties;
+  Kokkos::View<double *[g_n_properties], typename MemorySpaceType::kokkos_space>
+      _properties;
   /**
-   * MemoryBlockView associated with _properties.
+   * Ratio of each in MaterarialState in each cell.
    */
-  MemoryBlockView<double, MemorySpaceType> _properties_view;
+  Kokkos::View<double **, typename MemorySpaceType::kokkos_space> _state;
   /**
-   * MemoryBlock that stores the ratio of each in MaterarialState in each cell.
+   * Thermal properties of the material that are dependent of the state of the
+   * material.
    */
-  MemoryBlock<double, MemorySpaceType> _state;
+  Kokkos::View<double **, typename MemorySpaceType::kokkos_space>
+      _property_values;
   /**
-   * MemoryBlock that stores the thermal properties of the material that are
-   * dependent of the state of the material.
-   */
-  MemoryBlock<double, MemorySpaceType> _property_values;
-  /**
-   * MemoryBlock that stores the mechanical properties which have been set using
-   * tables.
+   * Mechanical properties which have been set using tables.
    */
   // We cannot put the mechanical properties with the thermal properties because
   // the mechanical properties can only exist on the host while the thermal ones
   // can be on the host or the device.
-  MemoryBlock<double, dealii::MemorySpace::Host>
+  Kokkos::View<double *[g_n_mechanical_state_properties][table_size][2],
+               typename dealii::MemorySpace::Host::kokkos_space>
       _mechanical_properties_tables_host;
   /**
-   * MemoryBlock that stores the mechanical properties which have been set using
-   * polynomials.
+   * Mechanical properties which have been set using polynomials.
    */
-  MemoryBlock<double, dealii::MemorySpace::Host>
+  Kokkos::View<double *[g_n_mechanical_state_properties][polynomial_order + 1],
+               typename dealii::MemorySpace::Host::kokkos_space>
       _mechanical_properties_polynomials_host;
   /**
-   * MemoryBlock that stores the mechanical properties.
+   * Temperature independent mechanical properties.
    */
-  MemoryBlock<double, dealii::MemorySpace::Host> _mechanical_properties_host;
+  Kokkos::View<double *[g_n_mechanical_state_properties],
+               typename dealii::MemorySpace::Host::kokkos_space>
+      _mechanical_properties_host;
   /**
    * Discontinuous piecewise constant finite element.
    */
@@ -321,18 +332,13 @@ template <int dim, typename MemorySpaceType>
 inline double MaterialProperty<dim, MemorySpaceType>::get(
     dealii::types::material_id material_id, Property property) const
 {
-  // This function works only on the host because the MemoryBlockView needs to
-  // be created on the host. Using MemoryBlock directly doesn't work because the
-  // _data ptr is on the host.
-  return _properties_view(material_id, static_cast<unsigned int>(property));
+  return _properties(material_id, static_cast<unsigned int>(property));
 }
 
 template <int dim, typename MemorySpaceType>
-inline MemoryBlockView<double, MemorySpaceType>
-MaterialProperty<dim, MemorySpaceType>::get_properties()
-{
-  return _properties_view;
-}
+inline Kokkos::View<double *[g_n_properties],
+                    typename MemorySpaceType::kokkos_space>
+MaterialProperty<dim, MemorySpaceType>::get_properties() { return _properties; }
 
 template <int dim, typename MemorySpaceType>
 inline bool MaterialProperty<dim, MemorySpaceType>::properties_use_table() const
@@ -341,24 +347,28 @@ inline bool MaterialProperty<dim, MemorySpaceType>::properties_use_table() const
 }
 
 template <int dim, typename MemorySpaceType>
-inline MemoryBlockView<double, MemorySpaceType>
+inline Kokkos::View<double *[g_n_material_states]
+                                [g_n_thermal_state_properties][MaterialProperty<
+                                    dim, MemorySpaceType>::table_size][2],
+                    typename MemorySpaceType::kokkos_space>
 MaterialProperty<dim, MemorySpaceType>::get_state_property_tables()
-{
-  return MemoryBlockView<double, MemorySpaceType>(_state_property_tables);
-}
+{ return _state_property_tables; }
 
 template <int dim, typename MemorySpaceType>
-inline MemoryBlockView<double, MemorySpaceType>
-MaterialProperty<dim, MemorySpaceType>::get_state_property_polynomials()
-{
-  return MemoryBlockView<double, MemorySpaceType>(_state_property_polynomials);
-}
+inline Kokkos::View<
+    double *[g_n_material_states]
+                [g_n_thermal_state_properties]
+                [MaterialProperty<dim, MemorySpaceType>::polynomial_order + 1],
+    typename MemorySpaceType::kokkos_space> MaterialProperty<dim,
+                                                             MemorySpaceType>::
+    get_state_property_polynomials() { return _state_property_polynomials; }
 
 template <int dim, typename MemorySpaceType>
-inline MemoryBlockView<double, MemorySpaceType>
-MaterialProperty<dim, MemorySpaceType>::get_state() const
+inline Kokkos::
+    View<double **, typename MemorySpaceType::kokkos_space> MaterialProperty<
+        dim, MemorySpaceType>::get_state() const
 {
-  return MemoryBlockView<double, MemorySpaceType>(_state);
+  return _state;
 }
 
 template <int dim, typename MemorySpaceType>
