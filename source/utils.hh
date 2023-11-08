@@ -8,8 +8,6 @@
 #ifndef UTILS_HH
 #define UTILS_HH
 
-#include <deal.II/base/cuda.h>
-#include <deal.II/base/cuda_size.h>
 #include <deal.II/base/exceptions.h>
 
 #include <cassert>
@@ -17,41 +15,12 @@
 #include <exception>
 #include <filesystem>
 #include <iostream>
-#include <numeric>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
 namespace adamantine
 {
-template <typename Functor>
-void for_each(dealii::MemorySpace::Host, unsigned int const size, Functor f)
-{
-  for (unsigned int i = 0; i < size; ++i)
-    f(i);
-}
-
-#ifdef __CUDACC__
-template <typename Functor>
-__global__ void for_each_impl(int size, Functor f)
-{
-  int i = blockDim.x * blockIdx.x + threadIdx.x;
-  if (i < size)
-  {
-    f(i);
-  }
-}
-
-template <typename Functor>
-void for_each(dealii::MemorySpace::Default, unsigned int const size,
-              Functor const &f)
-{
-  const int n_blocks = 1 + size / dealii::CUDAWrappers::block_size;
-  for_each_impl<<<n_blocks, dealii::CUDAWrappers::block_size>>>(size, f);
-  AssertCudaKernel();
-}
-#endif
-
 /**
  * Wait for the file to appear.
  */

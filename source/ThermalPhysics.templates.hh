@@ -840,14 +840,18 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   // cells are at the same level than their neighbors.
   rw_solution.reinit(solution.locally_owned_elements());
   rw_solution.import(solution, dealii::VectorOperation::insert);
-  std::for_each(rw_solution.begin(), rw_solution.end(),
-                [&](double &val)
-                {
-                  if (val == std::numeric_limits<double>::infinity())
-                  {
-                    val = new_material_temperature;
-                  }
-                });
+  Kokkos::parallel_for("adamantine::set_new_material_temperature",
+                       Kokkos::RangePolicy<Kokkos::DefaultHostExecutionSpace>(
+                           0, rw_solution.locally_owned_size()),
+                       [&](int i)
+                       {
+                         if (rw_solution.local_element(i) ==
+                             std::numeric_limits<double>::infinity())
+                         {
+                           rw_solution.local_element(i) =
+                               new_material_temperature;
+                         }
+                       });
   solution.import(rw_solution, dealii::VectorOperation::insert);
 }
 

@@ -221,13 +221,14 @@ void MaterialProperty<dim, MemorySpaceType>::reinit_dofs()
 #ifdef ADAMANTINE_DEBUG
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
   {
-    for_each(MemorySpaceType{}, g_n_material_states,
-             [=](int i) mutable
-             {
-               for (unsigned int j = 0; j < _dofs_map.size(); ++j)
-                 _state(i, j) = std::numeric_limits<double>::signaling_NaN();
-               ;
-             });
+    Kokkos::parallel_for(
+        "adamantine::set_state_nan",
+        Kokkos::MDRangePolicy<Kokkos::DefaultHostExecutionSpace,
+                              Kokkos::Rank<2>>(
+            {0, 0}, {g_n_material_states, _dofs_map.size()}),
+        KOKKOS_LAMBDA(int i, int j) {
+          _state(i, j) = std::numeric_limits<double>::signaling_NaN();
+        });
   }
 #endif
 }
@@ -270,8 +271,13 @@ void MaterialProperty<dim, MemorySpaceType>::update(
   double *temperature_average_local = temperature_average.get_values();
 
   bool use_table = _use_table;
-  for_each(
-      MemorySpaceType{}, material_ids_size, KOKKOS_LAMBDA(int i) {
+  using ExecutionSpace = std::conditional_t<
+      std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
+      Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
+  Kokkos::parallel_for(
+      "adamantine::update_material_properties",
+      Kokkos::RangePolicy<ExecutionSpace>(0, material_ids_size),
+      KOKKOS_LAMBDA(int i) {
         unsigned int constexpr liquid =
             static_cast<unsigned int>(MaterialState::liquid);
         unsigned int constexpr powder =
@@ -658,8 +664,13 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
   auto const powder_state = static_cast<unsigned int>(MaterialState::powder);
   auto const liquid_state = static_cast<unsigned int>(MaterialState::liquid);
   auto const solid_state = static_cast<unsigned int>(MaterialState::solid);
-  for_each(
-      MemorySpaceType{}, cell_i, KOKKOS_LAMBDA(int i) mutable {
+  using ExecutionSpace = std::conditional_t<
+      std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
+      Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
+  Kokkos::parallel_for(
+      "adamantine::set_state_device",
+      Kokkos::RangePolicy<ExecutionSpace>(0, cell_i),
+      KOKKOS_LAMBDA(int i) mutable {
         double liquid_ratio_sum = 0.;
         double powder_ratio_sum = 0.;
         for (unsigned int q = 0; q < n_q_points; ++q)
@@ -706,10 +717,13 @@ void MaterialProperty<dim, MemorySpaceType>::set_initial_state()
       Kokkos::create_mirror_view_and_copy(memory_space, user_indices_host);
 
   Kokkos::deep_copy(_state, 0.);
-  for_each(
-      MemorySpaceType{}, user_indices.extent(0), KOKKOS_LAMBDA(int i) mutable {
-        _state(user_indices(i), mp_dofs(i)) = 1.;
-      });
+  using ExecutionSpace = std::conditional_t<
+      std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
+      Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
+  Kokkos::parallel_for(
+      "adamantine::set_initial_state",
+      Kokkos::RangePolicy<ExecutionSpace>(0, user_indices.extent(0)),
+      KOKKOS_LAMBDA(int i) { _state(user_indices(i), mp_dofs(i)) = 1.; });
 }
 
 template <int dim, typename MemorySpaceType>
