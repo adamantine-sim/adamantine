@@ -1,5 +1,5 @@
 #### deal.II #################################################################
-find_package(deal.II 9.4 REQUIRED PATHS ${DEAL_II_DIR})
+find_package(deal.II 9.5 REQUIRED PATHS ${DEAL_II_DIR})
 
 # If deal.II was configured in DebugRelease mode, then if adamantine was configured
 # in Debug mode, we link against the Debug version of deal.II. If adamantine was
