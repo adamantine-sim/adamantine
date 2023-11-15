@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -9,3 +9,4 @@
 #include <instantiation.hh>
 
 INSTANTIATE_DIM_HOST(MaterialProperty)
+INSTANTIATE_DIM_DEVICE(MaterialProperty)

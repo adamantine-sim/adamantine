@@ -111,4 +111,4 @@ discretization
   }
 }
 
-memory_space device ; If compiled with CUDA support, run on the device
+memory_space device ; If Kokkos was compiled with GPU support, run on the device

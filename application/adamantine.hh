@@ -108,7 +108,6 @@ void output_pvtu(
   timers[adamantine::output].stop();
 }
 
-#ifdef ADAMANTINE_HAVE_CUDA
 template <int dim, typename MemorySpaceType,
           std::enable_if_t<std::is_same<MemorySpaceType,
                                         dealii::MemorySpace::Default>::value,
@@ -135,7 +134,7 @@ void output_pvtu(
   timers[adamantine::output].start();
   auto state = material_properties.get_state();
   auto state_host = Kokkos::create_mirror_view_and_copy(
-      dealii::MemorySpace::Host::kokkos_space, state);
+      dealii::MemorySpace::Host::kokkos_space{}, state);
   if (thermal_physics)
   {
     dealii::LinearAlgebra::distributed::Vector<double,
@@ -171,7 +170,6 @@ void output_pvtu(
   }
   timers[adamantine::output].stop();
 }
-#endif
 
 template <int dim, typename MemorySpaceType,
           std::enable_if_t<
@@ -194,7 +192,6 @@ dealii::Vector<float> estimate_error(
   return estimated_error_per_cell;
 }
 
-#ifdef ADAMANTINE_HAVE_CUDA
 template <int dim, typename MemorySpaceType,
           std::enable_if_t<std::is_same<MemorySpaceType,
                                         dealii::MemorySpace::Default>::value,
@@ -218,7 +215,6 @@ dealii::Vector<float> estimate_error(
 
   return estimated_error_per_cell;
 }
-#endif
 
 // inlining this function so we can have in the header
 inline void initialize_timers(MPI_Comm const &communicator,

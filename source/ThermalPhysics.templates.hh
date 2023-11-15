@@ -8,20 +8,16 @@
 #ifndef THERMAL_PHYSICS_TEMPLATES_HH
 #define THERMAL_PHYSICS_TEMPLATES_HH
 
-#include <ThermalOperator.hh>
-
-#include <deal.II/base/index_set.h>
-#include <deal.II/lac/read_write_vector.h>
-#if defined(ADAMANTINE_HAVE_CUDA) && defined(__CUDACC__)
-#include <ThermalOperatorDevice.hh>
-#endif
 #include <CubeHeatSource.hh>
 #include <ElectronBeamHeatSource.hh>
 #include <GoldakHeatSource.hh>
+#include <ThermalOperator.hh>
+#include <ThermalOperatorDevice.hh>
 #include <ThermalPhysics.hh>
 #include <Timer.hh>
 
 #include <deal.II/base/geometry_info.h>
+#include <deal.II/base/index_set.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
 #include <deal.II/dofs/dof_tools.h>
@@ -31,6 +27,7 @@
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/hp/q_collection.h>
 #include <deal.II/lac/precondition.h>
+#include <deal.II/lac/read_write_vector.h>
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/vector_operation.h>
 
@@ -86,7 +83,6 @@ void init_dof_vector(
     vector.local_element(i) = value;
 }
 
-#if defined(ADAMANTINE_HAVE_CUDA) && defined(__CUDACC__)
 template <int dim, int fe_degree, typename MemorySpaceType,
           std::enable_if_t<std::is_same<MemorySpaceType,
                                         dealii::MemorySpace::Default>::value,
@@ -260,7 +256,6 @@ void init_dof_vector(
 
   vector.import(vector_host, dealii::VectorOperation::insert);
 }
-#endif
 } // namespace
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -359,12 +354,10 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     _thermal_operator =
         std::make_shared<ThermalOperator<dim, fe_degree, MemorySpaceType>>(
             communicator, _boundary_type, _material_properties, _heat_sources);
-#if defined(ADAMANTINE_HAVE_CUDA) && defined(__CUDACC__)
   else
     _thermal_operator = std::make_shared<
         ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>>(
         communicator, _boundary_type, _material_properties);
-#endif
 
   // Create the time stepping scheme
   boost::property_tree::ptree const &time_stepping_database =

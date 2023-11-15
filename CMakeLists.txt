@@ -15,10 +15,6 @@ project(adamantine LANGUAGES CXX VERSION 0.1.0)
 include(SetupTPLs)
 include(SetupAdamantine)
 
-if (ADAMANTINE_ENABLE_CUDA)
-  enable_language(CUDA)
-endif()
-
 add_subdirectory(application)
 add_subdirectory(source)
 

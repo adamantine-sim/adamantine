@@ -41,4 +41,3 @@ BOOST_AUTO_TEST_CASE(integration_3D_device, *utf::tolerance(0.1))
     BOOST_TEST(temperature.local_element(i) == gold_value);
   }
 }
-

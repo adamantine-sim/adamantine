@@ -33,6 +33,4 @@ dealii::Tensor<1, dim, double> GravityForce<dim, MemorySpaceType>::eval(
 } // namespace adamantine
 
 INSTANTIATE_DIM_HOST(GravityForce)
-#ifdef ADAMANTINE_HAVE_CUDA
 INSTANTIATE_DIM_DEVICE(GravityForce)
-#endif

@@ -13,15 +13,17 @@ list(APPEND
      test_implicit_operator
      test_integration_thermoelastic
      test_material_property
+     test_material_property_device
      test_mechanical_operator
      test_mechanical_physics
      test_newton_solver
      test_post_processor
      test_scan_path
      test_thermal_operator
+     test_thermal_operator_device
+     test_thermal_physics_device
      test_timer
      test_utils
-     test_integration_3d_amr
      test_validate_input_database
      )
 
@@ -30,24 +32,17 @@ list(APPEND
      MPI_UNIT_TESTS
      test_experimental_data
      test_integration_2d
+     test_integration_2d_device
      test_integration_3d
+     test_integration_3d_device
+     test_integration_3d_amr
+     test_integration_3d_amr_device
      test_integration_da
      test_integration_da_augmented
      test_material_deposition
      test_thermal_physics
      test_ensemble_management
     )
-
-set(CUDA_UNIT_TESTS "")
-list(APPEND
-     CUDA_UNIT_TESTS
-     test_integration_2d_device
-     test_integration_3d_device
-     test_integration_3d_amr_device
-     test_material_property_device
-     test_thermal_operator_device
-     test_thermal_physics_device
-     )
 
 foreach(TEST_NAME ${UNIT_TESTS})
   adamantine_ADD_BOOST_TEST(${TEST_NAME})
@@ -56,12 +51,6 @@ endforeach()
 foreach(TEST_NAME ${MPI_UNIT_TESTS})
   adamantine_ADD_BOOST_TEST(${TEST_NAME} 1 2)
 endforeach()
-
-if (ADAMANTINE_ENABLE_CUDA)
-  foreach(TEST_NAME ${CUDA_UNIT_TESTS})
-    adamantine_ADD_BOOST_CUDA_TEST(${TEST_NAME})
-  endforeach()
-endif()
 
 
 adamantine_COPY_INPUT_FILE(demo_316_short.info tests/data)

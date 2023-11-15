@@ -21,6 +21,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ScanPath.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorBase.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDevice.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysicsInterface.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.templates.hh
@@ -49,6 +50,7 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/RayTracing.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ScanPath.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDevice.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ensemble_management.cc
@@ -56,19 +58,6 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/material_deposition.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/validate_input_database.cc
   )
-
-if (ADAMANTINE_ENABLE_CUDA)
-  set(Adamantine_HEADERS
-      ${Adamantine_HEADERS}
-      ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDevice.hh
-      )
-  set(Adamantine_SOURCES
-      ${Adamantine_SOURCES}
-      ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.cu
-      ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDevice.cu
-      ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.cu
-      )
-endif()
 
 # Because the Adamantine library is just used to simplify testing, we make it
 # static. Thus, once the application is created it can be moved around. The
@@ -82,15 +71,6 @@ set_target_properties(Adamantine PROPERTIES
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
 )
-
-if (ADAMANTINE_ENABLE_CUDA)
-set_target_properties(Adamantine PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
-    CUDA_STANDARD 17
-    CUDA_STANDARD_REQUIRED ON
-)
-target_compile_definitions(Adamantine PRIVATE ADAMANTINE_HAVE_CUDA)
-endif()
 
 target_link_libraries(Adamantine Boost::boost)
 target_link_libraries(Adamantine Boost::chrono)

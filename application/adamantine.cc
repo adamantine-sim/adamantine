@@ -7,7 +7,6 @@
 
 #include "adamantine.hh"
 
-#include "utils.hh"
 #include <validate_input_database.hh>
 
 #ifdef ADAMANTINE_WITH_ADIAK
@@ -39,7 +38,6 @@ int main(int argc, char *argv[])
   adiak::cmdline();
   adiak::clustername();
   adiak::jobsize();
-  adiak::value("MemorySpace", "Host");
 #endif
 
   std::vector<adamantine::Timer> timers;
@@ -123,20 +121,49 @@ int main(int argc, char *argv[])
 
     unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
+    // PropertyTreeInput memory_space
+    std::string memory_space =
+        database.get<std::string>("memory_space", "host");
+
+#ifdef ADAMANTINE_WITH_ADIAK
+    if (memory_space == "device")
+      adiak::value("MemorySpace", "Device");
+    else
+      adiak::value("MemorySpace", "Host");
+#endif
+
     if (dim == 2)
     {
       if (ensemble_calc)
       {
         if (rank == 0)
           std::cout << "Starting ensemble simulation" << std::endl;
-        run_ensemble<2, dealii::MemorySpace::Host>(communicator, database,
-                                                   timers);
+        if (memory_space == "device")
+        {
+          // TODO: Add device version of run_ensemble and call it here
+          adamantine::ASSERT_THROW(
+              false, "Error: Device version of ensemble simulations not "
+                     "yet implemented.");
+        }
+        else
+        {
+          run_ensemble<2, dealii::MemorySpace::Host>(communicator, database,
+                                                     timers);
+        }
       }
       else
       {
         if (rank == 0)
           std::cout << "Starting non-ensemble simulation" << std::endl;
-        run<2, dealii::MemorySpace::Host>(communicator, database, timers);
+
+        if (memory_space == "device")
+        {
+          run<2, dealii::MemorySpace::Default>(communicator, database, timers);
+        }
+        else
+        {
+          run<2, dealii::MemorySpace::Host>(communicator, database, timers);
+        }
       }
     }
     else
@@ -145,14 +172,33 @@ int main(int argc, char *argv[])
       {
         if (rank == 0)
           std::cout << "Starting ensemble simulation" << std::endl;
-        run_ensemble<3, dealii::MemorySpace::Host>(communicator, database,
-                                                   timers);
+
+        if (memory_space == "device")
+        {
+          // TODO: Add device version of run_ensemble and call it here
+          adamantine::ASSERT_THROW(
+              false, "Error: Device version of ensemble simulations not "
+                     "yet implemented.");
+        }
+        else
+        {
+          run_ensemble<3, dealii::MemorySpace::Host>(communicator, database,
+                                                     timers);
+        }
       }
       else
       {
         if (rank == 0)
           std::cout << "Starting non-ensemble simulation" << std::endl;
-        run<3, dealii::MemorySpace::Host>(communicator, database, timers);
+
+        if (memory_space == "device")
+        {
+          run<3, dealii::MemorySpace::Default>(communicator, database, timers);
+        }
+        else
+        {
+          run<3, dealii::MemorySpace::Host>(communicator, database, timers);
+        }
       }
     }
 

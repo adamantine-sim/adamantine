@@ -9,7 +9,6 @@
 
 #include <deal.II/base/aligned_vector.h>
 #include <deal.II/base/array_view.h>
-#include <deal.II/base/cuda.h>
 #include <deal.II/base/point.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/types.h>
@@ -86,7 +85,6 @@ double get_value(ViewType &view, unsigned int i, unsigned int j)
   return view(i, j);
 }
 
-#ifdef __CUDACC__
 template <int dim>
 void compute_average(
     unsigned int const n_q_points, unsigned int const dofs_per_cell,
@@ -124,7 +122,6 @@ double get_value(ViewType &view, unsigned int i, unsigned int j)
 
   return view_host(i, j);
 }
-#endif
 } // namespace internal
 
 template <int dim, typename MemorySpaceType>
@@ -225,7 +222,8 @@ void MaterialProperty<dim, MemorySpaceType>::reinit_dofs()
         "adamantine::set_state_nan",
         Kokkos::MDRangePolicy<Kokkos::DefaultHostExecutionSpace,
                               Kokkos::Rank<2>>(
-            {0, 0}, {g_n_material_states, _dofs_map.size()}),
+            {{0, 0}},
+            {{g_n_material_states, static_cast<int>(_dofs_map.size())}}),
         KOKKOS_LAMBDA(int i, int j) {
           _state(i, j) = std::numeric_limits<double>::signaling_NaN();
         });
@@ -614,7 +612,6 @@ void MaterialProperty<dim, MemorySpaceType>::set_state(
   }
 }
 
-#ifdef __CUDACC__
 template <int dim, typename MemorySpaceType>
 void MaterialProperty<dim, MemorySpaceType>::set_state_device(
     Kokkos::View<double *, typename MemorySpaceType::kokkos_space> liquid_ratio,
@@ -624,12 +621,15 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
     dealii::DoFHandler<dim> const &dof_handler)
 {
   // Create a mapping between the matrix free dofs and material property dofs
-  std::vector<dealii::types::global_dof_index> mp_dof(1.);
   unsigned int const n_q_points = dof_handler.get_fe().tensor_degree() + 1;
-  Kokkos::View<unsigned int *, dealii::MemorySpace::Host::kokkos_space>
-      mapping_host("mapping_host", n_q_points);
-  Kokkos::View<double *, dealii::MemorySpace::Host::kokkos_space> mp_dof_host(
-      "mp_dof_host", _state.extent(1));
+  Kokkos::View<unsigned int **, dealii::MemorySpace::Default::kokkos_space>
+      mapping(Kokkos::view_alloc("mapping", Kokkos::WithoutInitializing),
+              _state.extent(1), n_q_points);
+  auto mapping_host =
+      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, mapping);
+  Kokkos::View<dealii::types::global_dof_index *,
+               dealii::MemorySpace::Host::kokkos_space>
+      mp_dof_host("mp_dof_host", _state.extent(1));
   // We only loop over the part of the domain which has material, i.e., not over
   // FE_Nothing cell. This is because _cell_it_to_mf_pos does not exist for
   // FE_Nothing cells. However, we have set the state of the material on the
@@ -651,14 +651,12 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
     ++cell_i;
   }
 
-  Kokkos::View<unsigned int *, dealii::MemorySpace::Default::kokkos_space>
-      mapping(Kokkos::view_alloc("mapping", Kokkos::WithoutInitializing),
-              mapping_host.extent(0));
   Kokkos::deep_copy(mapping, mapping_host);
 
-  Kokkos::View<double *, dealii::MemorySpace::Default> mp_dof(
-      Kokkos::view_alloc("mp_dof", Kokkos::WithoutInitializing),
-      mp_dof_host.extent(0));
+  Kokkos::View<dealii::types::global_dof_index *,
+               dealii::MemorySpace::Default::kokkos_space>
+      mp_dof(Kokkos::view_alloc("mp_dof", Kokkos::WithoutInitializing),
+             mp_dof_host.extent(0));
   Kokkos::deep_copy(mp_dof, mp_dof_host);
 
   auto const powder_state = static_cast<unsigned int>(MaterialState::powder);
@@ -669,14 +667,13 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
       Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
   Kokkos::parallel_for(
       "adamantine::set_state_device",
-      Kokkos::RangePolicy<ExecutionSpace>(0, cell_i),
-      KOKKOS_LAMBDA(int i) mutable {
+      Kokkos::RangePolicy<ExecutionSpace>(0, cell_i), KOKKOS_LAMBDA(int i) {
         double liquid_ratio_sum = 0.;
         double powder_ratio_sum = 0.;
         for (unsigned int q = 0; q < n_q_points; ++q)
         {
-          liquid_ratio_sum += liquid_ratio(mapping_view(i, q));
-          powder_ratio_sum += powder_ratio(mapping_view(i, q));
+          liquid_ratio_sum += liquid_ratio(mapping(i, q));
+          powder_ratio_sum += powder_ratio(mapping(i, q));
         }
         _state(liquid_state, mp_dof(i)) = liquid_ratio_sum / n_q_points;
         _state(powder_state, mp_dof(i)) = powder_ratio_sum / n_q_points;
@@ -686,7 +683,6 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
                      0.);
       });
 }
-#endif
 
 template <int dim, typename MemorySpaceType>
 void MaterialProperty<dim, MemorySpaceType>::set_initial_state()
