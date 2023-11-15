@@ -8,8 +8,9 @@ Installing `adamantine` requires:
 * A compiler that support C++17
 * CMake: 3.15 or later
 * Boost: 1.70.0 or later
-* ArborX: 1.2 or later
-* deal.II: 9.4 or later
+* ArborX: 1.4.1 or later
+* Trilinos: 14.4.0 or later
+* deal.II: 9.5 or later
 
 You need to compile deal.II with MPI, P4EST, and ArborX. If you want to use Exodus file, you also need Trilinos with SEACAS support.
 `adamantine` also optionally supports profiling through [Caliper](https://github.com/llnl/Caliper).
@@ -125,7 +126,7 @@ The following options are available:
   * material\_X.A: A is either solidus in kelvin, liquidus in kelvin, latent\_heat
   in J/kg, radiation\_temperature\_infty in kelvin, or convection\_temperature\_infty
   in kelvin (optional)
-* memory\_space (optional): device (use GPU) or host (use CPU) (default value: host)
+* memory\_space (optional): device (use GPU if Kokkos compiled with GPU support) or host (use CPU) (default value: host)
 * post\_processor (required):
   * filename\_prefix: prefix of output files (required)
   * time\_steps\_between\_output: number of time steps between the
