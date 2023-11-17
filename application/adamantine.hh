@@ -82,15 +82,17 @@ void output_pvtu(
     if (mechanical_physics)
     {
       mechanical_physics->get_affine_constraints().distribute(displacement);
-      post_processor.write_output(n_time_step, time, temperature, displacement,
-                                  mechanical_physics->get_stress_tensor(),
-                                  material_properties.get_state(),
-                                  material_properties.get_dofs_map(),
-                                  material_properties.get_dof_handler());
+      post_processor.template write_output<typename Kokkos::View<
+          double **, typename MemorySpaceType::kokkos_space>::array_layout>(
+          n_time_step, time, temperature, displacement,
+          mechanical_physics->get_stress_tensor(),
+          material_properties.get_state(), material_properties.get_dofs_map(),
+          material_properties.get_dof_handler());
     }
     else
     {
-      post_processor.write_thermal_output(
+      post_processor.template write_thermal_output<typename Kokkos::View<
+          double **, typename MemorySpaceType::kokkos_space>::array_layout>(
           n_time_step, time, temperature, material_properties.get_state(),
           material_properties.get_dofs_map(),
           material_properties.get_dof_handler());
@@ -99,7 +101,8 @@ void output_pvtu(
   else
   {
     mechanical_physics->get_affine_constraints().distribute(displacement);
-    post_processor.write_mechanical_output(
+    post_processor.template write_mechanical_output<typename Kokkos::View<
+        double **, typename MemorySpaceType::kokkos_space>::array_layout>(
         n_time_step, time, displacement,
         mechanical_physics->get_stress_tensor(),
         material_properties.get_state(), material_properties.get_dofs_map(),
@@ -145,7 +148,8 @@ void output_pvtu(
     if (mechanical_physics)
     {
       mechanical_physics->get_affine_constraints().distribute(displacement);
-      post_processor.write_output(
+      post_processor.template write_output<typename Kokkos::View<
+          double **, typename MemorySpaceType::kokkos_space>::array_layout>(
           n_time_step, time, temperature_host, displacement,
           mechanical_physics->get_stress_tensor(), state_host,
           material_properties.get_dofs_map(),
@@ -153,7 +157,8 @@ void output_pvtu(
     }
     else
     {
-      post_processor.write_thermal_output(
+      post_processor.template write_thermal_output<typename Kokkos::View<
+          double **, typename MemorySpaceType::kokkos_space>::array_layout>(
           n_time_step, time, temperature_host, state_host,
           material_properties.get_dofs_map(),
           material_properties.get_dof_handler());
@@ -162,7 +167,8 @@ void output_pvtu(
   else
   {
     mechanical_physics->get_affine_constraints().distribute(displacement);
-    post_processor.write_mechanical_output(
+    post_processor.template write_mechanical_output<typename Kokkos::View<
+        double **, typename MemorySpaceType::kokkos_space>::array_layout>(
         n_time_step, time, displacement,
         mechanical_physics->get_stress_tensor(), state_host,
         material_properties.get_dofs_map(),
@@ -1861,11 +1867,14 @@ run_ensemble(MPI_Comm const &global_communicator,
 
           thermal_physics_ensemble[0]->get_affine_constraints().distribute(
               temperature_expt);
-          post_processor_expt.write_thermal_output(
-              n_time_step, time, temperature_expt,
-              material_properties_ensemble[0]->get_state(),
-              material_properties_ensemble[0]->get_dofs_map(),
-              material_properties_ensemble[0]->get_dof_handler());
+          post_processor_expt
+              .template write_thermal_output<typename Kokkos::View<
+                  double **,
+                  typename MemorySpaceType::kokkos_space>::array_layout>(
+                  n_time_step, time, temperature_expt,
+                  material_properties_ensemble[0]->get_state(),
+                  material_properties_ensemble[0]->get_dofs_map(),
+                  material_properties_ensemble[0]->get_dof_handler());
         }
 
         // NOTE: As is, this updates the dof mapping and covariance sparsity

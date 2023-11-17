@@ -6,11 +6,12 @@
  */
 
 #ifndef THERMAL_OPERATOR_DEVICE_HH
-#define THERMAL_OPERATOR_DEVIcE_HH
+#define THERMAL_OPERATOR_DEVICE_HH
 
 #include <MaterialProperty.hh>
 #include <ThermalOperatorBase.hh>
 
+#include <deal.II/base/types.h>
 #include <deal.II/matrix_free/cuda_matrix_free.h>
 
 namespace adamantine
@@ -124,7 +125,7 @@ private:
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
   Kokkos::View<double *, kokkos_default> _liquid_ratio;
   Kokkos::View<double *, kokkos_default> _powder_ratio;
-  Kokkos::View<double *, kokkos_default> _material_id;
+  Kokkos::View<dealii::types::material_id *, kokkos_default> _material_id;
   Kokkos::View<double *, kokkos_default> _inv_rho_cp;
   Kokkos::View<double *, kokkos_default> _deposition_cos;
   Kokkos::View<double *, kokkos_default> _deposition_sin;

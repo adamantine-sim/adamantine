@@ -145,6 +145,17 @@ MaterialProperty<dim, MemorySpaceType>::MaterialProperty(
 }
 
 template <int dim, typename MemorySpaceType>
+MaterialProperty<dim, MemorySpaceType>::MaterialProperty(
+    MaterialProperty<dim, MemorySpaceType> const &other)
+    : _use_table(other._use_table),
+      _state_property_tables(other._state_property_tables),
+      _state_property_polynomials(other._state_property_polynomials),
+      _properties(other._properties), _state(other._state),
+      _property_values(other._property_values), _fe(0)
+{
+}
+
+template <int dim, typename MemorySpaceType>
 double MaterialProperty<dim, MemorySpaceType>::get_cell_value(
     typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
     StateProperty prop) const
@@ -268,14 +279,13 @@ void MaterialProperty<dim, MemorySpaceType>::update(
 
   double *temperature_average_local = temperature_average.get_values();
 
-  bool use_table = _use_table;
   using ExecutionSpace = std::conditional_t<
       std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
       Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
   Kokkos::parallel_for(
       "adamantine::update_material_properties",
       Kokkos::RangePolicy<ExecutionSpace>(0, material_ids_size),
-      KOKKOS_LAMBDA(int i) {
+      KOKKOS_CLASS_LAMBDA(int i) {
         unsigned int constexpr liquid =
             static_cast<unsigned int>(MaterialState::liquid);
         unsigned int constexpr powder =
@@ -316,7 +326,7 @@ void MaterialProperty<dim, MemorySpaceType>::update(
         _state(powder, dof) = powder_ratio;
         _state(solid, dof) = solid_ratio;
 
-        if (use_table)
+        if (_use_table)
         {
           for (unsigned int property = 0;
                property < g_n_thermal_state_properties; ++property)
@@ -667,7 +677,8 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
       Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
   Kokkos::parallel_for(
       "adamantine::set_state_device",
-      Kokkos::RangePolicy<ExecutionSpace>(0, cell_i), KOKKOS_LAMBDA(int i) {
+      Kokkos::RangePolicy<ExecutionSpace>(0, cell_i),
+      KOKKOS_CLASS_LAMBDA(int i) {
         double liquid_ratio_sum = 0.;
         double powder_ratio_sum = 0.;
         for (unsigned int q = 0; q < n_q_points; ++q)
@@ -719,7 +730,7 @@ void MaterialProperty<dim, MemorySpaceType>::set_initial_state()
   Kokkos::parallel_for(
       "adamantine::set_initial_state",
       Kokkos::RangePolicy<ExecutionSpace>(0, user_indices.extent(0)),
-      KOKKOS_LAMBDA(int i) { _state(user_indices(i), mp_dofs(i)) = 1.; });
+      KOKKOS_CLASS_LAMBDA(int i) { _state(user_indices(i), mp_dofs(i)) = 1.; });
 }
 
 template <int dim, typename MemorySpaceType>

@@ -36,7 +36,7 @@ class MaterialProperty;
  * Gravity's body force.
  */
 template <int dim, typename MemorySpaceType>
-class GravityForce : public BodyForce<dim>
+class GravityForce final : public BodyForce<dim>
 {
 public:
   GravityForce(MaterialProperty<dim, MemorySpaceType> &material_properties);

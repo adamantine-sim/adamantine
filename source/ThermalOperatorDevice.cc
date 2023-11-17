@@ -5,12 +5,13 @@
  * for the text and further information on this license.
  */
 
-#include "MaterialProperty.hh"
+#include <MaterialProperty.templates.hh>
 #include <ThermalOperatorDevice.hh>
 #include <instantiation.hh>
 #include <types.hh>
 
 #include <deal.II/base/config.h>
+#include <deal.II/base/types.h>
 #include <deal.II/fe/fe_update_flags.h>
 #include <deal.II/matrix_free/cuda_fe_evaluation.h>
 #include <deal.II/matrix_free/cuda_matrix_free.h>
@@ -76,7 +77,7 @@ public:
       Kokkos::View<double *, kokkos_default> sin,
       Kokkos::View<double *, kokkos_default> powder_ratio,
       Kokkos::View<double *, kokkos_default> liquid_ratio,
-      Kokkos::View<double *, kokkos_default> material_id,
+      Kokkos::View<dealii::types::material_id *, kokkos_default> material_id,
       Kokkos::View<double *, kokkos_default> inv_rho_cp,
       Kokkos::View<double **, kokkos_default> properties,
       Kokkos::View<double *****, kokkos_default> state_property_tables,
@@ -119,7 +120,7 @@ private:
   Kokkos::View<double *, kokkos_default> _sin;
   Kokkos::View<double *, kokkos_default> _powder_ratio;
   Kokkos::View<double *, kokkos_default> _liquid_ratio;
-  Kokkos::View<double *, kokkos_default> _material_id;
+  Kokkos::View<dealii::types::material_id *, kokkos_default> _material_id;
   Kokkos::View<double *, kokkos_default> _inv_rho_cp;
   Kokkos::View<double **, kokkos_default> _properties;
   Kokkos::View<double *****, kokkos_default> _state_property_tables;
@@ -138,7 +139,7 @@ KOKKOS_FUNCTION void ThermalOperatorQuad<dim, fe_degree>::update_state_ratios(
       static_cast<unsigned int>(adamantine::MaterialState::solid);
 
   // Get the material id at this point
-  int material_id = _material_id[pos];
+  auto material_id = _material_id[pos];
 
   // Get the material thermodynamic properties
   double const solidus = _properties(
@@ -180,7 +181,7 @@ KOKKOS_FUNCTION void ThermalOperatorQuad<dim, fe_degree>::get_inv_rho_cp(
   // Here we need the specific heat (including the latent heat contribution)
   // and the density
 
-  int material_id = _material_id(pos);
+  auto material_id = _material_id(pos);
   // First, get the state-independent material properties
   double const solidus = _properties(
       material_id, static_cast<unsigned int>(adamantine::Property::solidus));
@@ -267,7 +268,7 @@ KOKKOS_FUNCTION void ThermalOperatorQuad<dim, fe_degree>::operator()(
       _gpu_data->local_q_point_id(_cell, _n_q_points, q_point);
   update_state_ratios(pos, temperature, state_ratios);
   get_inv_rho_cp(pos, state_ratios, temperature);
-  dealii::types::material_id material_id = _material_id(pos);
+  auto material_id = _material_id[pos];
   auto const thermal_conductivity_x = compute_material_property(
       adamantine::StateProperty::thermal_conductivity_x, material_id,
       state_ratios, temperature);
@@ -335,7 +336,7 @@ public:
       Kokkos::View<double *, kokkos_default> sin,
       Kokkos::View<double *, kokkos_default> powder_ratio,
       Kokkos::View<double *, kokkos_default> liquid_ratio,
-      Kokkos::View<double *, kokkos_default> material_id,
+      Kokkos::View<dealii::types::material_id *, kokkos_default> material_id,
       Kokkos::View<double *, kokkos_default> inv_rho_cp,
       Kokkos::View<double **, kokkos_default> properties,
       Kokkos::View<double *****, kokkos_default> state_property_tables,
@@ -370,7 +371,7 @@ private:
   Kokkos::View<double *, kokkos_default> _sin;
   Kokkos::View<double *, kokkos_default> _powder_ratio;
   Kokkos::View<double *, kokkos_default> _liquid_ratio;
-  Kokkos::View<double *, kokkos_default> _material_id;
+  Kokkos::View<dealii::types::material_id *, kokkos_default> _material_id;
   Kokkos::View<double *, kokkos_default> _inv_rho_cp;
   Kokkos::View<double **, kokkos_default> _properties;
   Kokkos::View<double *****, kokkos_default> _state_property_tables;
@@ -580,7 +581,7 @@ void ThermalOperatorDevice<
       Kokkos::view_alloc("powder_ratio", Kokkos::WithoutInitializing), n_coefs);
   auto powder_ratio_host =
       Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _powder_ratio);
-  _material_id = Kokkos::View<double *, Kokkos::HostSpace>(
+  _material_id = Kokkos::View<dealii::types::material_id *, kokkos_default>(
       Kokkos::view_alloc("material_id", Kokkos::WithoutInitializing), n_coefs);
   auto material_id_host =
       Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _material_id);
@@ -601,7 +602,7 @@ void ThermalOperatorDevice<
         _material_properties.get_state_ratio(cell_tria, MaterialState::liquid);
     double const cell_powder_ratio =
         _material_properties.get_state_ratio(cell_tria, MaterialState::powder);
-    double const cell_material_id = cell_tria->material_id();
+    auto const cell_material_id = cell_tria->material_id();
 
     for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
     {
