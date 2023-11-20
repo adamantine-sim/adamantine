@@ -25,6 +25,10 @@ cmake \
   -DBOOST_DIR=/path/to/boost \
 /path/to/source/dir
 ```
+If you're using the Docker image, the paths are:
+```bash
+cmake -D CMAKE_BUILD_TYPE=Release -D DEAL_II_DIR=/opt/dealii -DBOOST_DIR=/opt/boost /home/adamantine
+```
 Then simply use `make`. This will compile `adamantine` and create an executable
 in a newly created `bin` subdirectory. You will find in this subdirectory the
 executable and an example of input files.
@@ -46,6 +50,11 @@ using
 ```bash
 docker pull rombur/adamantine:latest
 ```
+A new interactive container can then be started using 
+```bash
+docker run -i rombur/adamantine:latest
+```
+Once you have the Docker container open, you can run the installation process described above either via command line or in the Docker desktop app.
 
 ## Run
 After compiling `adamantine`, you can run a simulation using
@@ -265,6 +274,9 @@ The first entry of the file is the dimension the problem: 2 or 3.
   * Column 4 to 6: (x,y,z) length of deposition box in m.
   * Column 7: deposition time in s.
   * Column 6: angle of material deposition.
+
+### Output Files
+The output is in the form of a `.pvd` file matching the specified output filename, containing references to the `.pvtu` and `.vtu` files at each timestep. These files can be viewed using Paraview.
 
 ## License
 `adamantine` is distributed under the 3-Clause BSD License.
