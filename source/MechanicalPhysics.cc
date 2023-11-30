@@ -301,9 +301,8 @@ void MechanicalPhysics<dim, MemorySpaceType>::compute_stress(
        _dof_handler.active_cell_iterators() |
            dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true))
   {
-    // Formulation based on the combines isotropic-kinematic hardening model for
-    // J2 plasticity on the combined isotropic-kinematic hardening model for J2
-    // plasticity in Chapter 3 of R. Borja, Plasticity: Modeling and
+    // Formulation based on the combined isotropic-kinematic hardening model for
+    // J2 plasticity in Chapter 3 of R. Borja, Plasticity: Modeling and
     // Computation, Springer-Verlag, 2013. DOI: 10.1007/978-3-642-38547-6
     //
     // Compute the strain. We get the strain for all the quadrature points at
