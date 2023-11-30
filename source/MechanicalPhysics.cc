@@ -156,7 +156,7 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
       else
       {
         // The cell does not contain material or it is liquid. The displacement
-        // is zero.
+        // is ignored.
         cell_values.assign(n_dofs_per_cell, 0.);
       }
       saved_old_displacement.push_back(cell_values);
@@ -301,6 +301,11 @@ void MechanicalPhysics<dim, MemorySpaceType>::compute_stress(
        _dof_handler.active_cell_iterators() |
            dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true))
   {
+    // Formulation based on the combines isotropic-kinematic hardening model for
+    // J2 plasticity on the combined isotropic-kinematic hardening model for J2
+    // plasticity in Chapter 3 of R. Borja, Plasticity: Modeling and
+    // Computation, Springer-Verlag, 2013. DOI: 10.1007/978-3-642-38547-6
+    //
     // Compute the strain. We get the strain for all the quadrature points at
     // once.
     displacement_hp_fe_values.reinit(cell);
@@ -343,21 +348,21 @@ void MechanicalPhysics<dim, MemorySpaceType>::compute_stress(
       {
         // The deformation is plastic. We need to compute a new stress and
         // update the plastic internal variable and the back stress.
-        double plastic_strain =
+        double plastic_strain_increment =
             (effective_stress_norm - _plastic_internal_variable[cell_id][q]) /
             (2. * mu + plastic_modulus);
-        auto normalized_effective_stress =
-            effective_stress / effective_stress_norm;
+        auto plastic_flow_direction = effective_stress / effective_stress_norm;
         // Update stress
-        _stress[cell_id][q] = elastic_stress - 2. * mu * plastic_strain *
-                                                   normalized_effective_stress;
+        _stress[cell_id][q] = elastic_stress - 2. * mu *
+                                                   plastic_strain_increment *
+                                                   plastic_flow_direction;
         // Update plastic internal variable
         _plastic_internal_variable[cell_id][q] +=
-            iso_hardening_coef * plastic_modulus * plastic_strain;
+            iso_hardening_coef * plastic_modulus * plastic_strain_increment;
         // Update back stress
         _back_stress[cell_id][q] += (1. - iso_hardening_coef) *
                                     plastic_modulus * plastic_modulus *
-                                    normalized_effective_stress;
+                                    plastic_flow_direction;
       }
     }
     ++cell_id;
