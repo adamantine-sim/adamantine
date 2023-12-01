@@ -1,4 +1,4 @@
-/* Copyright (c) 2022, the adamantine authors.
+/* Copyright (c) 2022 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -354,7 +354,8 @@ namespace utf = boost::unit_test;
  * analytic solution is being calculated externally and the values at only two
  * points are being checked.
  *
- * Less than 5% deviation from analytic solution achieved with
+ int constexpr dim = 3;* Less than 5% deviation from analytic solution achieved
+ with
  * refinement_cyles=5.
  */
 template <unsigned int dim>
@@ -526,3 +527,55 @@ BOOST_AUTO_TEST_CASE(thermoelastic_eshelby, *utf::tolerance(0.16))
     BOOST_TEST(pt_values[1][i] == ref_u_pt2[i]);
   }
 }
+
+BOOST_AUTO_TEST_CASE(elastoplastic)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  // Geometry database
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 12);
+  geometry_database.put("length_divisions", 6);
+  geometry_database.put("height", 6);
+  geometry_database.put("height_divisions", 3);
+  geometry_database.put("width", 6);
+  geometry_database.put("width_divisions", 3);
+  // Build Geometry
+  adamantine::Geometry<3> geometry(communicator, geometry_database);
+  auto const &triangulation = geometry.get_triangulation();
+  for (auto cell : triangulation.cell_iterators())
+  {
+    cell->set_material_id(0);
+    cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
+  }
+  // Create the MaterialProperty
+  boost::property_tree::ptree material_database;
+  material_database.put("property_format", "polynomial");
+  material_database.put("n_materials", 1);
+  material_database.put("material_0.solid.density", 1.);
+  material_database.put("material_0.solid.lame_first_parameter", 2.);
+  material_database.put("material_0.solid.lame_second_parameter", 3.);
+  material_database.put("material_0.solid.plastic_modulus", 1.5);
+  material_database.put("material_0.solid.isotropic_hardening", 0.5);
+  material_database.put("material_0.solid.elastic_limit", 0.1);
+  adamantine::MaterialProperty<3, dealii::MemorySpace::Host>
+      material_properties(communicator, triangulation, material_database);
+  // Build MechanicalPhysics
+  unsigned int const fe_degree = 1;
+  std::vector<double> empty_vector;
+  adamantine::MechanicalPhysics<3, dealii::MemorySpace::Host>
+      mechanical_physics(communicator, fe_degree, geometry, material_properties,
+                         empty_vector);
+  std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
+  auto gravity_force =
+      std::make_shared<adamantine::GravityForce<3, dealii::MemorySpace::Host>>(
+          material_properties);
+  body_forces.push_back(gravity_force);
+  mechanical_physics.setup_dofs(body_forces);
+  mechanical_physics.solve();
+  [[maybe_unused]] auto stress_tensor = mechanical_physics.get_stress_tensor();
+  // TODO check stress tensor
+}
+
+// TODO thermo-elasto-plastic problem

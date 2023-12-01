@@ -5,6 +5,7 @@
  * for the text and further information on this license.
  */
 
+#include <deal.II/base/symmetric_tensor.h>
 #define BOOST_TEST_MODULE PostProcessor
 
 #include <Geometry.hh>
@@ -200,20 +201,38 @@ BOOST_AUTO_TEST_CASE(mechanical_post_processor)
   post_processor_database.put("mechanical_output", true);
   adamantine::PostProcessor<dim> post_processor(
       communicator, post_processor_database, dof_handler);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> src(
-      dof_handler.n_dofs());
-  for (unsigned int i = 0; i < src.size(); ++i)
-    src[i] = i % (dim + 1);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      displacement(dof_handler.n_dofs());
+  for (unsigned int i = 0; i < displacement.size(); ++i)
+    displacement[i] = i % (dim + 1);
 
-  post_processor.write_mechanical_output(0, 0., src, mat_properties.get_state(),
-                                         mat_properties.get_dofs_map(),
-                                         mat_properties.get_dof_handler());
+  unsigned int const n_cells = geometry.get_triangulation().n_active_cells();
+  unsigned int const n_q_points = q_collection.max_n_quadrature_points();
+  std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> stress(
+      n_cells, std::vector<dealii::SymmetricTensor<2, dim>>(n_q_points));
+  for (unsigned int c = 0; c < n_cells; ++c)
+  {
+    for (unsigned int q = 0; q < n_q_points; ++q)
+    {
+      for (unsigned int i = 0; i < dim; ++i)
+      {
+        for (unsigned int j = 0; j < dim; ++j)
+        {
+          stress[c][q][i][j] = i == j ? 3. : 1.;
+        }
+      }
+    }
+  }
+
   post_processor.write_mechanical_output(
-      1, 0.1, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
-      mat_properties.get_dof_handler());
+      0, 0., displacement, stress, mat_properties.get_state(),
+      mat_properties.get_dofs_map(), mat_properties.get_dof_handler());
   post_processor.write_mechanical_output(
-      2, 0.2, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
-      mat_properties.get_dof_handler());
+      1, 0.1, displacement, stress, mat_properties.get_state(),
+      mat_properties.get_dofs_map(), mat_properties.get_dof_handler());
+  post_processor.write_mechanical_output(
+      2, 0.2, displacement, stress, mat_properties.get_state(),
+      mat_properties.get_dofs_map(), mat_properties.get_dof_handler());
   post_processor.write_pvd();
 
   // Check that the files exist

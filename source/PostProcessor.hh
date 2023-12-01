@@ -79,6 +79,8 @@ public:
   void write_mechanical_output(
       unsigned int time_step, double time,
       dealii::LA::distributed::Vector<double> const &displacement,
+      std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
+          &stress_tensor,
       MemoryBlockView<double, dealii::MemorySpace::Host> state,
       std::unordered_map<dealii::types::global_dof_index, unsigned int> const
           &dofs_map,
@@ -87,13 +89,16 @@ public:
   /**
    * Write the different vtu and pvtu files for themo-mechanical problems.
    */
-  void write_output(unsigned int time_step, double time,
-                    dealii::LA::distributed::Vector<double> const &temperature,
-                    dealii::LA::distributed::Vector<double> const &displacement,
-                    MemoryBlockView<double, dealii::MemorySpace::Host> state,
-                    std::unordered_map<dealii::types::global_dof_index,
-                                       unsigned int> const &dofs_map,
-                    dealii::DoFHandler<dim> const &material_dof_handler);
+  void write_output(
+      unsigned int time_step, double time,
+      dealii::LA::distributed::Vector<double> const &temperature,
+      dealii::LA::distributed::Vector<double> const &displacement,
+      std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
+          &stress_tensor,
+      MemoryBlockView<double, dealii::MemorySpace::Host> state,
+      std::unordered_map<dealii::types::global_dof_index, unsigned int> const
+          &dofs_map,
+      dealii::DoFHandler<dim> const &material_dof_handler);
 
   /**
    * Write the pvd file for Paraview.
@@ -101,6 +106,12 @@ public:
   void write_pvd() const;
 
 private:
+  /**
+   * Compute the norm of the stress.
+   */
+  dealii::Vector<double> get_stress_norm(
+      std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
+          &stress_tensor);
   /**
    * Fill _data_out with thermal data.
    */
@@ -111,7 +122,9 @@ private:
    */
   void mechanical_dataout(
       dealii::LA::distributed::Vector<double> const &displacement,
-      StrainPostProcessor<dim> const &strain);
+      StrainPostProcessor<dim> const &strain,
+      std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
+          &stress_tensor);
   /**
    * Fill _data_out with material data.
    */

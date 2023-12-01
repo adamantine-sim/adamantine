@@ -12,6 +12,7 @@
 #include <MechanicalOperator.hh>
 
 #include <deal.II/base/quadrature_lib.h>
+#include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/hp/fe_collection.h>
 
@@ -24,10 +25,10 @@ public:
   /**
    * Constructor.
    */
-  MechanicalPhysics(MPI_Comm const &communicator, unsigned int fe_degree,
+  MechanicalPhysics(MPI_Comm const &communicator, unsigned int const fe_degree,
                     Geometry<dim> &geometry,
                     MaterialProperty<dim, MemorySpaceType> &material_properties,
-                    std::vector<double> initial_temperatures);
+                    std::vector<double> const &initial_temperatures);
 
   /**
    * Setup the DoFHandler, the AffineConstraints, and the
@@ -49,7 +50,7 @@ public:
           std::vector<std::shared_ptr<BodyForce<dim>>>());
 
   /**
-   * Solve the mechanical problem and return the solution.
+   * Solve the mechanical problem and return the displacement.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solve();
 
@@ -63,7 +64,20 @@ public:
    */
   dealii::AffineConstraints<double> &get_affine_constraints();
 
+  /**
+   * Return the stress tensor associated to each quadrature point.
+   */
+  std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> &
+  get_stress_tensor();
+
 private:
+  // Compute the stress using linear combination of isotropic and kinematic
+  // hardening in the book Plasticity Modeling & Computation from Ronaldo I.
+  // Borja.
+  void compute_stress(
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+          &displacement);
+
   /**
    * Associated Geometry.
    */
@@ -97,6 +111,27 @@ private:
    * Whether to include a gravitional body force in the calculation.
    */
   bool _include_gravity;
+
+  /**
+   * Save displacement from the previous time step.
+   */
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      _old_displacement;
+
+  /**
+   * Plastic internal variable related to the strain
+   */
+  std::vector<std::vector<double>> _plastic_internal_variable;
+
+  /**
+   * Stress tensor at each (cell, quadrature point).
+   */
+  std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> _stress;
+
+  /**
+   * Back stress tensor at each (cell, quadrature point).
+   */
+  std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> _back_stress;
 };
 
 template <int dim, typename MemorySpaceType>
@@ -111,6 +146,13 @@ inline dealii::AffineConstraints<double> &
 MechanicalPhysics<dim, MemorySpaceType>::get_affine_constraints()
 {
   return _affine_constraints;
+}
+
+template <int dim, typename MemorySpaceType>
+inline std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> &
+MechanicalPhysics<dim, MemorySpaceType>::get_stress_tensor()
+{
+  return _stress;
 }
 
 } // namespace adamantine

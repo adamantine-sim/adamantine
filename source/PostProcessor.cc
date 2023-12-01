@@ -8,7 +8,10 @@
 #include <PostProcessor.hh>
 #include <instantiation.hh>
 
+#include <deal.II/base/symmetric_tensor.h>
+#include <deal.II/dofs/dof_handler.h>
 #include <deal.II/grid/filtered_iterator.h>
+#include <deal.II/numerics/data_component_interpretation.h>
 
 #include <fstream>
 #include <unordered_map>
@@ -125,6 +128,8 @@ template <int dim>
 void PostProcessor<dim>::write_mechanical_output(
     unsigned int time_step, double time,
     dealii::LA::distributed::Vector<double> const &displacement,
+    std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
+        &stress_tensor,
     MemoryBlockView<double, dealii::MemorySpace::Host> state,
     std::unordered_map<dealii::types::global_dof_index, unsigned int> const
         &dofs_map,
@@ -134,7 +139,7 @@ void PostProcessor<dim>::write_mechanical_output(
   _data_out.clear();
   // We need the StrainPostProcessor to live until write_pvtu is done
   StrainPostProcessor<dim> strain;
-  mechanical_dataout(displacement, strain);
+  mechanical_dataout(displacement, strain, stress_tensor);
   material_dataout(state, dofs_map, material_dof_handler);
   subdomain_dataout();
   write_pvtu(time_step, time);
@@ -145,6 +150,8 @@ void PostProcessor<dim>::write_output(
     unsigned int time_step, double time,
     dealii::LA::distributed::Vector<double> const &temperature,
     dealii::LA::distributed::Vector<double> const &displacement,
+    std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
+        &stress_tensor,
     MemoryBlockView<double, dealii::MemorySpace::Host> state,
     std::unordered_map<dealii::types::global_dof_index, unsigned int> const
         &dofs_map,
@@ -156,7 +163,7 @@ void PostProcessor<dim>::write_output(
   thermal_dataout(temperature);
   // We need the StrainPostProcessor to live until write_pvtu is done
   StrainPostProcessor<dim> strain;
-  mechanical_dataout(displacement, strain);
+  mechanical_dataout(displacement, strain, stress_tensor);
   material_dataout(state, dofs_map, material_dof_handler);
   subdomain_dataout();
   write_pvtu(time_step, time);
@@ -170,6 +177,34 @@ void PostProcessor<dim>::write_pvd() const
 }
 
 template <int dim>
+dealii::Vector<double> PostProcessor<dim>::get_stress_norm(
+    std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
+        &stress_tensor)
+{
+  dealii::Vector<double> norm(
+      _mechanical_dof_handler->get_triangulation().n_active_cells());
+  unsigned int const n_quad_pts =
+      stress_tensor.size() > 0 ? stress_tensor[0].size() : 0;
+  unsigned int cell_id = 0;
+  for (auto const &cell :
+       _mechanical_dof_handler->active_cell_iterators() |
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true))
+  {
+    dealii::SymmetricTensor<2, dim> accumulated_stress;
+    for (unsigned int q = 0; q < n_quad_pts; ++q)
+    {
+      accumulated_stress += stress_tensor[cell_id][q];
+    }
+
+    norm(cell->active_cell_index()) = (accumulated_stress / n_quad_pts).norm();
+
+    ++cell_id;
+  }
+
+  return norm;
+}
+
+template <int dim>
 void PostProcessor<dim>::thermal_dataout(
     dealii::LA::distributed::Vector<double> const &temperature)
 {
@@ -180,7 +215,9 @@ void PostProcessor<dim>::thermal_dataout(
 template <int dim>
 void PostProcessor<dim>::mechanical_dataout(
     dealii::LA::distributed::Vector<double> const &displacement,
-    StrainPostProcessor<dim> const &strain)
+    StrainPostProcessor<dim> const &strain,
+    std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
+        &stress_tensor)
 {
   // Add the displacement to the output
   displacement.update_ghost_values();
@@ -196,7 +233,9 @@ void PostProcessor<dim>::mechanical_dataout(
   // Add the strain tensor to the output
   _data_out.add_data_vector(*_mechanical_dof_handler, displacement, strain);
 
-  // TODO add the stress tensor
+  // Add the stress tensor
+  dealii::Vector<double> stress_norm = get_stress_norm(stress_tensor);
+  _data_out.add_data_vector(stress_norm, "stress");
 }
 
 template <int dim>

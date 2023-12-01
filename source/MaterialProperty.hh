@@ -48,6 +48,11 @@ public:
       boost::property_tree::ptree const &database);
 
   /**
+   * Delete the copy constructor.
+   */
+  MaterialProperty(MaterialProperty const &) = delete;
+
+  /**
    * Return true if the material properties are given in table format. Return
    * false if they are given in polynomial format.
    */

@@ -11,7 +11,7 @@
 #include <deal.II/arborx/distributed_tree.h>
 #include <deal.II/grid/filtered_iterator.h>
 
-#include <Kokkos_HostSpace.hpp>
+#include <Kokkos_Core.hpp>
 
 #include <fstream>
 #include <regex>
