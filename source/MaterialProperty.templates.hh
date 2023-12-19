@@ -919,7 +919,8 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
                   state_property_polynomials_host_view(
                       material_id, state, p, i) = std::stod(parsed_property[i]);
                 }
-                else
+                else if (state ==
+                         static_cast<unsigned int>(MaterialState::solid))
                 {
                   mechanical_property_polynomials_host_view(
                       material_id, p - g_n_thermal_state_properties, i) =
@@ -928,7 +929,8 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
               }
             }
           }
-          else if (state_property_names[p] == "elastic_limit")
+          else if (state_property_names[p] == "elastic_limit" &&
+                   state == static_cast<unsigned int>(MaterialState::solid))
           {
             // If the elastic limit is not provided, we solve a purely elastic
             // problem. We set the elastic limit to infinity.
