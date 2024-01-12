@@ -79,6 +79,7 @@ PostProcessor<dim>::PostProcessor(
       database.get<unsigned int>("additional_output_refinement", 0);
 }
 
+template <int dim>
 void PostProcessor<dim>::write_pvd() const
 {
   std::ofstream output(_filename_prefix + ".pvd");

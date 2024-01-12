@@ -928,16 +928,16 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
             double infinity = std::numeric_limits<double>::infinity();
             if (_use_table)
             {
-              mechanical_property_tables_host_view(
+              _mechanical_properties_tables_host(
                   material_id, p - g_n_thermal_state_properties, 0, 0) =
                   infinity;
-              mechanical_property_tables_host_view(
+              _mechanical_properties_tables_host(
                   material_id, p - g_n_thermal_state_properties, 0, 1) =
                   infinity;
             }
             else
             {
-              mechanical_property_polynomials_host_view(
+              _mechanical_properties_polynomials_host(
                   material_id, p - g_n_thermal_state_properties, 0) = infinity;
             }
           }

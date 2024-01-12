@@ -6,7 +6,6 @@ pipeline {
     timeout(time: 6, unit: 'HOURS')
   }
 
-<<<<<<< HEAD
   triggers {
     issueCommentTrigger('.*test this please.*')
   }
@@ -98,26 +97,27 @@ pipeline {
                 alwaysPull true
                 label 'nvidia-docker && volta'
             }
-            steps {
-              sh 'rm -rf build && mkdir -p build'
-                dir('build') {
-                  sh '''#!/bin/bash
-                    cmake \
-                    -D CMAKE_BUILD_TYPE=Debug \
-                    -D ADAMANTINE_ENABLE_TESTS=ON \
-                    -D ADAMANTINE_ENABLE_COVERAGE=OFF \
-                    -D CMAKE_CXX_FLAGS="-Wall -Wextra" \
-                    -D DEAL_II_DIR=${DEAL_II_DIR} \
-                    ..
-                  '''
-                  sh 'make -j8'
-                  sh 'ctest --no-compress-output -R test_ -T Test'
-                }
-            }
-            post {
-              always {
-                xunit([CTest(deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/Testing/**/Test.xml', skipNoTestFiles: false, stopProcessingIfError: true)])
+          }
+          steps {
+            sh 'rm -rf build && mkdir -p build'
+              dir('build') {
+                sh '''#!/bin/bash
+                  cmake \
+                  -D CMAKE_BUILD_TYPE=Debug \
+                  -D ADAMANTINE_ENABLE_TESTS=ON \
+                  -D ADAMANTINE_ENABLE_COVERAGE=OFF \
+                  -D CMAKE_CXX_FLAGS="-Wall -Wextra" \
+                  -D DEAL_II_DIR=${DEAL_II_DIR} \
+                  ..
+                '''
+                sh 'make -j8'
+                sh 'ctest --no-compress-output -R test_ -T Test'
               }
+          }
+          post {
+            always {
+              xunit([CTest(deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/Testing/**/Test.xml', skipNoTestFiles: false, stopProcessingIfError: true)])
+            }
           }
         }
       }
