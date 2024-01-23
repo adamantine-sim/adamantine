@@ -38,6 +38,8 @@ DataAssimilator::DataAssimilator(MPI_Comm const &global_communicator,
       _local_communicator(local_communicator), _color(color)
 {
   _global_rank = dealii::Utilities::MPI::this_mpi_process(_global_communicator);
+  _global_comm_size =
+      dealii::Utilities::MPI::n_mpi_processes(_global_communicator);
 
   if (_global_rank == 0)
   {
@@ -92,119 +94,18 @@ void DataAssimilator::update_ensemble(
         &augmented_state_ensemble,
     std::vector<double> const &expt_data, dealii::SparseMatrix<double> const &R)
 {
-  // We need to gather the augmented_state_ensemble from the other processors.
-  // BlockVector is a complex structure with its own communicator and so we
-  // cannot simple use dealii's gather to perform the communication. Instead, we
-  // extract the locally owned data and gather it to processor zero. We do this
-  // in a two step process. First, we move the data to local rank zero. Second,
-  // we move the data to global rank zero. The first step allows to simply move
-  // complete vectors to global rank zero. Otherwise, we have the vector data
-  // divided in multiple chunks when gathered on global rank zero and we have to
-  // reconstruct the vector. Finally we can build new BlockVector using the
-  // local communicator.
-
-  // Extract relevant data
-  unsigned int const n_local_ensemble_members = augmented_state_ensemble.size();
-  std::vector<std::vector<std::vector<double>>> block_data(
-      n_local_ensemble_members, std::vector<std::vector<double>>(2));
-  for (unsigned int i = 0; i < n_local_ensemble_members; ++i)
-  {
-    for (unsigned int j = 0; j < 2; ++j)
-    {
-      auto data_ptr = augmented_state_ensemble[i].block(j).get_values();
-      block_data[i][j].insert(
-          block_data[i][j].end(), data_ptr,
-          data_ptr + augmented_state_ensemble[i].block(j).locally_owned_size());
-    }
-  }
-
-  // Perform the communications on the local communicator
-  auto local_block_data =
-      dealii::Utilities::MPI::gather(_local_communicator, block_data);
-  auto local_indexsets_block_0 = dealii::Utilities::MPI::gather(
-      _local_communicator,
-      augmented_state_ensemble[0].block(0).locally_owned_elements());
-  auto local_indexsets_block_1 = dealii::Utilities::MPI::gather(
-      _local_communicator,
-      augmented_state_ensemble[0].block(1).locally_owned_elements());
-  // The local processor zero has all the data. Reorder the data before sending
-  // it to the global processor zero
-  std::vector<std::vector<std::vector<double>>> reordered_local_block_data;
-  using block_size_type =
-      dealii::LA::distributed::BlockVector<double>::size_type;
-  std::vector<block_size_type> block_sizes(2, 0);
-  if (dealii::Utilities::MPI::this_mpi_process(_local_communicator) == 0)
-  {
-    reordered_local_block_data.resize(n_local_ensemble_members,
-                                      std::vector<std::vector<double>>(2));
-
-    for (unsigned int i = 0; i < local_indexsets_block_0.size(); ++i)
-    {
-      block_sizes[0] += local_indexsets_block_0[i].n_elements();
-    }
-    // The augmented parameters are not distributed.
-    block_sizes[1] = local_indexsets_block_1[0].n_elements();
-
-    // Loop over the ensemble members
-    for (unsigned int i = 0; i < n_local_ensemble_members; ++i)
-    {
-      // Loop over the processors
-      for (unsigned int j = 0; j < local_block_data.size(); ++j)
-      {
-        // Loop over the blocks
-        for (unsigned int k = 0; k < 2; ++k)
-        {
-          reordered_local_block_data[i][k].resize(block_sizes[k]);
-          // Loop over the dofs
-          for (std::size_t m = 0; m < local_block_data[j][i][k].size(); ++m)
-          {
-            auto pos = k == 0 ? local_indexsets_block_0[j].nth_index_in_set(m)
-                              : local_indexsets_block_1[j].nth_index_in_set(m);
-            reordered_local_block_data[i][k][pos] =
-                local_block_data[j][i][k][m];
-          }
-        }
-      }
-    }
-  }
-
-  // Perform the global communication.
-  auto all_local_block_data = dealii::Utilities::MPI::gather(
-      _global_communicator, reordered_local_block_data);
 
   std::vector<dealii::LA::distributed::BlockVector<double>>
       global_augmented_state_ensemble;
-  unsigned int const global_comm_size =
-      dealii::Utilities::MPI::n_mpi_processes(_global_communicator);
-  std::vector<unsigned int> local_n_ensemble_members(global_comm_size);
+  std::vector<unsigned int> local_n_ensemble_members(_global_comm_size);
+  std::vector<block_size_type> block_sizes(2, 0);
+
+  gather_ensemble_members(augmented_state_ensemble,
+                          global_augmented_state_ensemble,
+                          local_n_ensemble_members, block_sizes);
 
   if (_global_rank == 0)
   {
-    // Build the new BlockVector
-    for (unsigned int i = 0; i < all_local_block_data.size(); ++i)
-    {
-      auto const &data = all_local_block_data[i];
-      local_n_ensemble_members[i] = data.size();
-      if (data.size())
-      {
-        // Loop over the ensemble members
-        for (unsigned int j = 0; j < data.size(); ++j)
-        {
-          dealii::LA::distributed::BlockVector<double> ensemble_member(
-              block_sizes);
-          // Copy the values in data to ensemble_member
-          for (unsigned int k = 0; k < data[j].size(); ++k)
-          {
-            for (unsigned int m = 0; m < data[j][k].size(); ++m)
-            {
-              ensemble_member.block(k)[m] = data[j][k][m];
-            }
-          }
-          global_augmented_state_ensemble.push_back(ensemble_member);
-        }
-      }
-    }
-
     // Set some constants
     _num_ensemble_members = global_augmented_state_ensemble.size();
     _sim_size = block_sizes[0];
@@ -218,8 +119,8 @@ void DataAssimilator::update_ensemble(
     bool const R_is_diagonal = bandwidth == 0 ? true : false;
 
     // Get the perturbed innovation, ( y+u - Hx )
-    // This is determined using the unaugmented state because the parameters are
-    // not observable
+    // This is determined using the unaugmented state because the parameters
+    // are not observable
     if (_global_rank == 0)
       std::cout << "Getting the perturbed innovation..." << std::endl;
 
@@ -282,21 +183,148 @@ void DataAssimilator::update_ensemble(
 #endif
   }
 
+  scatter_ensemble_members(augmented_state_ensemble,
+                           global_augmented_state_ensemble,
+                           local_n_ensemble_members, block_sizes);
+}
+
+void DataAssimilator::gather_ensemble_members(
+    std::vector<dealii::LA::distributed::BlockVector<double>>
+        &augmented_state_ensemble,
+    std::vector<dealii::LA::distributed::BlockVector<double>>
+        &global_augmented_state_ensemble,
+    std::vector<unsigned int> &local_n_ensemble_members,
+    std::vector<block_size_type> &block_sizes)
+{
+  // We need to gather the augmented_state_ensemble from the other processors.
+  // BlockVector is a complex structure with its own communicator and so we
+  // cannot simple use dealii's gather to perform the communication. Instead, we
+  // extract the locally owned data and gather it to processor zero. We do this
+  // in a two step process. First, we move the data to local rank zero. Second,
+  // we move the data to global rank zero. The first step allows to simply move
+  // complete vectors to global rank zero. Otherwise, we have the vector data
+  // divided in multiple chunks when gathered on global rank zero and we have to
+  // reconstruct the vector. Finally we can build new BlockVector using the
+  // local communicator.
+
+  // Extract relevant data
+  unsigned int const n_local_ensemble_members = augmented_state_ensemble.size();
+  std::vector<std::vector<std::vector<double>>> block_data(
+      n_local_ensemble_members, std::vector<std::vector<double>>(2));
+  for (unsigned int i = 0; i < n_local_ensemble_members; ++i)
+  {
+    for (unsigned int j = 0; j < 2; ++j)
+    {
+      auto data_ptr = augmented_state_ensemble[i].block(j).get_values();
+      block_data[i][j].insert(
+          block_data[i][j].end(), data_ptr,
+          data_ptr + augmented_state_ensemble[i].block(j).locally_owned_size());
+    }
+  }
+
+  // Perform the communications on the local communicator
+  auto local_block_data =
+      dealii::Utilities::MPI::gather(_local_communicator, block_data);
+  auto local_indexsets_block_0 = dealii::Utilities::MPI::gather(
+      _local_communicator,
+      augmented_state_ensemble[0].block(0).locally_owned_elements());
+  auto local_indexsets_block_1 = dealii::Utilities::MPI::gather(
+      _local_communicator,
+      augmented_state_ensemble[0].block(1).locally_owned_elements());
+  // The local processor zero has all the data. Reorder the data before
+  // sending it to the global processor zero
+  std::vector<std::vector<std::vector<double>>> reordered_local_block_data;
+  if (dealii::Utilities::MPI::this_mpi_process(_local_communicator) == 0)
+  {
+    reordered_local_block_data.resize(n_local_ensemble_members,
+                                      std::vector<std::vector<double>>(2));
+
+    for (unsigned int i = 0; i < local_indexsets_block_0.size(); ++i)
+    {
+      block_sizes[0] += local_indexsets_block_0[i].n_elements();
+    }
+    // The augmented parameters are not distributed.
+    block_sizes[1] = local_indexsets_block_1[0].n_elements();
+
+    // Loop over the ensemble members
+    for (unsigned int i = 0; i < n_local_ensemble_members; ++i)
+    {
+      // Loop over the processors
+      for (unsigned int j = 0; j < local_block_data.size(); ++j)
+      {
+        // Loop over the blocks
+        for (unsigned int k = 0; k < 2; ++k)
+        {
+          reordered_local_block_data[i][k].resize(block_sizes[k]);
+          // Loop over the dofs
+          for (std::size_t m = 0; m < local_block_data[j][i][k].size(); ++m)
+          {
+            auto pos = k == 0 ? local_indexsets_block_0[j].nth_index_in_set(m)
+                              : local_indexsets_block_1[j].nth_index_in_set(m);
+            reordered_local_block_data[i][k][pos] =
+                local_block_data[j][i][k][m];
+          }
+        }
+      }
+    }
+  }
+
+  // Perform the global communication.
+  auto all_local_block_data = dealii::Utilities::MPI::gather(
+      _global_communicator, reordered_local_block_data);
+
+  if (_global_rank == 0)
+  {
+    // Build the new BlockVector
+    for (unsigned int i = 0; i < all_local_block_data.size(); ++i)
+    {
+      auto const &data = all_local_block_data[i];
+      local_n_ensemble_members[i] = data.size();
+      if (data.size())
+      {
+        // Loop over the ensemble members
+        for (unsigned int j = 0; j < data.size(); ++j)
+        {
+          dealii::LA::distributed::BlockVector<double> ensemble_member(
+              block_sizes);
+          // Copy the values in data to ensemble_member
+          for (unsigned int k = 0; k < data[j].size(); ++k)
+          {
+            for (unsigned int m = 0; m < data[j][k].size(); ++m)
+            {
+              ensemble_member.block(k)[m] = data[j][k][m];
+            }
+          }
+          global_augmented_state_ensemble.push_back(ensemble_member);
+        }
+      }
+    }
+  }
+}
+
+void DataAssimilator::scatter_ensemble_members(
+    std::vector<dealii::LA::distributed::BlockVector<double>>
+        &augmented_state_ensemble,
+    std::vector<dealii::LA::distributed::BlockVector<double>> const
+        &global_augmented_state_ensemble,
+    std::vector<unsigned int> const &local_n_ensemble_members,
+    std::vector<block_size_type> const &block_sizes)
+{
   // Scatter global_augmented_state_ensemble to augmented_state_ensemble.
   // First we split the data to the root of the local communicators and then,
   // the data is moved inside each local communicator.
   // deal.II has isend and irecv functions but we cannot them. Using these
-  // functions will result in a deadlock because the future returned by isend is
-  // blocking until we call the get function of the future returned by irecv.
+  // functions will result in a deadlock because the future returned by isend
+  // is blocking until we call the get function of the future returned by
+  // irecv.
+
   std::vector<char> packed_recv_buffer;
   if (_global_rank == 0)
   {
-    unsigned int const n_local_roots = all_local_block_data.size();
-    std::vector<std::vector<char>> packed_send_buffers(n_local_roots);
-    std::vector<MPI_Request> mpi_requests(n_local_roots);
+    std::vector<std::vector<char>> packed_send_buffers(_global_comm_size);
+    std::vector<MPI_Request> mpi_requests(_global_comm_size);
     unsigned int global_member_id = 0;
-    unsigned int local_root_id = 0;
-    for (unsigned int i = 0; i < global_comm_size; ++i)
+    for (int i = 0; i < _global_comm_size; ++i)
     {
       unsigned int const local_size = local_n_ensemble_members[i];
       std::vector<std::vector<double>> send_buffer(local_size);
@@ -313,12 +341,9 @@ void DataAssimilator::update_ensemble(
         ++global_member_id;
       }
       // Pack and send the data to the local root rank
-      packed_send_buffers[local_root_id] = dealii::Utilities::pack(send_buffer);
-      MPI_Isend(packed_send_buffers[local_root_id].data(),
-                packed_send_buffers[local_root_id].size(), MPI_CHAR, i, 0,
-                _global_communicator, &mpi_requests[local_root_id]);
-
-      ++local_root_id;
+      packed_send_buffers[i] = dealii::Utilities::pack(send_buffer);
+      MPI_Isend(packed_send_buffers[i].data(), packed_send_buffers[i].size(),
+                MPI_CHAR, i, 0, _global_communicator, &mpi_requests[i]);
     }
 
     // Receive the data. First, call MPI_Probe to get the size of the message.
@@ -353,8 +378,8 @@ void DataAssimilator::update_ensemble(
           packed_recv_buffer);
 
   // The local root ranks have all the data, now we need to update
-  // augmented_state_ensemble. This communication is easier to do than the other
-  // communications because we can use deal.II's built-in functions.
+  // augmented_state_ensemble. This communication is easier to do than the
+  // other communications because we can use deal.II's built-in functions.
   for (unsigned int m = 0; m < augmented_state_ensemble.size(); ++m)
   {
     for (unsigned int b = 0; b < 2; ++b)
@@ -431,8 +456,9 @@ DataAssimilator::apply_kalman_gain(
         dealii::Vector<double> temporary = op_K * entry;
 
         // Copy into a distributed block vector, this is the only place where
-        // the mismatch matters, using dealii::Vector for the experimental data
-        // and dealii::LA::distributed::BlockVector for the simulation data.
+        // the mismatch matters, using dealii::Vector for the experimental
+        // data and dealii::LA::distributed::BlockVector for the simulation
+        // data.
         dealii::LA::distributed::BlockVector<double> output_member(block_sizes);
         for (unsigned int i = 0; i < augmented_state_size; ++i)
         {
@@ -522,7 +548,8 @@ void DataAssimilator::update_covariance_sparsity_pattern(
     if (_global_rank == 0)
     {
       // We need IndexSet to build the sparsity pattern. Since the data
-      // assimilation is done is serial, the IndexSet just contains everything.
+      // assimilation is done is serial, the IndexSet just contains
+      // everything.
       dealii::IndexSet parallel_partitioning =
           dealii::complete_index_set(augmented_state_size);
       parallel_partitioning.compress();

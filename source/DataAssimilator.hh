@@ -111,6 +111,33 @@ public:
                                      const unsigned int parameter_size);
 
 private:
+  using block_size_type =
+      dealii::LA::distributed::BlockVector<double>::size_type;
+
+  /**
+   * Gather the augmented ensemble members on the global root node in order to
+   * apply the Kalman gain.
+   */
+  void gather_ensemble_members(
+      std::vector<dealii::LA::distributed::BlockVector<double>>
+          &augmented_state_ensemble,
+      std::vector<dealii::LA::distributed::BlockVector<double>>
+          &global_augmented_state_ensemble,
+      std::vector<unsigned int> &local_n_ensemble_members,
+      std::vector<block_size_type> &block_sizes);
+
+  /**
+   * Scatter the @p global_augmented_state_ensemble back into @p
+   * augmented_state_ensemble.
+   */
+  void scatter_ensemble_members(
+      std::vector<dealii::LA::distributed::BlockVector<double>>
+          &augmented_state_ensemble,
+      std::vector<dealii::LA::distributed::BlockVector<double>> const
+          &global_augmented_state_ensemble,
+      std::vector<unsigned int> const &local_n_ensemble_members,
+      std::vector<block_size_type> const &block_sizes);
+
   /**
    * This calculates the Kalman gain and applies it to the perturbed innovation.
    */
@@ -160,13 +187,29 @@ private:
       std::vector<dealii::LA::distributed::BlockVector<double>> const
           &vec_ensemble) const;
 
-  // TODO
+  /**
+   * Global MPI communicator.
+   */
   MPI_Comm _global_communicator;
 
+  /**
+   * Local MPI communicator split off the global MPI communicator.
+   */
   MPI_Comm _local_communicator;
 
+  /**
+   * Rank of the process when using the global MPI communicator.
+   */
   int _global_rank = -1;
 
+  /**
+   * Number of processes in the gglbal MPI communicator.
+   */
+  int _global_comm_size = -1;
+
+  /**
+   * Color associated with the local
+   */
   int _color = -1;
 
   /**
