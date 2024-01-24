@@ -66,7 +66,9 @@ public:
   /**
    * Constructor.
    */
-  DataAssimilator(boost::property_tree::ptree const &database);
+  DataAssimilator(MPI_Comm const &global_communicator,
+                  MPI_Comm const &local_communicator, int my_color,
+                  boost::property_tree::ptree const &database);
 
   /**
    * This is the main public interface for the class and is called to perform
@@ -83,8 +85,7 @@ public:
    * u is a perturbation to the observed solution
    * H is the observation matrix
    */
-  void update_ensemble(MPI_Comm const &communicator,
-                       std::vector<dealii::LA::distributed::BlockVector<double>>
+  void update_ensemble(std::vector<dealii::LA::distributed::BlockVector<double>>
                            &augmented_state_ensemble,
                        std::vector<double> const &expt_data,
                        dealii::SparseMatrix<double> const &R);
@@ -110,6 +111,33 @@ public:
                                      const unsigned int parameter_size);
 
 private:
+  using block_size_type =
+      dealii::LA::distributed::BlockVector<double>::size_type;
+
+  /**
+   * Gather the augmented ensemble members on the global root node in order to
+   * apply the Kalman gain.
+   */
+  void gather_ensemble_members(
+      std::vector<dealii::LA::distributed::BlockVector<double>>
+          &augmented_state_ensemble,
+      std::vector<dealii::LA::distributed::BlockVector<double>>
+          &global_augmented_state_ensemble,
+      std::vector<unsigned int> &local_n_ensemble_members,
+      std::vector<block_size_type> &block_sizes);
+
+  /**
+   * Scatter the @p global_augmented_state_ensemble back into @p
+   * augmented_state_ensemble.
+   */
+  void scatter_ensemble_members(
+      std::vector<dealii::LA::distributed::BlockVector<double>>
+          &augmented_state_ensemble,
+      std::vector<dealii::LA::distributed::BlockVector<double>> const
+          &global_augmented_state_ensemble,
+      std::vector<unsigned int> const &local_n_ensemble_members,
+      std::vector<block_size_type> const &block_sizes);
+
   /**
    * This calculates the Kalman gain and applies it to the perturbed innovation.
    */
@@ -160,24 +188,49 @@ private:
           &vec_ensemble) const;
 
   /**
+   * Global MPI communicator.
+   */
+  MPI_Comm _global_communicator;
+
+  /**
+   * Local MPI communicator split off the global MPI communicator.
+   */
+  MPI_Comm _local_communicator;
+
+  /**
+   * Rank of the process when using the global MPI communicator.
+   */
+  int _global_rank = -1;
+
+  /**
+   * Number of processes in the gglbal MPI communicator.
+   */
+  int _global_comm_size = -1;
+
+  /**
+   * Color associated with the local
+   */
+  int _color = -1;
+
+  /**
    * The number of ensemble members in the simulation.
    */
-  unsigned int _num_ensemble_members;
+  unsigned int _num_ensemble_members = 0;
 
   /**
    * The length of the data vector for each simulation ensemble member.
    */
-  unsigned int _sim_size;
+  unsigned int _sim_size = 0;
 
   /**
    * The length of the parameter vector for each simulation ensemble member.
    */
-  unsigned int _parameter_size;
+  unsigned int _parameter_size = 0;
 
   /**
    * The length of the data vector the experimental observations.
    */
-  unsigned int _expt_size;
+  unsigned int _expt_size = 0;
 
   /**
    * The sparsity pattern for the localized covariance matrix.

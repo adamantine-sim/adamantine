@@ -37,7 +37,10 @@ BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation_augmented,
                                                            database, timers);
 
   // Three ensemble members expected
-  BOOST_TEST(result.size() == 3);
+  unsigned int local_result_size = result.size();
+  unsigned int global_result_size =
+      dealii::Utilities::MPI::sum(local_result_size, communicator);
+  BOOST_TEST(global_result_size == 3);
 
   // Get the average absorption value for each ensemble member
   double sum = 0.0;
@@ -45,7 +48,9 @@ BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation_augmented,
   {
     sum += result.at(member).block(1).local_element(0);
   }
-  double average_value = sum / result.size();
+  double partial_average_value = sum / global_result_size;
+  double average_value =
+      dealii::Utilities::MPI::sum(partial_average_value, communicator);
 
   // Based on the reference solution, the expected absorption efficiency is 0.3
   double gold_solution = 0.3;

@@ -56,18 +56,18 @@ BOOST_AUTO_TEST_CASE(integration_2D_ensemble, *utf::tolerance(0.1))
   boost::property_tree::ptree database;
   boost::property_tree::info_parser::read_info(filename, database);
 
-  auto result = run_ensemble<2, dealii::MemorySpace::Host>(communicator,
-                                                           database, timers);
+  auto result_ensemble = run_ensemble<2, dealii::MemorySpace::Host>(
+      communicator, database, timers);
 
-  for (unsigned int member = 0; member < 3; ++member)
+  for (auto &result_member : result_ensemble)
   {
     std::ifstream gold_file("integration_2d_gold.txt");
-    for (unsigned int i = 0; i < result[member].block(0).locally_owned_size();
+    for (unsigned int i = 0; i < result_member.block(0).locally_owned_size();
          ++i)
     {
       double gold_value = -1.;
       gold_file >> gold_value;
-      BOOST_TEST(result[member].block(0).local_element(i) == gold_value);
+      BOOST_TEST(result_member.block(0).local_element(i) == gold_value);
     }
   }
 }
