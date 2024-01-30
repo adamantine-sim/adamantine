@@ -1250,7 +1250,8 @@ void split_global_communicator(MPI_Comm global_communicator,
         "Number of MPI ranks should be less than the number of ensemble "
         "members or a multiple of this number.");
     // Assign color
-    my_color = global_rank / avg_n_procs_per_member;
+    my_color =
+        global_rank / static_cast<int>(std::floor(avg_n_procs_per_member));
 
     first_local_member = my_color;
   }
