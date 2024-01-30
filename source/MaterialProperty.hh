@@ -24,6 +24,8 @@
 
 #include <boost/property_tree/ptree.hpp>
 
+#include <Kokkos_Core.hpp>
+
 #include <array>
 #include <limits>
 #include <unordered_map>
