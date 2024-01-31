@@ -303,19 +303,19 @@ private:
   // the mechanical properties can only exist on the host while the thermal ones
   // can be on the host or the device.
   Kokkos::View<double *[g_n_mechanical_state_properties][table_size][2],
-               typename dealii::MemorySpace::Host::kokkos_space>
+               dealii::MemorySpace::Host::kokkos_space>
       _mechanical_properties_tables_host;
   /**
    * Mechanical properties which have been set using polynomials.
    */
   Kokkos::View<double *[g_n_mechanical_state_properties][polynomial_order + 1],
-               typename dealii::MemorySpace::Host::kokkos_space>
+               dealii::MemorySpace::Host::kokkos_space>
       _mechanical_properties_polynomials_host;
   /**
    * Temperature independent mechanical properties.
    */
   Kokkos::View<double *[g_n_mechanical_state_properties],
-               typename dealii::MemorySpace::Host::kokkos_space>
+               dealii::MemorySpace::Host::kokkos_space>
       _mechanical_properties_host;
   /**
    * Discontinuous piecewise constant finite element.
