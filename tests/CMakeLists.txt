@@ -11,6 +11,7 @@ list(APPEND
      test_geometry
      test_heat_source
      test_implicit_operator
+     test_integration_3d_device
      test_integration_thermoelastic
      test_material_property
      test_material_property_device
@@ -34,7 +35,6 @@ list(APPEND
      test_integration_2d
      test_integration_2d_device
      test_integration_3d
-     test_integration_3d_device
      test_integration_3d_amr
      test_integration_3d_amr_device
      test_integration_da
