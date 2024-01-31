@@ -95,7 +95,7 @@ pipeline {
             docker {
               image "rombur/adamantine-stack:latest"
                 alwaysPull true
-                label 'nvidia-docker && volta'
+                label 'nvidia-docker && ampere'
             }
           }
           steps {
