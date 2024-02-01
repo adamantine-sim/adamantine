@@ -649,6 +649,7 @@ void refine_mesh(
   // PropertyTreeInput refinement.n_heat_refinements
   unsigned int const n_kelly_refinements =
       refinement_database.get("n_heat_refinements", 2);
+  std::cout << "Kelly refinements the first time" << n_kelly_refinements << std::endl;
   double coarsening_fraction = 0.3;
   double refining_fraction = 0.6;
   // PropertyTreeInput refinement.heat_cell_ratio
@@ -1020,6 +1021,15 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   double const duration = time_stepping_database.get<double>("duration");
 
   // Extract the refinement database
+  // Refinement database contains the following entries:
+  // - n_heat_refinements: number of times the mesh will be refined using the
+  //   Kelly error estimator
+  // - n_beam_refinements: number of times the mesh will be refined along the
+  //   beam paths
+  // - heat_cell_ratio: fraction of cells that will be refined using the Kelly
+  //   error estimator
+  // - max_level: maximum level of refinement
+  // - beam_cutoff: cut-off value for the heat source. Cells where the heat
   boost::property_tree::ptree refinement_database =
       database.get_child("refinement");
   // PropertyTreeInput refinement.time_steps_between_refinement
@@ -1028,11 +1038,12 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // PropertyTreeInput post_processor.time_steps_between_output
   unsigned int const time_steps_output =
       post_processor_database.get("time_steps_between_output", 1);
-
   double next_refinement_time = time;
   // PropertyTreeInput materials.new_material_temperature
   double const new_material_temperature =
       database.get("materials.new_material_temperature", 300.);
+  unsigned int const n_kelly_refinements =
+      refinement_database.get("n_heat_refinements", 2);
 
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_LOOP_BEGIN(main_loop_id, "main_loop");
@@ -1051,7 +1062,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // is necessary when using an embedded method.
     if ((((n_time_step % time_steps_refinement) == 0) ||
          (time >= next_refinement_time)) &&
-        use_thermal_physics)
+        use_thermal_physics && n_kelly_refinements > 0)
     {
       next_refinement_time = time + time_steps_refinement * time_step;
       timers[adamantine::refine].start();
@@ -1071,7 +1082,14 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     timers[adamantine::add_material_activate].start();
     if (time > activation_time_end)
     {
-      double const eps = time_step / 1e12;
+      activation_time_end =
+          std::min(time + std::max(activation_time, time_step), duration);
+
+      //double const eps = time_step / 1e12;
+      //I've modified eps to account for the initial deposition time and the absolute
+      //value of the difference between the activation time and the current time to
+      //approximate the error at each time step.
+      double eps = (*deposition_times.begin())/abs(activation_time_end - time);
       auto activation_start =
           std::lower_bound(deposition_times.begin(), deposition_times.end(),
                            time - eps) -
@@ -1093,8 +1111,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           // activation_end.
           timers[adamantine::add_material_search].start();
           auto elements_to_activate = adamantine::get_elements_to_activate(
-              thermal_physics->get_dof_handler(), material_deposition_boxes);
-
+             thermal_physics->get_dof_handler(), material_deposition_boxes);
           timers[adamantine::add_material_search].stop();
 
           // For now assume that all deposited material has never been melted
@@ -1115,6 +1132,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                   << std::endl;
       }
     }
+
     timers[adamantine::add_material_activate].stop();
 
     // If thermomechanics are being solved, mark cells that are above the
@@ -1136,7 +1154,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       time = thermal_physics->evolve_one_time_step(time, time_step, temperature,
                                                    timers);
     }
-
     // Solve the (thermo-)mechanical problem
     if (use_mechanical_physics)
     {
@@ -1201,6 +1218,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     }
     ++n_time_step;
   }
+
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_LOOP_END(main_loop_id);
 #endif
