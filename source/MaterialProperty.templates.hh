@@ -235,7 +235,7 @@ void MaterialProperty<dim, MemorySpaceType>::reinit_dofs()
                               Kokkos::Rank<2>>(
             {{0, 0}},
             {{g_n_material_states, static_cast<int>(_dofs_map.size())}}),
-        KOKKOS_LAMBDA(int i, int j) {
+        KOKKOS_CLASS_LAMBDA(int i, int j) {
           _state(i, j) = std::numeric_limits<double>::signaling_NaN();
         });
   }
@@ -316,10 +316,10 @@ void MaterialProperty<dim, MemorySpaceType>::update(
         // Because the powder can only become liquid, the solid can only
         // become liquid, and the liquid can only become solid, the ratio of
         // powder can only decrease.
-        powder_ratio = std::min(1. - liquid_ratio, _state(powder, dof));
+        powder_ratio = Kokkos::min(1. - liquid_ratio, _state(powder, dof));
         // Use max to make sure that we don't create matter because of
         // round-off.
-        solid_ratio = std::max(1 - liquid_ratio - powder_ratio, 0.);
+        solid_ratio = Kokkos::max(1 - liquid_ratio - powder_ratio, 0.);
 
         // Update the value
         _state(liquid, dof) = liquid_ratio;
@@ -689,9 +689,9 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
         _state(liquid_state, mp_dof(i)) = liquid_ratio_sum / n_q_points;
         _state(powder_state, mp_dof(i)) = powder_ratio_sum / n_q_points;
         _state(solid_state, mp_dof(i)) =
-            std::max(1. - _state(liquid_state, mp_dof(i)) -
-                         _state(powder_state, mp_dof(i)),
-                     0.);
+            Kokkos::max(1. - _state(liquid_state, mp_dof(i)) -
+                            _state(powder_state, mp_dof(i)),
+                        0.);
       });
 }
 
