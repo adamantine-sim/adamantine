@@ -8,20 +8,16 @@
 #ifndef THERMAL_PHYSICS_TEMPLATES_HH
 #define THERMAL_PHYSICS_TEMPLATES_HH
 
-#include <ThermalOperator.hh>
-
-#include <deal.II/base/index_set.h>
-#include <deal.II/lac/read_write_vector.h>
-#if defined(ADAMANTINE_HAVE_CUDA) && defined(__CUDACC__)
-#include <ThermalOperatorDevice.hh>
-#endif
 #include <CubeHeatSource.hh>
 #include <ElectronBeamHeatSource.hh>
 #include <GoldakHeatSource.hh>
+#include <ThermalOperator.hh>
+#include <ThermalOperatorDevice.hh>
 #include <ThermalPhysics.hh>
 #include <Timer.hh>
 
 #include <deal.II/base/geometry_info.h>
+#include <deal.II/base/index_set.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
 #include <deal.II/dofs/dof_tools.h>
@@ -31,6 +27,7 @@
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/hp/q_collection.h>
 #include <deal.II/lac/precondition.h>
+#include <deal.II/lac/read_write_vector.h>
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/vector_operation.h>
 
@@ -86,11 +83,10 @@ void init_dof_vector(
     vector.local_element(i) = value;
 }
 
-#if defined(ADAMANTINE_HAVE_CUDA) && defined(__CUDACC__)
 template <int dim, int fe_degree, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
-              int> = 0>
+          std::enable_if_t<std::is_same<MemorySpaceType,
+                                        dealii::MemorySpace::Default>::value,
+                           int> = 0>
 dealii::LA::distributed::Vector<double, MemorySpaceType>
 evaluate_thermal_physics_impl(
     std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> const
@@ -231,8 +227,8 @@ evaluate_thermal_physics_impl(
   source.compress(dealii::VectorOperation::add);
 
   // Add source
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> source_dev(
-      source.get_partitioner());
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
+      source_dev(source.get_partitioner());
   source_dev.import(source, dealii::VectorOperation::insert);
   value_dev += source_dev;
 
@@ -245,9 +241,9 @@ evaluate_thermal_physics_impl(
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
-              int> = 0>
+          std::enable_if_t<std::is_same<MemorySpaceType,
+                                        dealii::MemorySpace::Default>::value,
+                           int> = 0>
 void init_dof_vector(
     double const value,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType> &vector)
@@ -260,7 +256,6 @@ void init_dof_vector(
 
   vector.import(vector_host, dealii::VectorOperation::insert);
 }
-#endif
 } // namespace
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -359,12 +354,10 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
     _thermal_operator =
         std::make_shared<ThermalOperator<dim, fe_degree, MemorySpaceType>>(
             communicator, _boundary_type, _material_properties, _heat_sources);
-#if defined(ADAMANTINE_HAVE_CUDA) && defined(__CUDACC__)
   else
     _thermal_operator = std::make_shared<
         ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>>(
         communicator, _boundary_type, _material_properties);
-#endif
 
   // Create the time stepping scheme
   boost::property_tree::ptree const &time_stepping_database =
@@ -666,16 +659,6 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 
   solution.update_ghost_values();
 
-  adamantine::MemoryBlockView<double, MemorySpaceType> material_state_view =
-      _material_properties.get_state();
-  adamantine::MemoryBlock<double, dealii::MemorySpace::Host>
-      material_state_host(material_state_view.extent(0),
-                          material_state_view.extent(1));
-  typename decltype(material_state_view)::memory_space memspace;
-  adamantine::deep_copy(material_state_host.data(), dealii::MemorySpace::Host{},
-                        material_state_view.data(), memspace,
-                        material_state_view.size());
-
   // We need to move the solution on the host because we cannot use
   // CellDataTransfer on the device.
   dealii::IndexSet rw_index_set = solution.locally_owned_elements();
@@ -683,8 +666,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   dealii::LA::ReadWriteVector<double> rw_solution(rw_index_set);
   rw_solution.import(solution, dealii::VectorOperation::insert);
 
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
-      state_host_view(material_state_host);
+  auto state_host = Kokkos::create_mirror_view_and_copy(
+      Kokkos::HostSpace{}, _material_properties.get_state());
   unsigned int cell_id = 0;
   unsigned int active_cell_id = 0;
   std::map<typename dealii::DoFHandler<dim>::active_cell_iterator, int>
@@ -710,7 +693,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 
         for (unsigned int i = 0; i < n_material_states; ++i)
           cell_data[n_dofs_per_cell + direction_data_size +
-                    phase_history_data_size + i] = state_host_view(i, cell_id);
+                    phase_history_data_size + i] = state_host(i, cell_id);
         data_to_transfer.push_back(cell_data);
 
         ++cell_id;
@@ -720,7 +703,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
         std::vector<double> cell_data = dummy_cell_data;
         for (unsigned int i = 0; i < n_material_states; ++i)
           cell_data[n_dofs_per_cell + direction_data_size +
-                    phase_history_data_size + i] = state_host_view(i, cell_id);
+                    phase_history_data_size + i] = state_host(i, cell_id);
         data_to_transfer.push_back(cell_data);
       }
     }
@@ -791,10 +774,8 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   std::vector<std::vector<double>> transferred_data(
       triangulation.n_active_cells(), std::vector<double>(data_size_per_cell));
   cell_data_trans.unpack(transferred_data);
-  material_state_view = _material_properties.get_state();
-  material_state_host.reinit(material_state_view.extent(0),
-                             material_state_view.extent(1));
-  state_host_view.reinit(material_state_host);
+  auto state = _material_properties.get_state();
+  state_host = Kokkos::create_mirror_view(state);
   _deposition_cos.clear();
   _deposition_sin.clear();
   _has_melted.clear();
@@ -827,7 +808,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
       }
       for (unsigned int i = 0; i < n_material_states; ++i)
       {
-        state_host_view(i, cell_id) =
+        state_host(i, cell_id) =
             transferred_data[active_cell_id]
                             [n_dofs_per_cell + direction_data_size +
                              phase_history_data_size + i];
@@ -836,7 +817,7 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     }
     ++active_cell_id;
   }
-  deep_copy(material_state_view, state_host_view);
+  Kokkos::deep_copy(state, state_host);
   get_state_from_material_properties();
   _thermal_operator->set_material_deposition_orientation(_deposition_cos,
                                                          _deposition_sin);
@@ -852,14 +833,18 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   // cells are at the same level than their neighbors.
   rw_solution.reinit(solution.locally_owned_elements());
   rw_solution.import(solution, dealii::VectorOperation::insert);
-  std::for_each(rw_solution.begin(), rw_solution.end(),
-                [&](double &val)
-                {
-                  if (val == std::numeric_limits<double>::infinity())
-                  {
-                    val = new_material_temperature;
-                  }
-                });
+  Kokkos::parallel_for("adamantine::set_new_material_temperature",
+                       Kokkos::RangePolicy<Kokkos::DefaultHostExecutionSpace>(
+                           0, rw_solution.locally_owned_size()),
+                       [&](int i)
+                       {
+                         if (rw_solution.local_element(i) ==
+                             std::numeric_limits<double>::infinity())
+                         {
+                           rw_solution.local_element(i) =
+                               new_material_temperature;
+                         }
+                       });
   solution.import(rw_solution, dealii::VectorOperation::insert);
 }
 

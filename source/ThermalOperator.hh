@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -47,8 +47,7 @@ public:
       dealii::AffineConstraints<double> const &affine_constraints) override;
 
   /**
-   * Clear the MatrixFree object and resize the inverse of the mass matrix to
-   * zero.
+   * Resize the inverse of the mass matrix to zero.
    */
   void clear() override;
 

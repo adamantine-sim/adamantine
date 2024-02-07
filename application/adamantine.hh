@@ -14,7 +14,6 @@
 #include <Geometry.hh>
 #include <MaterialProperty.hh>
 #include <MechanicalPhysics.hh>
-#include <MemoryBlock.hh>
 #include <PointCloud.hh>
 #include <PostProcessor.hh>
 #include <RayTracing.hh>
@@ -83,15 +82,17 @@ void output_pvtu(
     if (mechanical_physics)
     {
       mechanical_physics->get_affine_constraints().distribute(displacement);
-      post_processor.write_output(n_time_step, time, temperature, displacement,
-                                  mechanical_physics->get_stress_tensor(),
-                                  material_properties.get_state(),
-                                  material_properties.get_dofs_map(),
-                                  material_properties.get_dof_handler());
+      post_processor.template write_output<typename Kokkos::View<
+          double **, typename MemorySpaceType::kokkos_space>::array_layout>(
+          n_time_step, time, temperature, displacement,
+          mechanical_physics->get_stress_tensor(),
+          material_properties.get_state(), material_properties.get_dofs_map(),
+          material_properties.get_dof_handler());
     }
     else
     {
-      post_processor.write_thermal_output(
+      post_processor.template write_thermal_output<typename Kokkos::View<
+          double **, typename MemorySpaceType::kokkos_space>::array_layout>(
           n_time_step, time, temperature, material_properties.get_state(),
           material_properties.get_dofs_map(),
           material_properties.get_dof_handler());
@@ -100,7 +101,8 @@ void output_pvtu(
   else
   {
     mechanical_physics->get_affine_constraints().distribute(displacement);
-    post_processor.write_mechanical_output(
+    post_processor.template write_mechanical_output<typename Kokkos::View<
+        double **, typename MemorySpaceType::kokkos_space>::array_layout>(
         n_time_step, time, displacement,
         mechanical_physics->get_stress_tensor(),
         material_properties.get_state(), material_properties.get_dofs_map(),
@@ -109,11 +111,10 @@ void output_pvtu(
   timers[adamantine::output].stop();
 }
 
-#ifdef ADAMANTINE_HAVE_CUDA
 template <int dim, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
-              int> = 0>
+          std::enable_if_t<std::is_same<MemorySpaceType,
+                                        dealii::MemorySpace::Default>::value,
+                           int> = 0>
 void output_pvtu(
     adamantine::PostProcessor<dim> &post_processor, unsigned int n_time_step,
     double time,
@@ -135,11 +136,8 @@ void output_pvtu(
 #endif
   timers[adamantine::output].start();
   auto state = material_properties.get_state();
-  adamantine::MemoryBlock<double, dealii::MemorySpace::Host> state_host(
-      state.extent(0), state.extent(1));
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
-      state_host_view(state_host);
-  adamantine::deep_copy(state_host_view, state);
+  auto state_host = Kokkos::create_mirror_view_and_copy(
+      dealii::MemorySpace::Host::kokkos_space{}, state);
   if (thermal_physics)
   {
     dealii::LinearAlgebra::distributed::Vector<double,
@@ -150,16 +148,18 @@ void output_pvtu(
     if (mechanical_physics)
     {
       mechanical_physics->get_affine_constraints().distribute(displacement);
-      post_processor.write_output(
+      post_processor.template write_output<typename Kokkos::View<
+          double **, typename MemorySpaceType::kokkos_space>::array_layout>(
           n_time_step, time, temperature_host, displacement,
-          mechanical_physics->get_stress_tensor(), state_host_view,
+          mechanical_physics->get_stress_tensor(), state_host,
           material_properties.get_dofs_map(),
           material_properties.get_dof_handler());
     }
     else
     {
-      post_processor.write_thermal_output(
-          n_time_step, time, temperature_host, state_host_view,
+      post_processor.template write_thermal_output<typename Kokkos::View<
+          double **, typename MemorySpaceType::kokkos_space>::array_layout>(
+          n_time_step, time, temperature_host, state_host,
           material_properties.get_dofs_map(),
           material_properties.get_dof_handler());
     }
@@ -167,15 +167,15 @@ void output_pvtu(
   else
   {
     mechanical_physics->get_affine_constraints().distribute(displacement);
-    post_processor.write_mechanical_output(
+    post_processor.template write_mechanical_output<typename Kokkos::View<
+        double **, typename MemorySpaceType::kokkos_space>::array_layout>(
         n_time_step, time, displacement,
-        mechanical_physics->get_stress_tensor(), state_host_view,
+        mechanical_physics->get_stress_tensor(), state_host,
         material_properties.get_dofs_map(),
         material_properties.get_dof_handler());
   }
   timers[adamantine::output].stop();
 }
-#endif
 
 template <int dim, typename MemorySpaceType,
           std::enable_if_t<
@@ -198,11 +198,10 @@ dealii::Vector<float> estimate_error(
   return estimated_error_per_cell;
 }
 
-#ifdef ADAMANTINE_HAVE_CUDA
 template <int dim, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::CUDA>::value,
-              int> = 0>
+          std::enable_if_t<std::is_same<MemorySpaceType,
+                                        dealii::MemorySpace::Default>::value,
+                           int> = 0>
 dealii::Vector<float> estimate_error(
     dealii::parallel::distributed::Triangulation<dim> const &triangulation,
     dealii::DoFHandler<dim> const &dof_handler, int fe_degree,
@@ -222,7 +221,6 @@ dealii::Vector<float> estimate_error(
 
   return estimated_error_per_cell;
 }
-#endif
 
 // inlining this function so we can have in the header
 inline void initialize_timers(MPI_Comm const &communicator,
@@ -389,18 +387,8 @@ void refine_and_transfer(
   std::vector<double> dummy_cell_data(n_material_states + direction_data_size +
                                           phase_history_data_size,
                                       std::numeric_limits<double>::infinity());
-  adamantine::MemoryBlockView<double, MemorySpaceType> material_state_view =
-      material_properties.get_state();
-  adamantine::MemoryBlock<double, dealii::MemorySpace::Host>
-      material_state_host(material_state_view.extent(0),
-                          material_state_view.extent(1));
-  typename decltype(material_state_view)::memory_space memspace;
-  adamantine::deep_copy(material_state_host.data(), dealii::MemorySpace::Host{},
-                        material_state_view.data(), memspace,
-                        material_state_view.size());
-
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::Host>
-      state_host_view(material_state_host);
+  auto state_host = Kokkos::create_mirror_view_and_copy(
+      Kokkos::HostSpace{}, material_properties.get_state());
   unsigned int cell_id = 0;
   unsigned int activated_cell_id = 0;
   for (auto const &cell : dof_handler.active_cell_iterators())
@@ -410,7 +398,7 @@ void refine_and_transfer(
       std::vector<double> cell_data(n_material_states + direction_data_size +
                                     phase_history_data_size);
       for (unsigned int i = 0; i < n_material_states; ++i)
-        cell_data[i] = state_host_view(i, cell_id);
+        cell_data[i] = state_host(i, cell_id);
       if (cell->active_fe_index() == 0)
       {
         cell_data[n_material_states] =
@@ -508,10 +496,8 @@ void refine_and_transfer(
       std::vector<double>(n_material_states + direction_data_size +
                           phase_history_data_size));
   cell_data_trans.unpack(transferred_data);
-  material_state_view = material_properties.get_state();
-  material_state_host.reinit(material_state_view.extent(0),
-                             material_state_view.extent(1));
-  state_host_view.reinit(material_state_host);
+  auto state = material_properties.get_state();
+  state_host = Kokkos::create_mirror_view(state);
   unsigned int total_cell_id = 0;
   cell_id = 0;
   std::vector<double> transferred_cos;
@@ -523,7 +509,7 @@ void refine_and_transfer(
     {
       for (unsigned int i = 0; i < n_material_states; ++i)
       {
-        state_host_view(i, cell_id) = transferred_data[total_cell_id][i];
+        state_host(i, cell_id) = transferred_data[total_cell_id][i];
       }
       if (cell->active_fe_index() == 0)
       {
@@ -552,9 +538,7 @@ void refine_and_transfer(
   thermal_physics->set_has_melted_vector(has_melted);
 
   // Copy the data back to material_property
-  adamantine::deep_copy(material_state_view.data(), memspace,
-                        material_state_host.data(), dealii::MemorySpace::Host{},
-                        material_state_view.size());
+  Kokkos::deep_copy(state, state_host);
 
   // Update the material states in the ThermalOperator
   thermal_physics->get_state_from_material_properties();
@@ -569,7 +553,7 @@ void refine_and_transfer(
       double material_ratio = 0.;
       for (unsigned int i = 0; i < n_material_states; ++i)
       {
-        material_ratio += state_host_view(i, cell_id);
+        material_ratio += state_host(i, cell_id);
       }
       ASSERT(std::abs(material_ratio - 1.) < 1e-14, "Material is lost.");
       ++cell_id;
@@ -1266,7 +1250,8 @@ void split_global_communicator(MPI_Comm global_communicator,
         "Number of MPI ranks should be less than the number of ensemble "
         "members or a multiple of this number.");
     // Assign color
-    my_color = global_rank / avg_n_procs_per_member;
+    my_color =
+        global_rank / static_cast<int>(std::floor(avg_n_procs_per_member));
 
     first_local_member = my_color;
   }
@@ -1883,11 +1868,14 @@ run_ensemble(MPI_Comm const &global_communicator,
 
           thermal_physics_ensemble[0]->get_affine_constraints().distribute(
               temperature_expt);
-          post_processor_expt.write_thermal_output(
-              n_time_step, time, temperature_expt,
-              material_properties_ensemble[0]->get_state(),
-              material_properties_ensemble[0]->get_dofs_map(),
-              material_properties_ensemble[0]->get_dof_handler());
+          post_processor_expt
+              .template write_thermal_output<typename Kokkos::View<
+                  double **,
+                  typename MemorySpaceType::kokkos_space>::array_layout>(
+                  n_time_step, time, temperature_expt,
+                  material_properties_ensemble[0]->get_state(),
+                  material_properties_ensemble[0]->get_dofs_map(),
+                  material_properties_ensemble[0]->get_dof_handler());
         }
 
         // NOTE: As is, this updates the dof mapping and covariance sparsity

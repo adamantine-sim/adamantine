@@ -69,11 +69,11 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev, *utf::tolerance(1e-10))
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  adamantine::MaterialProperty<2, dealii::MemorySpace::CUDA> mat_properties(
+  adamantine::MaterialProperty<2, dealii::MemorySpace::Default> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
+  adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::Default>
       thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
                            mat_properties);
   thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
@@ -90,9 +90,9 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev, *utf::tolerance(1e-10))
   BOOST_TEST(thermal_operator_dev.m() == thermal_operator_dev.n());
 
   // Check matrix-vector multiplications
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> src;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_1;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_2;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> src;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> dst_1;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> dst_2;
 
   auto const &matrix_free = thermal_operator_dev.get_matrix_free();
   matrix_free.initialize_dof_vector(src);
@@ -157,11 +157,11 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 1.);
-  adamantine::MaterialProperty<2, dealii::MemorySpace::CUDA> mat_properties(
+  adamantine::MaterialProperty<2, dealii::MemorySpace::Default> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
+  adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::Default>
       thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
                            mat_properties);
   thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
@@ -187,8 +187,8 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
       dof_handler, dealii::QGauss<2>(3), sparse_matrix);
 
   // Compare vmult using matrix free and building the matrix
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> src_dev;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_dev;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> src_dev;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> dst_dev;
 
   dealii::CUDAWrappers::MatrixFree<2, double> const &matrix_free =
       thermal_operator_dev.get_matrix_free();
@@ -261,7 +261,7 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   adamantine::MaterialProperty<2, dealii::MemorySpace::Host>
       mat_properties_host(communicator, geometry.get_triangulation(),
                           mat_prop_database);
-  adamantine::MaterialProperty<2, dealii::MemorySpace::CUDA> mat_properties(
+  adamantine::MaterialProperty<2, dealii::MemorySpace::Default> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
 
   // Create the heat sources
@@ -278,7 +278,7 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>
+  adamantine::ThermalOperatorDevice<2, 2, dealii::MemorySpace::Default>
       thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
                            mat_properties);
   thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
@@ -304,8 +304,8 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   thermal_operator_host.get_state_from_material_properties();
 
   // Compare vmult using matrix free and building the matrix
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> src_dev;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_dev;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> src_dev;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> dst_dev;
 
   dealii::CUDAWrappers::MatrixFree<2, double> const &matrix_free =
       thermal_operator_dev.get_matrix_free();
@@ -389,11 +389,11 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", th_cond_x);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_y", th_cond_y);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", th_cond_z);
-  adamantine::MaterialProperty<3, dealii::MemorySpace::CUDA> mat_properties(
+  adamantine::MaterialProperty<3, dealii::MemorySpace::Default> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
 
   // Initialize the ThermalOperatorDevice
-  adamantine::ThermalOperatorDevice<3, 2, dealii::MemorySpace::CUDA>
+  adamantine::ThermalOperatorDevice<3, 2, dealii::MemorySpace::Default>
       thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
                            mat_properties);
   double constexpr deposition_angle = M_PI / 6.;
@@ -467,8 +467,8 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
   }
 
   // Compare vmult using matrix free and building the matrix
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> src_dev;
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> dst_dev;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> src_dev;
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> dst_dev;
   thermal_operator_dev.initialize_dof_vector(src_dev);
   thermal_operator_dev.initialize_dof_vector(dst_dev);
 

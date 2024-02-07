@@ -4,20 +4,15 @@ cmake_minimum_required(VERSION 3.15)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-include(SetupDealII)
 
 # This needs to be called before project is called and before we setup the other
 # TPL and adamantine
-DEAL_II_INITIALIZE_CACHED_VARIABLES()
+include(SetupDealII)
 
 project(adamantine LANGUAGES CXX VERSION 0.1.0)
 
 include(SetupTPLs)
 include(SetupAdamantine)
-
-if (ADAMANTINE_ENABLE_CUDA)
-  enable_language(CUDA)
-endif()
 
 add_subdirectory(application)
 add_subdirectory(source)

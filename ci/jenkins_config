@@ -17,43 +17,12 @@ pipeline {
   stages {
     stage('Test') {
       parallel {
-        stage('CPU-on-device') {
-          agent {
-            docker {
-              image "rombur/adamantine-stack:latest"
-                alwaysPull true
-                label 'docker'
-            }
-          }
-          steps {
-            sh 'rm -rf build && mkdir -p build'
-              dir('build') {
-                sh '''#!/bin/bash
-                  cmake \
-                  -D CMAKE_BUILD_TYPE=Release \
-                  -D ADAMANTINE_ENABLE_TESTS=ON \
-                  -D ADAMANTINE_ENABLE_CUDA=OFF \
-                  -D CMAKE_CXX_FLAGS="-Wall -Wextra -pedantic" \
-                  -D DEAL_II_DIR=${DEAL_II_DIR} \
-                  ..
-                '''
-                sh 'make -j4'
-                sh 'ctest --no-compress-output -R test_ -T Test'
-              }
-          }
-          post {
-            always {
-              xunit([CTest(deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/Testing/**/Test.xml', skipNoTestFiles: false, stopProcessingIfError: true)])
-            }
-          }
-        }
-
         stage('CPU') {
           agent {
             docker {
               image "rombur/adamantine-stack:no_gpu-latest"
                 alwaysPull true
-                label 'docker'
+                label 'docker || nvidia-docker || rocm-docker'
             }
           }
           steps {
@@ -67,7 +36,7 @@ pipeline {
                   -D DEAL_II_DIR=${DEAL_II_DIR} \
                   ..
                 '''
-                sh 'make -j4'
+                sh 'make -j3'
                 sh 'ctest --no-compress-output -R test_ -T Test'
               }
           }
@@ -126,7 +95,7 @@ pipeline {
             docker {
               image "rombur/adamantine-stack:latest"
                 alwaysPull true
-                label 'nvidia-docker && volta'
+                label 'nvidia-docker && ampere'
             }
           }
           steps {
@@ -136,10 +105,8 @@ pipeline {
                   cmake \
                   -D CMAKE_BUILD_TYPE=Debug \
                   -D ADAMANTINE_ENABLE_TESTS=ON \
-                  -D ADAMANTINE_ENABLE_CUDA=ON \
                   -D ADAMANTINE_ENABLE_COVERAGE=OFF \
                   -D CMAKE_CXX_FLAGS="-Wall -Wextra" \
-                  -D CMAKE_CUDA_FLAGS="--extended-lambda --expt-relaxed-constexpr" \
                   -D DEAL_II_DIR=${DEAL_II_DIR} \
                   ..
                 '''

@@ -1,53 +1,40 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
  * for the text and further information on this license.
  */
 
-#include "MaterialProperty.hh"
-#include <MemoryBlockView.hh>
+#include <MaterialProperty.templates.hh>
 #include <ThermalOperatorDevice.hh>
 #include <instantiation.hh>
 #include <types.hh>
 
-#include <deal.II/base/cuda_size.h>
+#include <deal.II/base/config.h>
+#include <deal.II/base/types.h>
+#include <deal.II/fe/fe_update_flags.h>
 #include <deal.II/matrix_free/cuda_fe_evaluation.h>
+#include <deal.II/matrix_free/cuda_matrix_free.h>
 
 namespace
 {
-__global__ void invert_mass_matrix(double *values, unsigned int size)
-{
-  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-  if (i < size)
-  {
-    if (values[i] > 1e-15)
-      values[i] = 1. / values[i];
-    else
-      values[i] = 0.;
-  }
-}
-
 template <int dim, int fe_degree>
 class MassMatrixOperatorQuad
 {
 public:
-  __device__ void
-  operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const;
+  KOKKOS_FUNCTION void
+  operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval,
+             int const q_point) const
+  {
+    fe_eval->submit_value(1., q_point);
+  }
 };
-
-template <int dim, int fe_degree>
-__device__ void MassMatrixOperatorQuad<dim, fe_degree>::operator()(
-    dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const
-{
-  fe_eval->submit_value(1.);
-}
 
 template <int dim, int fe_degree>
 class LocalMassMatrixOperator
 {
 public:
-  __device__ void
+  KOKKOS_FUNCTION void
   operator()(unsigned int const cell,
              typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
                  *gpu_data,
@@ -62,15 +49,15 @@ public:
 };
 
 template <int dim, int fe_degree>
-__device__ void LocalMassMatrixOperator<dim, fe_degree>::operator()(
-    unsigned int const cell,
+KOKKOS_FUNCTION void LocalMassMatrixOperator<dim, fe_degree>::operator()(
+    unsigned int const /*cell*/,
     typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
         *gpu_data,
     dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
     double const * /*src*/, double *dst) const
 {
   dealii::CUDAWrappers::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
-      fe_eval(cell, gpu_data, shared_data);
+      fe_eval(gpu_data, shared_data);
   fe_eval.apply_for_each_quad_point(MassMatrixOperatorQuad<dim, fe_degree>());
   fe_eval.integrate(true, false);
   fe_eval.distribute_local_to_global(dst);
@@ -80,156 +67,68 @@ template <int dim, int fe_degree>
 class ThermalOperatorQuad
 {
 public:
-  __device__ ThermalOperatorQuad(double inv_rho_cp, double cos, double sin,
-                                 double thermal_conductivity_x,
-                                 double thermal_conductivity_y,
-                                 double thermal_conductivity_z)
-      : _inv_rho_cp(inv_rho_cp), _cos(cos), _sin(sin),
-        _thermal_conductivity_x(thermal_conductivity_x),
-        _thermal_conductivity_y(thermal_conductivity_y),
-        _thermal_conductivity_z(thermal_conductivity_z)
+  using kokkos_default = dealii::MemorySpace::Default::kokkos_space;
+
+  KOKKOS_FUNCTION ThermalOperatorQuad(
+      bool use_table, unsigned int polynomial_order, unsigned int cell,
+      typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
+          *gpu_data,
+      Kokkos::View<double *, kokkos_default> cos,
+      Kokkos::View<double *, kokkos_default> sin,
+      Kokkos::View<double *, kokkos_default> powder_ratio,
+      Kokkos::View<double *, kokkos_default> liquid_ratio,
+      Kokkos::View<dealii::types::material_id *, kokkos_default> material_id,
+      Kokkos::View<double *, kokkos_default> inv_rho_cp,
+      Kokkos::View<double **, kokkos_default> properties,
+      Kokkos::View<double *****, kokkos_default> state_property_tables,
+      Kokkos::View<double ****, kokkos_default> state_property_polynomials)
+      : _use_table(use_table), _polynomial_order(polynomial_order), _cell(cell),
+        _gpu_data(gpu_data), _cos(cos), _sin(sin), _powder_ratio(powder_ratio),
+        _liquid_ratio(liquid_ratio), _material_id(material_id),
+        _inv_rho_cp(inv_rho_cp), _properties(properties),
+        _state_property_tables(state_property_tables),
+        _state_property_polynomials(state_property_polynomials)
   {
   }
 
-  __device__ void
-  operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const;
+  KOKKOS_FUNCTION void
+  operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval,
+             int const q_point) const;
 
 private:
-  double _inv_rho_cp;
-  double _cos;
-  double _sin;
-  double _thermal_conductivity_x;
-  double _thermal_conductivity_y;
-  double _thermal_conductivity_z;
-};
+  KOKKOS_FUNCTION void update_state_ratios(unsigned int pos, double temperature,
+                                           double *state_ratios) const;
 
-template <int dim, int fe_degree>
-__device__ void ThermalOperatorQuad<dim, fe_degree>::operator()(
-    dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval) const
-{
-  auto th_conductivity_grad = fe_eval->get_gradient();
+  KOKKOS_FUNCTION void get_inv_rho_cp(unsigned int pos, double *state_ratios,
+                                      double temperature) const;
 
-  // In 2D we only use x and z, and there are no deposition angle
-  if constexpr (dim == 2)
-  {
-    th_conductivity_grad[::adamantine::axis<dim>::x] *= _thermal_conductivity_x;
-    th_conductivity_grad[::adamantine::axis<dim>::z] *= _thermal_conductivity_z;
-  }
-
-  if constexpr (dim == 3)
-  {
-    auto const th_conductivity_grad_x =
-        th_conductivity_grad[::adamantine::axis<dim>::x];
-    auto const th_conductivity_grad_y =
-        th_conductivity_grad[::adamantine::axis<dim>::y];
-
-    // The rotation is performed using the following formula
-    //
-    // (cos  -sin) (x  0) ( cos  sin)
-    // (sin   cos) (0  y) (-sin  cos)
-    // =
-    // ((x*cos^2 + y*sin^2)  ((x-y) * (sin*cos)))
-    // (((x-y) * (sin*cos))  (x*sin^2 + y*cos^2))
-    th_conductivity_grad[::adamantine::axis<dim>::x] =
-        (_thermal_conductivity_x * _cos * _cos +
-         _thermal_conductivity_y * _sin * _sin) *
-            th_conductivity_grad_x +
-        ((_thermal_conductivity_x - _thermal_conductivity_y) * _sin * _cos) *
-            th_conductivity_grad_y;
-    th_conductivity_grad[::adamantine::axis<dim>::y] =
-        ((_thermal_conductivity_x - _thermal_conductivity_y) * _sin * _cos) *
-            th_conductivity_grad_x +
-        (_thermal_conductivity_x * _sin * _sin +
-         _thermal_conductivity_y * _cos * _cos) *
-            th_conductivity_grad_y;
-
-    // There is no deposition angle for the z axis
-    th_conductivity_grad[::adamantine::axis<dim>::z] *= _thermal_conductivity_z;
-  }
-
-  fe_eval->submit_gradient(-_inv_rho_cp * th_conductivity_grad);
-}
-
-template <int dim, int fe_degree>
-class LocalThermalOperatorDevice
-{
-public:
-  LocalThermalOperatorDevice(
-      bool use_table, unsigned int polynomial_order, double *cos, double *sin,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-          powder_ratio_view,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-          liquid_ratio_view,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-          material_id_view,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-          inv_rho_cp_view,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-          properties_view,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-          state_property_tables_view,
-      adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-          state_property_polynomials_view)
-      : _use_table(use_table), _polynomial_order(polynomial_order), _cos(cos),
-        _sin(sin), _powder_ratio_view(powder_ratio_view),
-        _liquid_ratio_view(liquid_ratio_view),
-        _material_id_view(material_id_view), _inv_rho_cp_view(inv_rho_cp_view),
-        _properties_view(properties_view),
-        _state_property_tables_view(state_property_tables_view),
-        _state_property_polynomials_view(state_property_polynomials_view)
-  {
-  }
-
-  __device__ void update_state_ratios(unsigned int pos, double temperature,
-                                      double *state_ratios) const;
-
-  __device__ double
+  KOKKOS_FUNCTION double
   compute_material_property(adamantine::StateProperty state_property,
                             dealii::types::material_id const material_id,
                             double const *state_ratios,
                             double temperature) const;
 
-  __device__ double get_inv_rho_cp(unsigned int pos, double *state_ratios,
-                                   double temperature) const;
-
-  __device__ void
-  operator()(unsigned int const cell,
-             typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
-                 *gpu_data,
-             dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
-             double const *src, double *dst) const;
-
-  static const unsigned int n_dofs_1d = fe_degree + 1;
-  static const unsigned int n_local_dofs =
-      dealii::Utilities::pow(fe_degree + 1, dim);
-  static const unsigned int n_q_points =
-      dealii::Utilities::pow(fe_degree + 1, dim);
-
-private:
   bool _use_table;
   unsigned int _polynomial_order;
+  unsigned int _cell;
+  static unsigned int constexpr _n_q_points =
+      dealii::Utilities::pow(fe_degree + 1, dim);
   static unsigned int constexpr _n_material_states =
       static_cast<unsigned int>(adamantine::MaterialState::SIZE);
-  double *_cos;
-  double *_sin;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-      _powder_ratio_view;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-      _liquid_ratio_view;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-      _material_id_view;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-      _inv_rho_cp_view;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-      _properties_view;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-      _state_property_tables_view;
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-      _state_property_polynomials_view;
+  typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const *_gpu_data;
+  Kokkos::View<double *, kokkos_default> _cos;
+  Kokkos::View<double *, kokkos_default> _sin;
+  Kokkos::View<double *, kokkos_default> _powder_ratio;
+  Kokkos::View<double *, kokkos_default> _liquid_ratio;
+  Kokkos::View<dealii::types::material_id *, kokkos_default> _material_id;
+  Kokkos::View<double *, kokkos_default> _inv_rho_cp;
+  Kokkos::View<double **, kokkos_default> _properties;
+  Kokkos::View<double *****, kokkos_default> _state_property_tables;
+  Kokkos::View<double ****, kokkos_default> _state_property_polynomials;
 };
 
 template <int dim, int fe_degree>
-__device__ void LocalThermalOperatorDevice<dim, fe_degree>::update_state_ratios(
+KOKKOS_FUNCTION void ThermalOperatorQuad<dim, fe_degree>::update_state_ratios(
     unsigned int pos, double temperature, double *state_ratios) const
 {
   unsigned int constexpr liquid =
@@ -240,16 +139,16 @@ __device__ void LocalThermalOperatorDevice<dim, fe_degree>::update_state_ratios(
       static_cast<unsigned int>(adamantine::MaterialState::solid);
 
   // Get the material id at this point
-  dealii::types::material_id material_id = _material_id_view(pos);
+  auto material_id = _material_id[pos];
 
   // Get the material thermodynamic properties
-  double const solidus = _properties_view(
+  double const solidus = _properties(
       material_id, static_cast<unsigned int>(adamantine::Property::solidus));
-  double const liquidus = _properties_view(
+  double const liquidus = _properties(
       material_id, static_cast<unsigned int>(adamantine::Property::liquidus));
 
   // Update the state ratios
-  state_ratios[powder] = _powder_ratio_view(pos);
+  state_ratios[powder] = _powder_ratio(pos);
 
   if (temperature < solidus)
     state_ratios[liquid] = 0.;
@@ -271,69 +170,26 @@ __device__ void LocalThermalOperatorDevice<dim, fe_degree>::update_state_ratios(
                             ? (1. - state_ratios[liquid] - state_ratios[powder])
                             : 0.;
 
-  _powder_ratio_view(pos) = state_ratios[powder];
-  _liquid_ratio_view(pos) = state_ratios[liquid];
+  _powder_ratio(pos) = state_ratios[powder];
+  _liquid_ratio(pos) = state_ratios[liquid];
 }
 
 template <int dim, int fe_degree>
-__device__ double
-LocalThermalOperatorDevice<dim, fe_degree>::compute_material_property(
-    adamantine::StateProperty state_property,
-    dealii::types::material_id const material_id, double const *state_ratios,
-    double temperature) const
-{
-  double value = 0.0;
-  unsigned int const property_index = static_cast<unsigned int>(state_property);
-  if (_use_table)
-  {
-    for (unsigned int material_state = 0; material_state < _n_material_states;
-         ++material_state)
-    {
-      const dealii::types::material_id m_id = material_id;
-
-      value += state_ratios[material_state] *
-               adamantine::MaterialProperty<dim, dealii::MemorySpace::CUDA>::
-                   compute_property_from_table(_state_property_tables_view,
-                                               m_id, material_state,
-                                               property_index, temperature);
-    }
-  }
-  else
-  {
-    for (unsigned int material_state = 0; material_state < _n_material_states;
-         ++material_state)
-    {
-      dealii::types::material_id m_id = material_id;
-
-      for (unsigned int i = 0; i <= _polynomial_order; ++i)
-      {
-        value += state_ratios[material_state] *
-                 _state_property_polynomials_view(m_id, material_state,
-                                                  property_index, i) *
-                 std::pow(temperature, i);
-      }
-    }
-  }
-
-  return value;
-}
-
-template <int dim, int fe_degree>
-__device__ double LocalThermalOperatorDevice<dim, fe_degree>::get_inv_rho_cp(
+KOKKOS_FUNCTION void ThermalOperatorQuad<dim, fe_degree>::get_inv_rho_cp(
     unsigned int pos, double *state_ratios, double temperature) const
 {
   // Here we need the specific heat (including the latent heat contribution)
   // and the density
 
-  auto material_id = _material_id_view(pos);
+  auto material_id = _material_id(pos);
   // First, get the state-independent material properties
-  double const solidus = _properties_view(
+  double const solidus = _properties(
       material_id, static_cast<unsigned int>(adamantine::Property::solidus));
-  double const liquidus = _properties_view(
+  double const liquidus = _properties(
       material_id, static_cast<unsigned int>(adamantine::Property::liquidus));
-  double const latent_heat = _properties_view(
-      material_id,
-      static_cast<unsigned int>(adamantine::Property::latent_heat));
+  double const latent_heat =
+      _properties(material_id,
+                  static_cast<unsigned int>(adamantine::Property::latent_heat));
 
   // Now compute the state-dependent properties
   double const density =
@@ -353,32 +209,66 @@ __device__ double LocalThermalOperatorDevice<dim, fe_degree>::get_inv_rho_cp(
     specific_heat += latent_heat / (liquidus - solidus);
   }
 
-  _inv_rho_cp_view(pos) = 1.0 / (density * specific_heat);
-
-  return _inv_rho_cp_view(pos);
+  _inv_rho_cp(pos) = 1.0 / (density * specific_heat);
 }
 
 template <int dim, int fe_degree>
-__device__ void LocalThermalOperatorDevice<dim, fe_degree>::operator()(
-    unsigned int const cell,
-    typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
-        *gpu_data,
-    dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
-    double const *src, double *dst) const
+KOKKOS_FUNCTION double
+ThermalOperatorQuad<dim, fe_degree>::compute_material_property(
+    adamantine::StateProperty state_property,
+    dealii::types::material_id const material_id, double const *state_ratios,
+    double temperature) const
 {
-  unsigned int const pos = dealii::CUDAWrappers::local_q_point_id<dim, double>(
-      cell, gpu_data, n_dofs_1d, n_q_points);
-  dealii::CUDAWrappers::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
-      fe_eval(cell, gpu_data, shared_data);
-  fe_eval.read_dof_values(src);
-  fe_eval.evaluate(/*values*/ true, /*gradients*/ true);
+  double value = 0.0;
+  unsigned int const property_index = static_cast<unsigned int>(state_property);
+  if (_use_table)
+  {
+    for (unsigned int material_state = 0; material_state < _n_material_states;
+         ++material_state)
+    {
+      const dealii::types::material_id m_id = material_id;
 
-  double temperature = fe_eval.get_value();
+      value += state_ratios[material_state] *
+               adamantine::MaterialProperty<dim, dealii::MemorySpace::Default>::
+                   compute_property_from_table(_state_property_tables, m_id,
+                                               material_state, property_index,
+                                               temperature);
+    }
+  }
+  else
+  {
+    for (unsigned int material_state = 0; material_state < _n_material_states;
+         ++material_state)
+    {
+      dealii::types::material_id m_id = material_id;
+
+      for (unsigned int i = 0; i <= _polynomial_order; ++i)
+      {
+        value += state_ratios[material_state] *
+                 _state_property_polynomials(m_id, material_state,
+                                             property_index, i) *
+                 std::pow(temperature, i);
+      }
+    }
+  }
+
+  return value;
+}
+
+template <int dim, int fe_degree>
+KOKKOS_FUNCTION void ThermalOperatorQuad<dim, fe_degree>::operator()(
+    dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval,
+    int const q_point) const
+{
+  double temperature = fe_eval->get_value(q_point);
+
   double
       state_ratios[static_cast<unsigned int>(adamantine::MaterialState::SIZE)];
+  unsigned int const pos =
+      _gpu_data->local_q_point_id(_cell, _n_q_points, q_point);
   update_state_ratios(pos, temperature, state_ratios);
-  auto inv_rho_cp = get_inv_rho_cp(pos, state_ratios, temperature);
-  dealii::types::material_id material_id = _material_id_view(pos);
+  get_inv_rho_cp(pos, state_ratios, temperature);
+  auto material_id = _material_id[pos];
   auto const thermal_conductivity_x = compute_material_property(
       adamantine::StateProperty::thermal_conductivity_x, material_id,
       state_ratios, temperature);
@@ -389,9 +279,122 @@ __device__ void LocalThermalOperatorDevice<dim, fe_degree>::operator()(
       adamantine::StateProperty::thermal_conductivity_z, material_id,
       state_ratios, temperature);
 
+  auto th_conductivity_grad = fe_eval->get_gradient(q_point);
+
+  // In 2D we only use x and z, and there are no deposition angle
+  if constexpr (dim == 2)
+  {
+    th_conductivity_grad[::adamantine::axis<dim>::x] *= thermal_conductivity_x;
+    th_conductivity_grad[::adamantine::axis<dim>::z] *= thermal_conductivity_z;
+  }
+
+  if constexpr (dim == 3)
+  {
+    auto const th_conductivity_grad_x =
+        th_conductivity_grad[::adamantine::axis<dim>::x];
+    auto const th_conductivity_grad_y =
+        th_conductivity_grad[::adamantine::axis<dim>::y];
+
+    // The rotation is performed using the following formula
+    //
+    // (cos  -sin) (x  0) ( cos  sin)
+    // (sin   cos) (0  y) (-sin  cos)
+    // =
+    // ((x*cos^2 + y*sin^2)  ((x-y) * (sin*cos)))
+    // (((x-y) * (sin*cos))  (x*sin^2 + y*cos^2))
+    th_conductivity_grad[::adamantine::axis<dim>::x] =
+        (thermal_conductivity_x * _cos[pos] * _cos[pos] +
+         thermal_conductivity_y * _sin[pos] * _sin[pos]) *
+            th_conductivity_grad_x +
+        ((thermal_conductivity_x - thermal_conductivity_y) * _sin[pos] *
+         _cos[pos]) *
+            th_conductivity_grad_y;
+    th_conductivity_grad[::adamantine::axis<dim>::y] =
+        ((thermal_conductivity_x - thermal_conductivity_y) * _sin[pos] *
+         _cos[pos]) *
+            th_conductivity_grad_x +
+        (thermal_conductivity_x * _sin[pos] * _sin[pos] +
+         thermal_conductivity_y * _cos[pos] * _cos[pos]) *
+            th_conductivity_grad_y;
+
+    // There is no deposition angle for the z axis
+    th_conductivity_grad[::adamantine::axis<dim>::z] *= thermal_conductivity_z;
+  }
+
+  fe_eval->submit_gradient(-_inv_rho_cp[pos] * th_conductivity_grad, q_point);
+}
+
+template <int dim, int fe_degree>
+class LocalThermalOperatorDevice
+{
+public:
+  using kokkos_default = dealii::MemorySpace::Default::kokkos_space;
+
+  LocalThermalOperatorDevice(
+      bool use_table, unsigned int polynomial_order,
+      Kokkos::View<double *, kokkos_default> cos,
+      Kokkos::View<double *, kokkos_default> sin,
+      Kokkos::View<double *, kokkos_default> powder_ratio,
+      Kokkos::View<double *, kokkos_default> liquid_ratio,
+      Kokkos::View<dealii::types::material_id *, kokkos_default> material_id,
+      Kokkos::View<double *, kokkos_default> inv_rho_cp,
+      Kokkos::View<double **, kokkos_default> properties,
+      Kokkos::View<double *****, kokkos_default> state_property_tables,
+      Kokkos::View<double ****, kokkos_default> state_property_polynomials)
+      : _use_table(use_table), _polynomial_order(polynomial_order), _cos(cos),
+        _sin(sin), _powder_ratio(powder_ratio), _liquid_ratio(liquid_ratio),
+        _material_id(material_id), _inv_rho_cp(inv_rho_cp),
+        _properties(properties), _state_property_tables(state_property_tables),
+        _state_property_polynomials(state_property_polynomials)
+  {
+  }
+
+  KOKKOS_FUNCTION void
+  operator()(unsigned int const cell,
+             typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
+                 *gpu_data,
+             dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
+             double const *src, double *dst) const;
+
+  static const unsigned int n_dofs_1d = fe_degree + 1;
+  static const unsigned int n_local_dofs =
+      dealii::Utilities::pow(fe_degree + 1, dim);
+  static const unsigned int n_q_points =
+      dealii::Utilities::pow(fe_degree + 1, dim);
+
+private:
+  bool _use_table;
+  unsigned int _polynomial_order;
+  static unsigned int constexpr _n_material_states =
+      static_cast<unsigned int>(adamantine::MaterialState::SIZE);
+  Kokkos::View<double *, kokkos_default> _cos;
+  Kokkos::View<double *, kokkos_default> _sin;
+  Kokkos::View<double *, kokkos_default> _powder_ratio;
+  Kokkos::View<double *, kokkos_default> _liquid_ratio;
+  Kokkos::View<dealii::types::material_id *, kokkos_default> _material_id;
+  Kokkos::View<double *, kokkos_default> _inv_rho_cp;
+  Kokkos::View<double **, kokkos_default> _properties;
+  Kokkos::View<double *****, kokkos_default> _state_property_tables;
+  Kokkos::View<double ****, kokkos_default> _state_property_polynomials;
+};
+
+template <int dim, int fe_degree>
+KOKKOS_FUNCTION void LocalThermalOperatorDevice<dim, fe_degree>::operator()(
+    unsigned int const cell,
+    typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
+        *gpu_data,
+    dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
+    double const *src, double *dst) const
+{
+  dealii::CUDAWrappers::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
+      fe_eval(gpu_data, shared_data);
+  fe_eval.read_dof_values(src);
+  fe_eval.evaluate(/*values*/ true, /*gradients*/ true);
+
   fe_eval.apply_for_each_quad_point(ThermalOperatorQuad<dim, fe_degree>(
-      inv_rho_cp, _cos[pos], _sin[pos], thermal_conductivity_x,
-      thermal_conductivity_y, thermal_conductivity_z));
+      _use_table, _polynomial_order, cell, gpu_data, _cos, _sin, _powder_ratio,
+      _liquid_ratio, _material_id, _inv_rho_cp, _properties,
+      _state_property_tables, _state_property_polynomials));
 
   fe_eval.integrate(/*values*/ false, /*gradients*/ true);
   fe_eval.distribute_local_to_global(dst);
@@ -456,8 +459,7 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::reinit(
       for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
       {
         unsigned int const pos =
-            dealii::CUDAWrappers::local_q_point_id_host<dim, double>(
-                cell_id, gpu_data_host, n_q_points_per_cell, i);
+            gpu_data_host.local_q_point_id(cell_id, n_q_points_per_cell, i);
         quad_pos[i] = pos;
       }
       _cell_it_to_mf_pos[cell] = quad_pos;
@@ -477,8 +479,16 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
 
   typename dealii::CUDAWrappers::MatrixFree<dim, double>::AdditionalData
       mf_data;
+  // Due to a bug in deal.II 9.5 we need to update the quadrature points and the
+  // gradients
+#if (DEAL_II_VERSION_MAJOR == 9) && (DEAL_II_VERSION_MINOR == 5)
+  mf_data.mapping_update_flags =
+      dealii::update_quadrature_points | dealii::update_values |
+      dealii::update_gradients | dealii::update_JxW_values;
+#else
   mf_data.mapping_update_flags =
       dealii::update_values | dealii::update_JxW_values;
+#endif
   dealii::IteratorFilters::ActiveFEIndexEqualTo filter(0, true);
   mass_matrix_free.reinit(dealii::StaticMappingQ1<dim>::mapping, dof_handler,
                           affine_constraints, mass_matrix_quad, filter,
@@ -492,15 +502,23 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
   mass_matrix_free.cell_loop(local_operator, dummy, *_inverse_mass_matrix);
   _inverse_mass_matrix->compress(dealii::VectorOperation::add);
   unsigned int const local_size = _inverse_mass_matrix->locally_owned_size();
-  const int n_blocks = 1 + local_size / dealii::CUDAWrappers::block_size;
-  invert_mass_matrix<<<n_blocks, dealii::CUDAWrappers::block_size>>>(
-      _inverse_mass_matrix->get_values(), local_size);
+  double *values = _inverse_mass_matrix->get_values();
+  using ExecutionSpace = std::conditional_t<
+      std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
+      Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
+  Kokkos::parallel_for(
+      "adamantine::compute_inverse_mass_matrix",
+      Kokkos::RangePolicy<ExecutionSpace>(0, local_size), KOKKOS_LAMBDA(int i) {
+        if (values[i] > 1e-15)
+          values[i] = 1. / values[i];
+        else
+          values[i] = 0.;
+      });
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::clear()
 {
-  _matrix_free.free();
   _inverse_mass_matrix->reinit(0);
 }
 
@@ -527,20 +545,13 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::vmult_add(
     dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
-
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-      powder_ratio_view(_powder_ratio);
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-      liquid_ratio_view(_liquid_ratio);
-  adamantine::MemoryBlockView<double, dealii::MemorySpace::CUDA>
-      material_id_view(_material_id);
-  ASSERT(material_id_view.extent(0), "material_id has not been initialized");
+  ASSERT(_material_id.extent(0), "material_id has not been initialized");
 
   LocalThermalOperatorDevice<dim, fe_degree> local_operator(
       _material_properties.properties_use_table(),
-      _material_properties.polynomial_order, _deposition_cos.get_values(),
-      _deposition_sin.get_values(), powder_ratio_view, liquid_ratio_view,
-      material_id_view, _inv_rho_cp, _material_properties.get_properties(),
+      _material_properties.polynomial_order, _deposition_cos, _deposition_sin,
+      _powder_ratio, _liquid_ratio, _material_id, _inv_rho_cp,
+      _material_properties.get_properties(),
       _material_properties.get_state_property_tables(),
       _material_properties.get_state_property_polynomials());
   _matrix_free.cell_loop(local_operator, src, dst);
@@ -562,16 +573,20 @@ void ThermalOperatorDevice<
 {
   unsigned int const n_coefs =
       dealii::Utilities::pow(fe_degree + 1, dim) * _n_owned_cells;
-  MemoryBlock<double, dealii::MemorySpace::Host> liquid_ratio_host(n_coefs);
-  MemoryBlock<double, dealii::MemorySpace::Host> powder_ratio_host(n_coefs);
-  MemoryBlock<double, dealii::MemorySpace::Host> material_id_host(n_coefs);
-  _inv_rho_cp.reinit(n_coefs);
-  MemoryBlockView<double, dealii::MemorySpace::Host> liquid_ratio_host_view(
-      liquid_ratio_host);
-  MemoryBlockView<double, dealii::MemorySpace::Host> powder_ratio_host_view(
-      powder_ratio_host);
-  MemoryBlockView<double, dealii::MemorySpace::Host> material_id_host_view(
-      material_id_host);
+  _liquid_ratio = Kokkos::View<double *, kokkos_default>(
+      Kokkos::view_alloc("liquid_ratio", Kokkos::WithoutInitializing), n_coefs);
+  auto liquid_ratio_host =
+      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _liquid_ratio);
+  _powder_ratio = Kokkos::View<double *, kokkos_default>(
+      Kokkos::view_alloc("powder_ratio", Kokkos::WithoutInitializing), n_coefs);
+  auto powder_ratio_host =
+      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _powder_ratio);
+  _material_id = Kokkos::View<dealii::types::material_id *, kokkos_default>(
+      Kokkos::view_alloc("material_id", Kokkos::WithoutInitializing), n_coefs);
+  auto material_id_host =
+      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _material_id);
+  _inv_rho_cp = Kokkos::View<double *, kokkos_default>(
+      Kokkos::view_alloc("inv_rho_cp", Kokkos::WithoutInitializing), n_coefs);
 
   unsigned int constexpr n_dofs_1d = fe_degree + 1;
   unsigned int constexpr n_q_points_per_cell =
@@ -587,21 +602,21 @@ void ThermalOperatorDevice<
         _material_properties.get_state_ratio(cell_tria, MaterialState::liquid);
     double const cell_powder_ratio =
         _material_properties.get_state_ratio(cell_tria, MaterialState::powder);
-    double const cell_material_id = cell_tria->material_id();
+    auto const cell_material_id = cell_tria->material_id();
 
     for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
     {
       unsigned int const pos = _cell_it_to_mf_pos[cell][i];
-      liquid_ratio_host_view(pos) = cell_liquid_ratio;
-      powder_ratio_host_view(pos) = cell_powder_ratio;
-      material_id_host_view(pos) = cell_material_id;
+      liquid_ratio_host(pos) = cell_liquid_ratio;
+      powder_ratio_host(pos) = cell_powder_ratio;
+      material_id_host(pos) = cell_material_id;
     }
   }
 
   // Move data to the device
-  _liquid_ratio.reinit(liquid_ratio_host);
-  _powder_ratio.reinit(powder_ratio_host);
-  _material_id.reinit(material_id_host);
+  Kokkos::deep_copy(_liquid_ratio, liquid_ratio_host);
+  Kokkos::deep_copy(_powder_ratio, powder_ratio_host);
+  Kokkos::deep_copy(_material_id, material_id_host);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
@@ -640,10 +655,16 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
 {
   unsigned int const n_coefs =
       dealii::Utilities::pow(fe_degree + 1, dim) * _n_owned_cells;
-  _deposition_cos.reinit(n_coefs);
-  _deposition_sin.reinit(n_coefs);
-  dealii::LA::ReadWriteVector<double> deposition_cos_host(n_coefs);
-  dealii::LA::ReadWriteVector<double> deposition_sin_host(n_coefs);
+  _deposition_cos = Kokkos::View<double *, kokkos_default>(
+      Kokkos::view_alloc("deposition_cos", Kokkos::WithoutInitializing),
+      n_coefs);
+  auto deposition_cos_host =
+      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _deposition_cos);
+  _deposition_sin = Kokkos::View<double *, kokkos_default>(
+      Kokkos::view_alloc("deposition_sin", Kokkos::WithoutInitializing),
+      n_coefs);
+  auto deposition_sin_host =
+      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _deposition_sin);
 
   unsigned int constexpr n_dofs_1d = fe_degree + 1;
   unsigned int constexpr n_q_points_per_cell =
@@ -666,17 +687,16 @@ void ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>::
   }
 
   // Copy the coefficient to the host
-  _deposition_cos.import(deposition_cos_host, dealii::VectorOperation::insert);
-  _deposition_sin.import(deposition_sin_host, dealii::VectorOperation::insert);
+  Kokkos::deep_copy(_deposition_cos, deposition_cos_host);
+  Kokkos::deep_copy(_deposition_sin, deposition_sin_host);
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, fe_degree,
                            MemorySpaceType>::update_inv_rho_cp_cell()
 {
-  MemoryBlock<double, dealii::MemorySpace::Host> inv_rho_cp_host(_inv_rho_cp);
-  MemoryBlockView<double, dealii::MemorySpace::Host> inv_rho_cp_host_view(
-      inv_rho_cp_host);
+  auto inv_rho_cp_host =
+      Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, _inv_rho_cp);
   unsigned int constexpr n_dofs_1d = fe_degree + 1;
   unsigned int constexpr n_q_points_per_cell =
       dealii::Utilities::pow(n_dofs_1d, dim);
@@ -698,7 +718,7 @@ void ThermalOperatorDevice<dim, fe_degree,
       for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
       {
         unsigned int const pos = _cell_it_to_mf_pos[cell][i];
-        cell_inv_rho_cp += inv_rho_cp_host_view(pos);
+        cell_inv_rho_cp += inv_rho_cp_host(pos);
       }
       cell_inv_rho_cp /= n_q_points_per_cell;
 
@@ -712,25 +732,25 @@ void ThermalOperatorDevice<dim, fe_degree,
 // instantiate by hand
 namespace adamantine
 {
-template class ThermalOperatorDevice<2, 1, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 2, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 3, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 4, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 5, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 6, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 7, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 8, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 9, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<2, 10, dealii::MemorySpace::CUDA>;
+template class ThermalOperatorDevice<2, 1, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 2, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 3, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 4, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 5, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 6, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 7, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 8, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 9, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<2, 10, dealii::MemorySpace::Default>;
 
-template class ThermalOperatorDevice<3, 1, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 2, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 3, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 4, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 5, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 6, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 7, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 8, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 9, dealii::MemorySpace::CUDA>;
-template class ThermalOperatorDevice<3, 10, dealii::MemorySpace::CUDA>;
+template class ThermalOperatorDevice<3, 1, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 2, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 3, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 4, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 5, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 6, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 7, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 8, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 9, dealii::MemorySpace::Default>;
+template class ThermalOperatorDevice<3, 10, dealii::MemorySpace::Default>;
 } // namespace adamantine

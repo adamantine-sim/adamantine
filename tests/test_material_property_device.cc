@@ -15,17 +15,17 @@
 
 BOOST_AUTO_TEST_CASE(material_property_device)
 {
-  material_property<dealii::MemorySpace::CUDA>();
+  material_property<dealii::MemorySpace::Default>();
 }
 
-BOOST_AUTO_TEST_CASE(ratios_device) { ratios<dealii::MemorySpace::CUDA>(); }
+BOOST_AUTO_TEST_CASE(ratios_device) { ratios<dealii::MemorySpace::Default>(); }
 
 BOOST_AUTO_TEST_CASE(material_property_table_device)
 {
-  material_property_table<dealii::MemorySpace::CUDA>();
+  material_property_table<dealii::MemorySpace::Default>();
 }
 
 BOOST_AUTO_TEST_CASE(material_property_polynomials_device)
 {
-  material_property_polynomials<dealii::MemorySpace::CUDA>();
+  material_property_polynomials<dealii::MemorySpace::Default>();
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -6,12 +6,12 @@
  */
 
 #ifndef THERMAL_OPERATOR_DEVICE_HH
-#define THERMAL_OPERATOR_DEVIcE_HH
+#define THERMAL_OPERATOR_DEVICE_HH
 
 #include <MaterialProperty.hh>
 #include <ThermalOperatorBase.hh>
 
-#include <deal.II/lac/cuda_vector.h>
+#include <deal.II/base/types.h>
 #include <deal.II/matrix_free/cuda_matrix_free.h>
 
 namespace adamantine
@@ -78,11 +78,11 @@ public:
 
   /**
    * Set the deposition cosine and sine angles and convert the data from
-   * std::vector to dealii::LinearAlgebra::CUDAWrappers::Vector<double>
+   * std::vector to Kokkos::View.
    */
   void set_material_deposition_orientation(
       std::vector<double> const &deposition_cos,
-      std::vector<double> const &deposition_sin);
+      std::vector<double> const &deposition_sin) override;
 
   void set_time_and_source_height(double, double) override
   {
@@ -104,6 +104,8 @@ public:
                  unsigned int q) const;
 
 private:
+  using kokkos_default = dealii::MemorySpace::Default::kokkos_space;
+
   /**
    * MPI communicator.
    */
@@ -121,12 +123,12 @@ private:
    */
   MaterialProperty<dim, MemorySpaceType> &_material_properties;
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
-  MemoryBlock<double, dealii::MemorySpace::CUDA> _liquid_ratio;
-  MemoryBlock<double, dealii::MemorySpace::CUDA> _powder_ratio;
-  MemoryBlock<double, dealii::MemorySpace::CUDA> _material_id;
-  MemoryBlock<double, dealii::MemorySpace::CUDA> _inv_rho_cp;
-  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _deposition_cos;
-  dealii::LinearAlgebra::CUDAWrappers::Vector<double> _deposition_sin;
+  Kokkos::View<double *, kokkos_default> _liquid_ratio;
+  Kokkos::View<double *, kokkos_default> _powder_ratio;
+  Kokkos::View<dealii::types::material_id *, kokkos_default> _material_id;
+  Kokkos::View<double *, kokkos_default> _inv_rho_cp;
+  Kokkos::View<double *, kokkos_default> _deposition_cos;
+  Kokkos::View<double *, kokkos_default> _deposition_sin;
   std::map<typename dealii::DoFHandler<dim>::cell_iterator,
            std::vector<unsigned int>>
       _cell_it_to_mf_pos;

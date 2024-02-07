@@ -1,4 +1,4 @@
-ARG BASE=nvidia/cuda:11.7.1-devel-ubuntu22.04
+ARG BASE=nvidia/cuda:12.3.0-devel-ubuntu22.04
 FROM $BASE
 
 ARG N_PROCS=8
@@ -12,12 +12,11 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
       clang-format \
       clang \
       build-essential \
-      cmake \
       wget \
       curl \
       libcurl4-gnutls-dev \
       bison \
-      python2.7-dev \
+      python3-dev \
       git \
       lcov \
       zlib1g-dev \
@@ -48,8 +47,8 @@ RUN mkdir -p ${PREFIX} && \
     mkdir build
 
 # Install CMake
-RUN export CMAKE_VERSION=3.24.2 && \
-    export CMAKE_SHA256=71a776b6a08135092b5beb00a603b60ca39f8231c01a0356e205e0b4631747d9 && \
+RUN export CMAKE_VERSION=3.27.8 && \
+    export  CMAKE_SHA256=dfedc30abe69dcabe326a4de632210bb52004185bd2c0b096c21924f4510681f && \
     export CMAKE_URL=https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz && \
     export CMAKE_ARCHIVE=${ARCHIVE_DIR}/cmake.tar.gz && \
     export CMAKE_BUILD_DIR=${BUILD_DIR}/cmake && \
@@ -67,9 +66,9 @@ ENV PATH=${INSTALL_DIR}/cmake/bin:$PATH
 # because LLVM does not have a working Fortran compiler. We need Fortran because
 # p4est checks at configure time that MPI Fortran works even tough it does not
 # use it. This should be fixed in p4est 3.0
-RUN export OPENMPI_VERSION=4.1.4 && \
-    export OPENMPI_VERSION_SHORT=4.1 && \
-    export OPENMPI_SHA256=92912e175fd1234368c8730c03f4996fe5942e7479bb1d10059405e7f2b3930d && \
+RUN export OPENMPI_VERSION=5.0.0 && \
+    export OPENMPI_VERSION_SHORT=5.0 && \
+    export OPENMPI_SHA256=9d845ca94bc1aeb445f83d98d238cd08f6ec7ad0f73b0f79ec1668dbfdacd613 && \
     export OPENMPI_URL=https://www.open-mpi.org/software/ompi/v${OPENMPI_VERSION_SHORT}/downloads/openmpi-${OPENMPI_VERSION}.tar.bz2 && \
     export OPENMPI_ARCHIVE=${ARCHIVE_DIR}/openmpi.tar.bz2 && \
     export OPENMPI_SOURCE_DIR=${SOURCE_DIR}/openmpi && \
@@ -100,10 +99,10 @@ ENV OMPI_CXX=c++
 ENV PATH=${INSTALL_DIR}/openmpi/bin:$PATH
 
 # Install Boost
-RUN export BOOST_VERSION=1.80.0 && \
-    export BOOST_VERSION_U=1_80_0 && \
+RUN export BOOST_VERSION=1.83.0 && \
+    export BOOST_VERSION_U=1_83_0 && \
     export BOOST_URL=https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_U}.tar.bz2 && \
-    export BOOST_SHA256=1e19565d82e43bc59209a168f5ac899d3ba471d55c7610c677d4ccf2c9c500c0 && \
+    export BOOST_SHA256=6478edfe2f3305127cffe8caf73ea0176c53769f4bf1585be237eb30798c3b8e && \
     export BOOST_ARCHIVE=${ARCHIVE_DIR}/boost_${BOOST_VERSION_U}.tar.bz2 && \
     export BOOST_SOURCE_DIR=${SOURCE_DIR}/boost && \
     export BOOST_BUILD_DIR=${BUILD_DIR}/boost && \
@@ -203,8 +202,8 @@ RUN export NETCDF_VERSION=4.7.4 && \
     rm -rf ${NETCDF_SOURCE_DIR}
 ENV NETCDF_DIR=/opt/netcdf
 
-# Install Trilinos 13.4.0
-RUN export TRILINOS_HASH=0976cf2a8f9ee2991f4fb479f1056ca569eb22b9 && \
+# Install Trilinos 14.4.0
+RUN export TRILINOS_HASH=975307431d60d0859ebaa27c9169cbb1d4287513 && \
     export TRILINOS_URL=https://github.com/trilinos/Trilinos/archive/${TRILINOS_HASH}.tar.gz && \
     export TRILINOS_ARCHIVE=${ARCHIVE_DIR}/trilinos.tar.gz && \
     export TRILINOS_SOURCE_DIR=${SOURCE_DIR}/trilinos && \
@@ -213,6 +212,9 @@ RUN export TRILINOS_HASH=0976cf2a8f9ee2991f4fb479f1056ca569eb22b9 && \
     wget --quiet ${TRILINOS_URL} --output-document=${TRILINOS_ARCHIVE} && \
     mkdir -p ${TRILINOS_SOURCE_DIR} && \
     tar -xf ${TRILINOS_ARCHIVE} -C ${TRILINOS_SOURCE_DIR} --strip-components=1 && \
+    mkdir -p ${TRILINOS_INSTALL_DIR} && \
+    cp -r ${TRILINOS_SOURCE_DIR}/packages/kokkos/bin ${TRILINOS_INSTALL_DIR} && \
+    export OMPI_CXX=${TRILINOS_INSTALL_DIR}/bin/nvcc_wrapper && \
     mkdir ${TRILINOS_BUILD_DIR} && \
     cd ${TRILINOS_BUILD_DIR} && \
     cmake -DCMAKE_BUILD_TYPE=RELEASE -DBUILD_SHARED_LIBS=ON \
@@ -235,8 +237,9 @@ RUN export TRILINOS_HASH=0976cf2a8f9ee2991f4fb479f1056ca569eb22b9 && \
         -DTrilinos_ENABLE_Kokkos=ON \
         -DTrilinos_ENABLE_ML=ON \
         -DTrilinos_ENABLE_SEACAS=ON \
-        -DTrilinos_ENABLE_Sacado=ON \
         -DTrilinos_ENABLE_EXPLICIT_INSTANTIATION=ON \
+        -DKokkos_ENABLE_CUDA=$CUDA \
+        -DKokkos_ARCH_AMPERE80=ON \
         -DBLAS_LIBRARY_NAMES="openblas" \
         -DBLAS_LIBRARY_DIRS=${OPENBLAS_DIR}/lib \
         -DLAPACK_LIBRARY_NAMES="openblas" \
@@ -253,9 +256,10 @@ RUN export TRILINOS_HASH=0976cf2a8f9ee2991f4fb479f1056ca569eb22b9 && \
     rm -rf ${TRILINOS_BUILD_DIR} && \
     rm -rf ${TRILINOS_SOURCE_DIR}
 ENV TRILINOS_DIR=${INSTALL_DIR}/trilinos
+ENV OMPI_CXX=${TRILINOS_DIR}/bin/nvcc_wrapper
 
 # Install Adiak
-RUN export ADIAK_VERSION=0.2.1 && \
+RUN export ADIAK_VERSION=0.4.0 && \
     export ADIAK_URL=https://github.com/LLNL/Adiak/releases/download/v${ADIAK_VERSION}/adiak-${ADIAK_VERSION}.tar.gz && \
     export ADIAK_ARCHIVE=${ARCHIVE_DIR}/adiak.tar.gz && \
     export ADIAK_SOURCE_DIR=${SOURCE_DIR}/adiak && \
@@ -276,8 +280,8 @@ RUN export ADIAK_VERSION=0.2.1 && \
     rm -rf ${ADIAK_SOURCE_DIR}
 ENV ADIAK_DIR=${INSTALL_DIR}/adiak
 
-# Install Caliper 2.8.0
-RUN export CALIPER_HASH=bd59b8073beac49d9928c14efec8989c7fff4cb8 && \
+# Install Caliper 2.10.0
+RUN export CALIPER_HASH=9b5b5efe9096e3f2b306fcca91ae739ae5d00716 && \
     export CALIPER_URL=https://github.com/LLNL/caliper/archive/${CALIPER_HASH}.tar.gz && \
     export CALIPER_ARCHIVE=${ARCHIVE_DIR}/caliper.tar.gz && \
     export CALIPER_SOURCE_DIR=${SOURCE_DIR}/caliper && \
@@ -304,9 +308,8 @@ RUN export CALIPER_HASH=bd59b8073beac49d9928c14efec8989c7fff4cb8 && \
     rm -rf ${CALIPER_SOURCE_DIR}
 ENV CALIPER_DIR=${INSTALL_DIR}/caliper
 
-# Install ArborX from November 30th, 2022 because it has a bug fix when using
-# MPI and Ray
-RUN export ARBORX_HASH=77e055395c9550cb42e5b90156ba659f060bd852 && \
+# Install ArborX 1.5   
+RUN export ARBORX_HASH=e026f8237dbd0aaf2ddf2e3bf0e492071db854a2 && \
     export ARBORX_URL=https://github.com/arborx/ArborX/archive/${ARBORX_HASH}.tar.gz && \
     export ARBORX_ARCHIVE=${ARCHIVE_DIR}/arborx.tar.gz && \
     export ARBORX_SOURCE_DIR=${SOURCE_DIR}/arborx && \
@@ -319,6 +322,7 @@ RUN export ARBORX_HASH=77e055395c9550cb42e5b90156ba659f060bd852 && \
     cd ${ARBORX_BUILD_DIR} && \
     cmake -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=ON \
+        -DCMAKE_CXX_COMPILER=${TRILINOS_DIR}/bin/nvcc_wrapper \
         -DCMAKE_CXX_EXTENSIONS=OFF \
         -DARBORX_ENABLE_MPI=ON \
         -DCMAKE_PREFIX_PATH=${TRILINOS_DIR} \
@@ -330,8 +334,8 @@ RUN export ARBORX_HASH=77e055395c9550cb42e5b90156ba659f060bd852 && \
     rm -rf ${ARBORX_SOURCE_DIR}
 ENV ARBORX_DIR=${INSTALL_DIR}/arborx
 
-# Install deal.II 
-RUN export DEAL_II_HASH=89664dc696d6e5d6d15f40b26fcb902a5baa2d7e && \
+# Install deal.II 9.5.1
+RUN export DEAL_II_HASH=9e847302b21355f355c87890477f4dd485da26b1 && \
     export DEAL_II_URL=https://github.com/dealii/dealii/archive/${DEAL_II_HASH}.tar.gz && \
     export DEAL_II_ARCHIVE=${ARCHIVE_DIR}/dealii.tar.gz && \
     export DEAL_II_SOURCE_DIR=${SOURCE_DIR}/dealii && \
@@ -342,23 +346,19 @@ RUN export DEAL_II_HASH=89664dc696d6e5d6d15f40b26fcb902a5baa2d7e && \
     tar -xf ${DEAL_II_ARCHIVE} -C ${DEAL_II_SOURCE_DIR} --strip-components=1 && \
     mkdir -p ${DEAL_II_BUILD_DIR} && cd ${DEAL_II_BUILD_DIR} && \
     cmake -DCMAKE_BUILD_TYPE=DebugRelease \
-        -DCMAKE_CXX_FLAGS="-std=c++17" \
-        -DCMAKE_CUDA_FLAGS="-arch=sm_70 -std=c++17 --extended-lambda" \
-        -DCMAKE_CXX_EXTENSIONS=OFF \
+        -DCMAKE_CXX_COMPILER=${TRILINOS_DIR}/bin/nvcc_wrapper \
         -DCMAKE_CXX_STANDARD=17 \
-        -DDEAL_II_CXX_FLAGS_RELEASE="-Ofast" \
+        -DCMAKE_CXX_EXTENSIONS=OFF \
         -DDEAL_II_WITH_TBB=OFF \
         -DDEAL_II_WITH_64BIT_INDICES=ON \
         -DDEAL_II_WITH_COMPLEX_VALUES=OFF \
         -DDEAL_II_WITH_MPI=ON \
         -DDEAL_II_WITH_P4EST=ON \
         -DP4EST_DIR=${P4EST_DIR} \
-        -DDEAL_II_WITH_CUDA=${CUDA} \
         -DDEAL_II_WITH_ARBORX=ON \
         -DARBORX_DIR=${ARBORX_DIR} \
         -DDEAL_II_WITH_TRILINOS=ON \
         -DTRILINOS_DIR=${TRILINOS_DIR} \
-        -DDEAL_II_TRILINOS_WITH_SACADO=ON \
         -DDEAL_II_TRILINOS_WITH_SEACAS=ON \
         -DDEAL_II_COMPONENT_EXAMPLES=OFF \
         -DCMAKE_INSTALL_PREFIX=${DEAL_II_INSTALL_DIR} \

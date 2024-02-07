@@ -21,6 +21,8 @@ template <int dim>
 class ExperimentalData
 {
 public:
+  virtual ~ExperimentalData() = default;
+
   /**
    * Read data from the next frame and return the frame ID.
    */

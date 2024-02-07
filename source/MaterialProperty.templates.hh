@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2023, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -6,12 +6,9 @@
  */
 
 #include <MaterialProperty.hh>
-#include <MemoryBlock.hh>
-#include <MemoryBlockView.hh>
 
 #include <deal.II/base/aligned_vector.h>
 #include <deal.II/base/array_view.h>
-#include <deal.II/base/cuda.h>
 #include <deal.II/base/point.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/types.h>
@@ -26,6 +23,8 @@
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/optional.hpp>
+
+#include <Kokkos_Core_fwd.hpp>
 
 #include <algorithm>
 #include <type_traits>
@@ -76,24 +75,25 @@ void compute_average(
   }
 }
 
-template <typename MemorySpaceType>
-double get_value(MemoryBlock<double, MemorySpaceType> const &memory_block,
-                 unsigned int i, unsigned int j)
+template <typename ViewType,
+          std::enable_if_t<
+              std::is_same_v<typename ViewType::memory_space,
+                             typename dealii::MemorySpace::Host::kokkos_space>,
+              int> = 0>
+double get_value(ViewType &view, unsigned int i, unsigned int j)
 {
-  MemoryBlockView<double, MemorySpaceType> memory_block_view(memory_block);
-  return memory_block_view(i, j);
+  return view(i, j);
 }
 
-#ifdef __CUDACC__
 template <int dim>
 void compute_average(
     unsigned int const n_q_points, unsigned int const dofs_per_cell,
     dealii::DoFHandler<dim> const &mp_dof_handler,
     dealii::DoFHandler<dim> const &temperature_dof_handler,
     dealii::hp::FEValues<dim> &hp_fe_values,
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA> const
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> const
         &temperature,
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::CUDA>
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
         &temperature_average)
 {
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -110,18 +110,18 @@ void compute_average(
                              dealii::VectorOperation::insert);
 }
 
-template <>
-double get_value<dealii::MemorySpace::CUDA>(
-    MemoryBlock<double, dealii::MemorySpace::CUDA> const &memory_block,
-    unsigned int i, unsigned int j)
+template <typename ViewType,
+          std::enable_if_t<
+              !std::is_same_v<typename ViewType::memory_space,
+                              typename dealii::MemorySpace::Host::kokkos_space>,
+              int> = 0>
+double get_value(ViewType &view, unsigned int i, unsigned int j)
 {
-  MemoryBlock<double, dealii::MemorySpace::Host> memory_block_host(
-      memory_block);
-  MemoryBlockView<double, dealii::MemorySpace::Host> memory_block_host_view(
-      memory_block_host);
-  return memory_block_host_view(i, j);
+  auto view_host =
+      Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, view);
+
+  return view_host(i, j);
 }
-#endif
 } // namespace internal
 
 template <int dim, typename MemorySpaceType>
@@ -142,6 +142,17 @@ MaterialProperty<dim, MemorySpaceType>::MaterialProperty(
 
   // Fill the _properties map
   fill_properties(database);
+}
+
+template <int dim, typename MemorySpaceType>
+MaterialProperty<dim, MemorySpaceType>::MaterialProperty(
+    MaterialProperty<dim, MemorySpaceType> const &other)
+    : _use_table(other._use_table),
+      _state_property_tables(other._state_property_tables),
+      _state_property_polynomials(other._state_property_polynomials),
+      _properties(other._properties), _state(other._state),
+      _property_values(other._property_values), _fe(0)
+{
 }
 
 template <int dim, typename MemorySpaceType>
@@ -179,9 +190,7 @@ double MaterialProperty<dim, MemorySpaceType>::get_mechanical_property(
       static_cast<unsigned int>(prop) - g_n_thermal_state_properties;
   ASSERT(property < g_n_mechanical_state_properties,
          "Unknown mechanical property requested.");
-  MemoryBlockView<double, dealii::MemorySpace::Host>
-      mechanical_properties_host_view(_mechanical_properties_host);
-  return mechanical_properties_host_view(cell->material_id(), property);
+  return _mechanical_properties_host(cell->material_id(), property);
 }
 
 template <int dim, typename MemorySpaceType>
@@ -215,19 +224,20 @@ void MaterialProperty<dim, MemorySpaceType>::reinit_dofs()
     ++i;
   }
 
-  _state.reinit(g_n_material_states, _dofs_map.size());
+  _state = Kokkos::View<double **, typename MemorySpaceType::kokkos_space>(
+      "state", g_n_material_states, _dofs_map.size());
 #ifdef ADAMANTINE_DEBUG
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
   {
-    MemoryBlockView<double, MemorySpaceType> state_view(_state);
-    for_each(MemorySpaceType{}, g_n_material_states,
-             [=](int i) mutable
-             {
-               for (unsigned int j = 0; j < _dofs_map.size(); ++j)
-                 state_view(i, j) =
-                     std::numeric_limits<double>::signaling_NaN();
-               ;
-             });
+    Kokkos::parallel_for(
+        "adamantine::set_state_nan",
+        Kokkos::MDRangePolicy<Kokkos::DefaultHostExecutionSpace,
+                              Kokkos::Rank<2>>(
+            {{0, 0}},
+            {{g_n_material_states, static_cast<int>(_dofs_map.size())}}),
+        KOKKOS_CLASS_LAMBDA(int i, int j) {
+          _state(i, j) = std::numeric_limits<double>::signaling_NaN();
+        });
   }
 #endif
 }
@@ -239,47 +249,43 @@ void MaterialProperty<dim, MemorySpaceType>::update(
 {
   auto temperature_average =
       compute_average_temperature(temperature_dof_handler, temperature);
-  _property_values.reinit(g_n_thermal_state_properties, _dofs_map.size());
-  _property_values.set_zero();
+  // Set View to zero in purpose
+  _property_values =
+      Kokkos::View<double **, typename MemorySpaceType::kokkos_space>(
+          "property_values", g_n_thermal_state_properties, _dofs_map.size());
 
-  std::vector<dealii::types::global_dof_index> mp_dofs;
-  std::vector<dealii::types::material_id> material_ids;
+  std::vector<dealii::types::global_dof_index> mp_dofs_vec;
+  std::vector<dealii::types::material_id> material_ids_vec;
   for (auto cell :
        dealii::filter_iterators(_mp_dof_handler.active_cell_iterators(),
                                 dealii::IteratorFilters::LocallyOwnedCell()))
   {
     std::vector<dealii::types::global_dof_index> mp_dof(1);
     cell->get_dof_indices(mp_dof);
-    mp_dofs.push_back(_dofs_map.at(mp_dof[0]));
-    material_ids.push_back(cell->material_id());
+    mp_dofs_vec.push_back(_dofs_map.at(mp_dof[0]));
+    material_ids_vec.push_back(cell->material_id());
   }
 
-  unsigned int const material_ids_size = material_ids.size();
-  MemoryBlock<dealii::types::material_id, MemorySpaceType> material_ids_block(
-      material_ids);
-  MemoryBlockView<dealii::types::material_id, MemorySpaceType>
-      material_ids_view(material_ids_block);
-  MemoryBlock<dealii::types::global_dof_index, MemorySpaceType> mp_dofs_block(
-      mp_dofs);
-  MemoryBlockView<dealii::types::global_dof_index, MemorySpaceType>
-      mp_dofs_view(mp_dofs_block);
+  unsigned int const material_ids_size = material_ids_vec.size();
+  Kokkos::View<dealii::types::material_id *, Kokkos::HostSpace> material_ids(
+      material_ids_vec.data(), material_ids_size);
+  auto material_ids_mirror = Kokkos::create_mirror_view_and_copy(
+      typename MemorySpaceType::kokkos_space{}, material_ids);
+
+  Kokkos::View<dealii::types::global_dof_index *, Kokkos::HostSpace> mp_dofs(
+      mp_dofs_vec.data(), mp_dofs_vec.size());
+  auto mp_dofs_mirror = Kokkos::create_mirror_view_and_copy(
+      typename MemorySpaceType::kokkos_space{}, mp_dofs);
 
   double *temperature_average_local = temperature_average.get_values();
 
-  MemoryBlockView<double, MemorySpaceType> state_property_polynomials_view(
-      _state_property_polynomials);
-  MemoryBlockView<double, MemorySpaceType> properties_view(_properties);
-  MemoryBlockView<double, MemorySpaceType> state_view(_state);
-  MemoryBlockView<double, MemorySpaceType> property_values_view(
-      _property_values);
-  MemoryBlockView<double, MemorySpaceType> state_property_tables_view(
-      _state_property_tables);
-
-  bool use_table = _use_table;
-  for_each(
-      MemorySpaceType{}, material_ids_size,
-      [=] ADAMANTINE_HOST_DEV(int i)
-      {
+  using ExecutionSpace = std::conditional_t<
+      std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
+      Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
+  Kokkos::parallel_for(
+      "adamantine::update_material_properties",
+      Kokkos::RangePolicy<ExecutionSpace>(0, material_ids_size),
+      KOKKOS_CLASS_LAMBDA(int i) {
         unsigned int constexpr liquid =
             static_cast<unsigned int>(MaterialState::liquid);
         unsigned int constexpr powder =
@@ -291,10 +297,10 @@ void MaterialProperty<dim, MemorySpaceType>::update(
         unsigned int constexpr prop_liquidus =
             static_cast<unsigned int>(Property::liquidus);
 
-        dealii::types::material_id material_id = material_ids_view(i);
-        double const solidus = properties_view(material_id, prop_solidus);
-        double const liquidus = properties_view(material_id, prop_liquidus);
-        unsigned int const dof = mp_dofs_view(i);
+        dealii::types::material_id material_id = material_ids_mirror(i);
+        double const solidus = _properties(material_id, prop_solidus);
+        double const liquidus = _properties(material_id, prop_liquidus);
+        unsigned int const dof = mp_dofs_mirror(i);
 
         // First determine the ratio of liquid.
         double liquid_ratio = -1.;
@@ -310,17 +316,17 @@ void MaterialProperty<dim, MemorySpaceType>::update(
         // Because the powder can only become liquid, the solid can only
         // become liquid, and the liquid can only become solid, the ratio of
         // powder can only decrease.
-        powder_ratio = std::min(1. - liquid_ratio, state_view(powder, dof));
+        powder_ratio = Kokkos::min(1. - liquid_ratio, _state(powder, dof));
         // Use max to make sure that we don't create matter because of
         // round-off.
-        solid_ratio = std::max(1 - liquid_ratio - powder_ratio, 0.);
+        solid_ratio = Kokkos::max(1 - liquid_ratio - powder_ratio, 0.);
 
         // Update the value
-        state_view(liquid, dof) = liquid_ratio;
-        state_view(powder, dof) = powder_ratio;
-        state_view(solid, dof) = solid_ratio;
+        _state(liquid, dof) = liquid_ratio;
+        _state(powder, dof) = powder_ratio;
+        _state(solid, dof) = solid_ratio;
 
-        if (use_table)
+        if (_use_table)
         {
           for (unsigned int property = 0;
                property < g_n_thermal_state_properties; ++property)
@@ -328,10 +334,10 @@ void MaterialProperty<dim, MemorySpaceType>::update(
             for (unsigned int material_state = 0;
                  material_state < g_n_material_states; ++material_state)
             {
-              property_values_view(property, dof) +=
-                  state_view(material_state, dof) *
+              _property_values(property, dof) +=
+                  _state(material_state, dof) *
                   compute_property_from_table(
-                      state_property_tables_view, material_id, material_state,
+                      _state_property_tables, material_id, material_state,
                       property, temperature_average_local[dof]);
             }
           }
@@ -346,10 +352,10 @@ void MaterialProperty<dim, MemorySpaceType>::update(
             {
               for (unsigned int i = 0; i <= polynomial_order; ++i)
               {
-                property_values_view(property, dof) +=
-                    state_view(material_state, dof) *
-                    state_property_polynomials_view(material_id, material_state,
-                                                    property, i) *
+                _property_values(property, dof) +=
+                    _state(material_state, dof) *
+                    _state_property_polynomials(material_id, material_state,
+                                                property, i) *
                     std::pow(temperature_average_local[dof], i);
               }
             }
@@ -367,9 +373,9 @@ void MaterialProperty<dim, MemorySpaceType>::update(
           for (unsigned int material_state = 0;
                material_state < g_n_material_states; ++material_state)
           {
-            property_values_view(specific_heat_prop, dof) +=
-                state_view(material_state, dof) *
-                properties_view(material_id, latent_heat_prop) /
+            _property_values(specific_heat_prop, dof) +=
+                _state(material_state, dof) *
+                _properties(material_id, latent_heat_prop) /
                 (liquidus - solidus);
           }
         }
@@ -387,9 +393,9 @@ void MaterialProperty<dim, MemorySpaceType>::update(
             static_cast<unsigned int>(Property::radiation_temperature_infty);
         double const T = temperature_average_local[dof];
         double const T_infty =
-            properties_view(material_id, radiation_temperature_infty_prop);
-        double const emissivity = property_values_view(emissivity_prop, dof);
-        property_values_view(radiation_heat_transfer_coef_prop, dof) =
+            _properties(material_id, radiation_temperature_infty_prop);
+        double const emissivity = _property_values(emissivity_prop, dof);
+        _property_values(radiation_heat_transfer_coef_prop, dof) =
             emissivity * Constant::stefan_boltzmann * (T + T_infty) *
             (T * T + T_infty * T_infty);
       });
@@ -406,22 +412,16 @@ void MaterialProperty<dim, MemorySpaceType>::
 {
   auto temperature_average =
       compute_average_temperature(temperature_dof_handler, temperature);
-  _property_values.reinit(g_n_thermal_state_properties, _dofs_map.size());
-  _property_values.set_zero();
+  // Initialize the View to zero in purpose
+  _property_values =
+      Kokkos::View<double **, typename MemorySpaceType::kokkos_space>(
+          "property_values", g_n_thermal_state_properties, _dofs_map.size());
 
   std::vector<dealii::types::global_dof_index> mp_dof(1);
   // We don't need to loop over all the active cells. We only need to loop over
   // the cells at the boundary and at the interface with FE_Nothing. However, to
   // do this we need to use the temperature_dof_handler instead of the
   // _mp_dof_handler.
-  MemoryBlockView<double, MemorySpaceType> state_property_polynomials_view(
-      _state_property_polynomials);
-  MemoryBlockView<double, MemorySpaceType> properties_view(_properties);
-  MemoryBlockView<double, MemorySpaceType> state_view(_state);
-  MemoryBlockView<double, MemorySpaceType> property_values_view(
-      _property_values);
-  MemoryBlockView<double, MemorySpaceType> state_property_tables_view(
-      _state_property_tables);
   for (auto cell :
        dealii::filter_iterators(_mp_dof_handler.active_cell_iterators(),
                                 dealii::IteratorFilters::LocallyOwnedCell()))
@@ -440,11 +440,11 @@ void MaterialProperty<dim, MemorySpaceType>::
         for (unsigned int material_state = 0;
              material_state < g_n_material_states; ++material_state)
         {
-          property_values_view(property, dof) +=
-              state_view(material_state, dof) *
+          _property_values(property, dof) +=
+              _state(material_state, dof) *
               compute_property_from_table(
-                  state_property_tables_view, material_id, material_state,
-                  property, temperature_average.local_element(dof));
+                  _state_property_tables, material_id, material_state, property,
+                  temperature_average.local_element(dof));
         }
       }
     }
@@ -460,10 +460,10 @@ void MaterialProperty<dim, MemorySpaceType>::
         {
           for (unsigned int i = 0; i <= polynomial_order; ++i)
           {
-            property_values_view(property, dof) +=
-                state_view(material_state, dof) *
-                state_property_polynomials_view(material_id, material_state,
-                                                property, i) *
+            _property_values(property, dof) +=
+                _state(material_state, dof) *
+                _state_property_polynomials(material_id, material_state,
+                                            property, i) *
                 std::pow(temperature_average.local_element(dof), i);
           }
         }
@@ -482,9 +482,9 @@ void MaterialProperty<dim, MemorySpaceType>::
         static_cast<unsigned int>(Property::radiation_temperature_infty);
     double const T = temperature_average.local_element(dof);
     double const T_infty =
-        properties_view(material_id, radiation_temperature_infty_prop);
-    double const emissivity = property_values_view(emissivity_prop, dof);
-    property_values_view(radiation_heat_transfer_coef_prop, dof) =
+        _properties(material_id, radiation_temperature_infty_prop);
+    double const emissivity = _property_values(emissivity_prop, dof);
+    _property_values(radiation_heat_transfer_coef_prop, dof) =
         emissivity * Constant::stefan_boltzmann * (T + T_infty) *
         (T * T + T_infty * T_infty);
   }
@@ -501,10 +501,6 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
 {
   dealii::VectorizedArray<double> value = 0.0;
   unsigned int const property_index = static_cast<unsigned int>(state_property);
-  MemoryBlockView<double, MemorySpaceType> state_property_polynomials_view(
-      _state_property_polynomials);
-  MemoryBlockView<double, MemorySpaceType> state_property_tables_view(
-      _state_property_tables);
 
   if (_use_table)
   {
@@ -516,9 +512,9 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
         const dealii::types::material_id m_id = material_id[n];
 
         value[n] += state_ratios[material_state][n] *
-                    compute_property_from_table(state_property_tables_view,
-                                                m_id, material_state,
-                                                property_index, temperature[n]);
+                    compute_property_from_table(_state_property_tables, m_id,
+                                                material_state, property_index,
+                                                temperature[n]);
       }
     }
   }
@@ -534,8 +530,8 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
         for (unsigned int i = 0; i <= polynomial_order; ++i)
         {
           value[n] += state_ratios[material_state][n] *
-                      state_property_polynomials_view(m_id, material_state,
-                                                      property_index, i) *
+                      _state_property_polynomials(m_id, material_state,
+                                                  property_index, i) *
                       temperature_powers[i][n];
         }
       }
@@ -546,17 +542,13 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
 }
 
 template <int dim, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV double
+KOKKOS_FUNCTION double
 MaterialProperty<dim, MemorySpaceType>::compute_material_property(
     StateProperty state_property, dealii::types::material_id const material_id,
     double const *state_ratios, double temperature) const
 {
   double value = 0.0;
   unsigned int const property_index = static_cast<unsigned int>(state_property);
-  MemoryBlockView<double, MemorySpaceType> state_property_polynomials_view(
-      _state_property_polynomials);
-  MemoryBlockView<double, MemorySpaceType> state_property_tables_view(
-      _state_property_tables);
 
   if (_use_table)
   {
@@ -566,7 +558,7 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
       const dealii::types::material_id m_id = material_id;
 
       value += state_ratios[material_state] *
-               compute_property_from_table(state_property_tables_view, m_id,
+               compute_property_from_table(_state_property_tables, m_id,
                                            material_state, property_index,
                                            temperature);
     }
@@ -581,8 +573,8 @@ MaterialProperty<dim, MemorySpaceType>::compute_material_property(
       for (unsigned int i = 0; i <= polynomial_order; ++i)
       {
         value += state_ratios[material_state] *
-                 state_property_polynomials_view(m_id, material_state,
-                                                 property_index, i) *
+                 _state_property_polynomials(m_id, material_state,
+                                             property_index, i) *
                  std::pow(temperature, i);
       }
     }
@@ -604,7 +596,6 @@ void MaterialProperty<dim, MemorySpaceType>::set_state(
   auto const solid_state = static_cast<unsigned int>(MaterialState::solid);
   std::vector<dealii::types::global_dof_index> mp_dof(1.);
 
-  MemoryBlockView<double, MemorySpaceType> state_view(_state);
   for (auto const &cell :
        dealii::filter_iterators(dof_handler.active_cell_iterators(),
                                 dealii::IteratorFilters::LocallyOwnedCell()))
@@ -622,35 +613,33 @@ void MaterialProperty<dim, MemorySpaceType>::set_state(
       powder_ratio_sum +=
           powder_ratio(mf_cell_vector.first, q)[mf_cell_vector.second];
     }
-    state_view(liquid_state, mp_dof_index) = liquid_ratio_sum / n_q_points;
-    state_view(powder_state, mp_dof_index) = powder_ratio_sum / n_q_points;
-    state_view(solid_state, mp_dof_index) =
-        std::max(1. - state_view(liquid_state, mp_dof_index) -
-                     state_view(powder_state, mp_dof_index),
+    _state(liquid_state, mp_dof_index) = liquid_ratio_sum / n_q_points;
+    _state(powder_state, mp_dof_index) = powder_ratio_sum / n_q_points;
+    _state(solid_state, mp_dof_index) =
+        std::max(1. - _state(liquid_state, mp_dof_index) -
+                     _state(powder_state, mp_dof_index),
                  0.);
   }
 }
 
-#ifdef __CUDACC__
 template <int dim, typename MemorySpaceType>
 void MaterialProperty<dim, MemorySpaceType>::set_state_device(
-    MemoryBlock<double, MemorySpaceType> const &liquid_ratio,
-    MemoryBlock<double, MemorySpaceType> const &powder_ratio,
+    Kokkos::View<double *, typename MemorySpaceType::kokkos_space> liquid_ratio,
+    Kokkos::View<double *, typename MemorySpaceType::kokkos_space> powder_ratio,
     std::map<typename dealii::DoFHandler<dim>::cell_iterator,
              std::vector<unsigned int>> const &_cell_it_to_mf_pos,
     dealii::DoFHandler<dim> const &dof_handler)
 {
   // Create a mapping between the matrix free dofs and material property dofs
-  std::vector<dealii::types::global_dof_index> mp_dof(1.);
   unsigned int const n_q_points = dof_handler.get_fe().tensor_degree() + 1;
-  MemoryBlock<unsigned int, dealii::MemorySpace::Host> mapping_host(
-      _state.extent(1), n_q_points);
-  MemoryBlockView<unsigned, dealii::MemorySpace::Host> mapping_host_view(
-      mapping_host);
-  MemoryBlock<double, dealii::MemorySpace::Host> mp_dof_host_block(
-      _state.extent(1));
-  MemoryBlockView<double, dealii::MemorySpace::Host> mp_dof_host_view(
-      mp_dof_host_block);
+  Kokkos::View<unsigned int **, dealii::MemorySpace::Default::kokkos_space>
+      mapping(Kokkos::view_alloc("mapping", Kokkos::WithoutInitializing),
+              _state.extent(1), n_q_points);
+  auto mapping_host =
+      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, mapping);
+  Kokkos::View<dealii::types::global_dof_index *,
+               dealii::MemorySpace::Host::kokkos_space>
+      mp_dof_host("mp_dof_host", _state.extent(1));
   // We only loop over the part of the domain which has material, i.e., not over
   // FE_Nothing cell. This is because _cell_it_to_mf_pos does not exist for
   // FE_Nothing cells. However, we have set the state of the material on the
@@ -666,76 +655,82 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
     auto const &mf_cell_vector = _cell_it_to_mf_pos.at(cell);
     for (unsigned int q = 0; q < n_q_points; ++q)
     {
-      mapping_host_view(cell_i, q) = mf_cell_vector[q];
+      mapping_host(cell_i, q) = mf_cell_vector[q];
     }
-    mp_dof_host_view(cell_i) = mp_dof_index;
+    mp_dof_host(cell_i) = mp_dof_index;
     ++cell_i;
   }
 
-  MemoryBlock<unsigned int, dealii::MemorySpace::CUDA> mapping(mapping_host);
-  MemoryBlockView<unsigned, dealii::MemorySpace::CUDA> mapping_view(mapping);
-  MemoryBlockView<double, dealii::MemorySpace::CUDA> liquid_ratio_view(
-      liquid_ratio);
-  MemoryBlockView<double, dealii::MemorySpace::CUDA> powder_ratio_view(
-      powder_ratio);
-  MemoryBlock<double, dealii::MemorySpace::CUDA> mp_dof_block(
-      mp_dof_host_block);
-  MemoryBlockView<double, dealii::MemorySpace::CUDA> mp_dof_view(mp_dof_block);
-  MemoryBlockView<double, dealii::MemorySpace::CUDA> state_view(_state);
+  Kokkos::deep_copy(mapping, mapping_host);
+
+  Kokkos::View<dealii::types::global_dof_index *,
+               dealii::MemorySpace::Default::kokkos_space>
+      mp_dof(Kokkos::view_alloc("mp_dof", Kokkos::WithoutInitializing),
+             mp_dof_host.extent(0));
+  Kokkos::deep_copy(mp_dof, mp_dof_host);
+
   auto const powder_state = static_cast<unsigned int>(MaterialState::powder);
   auto const liquid_state = static_cast<unsigned int>(MaterialState::liquid);
   auto const solid_state = static_cast<unsigned int>(MaterialState::solid);
-  for_each(MemorySpaceType{}, cell_i,
-           [=] ADAMANTINE_HOST_DEV(int i) mutable
-           {
-             double liquid_ratio_sum = 0.;
-             double powder_ratio_sum = 0.;
-             for (unsigned int q = 0; q < n_q_points; ++q)
-             {
-               liquid_ratio_sum += liquid_ratio_view(mapping_view(i, q));
-               powder_ratio_sum += powder_ratio_view(mapping_view(i, q));
-             }
-             state_view(liquid_state, mp_dof_view(i)) =
-                 liquid_ratio_sum / n_q_points;
-             state_view(powder_state, mp_dof_view(i)) =
-                 powder_ratio_sum / n_q_points;
-             state_view(solid_state, mp_dof_view(i)) =
-                 std::max(1. - state_view(liquid_state, mp_dof_view(i)) -
-                              state_view(powder_state, mp_dof_view(i)),
-                          0.);
-           });
+  using ExecutionSpace = std::conditional_t<
+      std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
+      Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
+  Kokkos::parallel_for(
+      "adamantine::set_state_device",
+      Kokkos::RangePolicy<ExecutionSpace>(0, cell_i),
+      KOKKOS_CLASS_LAMBDA(int i) {
+        double liquid_ratio_sum = 0.;
+        double powder_ratio_sum = 0.;
+        for (unsigned int q = 0; q < n_q_points; ++q)
+        {
+          liquid_ratio_sum += liquid_ratio(mapping(i, q));
+          powder_ratio_sum += powder_ratio(mapping(i, q));
+        }
+        _state(liquid_state, mp_dof(i)) = liquid_ratio_sum / n_q_points;
+        _state(powder_state, mp_dof(i)) = powder_ratio_sum / n_q_points;
+        _state(solid_state, mp_dof(i)) =
+            Kokkos::max(1. - _state(liquid_state, mp_dof(i)) -
+                            _state(powder_state, mp_dof(i)),
+                        0.);
+      });
 }
-#endif
 
 template <int dim, typename MemorySpaceType>
 void MaterialProperty<dim, MemorySpaceType>::set_initial_state()
 {
   // Set the material state to the one defined by the user_index
-  std::vector<dealii::types::global_dof_index> mp_dofs;
-  std::vector<unsigned int> user_indices;
+  std::vector<dealii::types::global_dof_index> mp_dofs_vec;
+  std::vector<unsigned int> user_indices_vec;
   for (auto cell :
        dealii::filter_iterators(_mp_dof_handler.active_cell_iterators(),
                                 dealii::IteratorFilters::LocallyOwnedCell()))
   {
     std::vector<dealii::types::global_dof_index> mp_dof(1);
     cell->get_dof_indices(mp_dof);
-    mp_dofs.push_back(_dofs_map.at(mp_dof[0]));
-    user_indices.push_back(cell->user_index());
+    mp_dofs_vec.push_back(_dofs_map.at(mp_dof[0]));
+    user_indices_vec.push_back(cell->user_index());
   }
 
-  MemoryBlock<dealii::types::global_dof_index, MemorySpaceType> mp_dofs_block(
-      mp_dofs);
-  MemoryBlockView<dealii::types::global_dof_index, MemorySpaceType>
-      mp_dofs_view(mp_dofs_block);
-  MemoryBlock<unsigned int, MemorySpaceType> user_indices_block(user_indices);
-  MemoryBlockView<unsigned int, MemorySpaceType> user_indices_view(
-      user_indices_block);
+  typename MemorySpaceType::kokkos_space memory_space;
 
-  _state.set_zero();
-  MemoryBlockView<double, MemorySpaceType> state_view(_state);
-  for_each(MemorySpaceType{}, user_indices.size(),
-           [=] ADAMANTINE_HOST_DEV(int i) mutable
-           { state_view(user_indices_view(i), mp_dofs_view(i)) = 1.; });
+  Kokkos::View<dealii::types::global_dof_index *, Kokkos::HostSpace>
+      mp_dofs_host(mp_dofs_vec.data(), mp_dofs_vec.size());
+  auto mp_dofs =
+      Kokkos::create_mirror_view_and_copy(memory_space, mp_dofs_host);
+
+  Kokkos::View<unsigned int *, Kokkos::HostSpace> user_indices_host(
+      user_indices_vec.data(), user_indices_vec.size());
+  auto user_indices =
+      Kokkos::create_mirror_view_and_copy(memory_space, user_indices_host);
+
+  Kokkos::deep_copy(_state, 0.);
+  using ExecutionSpace = std::conditional_t<
+      std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
+      Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
+  Kokkos::parallel_for(
+      "adamantine::set_initial_state",
+      Kokkos::RangePolicy<ExecutionSpace>(0, user_indices.extent(0)),
+      KOKKOS_CLASS_LAMBDA(int i) { _state(user_indices(i), mp_dofs(i)) = 1.; });
 }
 
 template <int dim, typename MemorySpaceType>
@@ -763,52 +758,48 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
   // memory. Thus, the largest material_id should be as small as possible
   unsigned int const n_material_ids =
       *std::max_element(material_ids.begin(), material_ids.end()) + 1;
-  _properties.reinit(n_material_ids, g_n_properties);
-  MemoryBlock<double, dealii::MemorySpace::Host> properties_host(_properties);
+  _properties = Kokkos::View<double *[g_n_properties],
+                             typename MemorySpaceType::kokkos_space>(
+      Kokkos::view_alloc("properties", Kokkos::WithoutInitializing),
+      n_material_ids);
+  auto properties_host =
+      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _properties);
 
-  MemoryBlock<double, dealii::MemorySpace::Host> state_property_tables_host;
-  MemoryBlock<double, dealii::MemorySpace::Host>
-      state_property_polynomials_host;
   if (_use_table)
   {
-    _state_property_tables.reinit(n_material_ids, g_n_material_states,
-                                  g_n_thermal_state_properties, table_size, 2);
-    state_property_tables_host.reinit(n_material_ids, g_n_material_states,
-                                      g_n_thermal_state_properties, table_size,
-                                      2);
-    state_property_tables_host.set_zero();
-    // Mechanical properties only exist for the solid state
-    _mechanical_properties_tables_host.reinit(
-        n_material_ids, g_n_mechanical_state_properties, table_size, 2);
-    _mechanical_properties_tables_host.set_zero();
+    // View is initialized to zero in purpose
+    _state_property_tables =
+        Kokkos::View<double *[g_n_material_states][g_n_thermal_state_properties]
+                                                  [table_size][2],
+                     typename MemorySpaceType::kokkos_space>(
+            "state_property_tables", n_material_ids);
+    // Mechanical properties only exist for the solid state. View is initialized
+    // to zero in purpose.
+    _mechanical_properties_tables_host =
+        Kokkos::View<double *[g_n_mechanical_state_properties][table_size][2],
+                     typename dealii::MemorySpace::Host::kokkos_space>(
+            "mechanical_properties_tables_host", n_material_ids);
   }
   else
   {
-    _state_property_polynomials.reinit(n_material_ids + 1, g_n_material_states,
-                                       g_n_thermal_state_properties,
-                                       polynomial_order + 1);
-    state_property_polynomials_host.reinit(
-        n_material_ids + 1, g_n_material_states, g_n_thermal_state_properties,
-        polynomial_order + 1);
-    state_property_polynomials_host.set_zero();
-    // Mechanical properties only exist for the solid state
-    _mechanical_properties_polynomials_host.reinit(
-        n_material_ids + 1, g_n_mechanical_state_properties,
-        polynomial_order + 1);
-    _mechanical_properties_polynomials_host.set_zero();
+    // View is initialized to zero in purpose
+    _state_property_polynomials =
+        Kokkos::View<double *[g_n_material_states][g_n_thermal_state_properties]
+                                                  [polynomial_order + 1],
+                     typename MemorySpaceType::kokkos_space>(
+            "state_property_polynomials", n_material_ids);
+    // Mechanical properties only exist for the solid state. View is initialized
+    // to zero in purpose
+    _mechanical_properties_polynomials_host = Kokkos::View<
+        double *[g_n_mechanical_state_properties][polynomial_order + 1],
+        typename dealii::MemorySpace::Host::kokkos_space>(
+        "mechanical_properties_polynomials_host", n_material_ids);
   }
+  auto state_property_tables_host = Kokkos::create_mirror_view_and_copy(
+      Kokkos::DefaultHostExecutionSpace{}, _state_property_tables);
+  auto state_property_polynomials_host = Kokkos::create_mirror_view_and_copy(
+      Kokkos::DefaultHostExecutionSpace{}, _state_property_polynomials);
 
-  MemoryBlockView<double, dealii::MemorySpace::Host> properties_host_view(
-      properties_host);
-  MemoryBlockView<double, dealii::MemorySpace::Host>
-      state_property_tables_host_view(state_property_tables_host);
-  MemoryBlockView<double, dealii::MemorySpace::Host>
-      state_property_polynomials_host_view(state_property_polynomials_host);
-  MemoryBlockView<double, dealii::MemorySpace::Host>
-      mechanical_property_tables_host_view(_mechanical_properties_tables_host);
-  MemoryBlockView<double, dealii::MemorySpace::Host>
-      mechanical_property_polynomials_host_view(
-          _mechanical_properties_polynomials_host);
   for (auto const material_id : material_ids)
   {
     // Get the material property tree.
@@ -855,19 +846,19 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
                 ASSERT(t_v.size() == 2, "Error reading material property.");
                 if (p < g_n_thermal_state_properties)
                 {
-                  state_property_tables_host_view(material_id, state, p, i, 0) =
+                  state_property_tables_host(material_id, state, p, i, 0) =
                       std::stod(t_v[0]);
-                  state_property_tables_host_view(material_id, state, p, i, 1) =
+                  state_property_tables_host(material_id, state, p, i, 1) =
                       std::stod(t_v[1]);
                 }
                 else
                 {
                   if (state == static_cast<unsigned int>(MaterialState::solid))
                   {
-                    mechanical_property_tables_host_view(
+                    _mechanical_properties_tables_host(
                         material_id, p - g_n_thermal_state_properties, i, 0) =
                         std::stod(t_v[0]);
-                    mechanical_property_tables_host_view(
+                    _mechanical_properties_tables_host(
                         material_id, p - g_n_thermal_state_properties, i, 1) =
                         std::stod(t_v[1]);
                   }
@@ -878,25 +869,25 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
               {
                 if (p < g_n_thermal_state_properties)
                 {
-                  state_property_tables_host_view(material_id, state, p, i, 0) =
-                      state_property_tables_host_view(material_id, state, p,
-                                                      i - 1, 0);
-                  state_property_tables_host_view(material_id, state, p, i, 1) =
-                      state_property_tables_host_view(material_id, state, p,
-                                                      i - 1, 1);
+                  state_property_tables_host(material_id, state, p, i, 0) =
+                      state_property_tables_host(material_id, state, p, i - 1,
+                                                 0);
+                  state_property_tables_host(material_id, state, p, i, 1) =
+                      state_property_tables_host(material_id, state, p, i - 1,
+                                                 1);
                 }
                 else
                 {
                   if (state == static_cast<unsigned int>(MaterialState::solid))
                   {
-                    mechanical_property_tables_host_view(
+                    _mechanical_properties_tables_host(
                         material_id, p - g_n_thermal_state_properties, i, 0) =
-                        mechanical_property_tables_host_view(
+                        _mechanical_properties_tables_host(
                             material_id, p - g_n_thermal_state_properties,
                             i - 1, 0);
-                    mechanical_property_tables_host_view(
+                    _mechanical_properties_tables_host(
                         material_id, p - g_n_thermal_state_properties, i, 1) =
-                        mechanical_property_tables_host_view(
+                        _mechanical_properties_tables_host(
                             material_id, p - g_n_thermal_state_properties,
                             i - 1, 1);
                   }
@@ -916,13 +907,13 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
               {
                 if (p < g_n_thermal_state_properties)
                 {
-                  state_property_polynomials_host_view(
-                      material_id, state, p, i) = std::stod(parsed_property[i]);
+                  state_property_polynomials_host(material_id, state, p, i) =
+                      std::stod(parsed_property[i]);
                 }
                 else if (state ==
                          static_cast<unsigned int>(MaterialState::solid))
                 {
-                  mechanical_property_polynomials_host_view(
+                  _mechanical_properties_polynomials_host(
                       material_id, p - g_n_thermal_state_properties, i) =
                       std::stod(parsed_property[i]);
                 }
@@ -937,16 +928,16 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
             double infinity = std::numeric_limits<double>::infinity();
             if (_use_table)
             {
-              mechanical_property_tables_host_view(
+              _mechanical_properties_tables_host(
                   material_id, p - g_n_thermal_state_properties, 0, 0) =
                   infinity;
-              mechanical_property_tables_host_view(
+              _mechanical_properties_tables_host(
                   material_id, p - g_n_thermal_state_properties, 0, 1) =
                   infinity;
             }
             else
             {
-              mechanical_property_polynomials_host_view(
+              _mechanical_properties_polynomials_host(
                   material_id, p - g_n_thermal_state_properties, 0) = infinity;
             }
           }
@@ -965,46 +956,38 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
       // If the property exists, put it in the map. If the property does not
       // exist, we use the largest possible value. This is useful if the
       // liquidus and the solidus are not set.
-      properties_host_view(material_id, p) =
+      properties_host(material_id, p) =
           property ? property.get() : std::numeric_limits<double>::max();
     }
   }
 
   // FIXME for now we assume that the mechanical properties are independent of
   // the temperature.
-  _mechanical_properties_host.reinit(n_material_ids,
-                                     g_n_mechanical_state_properties);
+  _mechanical_properties_host =
+      Kokkos::View<double *[g_n_mechanical_state_properties],
+                   typename dealii::MemorySpace::Host::kokkos_space>(
+          "mechanical_properties_host", n_material_ids);
   if (_use_table)
   {
     // We only read the first element
-    MemoryBlockView<double, dealii::MemorySpace::Host>
-        mechanical_properties_host_view(_mechanical_properties_host);
-    MemoryBlockView<double, dealii::MemorySpace::Host>
-        mechanical_properties_tables_host_view(
-            _mechanical_properties_tables_host);
     for (unsigned int i = 0; i < n_material_ids; ++i)
     {
       for (unsigned int j = 0; j < g_n_mechanical_state_properties; ++j)
       {
-        mechanical_properties_host_view(i, j) =
-            mechanical_properties_tables_host_view(i, j, 0, 1);
+        _mechanical_properties_host(i, j) =
+            _mechanical_properties_tables_host(i, j, 0, 1);
       }
     }
   }
   else
   {
     // We only read the first element
-    MemoryBlockView<double, dealii::MemorySpace::Host>
-        mechanical_properties_host_view(_mechanical_properties_host);
-    MemoryBlockView<double, dealii::MemorySpace::Host>
-        mechanical_properties_polynomials_host_view(
-            _mechanical_properties_polynomials_host);
     for (unsigned int i = 0; i < n_material_ids; ++i)
     {
       for (unsigned int j = 0; j < g_n_mechanical_state_properties; ++j)
       {
-        mechanical_properties_host_view(i, j) =
-            mechanical_properties_polynomials_host_view(i, j, 0);
+        _mechanical_properties_host(i, j) =
+            _mechanical_properties_polynomials_host(i, j, 0);
       }
     }
   }
@@ -1012,8 +995,7 @@ void MaterialProperty<dim, MemorySpaceType>::fill_properties(
   // Copy the data
   deep_copy(_state_property_polynomials, state_property_polynomials_host);
   deep_copy(_state_property_tables, state_property_tables_host);
-  deep_copy(_properties, properties_host);
-  _properties_view.reinit(_properties);
+  Kokkos::deep_copy(_properties, properties_host);
 }
 
 // We need to compute the average temperature on the cell because we need the
@@ -1052,26 +1034,26 @@ MaterialProperty<dim, MemorySpaceType>::compute_average_temperature(
 }
 
 template <int dim, typename MemorySpaceType>
-ADAMANTINE_HOST_DEV double
+KOKKOS_FUNCTION double
 MaterialProperty<dim, MemorySpaceType>::compute_property_from_table(
-    MemoryBlockView<double, MemorySpaceType> const &state_property_tables_view,
+    Kokkos::View<double ****[2], typename MemorySpaceType::kokkos_space>
+        state_property_tables,
     unsigned int const material_id, unsigned int const material_state,
     unsigned int const property, double const temperature)
 {
   if (temperature <=
-      state_property_tables_view(material_id, material_state, property, 0, 0))
+      state_property_tables(material_id, material_state, property, 0, 0))
   {
-    return state_property_tables_view(material_id, material_state, property, 0,
-                                      1);
+    return state_property_tables(material_id, material_state, property, 0, 1);
   }
   else
   {
     unsigned int i = 0;
-    unsigned int const size = state_property_tables_view.extent(3);
+    unsigned int const size = state_property_tables.extent(3);
     for (; i < size; ++i)
     {
-      if (temperature < state_property_tables_view(material_id, material_state,
-                                                   property, i, 0))
+      if (temperature <
+          state_property_tables(material_id, material_state, property, i, 0))
       {
         break;
       }
@@ -1079,19 +1061,19 @@ MaterialProperty<dim, MemorySpaceType>::compute_property_from_table(
 
     if (i >= size - 1)
     {
-      return state_property_tables_view(material_id, material_state, property,
-                                        size - 1, 1);
+      return state_property_tables(material_id, material_state, property,
+                                   size - 1, 1);
     }
     else
     {
-      auto tempertature_i = state_property_tables_view(
-          material_id, material_state, property, i, 0);
-      auto tempertature_im1 = state_property_tables_view(
-          material_id, material_state, property, i - 1, 0);
-      auto property_i = state_property_tables_view(material_id, material_state,
-                                                   property, i, 1);
-      auto property_im1 = state_property_tables_view(
-          material_id, material_state, property, i - 1, 1);
+      auto tempertature_i =
+          state_property_tables(material_id, material_state, property, i, 0);
+      auto tempertature_im1 = state_property_tables(material_id, material_state,
+                                                    property, i - 1, 0);
+      auto property_i =
+          state_property_tables(material_id, material_state, property, i, 1);
+      auto property_im1 = state_property_tables(material_id, material_state,
+                                                property, i - 1, 1);
       return property_im1 + (temperature - tempertature_im1) *
                                 (property_i - property_im1) /
                                 (tempertature_i - tempertature_im1);

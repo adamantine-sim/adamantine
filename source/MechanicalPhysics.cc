@@ -371,6 +371,4 @@ void MechanicalPhysics<dim, MemorySpaceType>::compute_stress(
 } // namespace adamantine
 
 INSTANTIATE_DIM_HOST(MechanicalPhysics)
-#ifdef ADAMANTINE_HAVE_CUDA
 INSTANTIATE_DIM_DEVICE(MechanicalPhysics)
-#endif

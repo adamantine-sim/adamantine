@@ -106,15 +106,15 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
   for (unsigned int i = 0; i < src.size(); ++i)
     src[i] = 1.;
 
-  post_processor.write_thermal_output(0, 0., src, mat_properties.get_state(),
-                                      mat_properties.get_dofs_map(),
-                                      mat_properties.get_dof_handler());
-  post_processor.write_thermal_output(1, 0.1, src, mat_properties.get_state(),
-                                      mat_properties.get_dofs_map(),
-                                      mat_properties.get_dof_handler());
-  post_processor.write_thermal_output(2, 0.2, src, mat_properties.get_state(),
-                                      mat_properties.get_dofs_map(),
-                                      mat_properties.get_dof_handler());
+  post_processor.write_thermal_output<Kokkos::LayoutRight>(
+      0, 0., src, mat_properties.get_state(), mat_properties.get_dofs_map(),
+      mat_properties.get_dof_handler());
+  post_processor.write_thermal_output<Kokkos::LayoutRight>(
+      1, 0.1, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
+      mat_properties.get_dof_handler());
+  post_processor.write_thermal_output<Kokkos::LayoutRight>(
+      2, 0.2, src, mat_properties.get_state(), mat_properties.get_dofs_map(),
+      mat_properties.get_dof_handler());
   post_processor.write_pvd();
 
   // Check that the files exist
@@ -224,13 +224,13 @@ BOOST_AUTO_TEST_CASE(mechanical_post_processor)
     }
   }
 
-  post_processor.write_mechanical_output(
+  post_processor.template write_mechanical_output<Kokkos::LayoutRight>(
       0, 0., displacement, stress, mat_properties.get_state(),
       mat_properties.get_dofs_map(), mat_properties.get_dof_handler());
-  post_processor.write_mechanical_output(
+  post_processor.template write_mechanical_output<Kokkos::LayoutRight>(
       1, 0.1, displacement, stress, mat_properties.get_state(),
       mat_properties.get_dofs_map(), mat_properties.get_dof_handler());
-  post_processor.write_mechanical_output(
+  post_processor.template write_mechanical_output<Kokkos::LayoutRight>(
       2, 0.2, displacement, stress, mat_properties.get_state(),
       mat_properties.get_dofs_map(), mat_properties.get_dof_handler());
   post_processor.write_pvd();

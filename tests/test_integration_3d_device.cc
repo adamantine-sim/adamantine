@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_CASE(integration_3D_device, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto [temperature, displacement] =
-      run<3, dealii::MemorySpace::CUDA>(communicator, database, timers);
+      run<3, dealii::MemorySpace::Default>(communicator, database, timers);
 
   std::ifstream gold_file("integration_3d_gold.txt");
   for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
@@ -41,4 +41,3 @@ BOOST_AUTO_TEST_CASE(integration_3D_device, *utf::tolerance(0.1))
     BOOST_TEST(temperature.local_element(i) == gold_value);
   }
 }
-

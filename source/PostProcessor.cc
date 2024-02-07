@@ -19,34 +19,6 @@
 namespace adamantine
 {
 template <int dim>
-StrainPostProcessor<dim>::StrainPostProcessor()
-    : dealii::DataPostprocessorTensor<dim>("strain", dealii::update_gradients)
-{
-}
-
-template <int dim>
-void StrainPostProcessor<dim>::evaluate_vector_field(
-    const dealii::DataPostprocessorInputs::Vector<dim> &displacement_data,
-    std::vector<dealii::Vector<double>> &strain) const
-{
-  for (unsigned int i = 0; i < displacement_data.solution_gradients.size(); ++i)
-  {
-    for (unsigned int j = 0; j < dim; ++j)
-    {
-      for (unsigned int k = 0; k < dim; ++k)
-      {
-        // strain = (\nabla u + (\nabla u)^T)/2
-        strain[i][dealii::Tensor<2, dim>::component_to_unrolled_index(
-            dealii::TableIndices<2>(j, k))] =
-            (displacement_data.solution_gradients[i][j][k] +
-             displacement_data.solution_gradients[i][k][j]) /
-            2.;
-      }
-    }
-  }
-}
-
-template <int dim>
 PostProcessor<dim>::PostProcessor(MPI_Comm const &communicator,
                                   boost::property_tree::ptree const &database,
                                   dealii::DoFHandler<dim> &dof_handler,
@@ -105,68 +77,6 @@ PostProcessor<dim>::PostProcessor(
   // PropertyTreeInput post_processor.additional_output_refinement
   _additional_output_refinement =
       database.get<unsigned int>("additional_output_refinement", 0);
-}
-
-template <int dim>
-void PostProcessor<dim>::write_thermal_output(
-    unsigned int time_step, double time,
-    dealii::LA::distributed::Vector<double> const &temperature,
-    MemoryBlockView<double, dealii::MemorySpace::Host> state,
-    std::unordered_map<dealii::types::global_dof_index, unsigned int> const
-        &dofs_map,
-    dealii::DoFHandler<dim> const &material_dof_handler)
-{
-  ASSERT(_thermal_dof_handler != nullptr, "Internal Error");
-  _data_out.clear();
-  thermal_dataout(temperature);
-  material_dataout(state, dofs_map, material_dof_handler);
-  subdomain_dataout();
-  write_pvtu(time_step, time);
-}
-
-template <int dim>
-void PostProcessor<dim>::write_mechanical_output(
-    unsigned int time_step, double time,
-    dealii::LA::distributed::Vector<double> const &displacement,
-    std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
-        &stress_tensor,
-    MemoryBlockView<double, dealii::MemorySpace::Host> state,
-    std::unordered_map<dealii::types::global_dof_index, unsigned int> const
-        &dofs_map,
-    dealii::DoFHandler<dim> const &material_dof_handler)
-{
-  ASSERT(_mechanical_dof_handler != nullptr, "Internal Error");
-  _data_out.clear();
-  // We need the StrainPostProcessor to live until write_pvtu is done
-  StrainPostProcessor<dim> strain;
-  mechanical_dataout(displacement, strain, stress_tensor);
-  material_dataout(state, dofs_map, material_dof_handler);
-  subdomain_dataout();
-  write_pvtu(time_step, time);
-}
-
-template <int dim>
-void PostProcessor<dim>::write_output(
-    unsigned int time_step, double time,
-    dealii::LA::distributed::Vector<double> const &temperature,
-    dealii::LA::distributed::Vector<double> const &displacement,
-    std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
-        &stress_tensor,
-    MemoryBlockView<double, dealii::MemorySpace::Host> state,
-    std::unordered_map<dealii::types::global_dof_index, unsigned int> const
-        &dofs_map,
-    dealii::DoFHandler<dim> const &material_dof_handler)
-{
-  ASSERT(_thermal_dof_handler != nullptr, "Internal Error");
-  ASSERT(_mechanical_dof_handler != nullptr, "Internal Error");
-  _data_out.clear();
-  thermal_dataout(temperature);
-  // We need the StrainPostProcessor to live until write_pvtu is done
-  StrainPostProcessor<dim> strain;
-  mechanical_dataout(displacement, strain, stress_tensor);
-  material_dataout(state, dofs_map, material_dof_handler);
-  subdomain_dataout();
-  write_pvtu(time_step, time);
 }
 
 template <int dim>
@@ -236,42 +146,6 @@ void PostProcessor<dim>::mechanical_dataout(
   // Add the stress tensor
   dealii::Vector<double> stress_norm = get_stress_norm(stress_tensor);
   _data_out.add_data_vector(stress_norm, "stress");
-}
-
-template <int dim>
-void PostProcessor<dim>::material_dataout(
-    MemoryBlockView<double, dealii::MemorySpace::Host> state,
-    std::unordered_map<dealii::types::global_dof_index, unsigned int> const
-        &dofs_map,
-    dealii::DoFHandler<dim> const &material_dof_handler)
-{
-  unsigned int const n_active_cells =
-      material_dof_handler.get_triangulation().n_active_cells();
-  dealii::Vector<double> powder(n_active_cells);
-  dealii::Vector<double> liquid(n_active_cells);
-  dealii::Vector<double> solid(n_active_cells);
-  unsigned int constexpr powder_index =
-      static_cast<unsigned int>(MaterialState::powder);
-  unsigned int constexpr liquid_index =
-      static_cast<unsigned int>(MaterialState::liquid);
-  unsigned int constexpr solid_index =
-      static_cast<unsigned int>(MaterialState::solid);
-  auto mp_cell = material_dof_handler.begin_active();
-  auto mp_end_cell = material_dof_handler.end();
-  std::vector<dealii::types::global_dof_index> mp_dof_indices(1);
-  for (unsigned int i = 0; mp_cell != mp_end_cell; ++i, ++mp_cell)
-    if (mp_cell->is_locally_owned())
-    {
-      mp_cell->get_dof_indices(mp_dof_indices);
-      dealii::types::global_dof_index const mp_dof_index =
-          dofs_map.at(mp_dof_indices[0]);
-      powder[i] = state(powder_index, mp_dof_index);
-      liquid[i] = state(liquid_index, mp_dof_index);
-      solid[i] = state(solid_index, mp_dof_index);
-    }
-  _data_out.add_data_vector(powder, "powder");
-  _data_out.add_data_vector(liquid, "liquid");
-  _data_out.add_data_vector(solid, "solid");
 }
 
 template <int dim>

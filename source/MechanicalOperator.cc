@@ -330,6 +330,4 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system(
 } // namespace adamantine
 
 INSTANTIATE_DIM_HOST(MechanicalOperator)
-#ifdef ADAMANTINE_HAVE_CUDA
 INSTANTIATE_DIM_DEVICE(MechanicalOperator)
-#endif
