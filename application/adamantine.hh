@@ -1012,7 +1012,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // PropertyTreeInput post_processor.time_steps_between_output
   unsigned int const time_steps_output =
       post_processor_database.get("time_steps_between_output", 1);
-
   double next_refinement_time = time;
   // PropertyTreeInput materials.new_material_temperature
   double const new_material_temperature =
@@ -1055,7 +1054,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     timers[adamantine::add_material_activate].start();
     if (time > activation_time_end)
     {
-      double const eps = time_step / 1e12;
+      double const eps = time_step / 1e10;
       auto activation_start =
           std::lower_bound(deposition_times.begin(), deposition_times.end(),
                            time - eps) -
@@ -1077,8 +1076,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           // activation_end.
           timers[adamantine::add_material_search].start();
           auto elements_to_activate = adamantine::get_elements_to_activate(
-              thermal_physics->get_dof_handler(), material_deposition_boxes);
-
+             thermal_physics->get_dof_handler(), material_deposition_boxes);
           timers[adamantine::add_material_search].stop();
 
           // For now assume that all deposited material has never been melted
@@ -1120,7 +1118,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       time = thermal_physics->evolve_one_time_step(time, time_step, temperature,
                                                    timers);
     }
-
     // Solve the (thermo-)mechanical problem
     if (use_mechanical_physics)
     {
@@ -1185,6 +1182,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     }
     ++n_time_step;
   }
+
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_LOOP_END(main_loop_id);
 #endif
