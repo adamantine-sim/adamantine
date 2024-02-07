@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2023, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -8,7 +8,6 @@
 #ifndef ADAMANTINE_HH
 #define ADAMANTINE_HH
 
-#include "types.hh"
 #include <DataAssimilator.hh>
 #include <ExperimentalData.hh>
 #include <Geometry.hh>
@@ -23,6 +22,7 @@
 #include <ensemble_management.hh>
 #include <experimental_data_utils.hh>
 #include <material_deposition.hh>
+#include <types.hh>
 #include <utils.hh>
 
 #include <deal.II/base/index_set.h>
@@ -37,8 +37,6 @@
 #include <deal.II/lac/vector_operation.h>
 #include <deal.II/numerics/error_estimator.h>
 
-#include <boost/program_options.hpp>
-#include <boost/property_tree/info_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 #include <memory>

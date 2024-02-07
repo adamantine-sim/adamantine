@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2023, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -9,6 +9,14 @@
 
 #include <validate_input_database.hh>
 
+#include <boost/program_options.hpp>
+#include <boost/property_tree/info_parser.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
+#include <Kokkos_Core.hpp>
+
+#include <filesystem>
+
 #ifdef ADAMANTINE_WITH_ADIAK
 #include <adiak.hpp>
 #endif
@@ -16,8 +24,6 @@
 #ifdef ADAMANTINE_WITH_CALIPER
 #include <caliper/cali-manager.h>
 #endif
-
-#include <Kokkos_Core.hpp>
 
 int main(int argc, char *argv[])
 {
@@ -70,7 +76,14 @@ int main(int argc, char *argv[])
     std::string const filename = map["input-file"].as<std::string>();
     adamantine::wait_for_file(filename, "Waiting for input file: " + filename);
     boost::property_tree::ptree database;
-    boost::property_tree::info_parser::read_info(filename, database);
+    if (std::filesystem::path(filename).extension().native() == ".json")
+    {
+      boost::property_tree::json_parser::read_json(filename, database);
+    }
+    else
+    {
+      boost::property_tree::info_parser::read_info(filename, database);
+    }
     try
     {
       adamantine::validate_input_database(database);
