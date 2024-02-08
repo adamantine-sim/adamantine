@@ -81,7 +81,7 @@ The following options are available:
   * **material\_X.A**: A is either `solidus` in kelvin, `liquidus` in kelvin, `latent_heat`
   in `J/kg`, `radiation_temperature_infty` in kelvin, or `convection_temperature_infty`
   in kelvin (optional)
-* **memory\_space** (optional): `device` (use GPU) or `host` (use CPU) (default value: host)
+* **memory\_space** (optional): `device` (use GPU if Kokkos was compiled with GPU support) or `host` (use CPU) (default value: host)
 * **post\_processor** (required):
   * **filename\_prefix**: prefix of output files (required)
   * **time\_steps\_between\_output**: number of time steps between the

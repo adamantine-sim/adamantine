@@ -12,8 +12,9 @@ Installing *adamantine* requires:
 * A compiler that support C++17
 * CMake: 3.15 or later
 * Boost: 1.70.0 or later
-* ArborX: 1.2 or later
-* deal.II: 9.4 or later
+* ArborX: 1.4.1 or later
+* Trilinos: 14.4.0 or later
+* deal.II: 9.5 or later
 
 You need to compile deal.II with MPI, P4EST, and ArborX support. If you want to use Exodus file, you also need Trilinos with SEACAS support.
 *adamantine* also optionally supports profiling through [Caliper](https://github.com/llnl/Caliper).
@@ -37,7 +38,6 @@ The list of configuration options is:
 * ADAMANTINE\_ENABLE\_ADIAK=ON/OFF
 * ADAMANTINE\_ENABLE\_CALIPER=ON/OFF
 * ADAMANTINE\_ENABLE\_COVERAGE=ON/OFF
-* ADAMANTINE\_ENABLE\_CUDA=ON/OFF
 * ADAMANTINE\_ENABLE\_TESTS=ON/OFF
 * BOOST\_DIR=/path/to/boost
 * CMAKE\_BUILD\_TYPE=Debug/Release
