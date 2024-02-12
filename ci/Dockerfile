@@ -3,14 +3,12 @@ FROM $BASE
 
 ARG N_PROCS=8
 ARG CUDA=ON
-ARG CLANG=OFF
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
       gcc \
       gfortran \
       clang-format \
-      clang \
       build-essential \
       wget \
       curl \
@@ -27,12 +25,6 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
       libgmp-dev \
       && \
       apt-get clean && rm -rf /var/lib/apt/lists/*
-
-RUN if [ $CLANG = ON ]; \
-    then \
-    update-alternatives --install /usr/bin/cc cc /usr/bin/clang 100; \
-    update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++ 100; \
-    fi
 
 ENV PREFIX=/scratch
 ENV ARCHIVE_DIR=${PREFIX}/archive
@@ -62,10 +54,6 @@ RUN export CMAKE_VERSION=3.27.8 && \
 ENV PATH=${INSTALL_DIR}/cmake/bin:$PATH
 
 # Install OpenMPI
-# We would like to be able to compile OpenMPI with clang but it doesn't work
-# because LLVM does not have a working Fortran compiler. We need Fortran because
-# p4est checks at configure time that MPI Fortran works even tough it does not
-# use it. This should be fixed in p4est 3.0
 RUN export OPENMPI_VERSION=5.0.0 && \
     export OPENMPI_VERSION_SHORT=5.0 && \
     export OPENMPI_SHA256=9d845ca94bc1aeb445f83d98d238cd08f6ec7ad0f73b0f79ec1668dbfdacd613 && \
@@ -112,12 +100,7 @@ RUN export BOOST_VERSION=1.83.0 && \
     mkdir -p ${BOOST_SOURCE_DIR} && \
     tar -xf ${BOOST_ARCHIVE} -C ${BOOST_SOURCE_DIR} --strip-components=1 && \
     cd ${BOOST_SOURCE_DIR} && \
-    if [ $CLANG = ON ]; \
-    then \
-    ./bootstrap.sh --with-toolset=clang --prefix=${BOOST_INSTALL_DIR}; \
-    else \
     ./bootstrap.sh --prefix=${BOOST_INSTALL_DIR}; \
-    fi && \
     echo "using mpi ;" >> project-config.jam && \
     ./b2 -j${N_PROCS}\
         --build-dir=${BOOST_BUILD_DIR} \
@@ -174,7 +157,6 @@ RUN export HDF5_VERSION=1.12.0 && \
 ENV HDF5_DIR=/opt/hdf5
 
 # Install NetCDF
-# NetCDF does not like clang, so always set compiler to gcc
 RUN export NETCDF_VERSION=4.7.4 && \
     export NETCDF_URL=https://github.com/Unidata/netcdf-c/archive/v${NETCDF_VERSION}.tar.gz && \
     export NETCDF_ARCHIVE=${ARCHIVE_DIR}/netcdf.tar.gz && \
@@ -186,7 +168,6 @@ RUN export NETCDF_VERSION=4.7.4 && \
     tar -xf ${NETCDF_ARCHIVE} -C ${NETCDF_SOURCE_DIR} --strip-components=1 && \
     mkdir -p ${NETCDF_BUILD_DIR} && \
     cd ${NETCDF_BUILD_DIR} && \
-    OMPI_CC=gcc \
     ${NETCDF_SOURCE_DIR}/configure \
         --prefix=${NETCDF_INSTALL_DIR} \
         --enable-netcdf-4 \
