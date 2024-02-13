@@ -233,16 +233,10 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system(
       // Get the appropriate reference temperature for the cell. If the cell
       // is not in the unmelted substrate, the reference temperature depends
       // on the material.
-      double reference_temperature;
-      if (_has_melted[cell_indices[cell->active_cell_index()]])
-      {
-        reference_temperature =
-            _reference_temperatures[temperature_cell->material_id()];
-      }
-      else
-      {
-        reference_temperature = initial_temperature;
-      }
+      double reference_temperature =
+          _has_melted[cell_indices[cell->active_cell_index()]]
+              ? _reference_temperatures[temperature_cell->material_id()]
+              : initial_temperature;
 
       displacement_hp_fe_values.reinit(cell);
       auto const &fe_values = displacement_hp_fe_values.get_present_fe_values();

@@ -721,7 +721,7 @@ DataAssimilator::calc_sample_covariance_sparse(
     element_value /= (_num_ensemble_members - 1.0);
 
     // Apply localization
-    double localization_scaling;
+    double localization_scaling = 1.0;
     if (i < _sim_size && j < _sim_size)
     {
       double dist = _covariance_distance_map.find(std::make_pair(i, j))->second;
@@ -730,22 +730,12 @@ DataAssimilator::calc_sample_covariance_sparse(
         localization_scaling =
             gaspari_cohn_function(2.0 * dist / _localization_cutoff_distance);
       }
-      else if (_localization_cutoff_function ==
-               LocalizationCutoff::step_function)
+      else if ((_localization_cutoff_function ==
+                LocalizationCutoff::step_function) &&
+               (dist > _localization_cutoff_distance))
       {
-        if (dist <= _localization_cutoff_distance)
-          localization_scaling = 1.0;
-        else
-          localization_scaling = 0.0;
+        localization_scaling = 0.0;
       }
-      else
-      {
-        localization_scaling = 1.0;
-      }
-    }
-    else
-    {
-      localization_scaling = 1.0;
     }
 
     conv_iter->value() = element_value * localization_scaling;

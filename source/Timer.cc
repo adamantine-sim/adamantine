@@ -25,7 +25,7 @@ void Timer::reset() { _elapsed_time = boost::chrono::milliseconds(0); }
 
 void Timer::print()
 {
-  int rank;
+  int rank = -1;
   MPI_Comm_rank(_communicator, &rank);
   if (rank == 0)
   {
