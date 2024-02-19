@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2023, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -42,6 +42,8 @@ public:
                  Geometry<dim> &geometry,
                  MaterialProperty<dim, MemorySpaceType> &material_properties);
 
+  void setup() override;
+
   void setup_dofs() override;
 
   void compute_inverse_mass_matrix() override;
@@ -72,13 +74,6 @@ public:
 
   double get_delta_t_guess() const override;
 
-  void initialize_dof_vector(
-      dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
-      const override;
-
-  /**
-   * Initialize the given vector. The value is assumed to be a temperature.
-   */
   void
   initialize_dof_vector(double const value,
                         dealii::LA::distributed::Vector<double, MemorySpaceType>
@@ -88,7 +83,13 @@ public:
 
   void set_state_to_material_properties() override;
 
-  void update_material_deposition_orientation() override;
+  void load_checkpoint(std::string const &filename,
+                       dealii::LA::distributed::Vector<double, MemorySpaceType>
+                           &temperature) override;
+
+  void save_checkpoint(std::string const &filename,
+                       dealii::LA::distributed::Vector<double, MemorySpaceType>
+                           &temperature) override;
 
   void set_material_deposition_orientation(
       std::vector<double> const &deposition_cos,
@@ -124,6 +125,12 @@ public:
 private:
   using LA_Vector =
       typename dealii::LA::distributed::Vector<double, MemorySpaceType>;
+
+  /**
+   * Update the depostion cosine and sine from the Physics object to the
+   * operator object.
+   */
+  void update_material_deposition_orientation();
 
   /**
    * Compute the right-hand side and apply the TermalOperator.

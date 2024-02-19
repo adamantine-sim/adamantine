@@ -184,13 +184,13 @@ The following options are available:
     (default value: 100)
     * newton\_tolerance: tolerance of the Newton solver (default value: 1e-6)
     * jfnk: use Jacobian-Free Newton Krylov method (default value: false)
-* experiment: (optional)
+* experiment (optional):
   * read\_in\_experimental\_data: whether to read in experimental data (default: false)
   * if reading in experimental data:
     * file: format of the file names. The format is pretty arbitrary, the keywords \#frame
     and \#camera are replaced by the frame and the camera number. The format of
     the file itself should be csv with a header line. (required)
-    * format: The format of the experimental data, either `point_cloud`, with (x,y,z,value) per line, or `ray`, with (pt0_x,pt0_y,pt0_z,pt1_x,pt1_y,pt1_z,value) per line, where the ray starts at pt0 and passes through pt1. (required)
+    * format: The format of the experimental data, either `point_cloud`, with (x,y,z,value) per line, or `ray`, with (pt0\_x,pt0\_y,pt0\_z,pt1\_x,pt1\_y,pt1\_z,value) per line, where the ray starts at pt0 and passes through pt1. (required)
     * first\_frame: number associated to the first frame (default value: 0)
     * last\_frame: number associated to the last frame (required)
     * first\_camera\_id: number associated to the first camera (required)
@@ -203,19 +203,19 @@ The following options are available:
     given by a standard deviation (under the simplifying assumption that the error is normally 
     distributed and independent for each data point) (default value: 0.0).
     * output\_experiment\_on\_mesh: Whether to output the experimental data projected onto the simulation mesh at each experiment time stamp (default: true).
-* ensemble: (optional)
+* ensemble (optional):
   * ensemble\_simulation: whether to perform an ensemble of simulations (default value: false)
   * ensemble\_size: the number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
   * initial\_temperature\_stddev: the standard deviation for the initial temperature of the material (default value: 0.0)
   * new\_material\_temperature\_stddev: the standard deviation for the temperature of material added during the process (default value: 0.0)
   * beam\_0\_max\_power\_stddev: the standard deviation for the max power for beam 0 (if it exists) (default value: 0.0)
   * beam\_0\_absorption\_efficiency\_stddev: the standard deviation for the absorption efficiency for beam 0 (if it exists) (default value: 0.0)
-* data\_assimilation: (optional)
+* data\_assimilation (optional):
   * assimilate\_data: whether to perform data assimilation (default value: false)
   * localization\_cutoff\_function: the function used to decrease the sample covariance as the relevant points become farther away: gaspari\_cohn, step\_function, none (default: none)
   * localization\_cutoff\_distance: the distance at which sample covariance entries are set to zero (default: infinity)
   * augment\_with\_beam\_0\_absorption: whether to augment the state vector with the beam 0 absorption efficiency (default: false)
-  * augment\_with\_beam\_0\_max_power: whether to augment the state vector with the beam 0 max power (default: false)
+  * augment\_with\_beam\_0\_max\_power: whether to augment the state vector with the beam 0 max power (default: false)
   * solver:
     * max\_number\_of\_temp\_vectors: maximum number of temporary vectors for the GMRES solve (optional)
     * max\_iterations: maximum number of iterations for the GMRES solve (optional)
@@ -223,7 +223,13 @@ The following options are available:
 * profiling (optional):
   * timer: output timing information (default value: false)
   * caliper: configuration string for Caliper (optional)
-* verbose_output: true or false (default value: false)
+* checkpoint (optional):
+  * time\_steps\_between\_checkpoint: number of time steps after which
+    checkpointing is performed (required)
+  * filename\_prefix: prefix of the checkpoint files (required)
+* restart (optional):
+  * filename\_prefix: prefix of the restart files (required)
+* verbose\_output: true or false (default value: false)
 
 
 

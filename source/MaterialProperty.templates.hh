@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2023, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -693,6 +693,22 @@ void MaterialProperty<dim, MemorySpaceType>::set_state_device(
                             _state(powder_state, mp_dof(i)),
                         0.);
       });
+}
+
+template <int dim, typename MemorySpaceType>
+void MaterialProperty<dim, MemorySpaceType>::set_cell_state(
+    std::vector<std::array<double, g_n_material_states>> const &cell_state)
+{
+  auto state_host =
+      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _state);
+  for (unsigned int i = 0; i < cell_state.size(); ++i)
+  {
+    for (unsigned int j = 0; j < g_n_material_states; ++j)
+    {
+      state_host(j, i) = cell_state[i][j];
+    }
+  }
+  Kokkos::deep_copy(_state, state_host);
 }
 
 template <int dim, typename MemorySpaceType>

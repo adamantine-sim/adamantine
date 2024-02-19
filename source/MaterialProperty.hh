@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2023, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -211,6 +211,12 @@ public:
       dealii::DoFHandler<dim> const &dof_handler);
 
   /**
+   * Set the ratio of the material states at the cell level.
+   */
+  void set_cell_state(
+      std::vector<std::array<double, g_n_material_states>> const &cell_state);
+
+  /**
    * Return the underlying the DoFHandler.
    */
   dealii::DoFHandler<dim> const &get_dof_handler() const;
@@ -289,6 +295,8 @@ private:
   /**
    * Ratio of each in MaterarialState in each cell.
    */
+  // FIXME Change the order of the indices. Currently, the first index is the
+  // state and the second is the cell.
   Kokkos::View<double **, typename MemorySpaceType::kokkos_space> _state;
   /**
    * Thermal properties of the material that are dependent of the state of the

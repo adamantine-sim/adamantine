@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -127,13 +127,10 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
       communicator, database, geometry, material_properties);
-  physics.setup_dofs();
-  physics.update_material_deposition_orientation();
-  physics.compute_inverse_mass_matrix();
-
+  physics.setup();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
-  physics.initialize_dof_vector(solution);
-  physics.get_state_from_material_properties();
+  physics.initialize_dof_vector(0., solution);
+
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
   while (time < 0.1)
@@ -208,14 +205,11 @@ void thermal_2d_manufactured_solution()
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
       communicator, database, geometry, material_properties);
-  physics.setup_dofs();
-  physics.update_material_deposition_orientation();
-  physics.compute_inverse_mass_matrix();
-
+  physics.setup();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
+  physics.initialize_dof_vector(0., solution);
+
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
-  physics.initialize_dof_vector(solution);
-  physics.get_state_from_material_properties();
   double time = physics.evolve_one_time_step(0., 0.1, solution, timers);
 
   double const tolerance = 1e-5;
@@ -260,13 +254,10 @@ void initial_temperature()
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
       communicator, database, geometry, material_properties);
-  physics.setup_dofs();
-  physics.update_material_deposition_orientation();
-  physics.compute_inverse_mass_matrix();
-
+  physics.setup();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(1000., solution);
-  physics.get_state_from_material_properties();
+
   BOOST_TEST(solution.l1_norm() == 1000. * solution.size());
 }
 
@@ -325,15 +316,12 @@ void energy_conservation()
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
       communicator, database, geometry, material_properties);
-  physics.setup_dofs();
-  physics.update_material_deposition_orientation();
-  physics.compute_inverse_mass_matrix();
-
+  physics.setup();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   double constexpr initial_temperature = 10;
   double constexpr final_temperature = 10.5;
   physics.initialize_dof_vector(initial_temperature, solution);
-  physics.get_state_from_material_properties();
+
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
   while (time < 100)
@@ -439,14 +427,10 @@ void radiation_bcs()
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
       physics(communicator, database, geometry, material_properties);
-  physics.setup_dofs();
-  physics.update_material_deposition_orientation();
-  physics.compute_inverse_mass_matrix();
-
+  physics.setup();
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
   double constexpr initial_temperature = 10;
   physics.initialize_dof_vector(initial_temperature, solution);
-  physics.get_state_from_material_properties();
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
   while (time < 100)
@@ -545,14 +529,10 @@ void convection_bcs()
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, dealii::MemorySpace::Host, dealii::QGauss<1>>
       physics(communicator, database, geometry, material_properties);
-  physics.setup_dofs();
-  physics.update_material_deposition_orientation();
-  physics.compute_inverse_mass_matrix();
-
+  physics.setup();
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
   double constexpr initial_temperature = 10;
   physics.initialize_dof_vector(initial_temperature, solution);
-  physics.get_state_from_material_properties();
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
   while (time < 100)
@@ -612,13 +592,9 @@ void reference_temperature()
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, MemorySpaceType, dealii::QGauss<1>> physics(
       communicator, database, geometry, material_properties);
-  physics.setup_dofs();
-  physics.update_material_deposition_orientation();
-  physics.compute_inverse_mass_matrix();
-
+  physics.setup();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(1000., solution);
-  physics.get_state_from_material_properties();
 
   // Now check that the melting indicator works as expected
   std::vector<double> reference_temperatures({1500.0, 300.0});

@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 - 2023, the adamantine authors.
+/* Copyright (c) 2022 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -444,10 +444,7 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
   adamantine::ThermalPhysics<dim, 1, dealii::MemorySpace::Host,
                              dealii::QGauss<1>>
       thermal_physics(communicator, database, geometry, material_properties);
-  thermal_physics.setup_dofs();
-  thermal_physics.update_material_deposition_orientation();
-  thermal_physics.compute_inverse_mass_matrix();
-  thermal_physics.get_state_from_material_properties();
+  thermal_physics.setup();
 
   dealii::LinearAlgebra::distributed::Vector<double> temperature;
   thermal_physics.initialize_dof_vector(100.0, temperature);
