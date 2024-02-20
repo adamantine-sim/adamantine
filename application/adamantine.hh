@@ -956,6 +956,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 
   unsigned int time_steps_checkpoint = std::numeric_limits<unsigned int>::max();
   std::string checkpoint_filename;
+  bool checkpoint_overwrite = true;
   if (checkpoint_optional_database)
   {
     auto checkpoint_database = checkpoint_optional_database.get();
@@ -965,6 +966,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // PropertyTreeInput checkpoint.filename_prefix
     checkpoint_filename =
         checkpoint_database.get<std::string>("filename_prefix");
+    // PropertyTreeInput checkpoint.overwrite_files
+    checkpoint_overwrite = checkpoint_database.get<bool>("overwrite_files");
   }
 
   bool restart = false;
@@ -1223,8 +1226,12 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       {
         std::cout << "Checkpoint reached" << std::endl;
       }
-      thermal_physics->save_checkpoint(checkpoint_filename, temperature);
-      std::ofstream file{checkpoint_filename + "_time.txt"};
+      std::string filename_prefix =
+          checkpoint_overwrite
+              ? checkpoint_filename
+              : checkpoint_filename + '_' + std::to_string(n_time_step);
+      thermal_physics->save_checkpoint(filename_prefix, temperature);
+      std::ofstream file{filename_prefix + "_time.txt"};
       boost::archive::text_oarchive oa{file};
       oa << time;
       oa << n_time_step;
@@ -1551,6 +1558,7 @@ run_ensemble(MPI_Comm const &global_communicator,
       dealii::Utilities::MPI::this_mpi_process(global_communicator);
   unsigned int time_steps_checkpoint = std::numeric_limits<unsigned int>::max();
   std::string checkpoint_filename;
+  bool checkpoint_overwrite = true;
   if (checkpoint_optional_database)
   {
     auto checkpoint_database = checkpoint_optional_database.get();
@@ -1561,6 +1569,8 @@ run_ensemble(MPI_Comm const &global_communicator,
     checkpoint_filename =
         checkpoint_database.get<std::string>("filename_prefix") + '_' +
         std::to_string(global_rank);
+    // PropertyTreeInput checkpoint.overwrite_files
+    checkpoint_overwrite = checkpoint_database.get<bool>("overwrite_files");
   }
 
   bool restart = false;
@@ -2137,14 +2147,17 @@ run_ensemble(MPI_Comm const &global_communicator,
       {
         std::cout << "Checkpoint reached" << std::endl;
       }
+      std::string filename_prefix =
+          checkpoint_overwrite
+              ? checkpoint_filename
+              : checkpoint_filename + '_' + std::to_string(n_time_step);
       for (unsigned int member = 0; member < local_ensemble_size; ++member)
       {
         thermal_physics_ensemble[member]->save_checkpoint(
-            checkpoint_filename + '_' +
-                std::to_string(first_local_member + member),
+            filename_prefix + '_' + std::to_string(first_local_member + member),
             solution_augmented_ensemble[member].block(base_state));
       }
-      std::ofstream file{checkpoint_filename + "_time.txt"};
+      std::ofstream file{filename_prefix + "_time.txt"};
       boost::archive::text_oarchive oa{file};
       oa << time;
       oa << n_time_step;

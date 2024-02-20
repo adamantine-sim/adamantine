@@ -112,6 +112,7 @@ BOOST_AUTO_TEST_CASE(integration_3D_checkpoint_restart)
 
   // First run with checkpoint of the solution halfway through the solution
   database.put("checkpoint.filename_prefix", checkpoint_filename);
+  database.put("checkpoint.overwrite_files", true);
   database.put("checkpoint.time_steps_between_checkpoint", 80);
   auto [temperature_1, displacement_1] =
       run<3, dealii::MemorySpace::Host>(communicator, database, timers);
