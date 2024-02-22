@@ -737,20 +737,10 @@ template class ThermalOperatorDevice<2, 2, dealii::MemorySpace::Default>;
 template class ThermalOperatorDevice<2, 3, dealii::MemorySpace::Default>;
 template class ThermalOperatorDevice<2, 4, dealii::MemorySpace::Default>;
 template class ThermalOperatorDevice<2, 5, dealii::MemorySpace::Default>;
-template class ThermalOperatorDevice<2, 6, dealii::MemorySpace::Default>;
-template class ThermalOperatorDevice<2, 7, dealii::MemorySpace::Default>;
-template class ThermalOperatorDevice<2, 8, dealii::MemorySpace::Default>;
-template class ThermalOperatorDevice<2, 9, dealii::MemorySpace::Default>;
-template class ThermalOperatorDevice<2, 10, dealii::MemorySpace::Default>;
 
 template class ThermalOperatorDevice<3, 1, dealii::MemorySpace::Default>;
 template class ThermalOperatorDevice<3, 2, dealii::MemorySpace::Default>;
 template class ThermalOperatorDevice<3, 3, dealii::MemorySpace::Default>;
 template class ThermalOperatorDevice<3, 4, dealii::MemorySpace::Default>;
 template class ThermalOperatorDevice<3, 5, dealii::MemorySpace::Default>;
-template class ThermalOperatorDevice<3, 6, dealii::MemorySpace::Default>;
-template class ThermalOperatorDevice<3, 7, dealii::MemorySpace::Default>;
-template class ThermalOperatorDevice<3, 8, dealii::MemorySpace::Default>;
-template class ThermalOperatorDevice<3, 9, dealii::MemorySpace::Default>;
-template class ThermalOperatorDevice<3, 10, dealii::MemorySpace::Default>;
 } // namespace adamantine
