@@ -668,8 +668,9 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
 
   auto state_host = Kokkos::create_mirror_view_and_copy(
       Kokkos::HostSpace{}, _material_properties.get_state());
+  unsigned int locally_owned_cell_id = 0;
+  unsigned int activated_cell_id = 0;
   unsigned int cell_id = 0;
-  unsigned int active_cell_id = 0;
   std::map<typename dealii::DoFHandler<dim>::active_cell_iterator, int>
       cell_to_id;
   for (auto const &cell : _dof_handler.active_cell_iterators())
@@ -678,41 +679,45 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     {
       if (cell->active_fe_index() == 0)
       {
-        std::vector<double> cell_data(
-            direction_data_size + phase_history_data_size + n_material_states);
+        std::vector<double> cell_data(direction_data_size +
+                                      phase_history_data_size +
+                                      g_n_material_states);
         cell->get_dof_values(rw_solution, cell_solution);
         cell_data.insert(cell_data.begin(), cell_solution.begin(),
                          cell_solution.end());
-        cell_data[n_dofs_per_cell] = _deposition_cos[cell_id];
-        cell_data[n_dofs_per_cell + 1] = _deposition_sin[cell_id];
+        cell_data[n_dofs_per_cell] = _deposition_cos[activated_cell_id];
+        cell_data[n_dofs_per_cell + 1] = _deposition_sin[activated_cell_id];
 
-        if (_has_melted[cell_id])
+        if (_has_melted[activated_cell_id])
           cell_data[n_dofs_per_cell + direction_data_size] = 1.0;
         else
           cell_data[n_dofs_per_cell + direction_data_size] = 0.0;
 
-        for (unsigned int i = 0; i < n_material_states; ++i)
+        for (unsigned int i = 0; i < g_n_material_states; ++i)
           cell_data[n_dofs_per_cell + direction_data_size +
-                    phase_history_data_size + i] = state_host(i, cell_id);
+                    phase_history_data_size + i] =
+              state_host(i, locally_owned_cell_id);
         data_to_transfer.push_back(cell_data);
 
-        ++cell_id;
+        ++activated_cell_id;
       }
       else
       {
         std::vector<double> cell_data = dummy_cell_data;
-        for (unsigned int i = 0; i < n_material_states; ++i)
+        for (unsigned int i = 0; i < g_n_material_states; ++i)
           cell_data[n_dofs_per_cell + direction_data_size +
-                    phase_history_data_size + i] = state_host(i, cell_id);
+                    phase_history_data_size + i] =
+              state_host(i, locally_owned_cell_id);
         data_to_transfer.push_back(cell_data);
       }
+      ++locally_owned_cell_id;
     }
     else
     {
       data_to_transfer.push_back(dummy_cell_data);
     }
-    cell_to_id[cell] = active_cell_id;
-    ++active_cell_id;
+    cell_to_id[cell] = cell_id;
+    ++cell_id;
   }
 
   // Activate elements by updating the fe_index
@@ -780,42 +785,40 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   _deposition_sin.clear();
   _has_melted.clear();
   cell_id = 0;
-  active_cell_id = 0;
+  locally_owned_cell_id = 0;
   for (auto const &cell : _dof_handler.active_cell_iterators())
   {
     if (cell->is_locally_owned())
     {
-      if (transferred_data[active_cell_id][0] !=
+      if (transferred_data[cell_id][0] !=
           std::numeric_limits<double>::infinity())
       {
-        std::copy(transferred_data[active_cell_id].begin(),
-                  transferred_data[active_cell_id].begin() + n_dofs_per_cell,
+        std::copy(transferred_data[cell_id].begin(),
+                  transferred_data[cell_id].begin() + n_dofs_per_cell,
                   cell_solution.begin());
         cell->set_dof_values(cell_solution, rw_solution);
       }
 
       if (cell->active_fe_index() == 0)
       {
-        _deposition_cos.push_back(
-            transferred_data[active_cell_id][n_dofs_per_cell]);
+        _deposition_cos.push_back(transferred_data[cell_id][n_dofs_per_cell]);
         _deposition_sin.push_back(
-            transferred_data[active_cell_id][n_dofs_per_cell + 1]);
-        if (transferred_data[active_cell_id]
-                            [n_dofs_per_cell + direction_data_size] > 0.5)
+            transferred_data[cell_id][n_dofs_per_cell + 1]);
+        if (transferred_data[cell_id][n_dofs_per_cell + direction_data_size] >
+            0.5)
           _has_melted.push_back(true);
         else
           _has_melted.push_back(false);
       }
-      for (unsigned int i = 0; i < n_material_states; ++i)
+      for (unsigned int i = 0; i < g_n_material_states; ++i)
       {
-        state_host(i, cell_id) =
-            transferred_data[active_cell_id]
-                            [n_dofs_per_cell + direction_data_size +
-                             phase_history_data_size + i];
+        state_host(i, locally_owned_cell_id) =
+            transferred_data[cell_id][n_dofs_per_cell + direction_data_size +
+                                      phase_history_data_size + i];
       }
-      ++cell_id;
+      ++locally_owned_cell_id;
     }
-    ++active_cell_id;
+    ++cell_id;
   }
   Kokkos::deep_copy(state, state_host);
   get_state_from_material_properties();
