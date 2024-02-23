@@ -37,9 +37,14 @@
 #include <deal.II/lac/vector_operation.h>
 #include <deal.II/numerics/error_estimator.h>
 
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
 #include <boost/property_tree/ptree.hpp>
 
+#include <fstream>
+#include <limits>
 #include <memory>
+#include <string>
 #include <type_traits>
 #include <unordered_map>
 
@@ -471,7 +476,7 @@ void refine_and_transfer(
 
   // Update the AffineConstraints and resize the solution
   thermal_physics->setup_dofs();
-  thermal_physics->initialize_dof_vector(solution);
+  thermal_physics->initialize_dof_vector(0., solution);
 
   // Update MaterialProperty DoFHandler and resize the state vectors
   material_properties.reinit_dofs();
@@ -943,20 +948,66 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                        : mechanical_physics->get_dof_handler());
   }
 
+  // Get the checkpoint and restart subtrees
+  boost::optional<boost::property_tree::ptree const &>
+      checkpoint_optional_database = database.get_child_optional("checkpoint");
+  boost::optional<boost::property_tree::ptree const &>
+      restart_optional_database = database.get_child_optional("restart");
+
+  unsigned int time_steps_checkpoint = std::numeric_limits<unsigned int>::max();
+  std::string checkpoint_filename;
+  bool checkpoint_overwrite = true;
+  if (checkpoint_optional_database)
+  {
+    auto checkpoint_database = checkpoint_optional_database.get();
+    // PropertyTreeInput checkpoint.time_steps_between_checkpoint
+    time_steps_checkpoint =
+        checkpoint_database.get<unsigned int>("time_steps_between_checkpoint");
+    // PropertyTreeInput checkpoint.filename_prefix
+    checkpoint_filename =
+        checkpoint_database.get<std::string>("filename_prefix");
+    // PropertyTreeInput checkpoint.overwrite_files
+    checkpoint_overwrite = checkpoint_database.get<bool>("overwrite_files");
+  }
+
+  bool restart = false;
+  std::string restart_filename;
+  if (restart_optional_database)
+  {
+    restart = true;
+    auto restart_database = restart_optional_database.get();
+    // PropertyTreeInput restart.filename_prefix
+    restart_filename = restart_database.get<std::string>("filename_prefix");
+  }
+
   dealii::LA::distributed::Vector<double, MemorySpaceType> temperature;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       displacement;
   if (use_thermal_physics)
   {
-    thermal_physics->setup_dofs();
-    thermal_physics->update_material_deposition_orientation();
-    thermal_physics->compute_inverse_mass_matrix();
-    thermal_physics->initialize_dof_vector(initial_temperature, temperature);
-    thermal_physics->get_state_from_material_properties();
+    if (restart == false)
+    {
+      thermal_physics->setup();
+      thermal_physics->initialize_dof_vector(initial_temperature, temperature);
+    }
+    else
+    {
+#ifdef ADAMANTINE_WITH_CALIPER
+      CALI_MARK_BEGIN("restart from file");
+#endif
+      thermal_physics->load_checkpoint(restart_filename, temperature);
+#ifdef ADAMANTINE_WITH_CALIPER
+      CALI_MARK_END("restart from file");
+#endif
+    }
   }
 
   if (use_mechanical_physics)
   {
+    // We currently do not support restarting the mechanical simulation.
+    adamantine::ASSERT_THROW(
+        restart == false,
+        "Mechanical simulation cannot be restarted from a file");
     if (use_thermal_physics)
     {
       // Thermo-mechanical simulation
@@ -979,6 +1030,19 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   unsigned int n_time_step = 0;
   double time = 0.;
   double activation_time_end = -1.;
+  unsigned int const rank =
+      dealii::Utilities::MPI::this_mpi_process(communicator);
+  if (restart == true)
+  {
+    if (rank == 0)
+    {
+      std::cout << "Restarting from file" << std::endl;
+    }
+    std::ifstream file{restart_filename + "_time.txt"};
+    boost::archive::text_iarchive ia{file};
+    ia >> time;
+    ia >> n_time_step;
+  }
   // PropertyTreeInput geometry.deposition_time
   double const activation_time =
       geometry_database.get<double>("deposition_time", 0.);
@@ -1025,7 +1089,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 #endif
     if ((time + time_step) > duration)
       time_step = duration - time;
-    unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
     // Refine the mesh after time_steps_refinement time steps or when time
     // is greater or equal than the next predicted time for refinement. This
@@ -1074,7 +1137,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           // activation_end.
           timers[adamantine::add_material_search].start();
           auto elements_to_activate = adamantine::get_elements_to_activate(
-             thermal_physics->get_dof_handler(), material_deposition_boxes);
+              thermal_physics->get_dof_handler(), material_deposition_boxes);
           timers[adamantine::add_material_search].stop();
 
           // For now assume that all deposited material has never been melted
@@ -1154,6 +1217,29 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       time_step += time_step;
     }
 
+    if (n_time_step % time_steps_checkpoint == 0)
+    {
+#ifdef ADAMANTINE_WITH_CALIPER
+      CALI_MARK_BEGIN("save checkpoint");
+#endif
+      if (rank == 0)
+      {
+        std::cout << "Checkpoint reached" << std::endl;
+      }
+      std::string filename_prefix =
+          checkpoint_overwrite
+              ? checkpoint_filename
+              : checkpoint_filename + '_' + std::to_string(n_time_step);
+      thermal_physics->save_checkpoint(filename_prefix, temperature);
+      std::ofstream file{filename_prefix + "_time.txt"};
+      boost::archive::text_oarchive oa{file};
+      oa << time;
+      oa << n_time_step;
+#ifdef ADAMANTINE_WITH_CALIPER
+      CALI_MARK_END("save checkpoint");
+#endif
+    }
+
     // Output progress on screen
     if (rank == 0)
     {
@@ -1163,7 +1249,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       if (int_part > progress)
       {
         std::cout << int_part * 10 << '%' << " completed" << std::endl;
-        ++progress;
+        progress = static_cast<unsigned int>(int_part);
       }
     }
 
@@ -1353,8 +1439,8 @@ run_ensemble(MPI_Comm const &global_communicator,
       ensemble_database.get("ensemble_size", 5);
   // Distribute the processors among the ensemble members
   MPI_Comm local_communicator;
-  unsigned int local_ensemble_size = -1;
-  unsigned int first_local_member = -1;
+  unsigned int local_ensemble_size = std::numeric_limits<unsigned int>::max();
+  unsigned int first_local_member = std::numeric_limits<unsigned int>::max();
   int my_color = -1;
   split_global_communicator(global_communicator, global_ensemble_size,
                             local_communicator, local_ensemble_size,
@@ -1462,6 +1548,40 @@ run_ensemble(MPI_Comm const &global_communicator,
                                                local_communicator, my_color,
                                                data_assimilation_database);
 
+  // Get the checkpoint and restart subtrees
+  boost::optional<boost::property_tree::ptree const &>
+      checkpoint_optional_database = database.get_child_optional("checkpoint");
+  boost::optional<boost::property_tree::ptree const &>
+      restart_optional_database = database.get_child_optional("restart");
+
+  unsigned int const global_rank =
+      dealii::Utilities::MPI::this_mpi_process(global_communicator);
+  unsigned int time_steps_checkpoint = std::numeric_limits<unsigned int>::max();
+  std::string checkpoint_filename;
+  bool checkpoint_overwrite = true;
+  if (checkpoint_optional_database)
+  {
+    auto checkpoint_database = checkpoint_optional_database.get();
+    // PropertyTreeInput checkpoint.time_steps_between_checkpoint
+    time_steps_checkpoint =
+        checkpoint_database.get<unsigned int>("time_steps_between_checkpoint");
+    // PropertyTreeInput checkpoint.filename_prefix
+    checkpoint_filename =
+        checkpoint_database.get<std::string>("filename_prefix") + '_' +
+        std::to_string(global_rank);
+    // PropertyTreeInput checkpoint.overwrite_files
+    checkpoint_overwrite = checkpoint_database.get<bool>("overwrite_files");
+  }
+
+  bool restart = false;
+  std::string restart_filename;
+  if (restart_optional_database)
+  {
+    restart = true;
+    auto restart_database = restart_optional_database.get();
+    // PropertyTreeInput restart.filename_prefix
+    restart_filename = restart_database.get<std::string>("filename_prefix");
+  }
   for (unsigned int member = 0; member < local_ensemble_size; ++member)
   {
     // Resize the augmented ensemble block vector to have two blocks
@@ -1525,17 +1645,26 @@ run_ensemble(MPI_Comm const &global_communicator,
     heat_sources_ensemble[member] =
         thermal_physics_ensemble[member]->get_heat_sources();
 
-    thermal_physics_ensemble[member]->setup_dofs();
-    thermal_physics_ensemble[member]->update_material_deposition_orientation();
-    thermal_physics_ensemble[member]->compute_inverse_mass_matrix();
-
-    thermal_physics_ensemble[member]->initialize_dof_vector(
-        initial_temperature[member],
-        solution_augmented_ensemble[member].block(base_state));
-
+    if (restart == false)
+    {
+      thermal_physics_ensemble[member]->setup();
+      thermal_physics_ensemble[member]->initialize_dof_vector(
+          initial_temperature[member],
+          solution_augmented_ensemble[member].block(base_state));
+    }
+    else
+    {
+#ifdef ADAMANTINE_WITH_CALIPER
+      CALI_MARK_BEGIN("restart from file");
+#endif
+      thermal_physics_ensemble[member]->load_checkpoint(
+          restart_filename + '_' + std::to_string(member),
+          solution_augmented_ensemble[member].block(base_state));
+#ifdef ADAMANTINE_WITH_CALIPER
+      CALI_MARK_END("restart from file");
+#endif
+    }
     solution_augmented_ensemble[member].collect_sizes();
-
-    thermal_physics_ensemble[member]->get_state_from_material_properties();
 
     // For now we only output temperature
     post_processor_database.put("thermal_output", true);
@@ -1558,11 +1687,10 @@ run_ensemble(MPI_Comm const &global_communicator,
       thermal_physics_ensemble[0]->get_dof_handler());
 
   // ----- Read the experimental data -----
-  unsigned int const global_rank =
-      dealii::Utilities::MPI::this_mpi_process(global_communicator);
   std::vector<std::vector<double>> frame_time_stamps;
   std::unique_ptr<adamantine::ExperimentalData<dim>> experimental_data;
-  unsigned int experimental_frame_index = -1;
+  unsigned int experimental_frame_index =
+      std::numeric_limits<unsigned int>::max();
 
   if (experiment_optional_database)
   {
@@ -1621,6 +1749,18 @@ run_ensemble(MPI_Comm const &global_communicator,
   unsigned int n_time_step = 0;
   double time = 0.;
   double activation_time_end = -1.;
+  if (restart == true)
+  {
+    if (global_rank == 0)
+    {
+      std::cout << "Restarting from file" << std::endl;
+    }
+    std::ifstream file{restart_filename + "_time.txt"};
+    boost::archive::text_iarchive ia{file};
+    ia >> time;
+    ia >> n_time_step;
+  }
+
   // PropertyTreeInput geometry.deposition_time
   double const activation_time =
       geometry_database.get<double>("deposition_time", 0.);
@@ -1995,6 +2135,35 @@ run_ensemble(MPI_Comm const &global_communicator,
         thermal_physics_ensemble[member]->update_physics_parameters(
             database_ensemble[member].get_child("sources"));
       }
+    }
+
+    // ----- Checkpoint the ensemble members -----
+    if (n_time_step % time_steps_checkpoint == 0)
+    {
+#ifdef ADAMANTINE_WITH_CALIPER
+      CALI_MARK_BEGIN("save checkpoint");
+#endif
+      if (global_rank == 0)
+      {
+        std::cout << "Checkpoint reached" << std::endl;
+      }
+      std::string filename_prefix =
+          checkpoint_overwrite
+              ? checkpoint_filename
+              : checkpoint_filename + '_' + std::to_string(n_time_step);
+      for (unsigned int member = 0; member < local_ensemble_size; ++member)
+      {
+        thermal_physics_ensemble[member]->save_checkpoint(
+            filename_prefix + '_' + std::to_string(first_local_member + member),
+            solution_augmented_ensemble[member].block(base_state));
+      }
+      std::ofstream file{filename_prefix + "_time.txt"};
+      boost::archive::text_oarchive oa{file};
+      oa << time;
+      oa << n_time_step;
+#ifdef ADAMANTINE_WITH_CALIPER
+      CALI_MARK_END("save checkpoint");
+#endif
     }
 
     // ----- Output progress on screen -----

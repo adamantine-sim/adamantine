@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2023, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -20,6 +20,7 @@
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
+#include <deal.II/distributed/solution_transfer.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_q.h>
@@ -534,6 +535,16 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
 
 template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::setup()
+{
+  setup_dofs();
+  update_material_deposition_orientation();
+  compute_inverse_mass_matrix();
+  get_state_from_material_properties();
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
 void ThermalPhysics<dim, fe_degree, MemorySpaceType,
                     QuadratureType>::setup_dofs()
 {
@@ -648,11 +659,9 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   unsigned int const n_dofs_per_cell = _dof_handler.get_fe().n_dofs_per_cell();
   unsigned int const direction_data_size = 2;
   unsigned int const phase_history_data_size = 1;
-  unsigned int constexpr n_material_states =
-      static_cast<unsigned int>(adamantine::MaterialState::SIZE);
   unsigned int const data_size_per_cell =
       n_dofs_per_cell + direction_data_size + phase_history_data_size +
-      n_material_states;
+      g_n_material_states;
   dealii::Vector<double> cell_solution(n_dofs_per_cell);
   std::vector<double> dummy_cell_data(data_size_per_cell,
                                       std::numeric_limits<double>::infinity());
@@ -924,22 +933,16 @@ template <int dim, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
 void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
     initialize_dof_vector(
-        dealii::LA::distributed::Vector<double, MemorySpaceType> &vector) const
-{
-  _thermal_operator->initialize_dof_vector(vector);
-}
-
-template <int dim, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
-    initialize_dof_vector(
         double const value,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &vector) const
 {
-  // Resize the vector
+  // Resize the vector and initialize it to zero
   _thermal_operator->initialize_dof_vector(vector);
 
-  init_dof_vector<dim, fe_degree, MemorySpaceType>(value, vector);
+  if (value != 0.)
+  {
+    init_dof_vector<dim, fe_degree, MemorySpaceType>(value, vector);
+  }
 }
 
 template <int dim, int fe_degree, typename MemorySpaceType,
@@ -1017,6 +1020,184 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   timers[evol_time_J_inv].stop();
 
   return solution;
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+    load_checkpoint(
+        std::string const &filename,
+        dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature)
+{
+  // Deserialize the mesh
+  auto &triangulation = _geometry.get_triangulation();
+  triangulation.load(filename);
+
+  // Deserialize the states, the direction, and the fe indices.
+  unsigned int const direction_data_size = 2;
+  unsigned int const data_size_per_cell =
+      g_n_material_states + direction_data_size + 1;
+  std::vector<std::vector<double>> data_to_deserialize(
+      triangulation.n_active_cells(), std::vector<double>(data_size_per_cell));
+  dealii::parallel::distributed::CellDataTransfer<
+      dim, dim, std::vector<std::vector<double>>>
+      cell_data_trans(triangulation);
+  cell_data_trans.deserialize(data_to_deserialize);
+  _deposition_cos.clear();
+  _deposition_sin.clear();
+
+  unsigned int cell_id = 0;
+  std::vector<std::array<double, g_n_material_states>> cell_state;
+  // Knowing the value of g_n_material_states simplifies the filling of
+  // cell_state but we need to make sure that the value of g_n_material_states
+  // is what we expect.
+  static_assert(g_n_material_states == 3);
+  for (auto const &cell : _dof_handler.active_cell_iterators())
+  {
+    if (cell->is_locally_owned())
+    {
+      // Get the state
+      cell_state.push_back({data_to_deserialize[cell_id][0],
+                            data_to_deserialize[cell_id][1],
+                            data_to_deserialize[cell_id][2]});
+
+      // Set the fe index
+      auto fe_index = static_cast<unsigned int>(
+          data_to_deserialize[cell_id]
+                             [g_n_material_states + direction_data_size]);
+      cell->set_active_fe_index(fe_index);
+
+      // Get the direction
+      if (fe_index == 0)
+      {
+        _deposition_cos.push_back(
+            data_to_deserialize[cell_id][g_n_material_states]);
+        _deposition_sin.push_back(
+            data_to_deserialize[cell_id][g_n_material_states + 1]);
+      }
+    }
+    ++cell_id;
+  }
+
+  setup_dofs();
+  // Update MaterialProperty DoFHandler and resize the state vectors
+  _material_properties.reinit_dofs();
+  // Update the state of each cell
+  _material_properties.set_cell_state(cell_state);
+
+  // Finish the setup
+  _thermal_operator->set_material_deposition_orientation(_deposition_cos,
+                                                         _deposition_sin);
+  compute_inverse_mass_matrix();
+  get_state_from_material_properties();
+
+  // Deserialize the temperature
+  dealii::parallel::distributed::SolutionTransfer<
+      dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
+      solution_transfer(_dof_handler);
+  initialize_dof_vector(0., temperature);
+  if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
+  {
+    solution_transfer.deserialize(temperature);
+  }
+  else
+  {
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+        temperature_host(temperature.get_partitioner());
+    solution_transfer.deserialize(temperature_host);
+    temperature.import_elements(temperature_host,
+                                dealii::VectorOperation::insert);
+  }
+}
+
+template <int dim, int fe_degree, typename MemorySpaceType,
+          typename QuadratureType>
+void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+    save_checkpoint(
+        std::string const &filename,
+        dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature)
+{
+  // Prepare the states and the fe indices for serialization.
+  unsigned int const direction_data_size = 2;
+  unsigned int const data_size_per_cell =
+      g_n_material_states + direction_data_size + 1;
+  unsigned int locally_owned_cell_id = 0;
+  unsigned int activated_cell_id = 0;
+  unsigned int cell_id = 0;
+  auto &triangulation = _geometry.get_triangulation();
+  std::vector<std::vector<double>> data_to_serialize(
+      triangulation.n_active_cells(), std::vector<double>(data_size_per_cell));
+  std::vector<double> element_data(data_size_per_cell, 0.);
+  auto state_host = Kokkos::create_mirror_view_and_copy(
+      Kokkos::HostSpace{}, _material_properties.get_state());
+  for (auto const &cell : _dof_handler.active_cell_iterators())
+  {
+    if (cell->is_locally_owned())
+    {
+      // Store the state
+      for (unsigned int i = 0; i < g_n_material_states; ++i)
+      {
+        data_to_serialize[cell_id][i] = state_host(i, locally_owned_cell_id);
+      }
+
+      auto fe_index = cell->active_fe_index();
+      // Store the direction
+      if (fe_index == 0)
+      {
+        data_to_serialize[cell_id][g_n_material_states] =
+            _deposition_cos[activated_cell_id];
+        data_to_serialize[cell_id][g_n_material_states + 1] =
+            _deposition_sin[activated_cell_id];
+        ++activated_cell_id;
+      }
+      else
+      {
+        // If there is no material, there is no deposition direction -> use an
+        // obviously wrong value.
+        data_to_serialize[cell_id][g_n_material_states] = 10.;
+        data_to_serialize[cell_id][g_n_material_states + 1] = 10.;
+      }
+
+      // Store the FE index
+      data_to_serialize[cell_id][g_n_material_states + direction_data_size] =
+          fe_index;
+
+      ++locally_owned_cell_id;
+    }
+    ++cell_id;
+  }
+  dealii::parallel::distributed::CellDataTransfer<
+      dim, dim, std::vector<std::vector<double>>>
+      cell_data_trans(triangulation);
+  cell_data_trans.prepare_for_serialization(data_to_serialize);
+
+  // Prepare the temperature for serialization. We need to use a ghosted
+  // vector.
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      ghosted_temperature(
+          temperature.locally_owned_elements(),
+          dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler),
+          temperature.get_mpi_communicator());
+  if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
+  {
+    ghosted_temperature = temperature;
+  }
+  else
+  {
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+        temperature_host(temperature.get_partitioner());
+    temperature_host.import_elements(temperature,
+                                     dealii::VectorOperation::insert);
+    ghosted_temperature = temperature_host;
+  }
+  ghosted_temperature.update_ghost_values();
+  dealii::parallel::distributed::SolutionTransfer<
+      dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
+      solution_transfer(_dof_handler);
+  solution_transfer.prepare_for_serialization(ghosted_temperature);
+
+  // Serialize the mesh and the rest of the data.
+  triangulation.save(filename);
 }
 } // namespace adamantine
 

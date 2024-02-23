@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2023, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -35,6 +35,11 @@ public:
   ThermalPhysicsInterface() = default;
 
   virtual ~ThermalPhysicsInterface() = default;
+
+  /**
+   * Set up and initialize the data structure.
+   */
+  virtual void setup() = 0;
 
   /**
    * Associate the AffineConstraints<double> and the MatrixFree objects to the
@@ -85,13 +90,6 @@ public:
   virtual double get_delta_t_guess() const = 0;
 
   /**
-   * Initialize the given vector.
-   */
-  virtual void initialize_dof_vector(
-      dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
-      const = 0;
-
-  /**
    * Initialize the given vector with the given value.
    */
   virtual void
@@ -112,10 +110,20 @@ public:
   virtual void set_state_to_material_properties() = 0;
 
   /**
-   * Update the depostion cosine and sine from the Physics object to the
-   * operator object.
+   * Load the state of the simulation from files.
    */
-  virtual void update_material_deposition_orientation() = 0;
+  virtual void
+  load_checkpoint(std::string const &filename,
+                  dealii::LA::distributed::Vector<double, MemorySpaceType>
+                      &temperature) = 0;
+
+  /**
+   * Write the current state of the simulation on the filesystem.
+   */
+  virtual void
+  save_checkpoint(std::string const &filename,
+                  dealii::LA::distributed::Vector<double, MemorySpaceType>
+                      &temperature) = 0;
 
   /**
    * Set the deposition cosine and sine and call
