@@ -33,7 +33,7 @@ BOOST_AUTO_TEST_CASE(integration_2D, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto [temperature, displacement] =
-      run<2, dealii::MemorySpace::Host>(communicator, database, timers);
+      run<2, 4, dealii::MemorySpace::Host>(communicator, database, timers);
 
   std::ifstream gold_file("integration_2d_gold.txt");
   for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE(integration_2D_ensemble, *utf::tolerance(0.1))
   boost::property_tree::ptree database;
   boost::property_tree::info_parser::read_info(filename, database);
 
-  auto result_ensemble = run_ensemble<2, dealii::MemorySpace::Host>(
+  auto result_ensemble = run_ensemble<2, 3, dealii::MemorySpace::Host>(
       communicator, database, timers);
 
   for (auto &result_member : result_ensemble)

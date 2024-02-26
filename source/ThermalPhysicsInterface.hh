@@ -8,7 +8,6 @@
 #ifndef THERMAL_PHYSICS_INTERFACE_HH
 #define THERMAL_PHYSICS_INTERFACE_HH
 
-#include <MaterialProperty.hh>
 #include <types.hh>
 
 #include <deal.II/dofs/dof_handler.h>

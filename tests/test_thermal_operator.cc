@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(thermal_operator, *utf::tolerance(1e-15))
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  adamantine::MaterialProperty<2, dealii::MemorySpace::Host> mat_properties(
+  adamantine::MaterialProperty<2, 1, dealii::MemorySpace::Host> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
 
   // Create the heat sources
@@ -96,9 +96,9 @@ BOOST_AUTO_TEST_CASE(thermal_operator, *utf::tolerance(1e-15))
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
-      communicator, adamantine::BoundaryType::adiabatic, mat_properties,
-      heat_sources);
+  adamantine::ThermalOperator<2, 1, 2, dealii::MemorySpace::Host>
+      thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
+                       mat_properties, heat_sources);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 1.);
-  adamantine::MaterialProperty<2, dealii::MemorySpace::Host> mat_properties(
+  adamantine::MaterialProperty<2, 2, dealii::MemorySpace::Host> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
 
   // Create the heat sources
@@ -198,9 +198,9 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
-      communicator, adamantine::BoundaryType::adiabatic, mat_properties,
-      heat_sources);
+  adamantine::ThermalOperator<2, 2, 2, dealii::MemorySpace::Host>
+      thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
+                       mat_properties, heat_sources);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
@@ -287,7 +287,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic, *utf::tolerance(1e-12))
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 0.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 0.);
-  adamantine::MaterialProperty<2, dealii::MemorySpace::Host> mat_properties(
+  adamantine::MaterialProperty<2, 2, dealii::MemorySpace::Host> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
 
   // Create the heat sources
@@ -304,9 +304,9 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic, *utf::tolerance(1e-12))
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
-      communicator, adamantine::BoundaryType::adiabatic, mat_properties,
-      heat_sources);
+  adamantine::ThermalOperator<2, 2, 2, dealii::MemorySpace::Host>
+      thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
+                       mat_properties, heat_sources);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
@@ -433,16 +433,16 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", th_cond_x);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_y", th_cond_y);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", th_cond_z);
-  adamantine::MaterialProperty<3, dealii::MemorySpace::Host> mat_properties(
+  adamantine::MaterialProperty<3, 1, dealii::MemorySpace::Host> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
 
   // Create the heat sources
   std::vector<std::shared_ptr<adamantine::HeatSource<3>>> heat_sources;
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<3, 2, dealii::MemorySpace::Host> thermal_operator(
-      communicator, adamantine::BoundaryType::adiabatic, mat_properties,
-      heat_sources);
+  adamantine::ThermalOperator<3, 1, 2, dealii::MemorySpace::Host>
+      thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
+                       mat_properties, heat_sources);
   double constexpr deposition_angle = M_PI / 6.;
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(),
@@ -588,7 +588,7 @@ BOOST_AUTO_TEST_CASE(spmv_rad, *utf::tolerance(1e-12))
   mat_prop_database.put("material_0.liquid.convection_heat_transfer_coef", 1.);
   mat_prop_database.put("material_0.radiation_temperature_infty", 0.0);
   mat_prop_database.put("material_0.convection_temperature_infty", 0.0);
-  adamantine::MaterialProperty<2, dealii::MemorySpace::Host> mat_properties(
+  adamantine::MaterialProperty<2, 1, dealii::MemorySpace::Host> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
 
   // Create the heat sources
@@ -605,9 +605,9 @@ BOOST_AUTO_TEST_CASE(spmv_rad, *utf::tolerance(1e-12))
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
-      communicator, adamantine::BoundaryType::radiative, mat_properties,
-      heat_sources);
+  adamantine::ThermalOperator<2, 1, 2, dealii::MemorySpace::Host>
+      thermal_operator(communicator, adamantine::BoundaryType::radiative,
+                       mat_properties, heat_sources);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
@@ -769,7 +769,7 @@ BOOST_AUTO_TEST_CASE(spmv_conv, *utf::tolerance(1e-12))
   mat_prop_database.put("material_0.liquid.convection_heat_transfer_coef", 1.);
   mat_prop_database.put("material_0.radiation_temperature_infty", 0.0);
   mat_prop_database.put("material_0.convection_temperature_infty", 0.0);
-  adamantine::MaterialProperty<2, dealii::MemorySpace::Host> mat_properties(
+  adamantine::MaterialProperty<2, 1, dealii::MemorySpace::Host> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
 
   // Create the heat sources
@@ -786,9 +786,9 @@ BOOST_AUTO_TEST_CASE(spmv_conv, *utf::tolerance(1e-12))
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
-      communicator, adamantine::BoundaryType::convective, mat_properties,
-      heat_sources);
+  adamantine::ThermalOperator<2, 1, 2, dealii::MemorySpace::Host>
+      thermal_operator(communicator, adamantine::BoundaryType::convective,
+                       mat_properties, heat_sources);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(

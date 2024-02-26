@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -22,10 +22,10 @@
 namespace adamantine
 {
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::ThermalOperator(
     MPI_Comm const &communicator, BoundaryType boundary_type,
-    MaterialProperty<dim, MemorySpaceType> &material_properties,
+    MaterialProperty<dim, p_order, MemorySpaceType> &material_properties,
     std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources)
     : _communicator(communicator), _boundary_type(boundary_type),
       _material_properties(material_properties), _heat_sources(heat_sources),
@@ -43,8 +43,8 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::ThermalOperator(
       dealii::update_values | dealii::update_JxW_values;
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::reinit(
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::hp::QCollection<1> const &q_collection)
@@ -66,8 +66,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::reinit(
     }
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_mass(
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::cell_local_mass(
     dealii::MatrixFree<dim, double> const &data,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
@@ -100,8 +100,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_mass(
   }
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::
     compute_inverse_mass_matrix(
         dealii::DoFHandler<dim> const &dof_handler,
         dealii::AffineConstraints<double> const &affine_constraints)
@@ -146,16 +146,16 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
   }
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::clear()
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::clear()
 {
   _cell_it_to_mf_cell_map.clear();
   _matrix_free.clear();
   _inverse_mass_matrix->reinit(0);
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::vmult(
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::vmult(
     dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
@@ -163,8 +163,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::vmult(
   vmult_add(dst, src);
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::Tvmult(
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::Tvmult(
     dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
@@ -172,8 +172,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::Tvmult(
   Tvmult_add(dst, src);
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::vmult_add(
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::vmult_add(
     dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
@@ -208,8 +208,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::vmult_add(
     dst.local_element(dof) += scaling * src.local_element(dof);
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::Tvmult_add(
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::Tvmult_add(
     dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
 {
@@ -217,12 +217,12 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::Tvmult_add(
   vmult_add(dst, src);
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::update_state_ratios(
-    unsigned int cell, unsigned int q,
-    dealii::VectorizedArray<double> temperature,
-    std::array<dealii::VectorizedArray<double>, g_n_material_states>
-        &state_ratios) const
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::
+    update_state_ratios(unsigned int cell, unsigned int q,
+                        dealii::VectorizedArray<double> temperature,
+                        std::array<dealii::VectorizedArray<double>,
+                                   g_n_material_states> &state_ratios) const
 {
   unsigned int constexpr liquid =
       static_cast<unsigned int>(MaterialState::liquid);
@@ -270,12 +270,13 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::update_state_ratios(
   _powder_ratio(cell, q) = state_ratios[powder];
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::update_face_state_ratios(
-    unsigned int face, unsigned int q,
-    dealii::VectorizedArray<double> temperature,
-    std::array<dealii::VectorizedArray<double>, g_n_material_states>
-        &face_state_ratios) const
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::
+    update_face_state_ratios(
+        unsigned int face, unsigned int q,
+        dealii::VectorizedArray<double> temperature,
+        std::array<dealii::VectorizedArray<double>, g_n_material_states>
+            &face_state_ratios) const
 {
   unsigned int constexpr liquid =
       static_cast<unsigned int>(MaterialState::liquid);
@@ -323,9 +324,9 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::update_face_state_ratios(
   _face_powder_ratio(face, q) = face_state_ratios[powder];
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
 dealii::VectorizedArray<double>
-ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
+ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::get_inv_rho_cp(
     std::array<dealii::types::material_id,
                dealii::VectorizedArray<double>::size()> const &material_id,
     std::array<dealii::VectorizedArray<double>, g_n_material_states> const
@@ -373,12 +374,13 @@ ThermalOperator<dim, fe_degree, MemorySpaceType>::get_inv_rho_cp(
   return 1.0 / (density * specific_heat);
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
-    dealii::MatrixFree<dim, double> const &data,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
-    std::pair<unsigned int, unsigned int> const &cell_range) const
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::
+    cell_local_apply(
+        dealii::MatrixFree<dim, double> const &data,
+        dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+        dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
+        std::pair<unsigned int, unsigned int> const &cell_range) const
 {
   // Get the subrange of cells associated with the fe index 0
   std::pair<unsigned int, unsigned int> cell_subrange =
@@ -395,7 +397,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
   // It's really worth to compute it once and pass it when we compute a
   // material property.
   dealii::AlignedVector<dealii::VectorizedArray<double>> temperature_powers(
-      _material_properties.polynomial_order + 1);
+      p_order + 1);
 
   // Loop over the "cells". Note that we don't really work on a cell but on a
   // set of quadrature point.
@@ -415,7 +417,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
     {
       auto temperature = fe_eval.get_value(q);
       // Precompute the powers of temperature.
-      for (unsigned int i = 0; i <= _material_properties.polynomial_order; ++i)
+      for (unsigned int i = 0; i <= p_order; ++i)
       {
         // FIXME Need to cast i to double due to a limitation in deal.II 9.5
         temperature_powers[i] = std::pow(temperature, static_cast<double>(i));
@@ -513,12 +515,13 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::cell_local_apply(
   }
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::face_local_apply(
-    dealii::MatrixFree<dim, double> const &data,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
-    std::pair<unsigned int, unsigned int> const &face_range) const
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::
+    face_local_apply(
+        dealii::MatrixFree<dim, double> const &data,
+        dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+        dealii::LA::distributed::Vector<double, MemorySpaceType> const &src,
+        std::pair<unsigned int, unsigned int> const &face_range) const
 {
   // Get the fe_indices of the cells that share faces in face_range;
   auto const adjacent_cells_fe_index = data.get_face_range_category(face_range);
@@ -561,7 +564,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::face_local_apply(
   // It's really worth to compute it once and pass it when we compute a
   // material property.
   dealii::AlignedVector<dealii::VectorizedArray<double>> temperature_powers(
-      _material_properties.polynomial_order + 1);
+      p_order + 1);
 
   // Loop over the faces
   for (unsigned int face = face_range.first; face < face_range.second; ++face)
@@ -578,7 +581,7 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::face_local_apply(
     {
       auto temperature = fe_face_eval.get_value(q);
       // Precompute the powers of temperature.
-      for (unsigned int i = 0; i <= _material_properties.polynomial_order; ++i)
+      for (unsigned int i = 0; i <= p_order; ++i)
       {
         // FIXME Need to cast i to double due to a limitation in deal.II 9.5
         temperature_powers[i] = std::pow(temperature, static_cast<double>(i));
@@ -635,8 +638,8 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::face_local_apply(
   }
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree,
                      MemorySpaceType>::get_state_from_material_properties()
 {
   unsigned int const n_cells = _matrix_free.n_cell_batches();
@@ -736,8 +739,8 @@ void ThermalOperator<dim, fe_degree,
   }
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree,
                      MemorySpaceType>::set_state_to_material_properties()
 {
   _material_properties.set_state(_liquid_ratio, _powder_ratio,
@@ -745,8 +748,8 @@ void ThermalOperator<dim, fe_degree,
                                  _matrix_free.get_dof_handler());
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType>
-void ThermalOperator<dim, fe_degree, MemorySpaceType>::
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+void ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>::
     set_material_deposition_orientation(
         std::vector<double> const &deposition_cos,
         std::vector<double> const &deposition_sin)
@@ -790,4 +793,4 @@ void ThermalOperator<dim, fe_degree, MemorySpaceType>::
 
 } // namespace adamantine
 
-INSTANTIATE_DIM_FEDEGREE_HOST(TUPLE(ThermalOperator))
+INSTANTIATE_DIM_PORDER_FEDEGREE_HOST(TUPLE(ThermalOperator))

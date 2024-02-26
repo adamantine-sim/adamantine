@@ -1,4 +1,4 @@
-/* Copyright (c) 2021, the adamantine authors.
+/* Copyright (c) 2021 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -51,7 +51,7 @@ void material_property()
   database.put("material_0.liquidus", "100");
   database.put("material_0.solid.lame_first_parameter", 2.);
   database.put("material_0.solid.lame_second_parameter", 3.);
-  adamantine::MaterialProperty<2, MemorySpaceType> mat_prop(
+  adamantine::MaterialProperty<2, 2, MemorySpaceType> mat_prop(
       communicator, triangulation, database);
   // Evaluate the material property at the given temperature
   dealii::FE_Q<2> fe(4);
@@ -128,7 +128,7 @@ void ratios()
   database.put("material_0.solidus", "50");
   database.put("material_0.liquidus", "100");
   database.put("material_0.latent_heat", "1000");
-  adamantine::MaterialProperty<2, MemorySpaceType> mat_prop(
+  adamantine::MaterialProperty<2, 0, MemorySpaceType> mat_prop(
       communicator, triangulation, database);
   dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
       temperature(dof_handler.locally_owned_dofs(), communicator);
@@ -301,7 +301,7 @@ void material_property_table()
                "0., 10.; 10., 100.; 18., 200.");
   database.put("material_1.powder.thermal_conductivity_z",
                "0., 10.; 10., 100.; 18., 200.");
-  adamantine::MaterialProperty<2, MemorySpaceType> mat_prop(
+  adamantine::MaterialProperty<2, 0, MemorySpaceType> mat_prop(
       communicator, triangulation, database);
   // Evaluate the material property at the given temperature
   dealii::FE_Q<2> fe(4);
@@ -412,7 +412,7 @@ void material_property_polynomials()
   database.put("material_1.powder.density", "15., 2., 3.");
   database.put("material_1.powder.thermal_conductivity_x", " 10., 18., 200.");
   database.put("material_1.powder.thermal_conductivity_z", " 10., 18., 200.");
-  adamantine::MaterialProperty<2, MemorySpaceType> mat_prop(
+  adamantine::MaterialProperty<2, 4, MemorySpaceType> mat_prop(
       communicator, triangulation, database);
   // Evaluate the material property at the given temperature
   dealii::FE_Q<2> fe(4);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 - 2023, the adamantine authors.
+/* Copyright (c) 2022 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -21,11 +21,11 @@
 
 namespace adamantine
 {
-template <int dim, typename MemorySpaceType>
-MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
+template <int dim, int p_order, typename MemorySpaceType>
+MechanicalPhysics<dim, p_order, MemorySpaceType>::MechanicalPhysics(
     MPI_Comm const &communicator, unsigned int const fe_degree,
     Geometry<dim> &geometry,
-    MaterialProperty<dim, MemorySpaceType> &material_properties,
+    MaterialProperty<dim, p_order, MemorySpaceType> &material_properties,
     std::vector<double> const &reference_temperatures)
     : _geometry(geometry), _material_properties(material_properties),
       _dof_handler(_geometry.get_triangulation())
@@ -60,7 +60,7 @@ MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
 
   // Create the mechanical operator
   _mechanical_operator =
-      std::make_unique<MechanicalOperator<dim, MemorySpaceType>>(
+      std::make_unique<MechanicalOperator<dim, p_order, MemorySpaceType>>(
           communicator, _material_properties, reference_temperatures);
 
   // Create the data used to compute the stress tensor
@@ -81,8 +81,8 @@ MechanicalPhysics<dim, MemorySpaceType>::MechanicalPhysics(
                       std::vector<dealii::SymmetricTensor<2, dim>>(n_quad_pts));
 }
 
-template <int dim, typename MemorySpaceType>
-void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
+template <int dim, int p_order, typename MemorySpaceType>
+void MechanicalPhysics<dim, p_order, MemorySpaceType>::setup_dofs(
     std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   _dof_handler.distribute_dofs(_fe_collection);
@@ -106,8 +106,8 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
                                body_forces);
 }
 
-template <int dim, typename MemorySpaceType>
-void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
+template <int dim, int p_order, typename MemorySpaceType>
+void MechanicalPhysics<dim, p_order, MemorySpaceType>::setup_dofs(
     dealii::DoFHandler<dim> const &thermal_dof_handler,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
         &temperature,
@@ -243,9 +243,9 @@ void MechanicalPhysics<dim, MemorySpaceType>::setup_dofs(
   }
 }
 
-template <int dim, typename MemorySpaceType>
+template <int dim, int p_order, typename MemorySpaceType>
 dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-MechanicalPhysics<dim, MemorySpaceType>::solve()
+MechanicalPhysics<dim, p_order, MemorySpaceType>::solve()
 {
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       displacement(_mechanical_operator->rhs().get_partitioner());
@@ -284,8 +284,8 @@ MechanicalPhysics<dim, MemorySpaceType>::solve()
   return _old_displacement;
 }
 
-template <int dim, typename MemorySpaceType>
-void MechanicalPhysics<dim, MemorySpaceType>::compute_stress(
+template <int dim, int p_order, typename MemorySpaceType>
+void MechanicalPhysics<dim, p_order, MemorySpaceType>::compute_stress(
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
         &displacement)
 {
@@ -370,5 +370,5 @@ void MechanicalPhysics<dim, MemorySpaceType>::compute_stress(
 
 } // namespace adamantine
 
-INSTANTIATE_DIM_HOST(MechanicalPhysics)
-INSTANTIATE_DIM_DEVICE(MechanicalPhysics)
+INSTANTIATE_DIM_PORDER_HOST(TUPLE(MechanicalPhysics))
+INSTANTIATE_DIM_PORDER_DEVICE(TUPLE(MechanicalPhysics))

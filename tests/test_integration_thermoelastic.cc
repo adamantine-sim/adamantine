@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_CASE(integration_thermoelastic, *utf::tolerance(1.0e-5))
   database.put("materials.material_0.solid.thermal_expansion_coef", 17.2e-3);
 
   auto [temperature, displacement] =
-      run<3, dealii::MemorySpace::Host>(communicator, database, timers);
+      run<3, 3, dealii::MemorySpace::Host>(communicator, database, timers);
 
   // For now doing a simple regression test. Without a dof handler, it's hard to
   // do something more meaningful with the vector.
@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(integration_thermoelastic_add_material,
   database.put("materials.material_0.solid.thermal_expansion_coef", 17.2e-3);
 
   auto [temperature, displacement] =
-      run<3, dealii::MemorySpace::Host>(communicator, database, timers);
+      run<3, 2, dealii::MemorySpace::Host>(communicator, database, timers);
 
   // For now doing a simple regression test. Without a dof handler, it's hard to
   // do something more meaningful with the vector.

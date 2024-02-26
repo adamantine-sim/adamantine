@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 - 2021, the adamantine authors.
+/* Copyright (c) 2017 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  adamantine::MaterialProperty<2, dealii::MemorySpace::Host> mat_properties(
+  adamantine::MaterialProperty<2, 0, dealii::MemorySpace::Host> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
 
   boost::property_tree::ptree beam_database;
@@ -83,11 +83,10 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  std::shared_ptr<adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>>
-      thermal_operator = std::make_shared<
-          adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host>>(
-          communicator, adamantine::BoundaryType::adiabatic, mat_properties,
-          heat_sources);
+  auto thermal_operator = std::make_shared<
+      adamantine::ThermalOperator<2, 0, 2, dealii::MemorySpace::Host>>(
+      communicator, adamantine::BoundaryType::adiabatic, mat_properties,
+      heat_sources);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(

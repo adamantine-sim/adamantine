@@ -84,7 +84,7 @@ void init_dof_vector(
     vector.local_element(i) = value;
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           std::enable_if_t<std::is_same<MemorySpaceType,
                                         dealii::MemorySpace::Default>::value,
                            int> = 0>
@@ -96,13 +96,14 @@ evaluate_thermal_physics_impl(
     dealii::DoFHandler<dim> const &dof_handler,
     std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources,
     double current_source_height, BoundaryType boundary_type,
-    MaterialProperty<dim, MemorySpaceType> &material_properties,
+    MaterialProperty<dim, p_order, MemorySpaceType> &material_properties,
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
     std::vector<Timer> &timers)
 {
   auto thermal_operator_dev = std::dynamic_pointer_cast<
-      ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>>(thermal_operator);
+      ThermalOperatorDevice<dim, p_order, fe_degree, MemorySpaceType>>(
+      thermal_operator);
   timers[evol_time_update_bound_mat_prop].start();
   thermal_operator_dev->update_boundary_material_properties(y);
   timers[evol_time_update_bound_mat_prop].stop();
@@ -259,12 +260,13 @@ void init_dof_vector(
 }
 } // namespace
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
-    MPI_Comm const &communicator, boost::property_tree::ptree const &database,
-    Geometry<dim> &geometry,
-    MaterialProperty<dim, MemorySpaceType> &material_properties)
+ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType, QuadratureType>::
+    ThermalPhysics(
+        MPI_Comm const &communicator,
+        boost::property_tree::ptree const &database, Geometry<dim> &geometry,
+        MaterialProperty<dim, p_order, MemorySpaceType> &material_properties)
     : _boundary_type(BoundaryType::invalid), _geometry(geometry),
       _dof_handler(_geometry.get_triangulation()),
       _cell_weights(
@@ -352,12 +354,12 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
 
   // Create the thermal operator
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
-    _thermal_operator =
-        std::make_shared<ThermalOperator<dim, fe_degree, MemorySpaceType>>(
-            communicator, _boundary_type, _material_properties, _heat_sources);
+    _thermal_operator = std::make_shared<
+        ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>>(
+        communicator, _boundary_type, _material_properties, _heat_sources);
   else
     _thermal_operator = std::make_shared<
-        ThermalOperatorDevice<dim, fe_degree, MemorySpaceType>>(
+        ThermalOperatorDevice<dim, p_order, fe_degree, MemorySpaceType>>(
         communicator, _boundary_type, _material_properties);
 
   // Create the time stepping scheme
@@ -533,9 +535,10 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::ThermalPhysics(
   _current_source_height = temp_height;
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::setup()
+void ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType,
+                    QuadratureType>::setup()
 {
   setup_dofs();
   update_material_deposition_orientation();
@@ -543,9 +546,9 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::setup()
   get_state_from_material_properties();
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType,
+void ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType,
                     QuadratureType>::setup_dofs()
 {
   _dof_handler.distribute_dofs(_fe_collection);
@@ -561,9 +564,9 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
   _thermal_operator->reinit(_dof_handler, _affine_constraints, _q_collection);
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType,
+void ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType,
                     QuadratureType>::compute_inverse_mass_matrix()
 {
   _thermal_operator->compute_inverse_mass_matrix(_dof_handler,
@@ -573,9 +576,9 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType,
         _thermal_operator->get_inverse_mass_matrix());
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+void ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType, QuadratureType>::
     mark_has_melted(
         double const threshold_temperature,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature)
@@ -629,9 +632,9 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   }
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+void ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType, QuadratureType>::
     add_material(
         std::vector<std::vector<
             typename dealii::DoFHandler<dim>::active_cell_iterator>> const
@@ -860,9 +863,9 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   solution.import(rw_solution, dealii::VectorOperation::insert);
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+void ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType, QuadratureType>::
     update_physics_parameters(
         boost::property_tree::ptree const &heat_source_database)
 {
@@ -885,9 +888,10 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   }
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+double
+ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType, QuadratureType>::
     evolve_one_time_step(
         double t, double delta_t,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
@@ -929,9 +933,9 @@ double ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   return time;
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+void ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType, QuadratureType>::
     initialize_dof_vector(
         double const value,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &vector) const
@@ -945,26 +949,26 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   }
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType,
+void ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType,
                     QuadratureType>::get_state_from_material_properties()
 {
   _thermal_operator->get_state_from_material_properties();
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType,
+void ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType,
                     QuadratureType>::set_state_to_material_properties()
 {
   _thermal_operator->set_state_to_material_properties();
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
 dealii::LA::distributed::Vector<double, MemorySpaceType>
-ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType, QuadratureType>::
     evaluate_thermal_physics(
         double const t,
         dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
@@ -980,7 +984,8 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   }
   else
   {
-    return evaluate_thermal_physics_impl<dim, fe_degree, MemorySpaceType>(
+    return evaluate_thermal_physics_impl<dim, p_order, fe_degree,
+                                         MemorySpaceType>(
         _thermal_operator, _fe_collection, t, _dof_handler, _heat_sources,
         _current_source_height, _boundary_type, _material_properties,
         _affine_constraints, y, timers);
@@ -990,10 +995,10 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   return dealii::LA::distributed::Vector<double, MemorySpaceType>();
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
 dealii::LA::distributed::Vector<double, MemorySpaceType>
-ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType, QuadratureType>::
     id_minus_tau_J_inverse(
         double const /*t*/, double const tau,
         dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
@@ -1022,9 +1027,9 @@ ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   return solution;
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+void ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType, QuadratureType>::
     load_checkpoint(
         std::string const &filename,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature)
@@ -1110,9 +1115,9 @@ void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
   }
 }
 
-template <int dim, int fe_degree, typename MemorySpaceType,
+template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
           typename QuadratureType>
-void ThermalPhysics<dim, fe_degree, MemorySpaceType, QuadratureType>::
+void ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType, QuadratureType>::
     save_checkpoint(
         std::string const &filename,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature)

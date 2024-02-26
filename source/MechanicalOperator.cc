@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 - 2023, the adamantine authors.
+/* Copyright (c) 2022 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -26,10 +26,10 @@
 
 namespace adamantine
 {
-template <int dim, typename MemorySpaceType>
-MechanicalOperator<dim, MemorySpaceType>::MechanicalOperator(
+template <int dim, int p_order, typename MemorySpaceType>
+MechanicalOperator<dim, p_order, MemorySpaceType>::MechanicalOperator(
     MPI_Comm const &communicator,
-    MaterialProperty<dim, MemorySpaceType> &material_properties,
+    MaterialProperty<dim, p_order, MemorySpaceType> &material_properties,
     std::vector<double> const reference_temperatures)
     : _communicator(communicator),
       _reference_temperatures(reference_temperatures),
@@ -37,8 +37,8 @@ MechanicalOperator<dim, MemorySpaceType>::MechanicalOperator(
 {
 }
 
-template <int dim, typename MemorySpaceType>
-void MechanicalOperator<dim, MemorySpaceType>::reinit(
+template <int dim, int p_order, typename MemorySpaceType>
+void MechanicalOperator<dim, p_order, MemorySpaceType>::reinit(
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::AffineConstraints<double> const &affine_constraints,
     dealii::hp::QCollection<dim> const &q_collection,
@@ -50,8 +50,8 @@ void MechanicalOperator<dim, MemorySpaceType>::reinit(
   assemble_system(body_forces);
 }
 
-template <int dim, typename MemorySpaceType>
-void MechanicalOperator<dim, MemorySpaceType>::vmult(
+template <int dim, int p_order, typename MemorySpaceType>
+void MechanicalOperator<dim, p_order, MemorySpaceType>::vmult(
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &dst,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
         &src) const
@@ -59,8 +59,8 @@ void MechanicalOperator<dim, MemorySpaceType>::vmult(
   _system_matrix.vmult(dst, src);
 }
 
-template <int dim, typename MemorySpaceType>
-void MechanicalOperator<dim, MemorySpaceType>::Tvmult(
+template <int dim, int p_order, typename MemorySpaceType>
+void MechanicalOperator<dim, p_order, MemorySpaceType>::Tvmult(
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &dst,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
         &src) const
@@ -68,8 +68,8 @@ void MechanicalOperator<dim, MemorySpaceType>::Tvmult(
   _system_matrix.Tvmult(dst, src);
 }
 
-template <int dim, typename MemorySpaceType>
-void MechanicalOperator<dim, MemorySpaceType>::vmult_add(
+template <int dim, int p_order, typename MemorySpaceType>
+void MechanicalOperator<dim, p_order, MemorySpaceType>::vmult_add(
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &dst,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
         &src) const
@@ -77,8 +77,8 @@ void MechanicalOperator<dim, MemorySpaceType>::vmult_add(
   _system_matrix.vmult_add(dst, src);
 }
 
-template <int dim, typename MemorySpaceType>
-void MechanicalOperator<dim, MemorySpaceType>::Tvmult_add(
+template <int dim, int p_order, typename MemorySpaceType>
+void MechanicalOperator<dim, p_order, MemorySpaceType>::Tvmult_add(
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &dst,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
         &src) const
@@ -86,8 +86,8 @@ void MechanicalOperator<dim, MemorySpaceType>::Tvmult_add(
   _system_matrix.Tvmult_add(dst, src);
 }
 
-template <int dim, typename MemorySpaceType>
-void MechanicalOperator<dim, MemorySpaceType>::update_temperature(
+template <int dim, int p_order, typename MemorySpaceType>
+void MechanicalOperator<dim, p_order, MemorySpaceType>::update_temperature(
     dealii::DoFHandler<dim> const &thermal_dof_handler,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
         &temperature,
@@ -98,8 +98,8 @@ void MechanicalOperator<dim, MemorySpaceType>::update_temperature(
   _has_melted = has_melted;
 }
 
-template <int dim, typename MemorySpaceType>
-void MechanicalOperator<dim, MemorySpaceType>::assemble_system(
+template <int dim, int p_order, typename MemorySpaceType>
+void MechanicalOperator<dim, p_order, MemorySpaceType>::assemble_system(
     std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   // Create the sparsity pattern. Since we use a Trilinos matrix we don't need
@@ -323,5 +323,5 @@ void MechanicalOperator<dim, MemorySpaceType>::assemble_system(
 }
 } // namespace adamantine
 
-INSTANTIATE_DIM_HOST(MechanicalOperator)
-INSTANTIATE_DIM_DEVICE(MechanicalOperator)
+INSTANTIATE_DIM_PORDER_HOST(TUPLE(MechanicalOperator))
+INSTANTIATE_DIM_PORDER_DEVICE(TUPLE(MechanicalOperator))
