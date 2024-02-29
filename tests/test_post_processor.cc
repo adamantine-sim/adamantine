@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 0, 2, dealii::MemorySpace::Host>
+  adamantine::ThermalOperator<2, false, 0, 2, dealii::MemorySpace::Host>
       thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
                        mat_properties, heat_sources);
   std::vector<double> deposition_cos(

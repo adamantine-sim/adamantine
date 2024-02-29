@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(thermal_operator, *utf::tolerance(1e-15))
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 1, 2, dealii::MemorySpace::Host>
+  adamantine::ThermalOperator<2, false, 1, 2, dealii::MemorySpace::Host>
       thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
                        mat_properties, heat_sources);
   std::vector<double> deposition_cos(
@@ -198,7 +198,7 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2, 2, dealii::MemorySpace::Host>
+  adamantine::ThermalOperator<2, false, 2, 2, dealii::MemorySpace::Host>
       thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
                        mat_properties, heat_sources);
   std::vector<double> deposition_cos(
@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic, *utf::tolerance(1e-12))
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2, 2, dealii::MemorySpace::Host>
+  adamantine::ThermalOperator<2, false, 2, 2, dealii::MemorySpace::Host>
       thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
                        mat_properties, heat_sources);
   std::vector<double> deposition_cos(
@@ -440,7 +440,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
   std::vector<std::shared_ptr<adamantine::HeatSource<3>>> heat_sources;
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<3, 1, 2, dealii::MemorySpace::Host>
+  adamantine::ThermalOperator<3, false, 1, 2, dealii::MemorySpace::Host>
       thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
                        mat_properties, heat_sources);
   double constexpr deposition_angle = M_PI / 6.;
@@ -605,7 +605,7 @@ BOOST_AUTO_TEST_CASE(spmv_rad, *utf::tolerance(1e-12))
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 1, 2, dealii::MemorySpace::Host>
+  adamantine::ThermalOperator<2, false, 1, 2, dealii::MemorySpace::Host>
       thermal_operator(communicator, adamantine::BoundaryType::radiative,
                        mat_properties, heat_sources);
   std::vector<double> deposition_cos(
@@ -786,7 +786,7 @@ BOOST_AUTO_TEST_CASE(spmv_conv, *utf::tolerance(1e-12))
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 1, 2, dealii::MemorySpace::Host>
+  adamantine::ThermalOperator<2, false, 1, 2, dealii::MemorySpace::Host>
       thermal_operator(communicator, adamantine::BoundaryType::convective,
                        mat_properties, heat_sources);
   std::vector<double> deposition_cos(

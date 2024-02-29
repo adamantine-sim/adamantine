@@ -16,7 +16,8 @@
 
 namespace adamantine
 {
-template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MemorySpaceType>
 class ThermalOperatorDevice final
     : public ThermalOperatorBase<dim, MemorySpaceType>
 {
@@ -138,51 +139,61 @@ private:
       _inv_rho_cp_cells;
 };
 
-template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MemorySpaceType>
 inline dealii::types::global_dof_index
-ThermalOperatorDevice<dim, p_order, fe_degree, MemorySpaceType>::m() const
+ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MemorySpaceType>::m()
+    const
 {
   return _m;
 }
 
-template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MemorySpaceType>
 inline dealii::types::global_dof_index
-ThermalOperatorDevice<dim, p_order, fe_degree, MemorySpaceType>::n() const
+ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MemorySpaceType>::n()
+    const
 {
   // Operator must be square
   return _m;
 }
 
-template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MemorySpaceType>
 inline std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
-ThermalOperatorDevice<dim, p_order, fe_degree,
+ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
                       MemorySpaceType>::get_inverse_mass_matrix() const
 {
   return _inverse_mass_matrix;
 }
 
-template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MemorySpaceType>
 inline dealii::CUDAWrappers::MatrixFree<dim, double> const &
-ThermalOperatorDevice<dim, p_order, fe_degree,
+ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
                       MemorySpaceType>::get_matrix_free() const
 {
   return _matrix_free;
 }
 
-template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MemorySpaceType>
 inline void
-ThermalOperatorDevice<dim, p_order, fe_degree, MemorySpaceType>::jacobian_vmult(
-    dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> const &src) const
+ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+    jacobian_vmult(
+        dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
+        dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
+        const
 {
   vmult(dst, src);
 }
 
-template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MemorySpaceType>
 inline double
-ThermalOperatorDevice<dim, p_order, fe_degree, MemorySpaceType>::get_inv_rho_cp(
-    typename dealii::DoFHandler<dim>::cell_iterator const &cell,
-    unsigned int) const
+ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+    get_inv_rho_cp(typename dealii::DoFHandler<dim>::cell_iterator const &cell,
+                   unsigned int) const
 {
   auto inv_rho_cp = _inv_rho_cp_cells.find(cell);
   ASSERT(inv_rho_cp != _inv_rho_cp_cells.end(), "Internal error");

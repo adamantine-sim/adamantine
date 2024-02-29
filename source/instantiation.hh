@@ -21,7 +21,7 @@
 #define INST_DIM_HOST(z, dim, class_name) template class adamantine::class_name<dim, dealii::MemorySpace::Host>;
 #define INSTANTIATE_DIM_HOST(class_name) BOOST_PP_REPEAT_FROM_TO(2, 4, INST_DIM_HOST, class_name)
 
-#define TUPLE_N (0, 0, 0, 0)
+#define TUPLE_N (0, 0, 0, 0, 0)
 #define TUPLE(class_name) BOOST_PP_TUPLE_REPLACE(TUPLE_N, 0, class_name)
 
 // Instantiation of the class for:
@@ -43,25 +43,34 @@
 
 // Instantiation of the class for:
 //   - dim = 2 and 3
+//   - use_table = true or false
 //   - p_order = 0 to 4
 //   - fe_degree = 1 to 5
-#define M_FE_DEGREE_HOST_2(z, fe_degree, TUPLE_1) \
-  template class adamantine::BOOST_PP_TUPLE_ELEM(0, TUPLE_1)<BOOST_PP_TUPLE_ELEM(1, TUPLE_1),\
-  BOOST_PP_TUPLE_ELEM(2, TUPLE_1), fe_degree, dealii::MemorySpace::Host>;
-#define M_P_ORDER_HOST_2(z, p_order, TUPLE_1) \
-  BOOST_PP_REPEAT_FROM_TO(1, 6, M_FE_DEGREE_HOST_2, BOOST_PP_TUPLE_REPLACE(TUPLE_1, 2, p_order))
-#define M_DIM_HOST_2(z, dim, TUPLE_0) \
-  BOOST_PP_REPEAT_FROM_TO(0, 5, M_P_ORDER_HOST_2, BOOST_PP_TUPLE_REPLACE(TUPLE_0, 1, dim))
-#define INSTANTIATE_DIM_PORDER_FEDEGREE_HOST(TUPLE_0) BOOST_PP_REPEAT_FROM_TO(2, 4, M_DIM_HOST_2, TUPLE_0)
+#define USE_TABLE (true)(false)
 
-#define M_FE_DEGREE_DEVICE_2(z, fe_degree, TUPLE_1) \
-  template class adamantine::BOOST_PP_TUPLE_ELEM(0, TUPLE_1)<BOOST_PP_TUPLE_ELEM(1, TUPLE_1),\
-  BOOST_PP_TUPLE_ELEM(2, TUPLE_1), fe_degree, dealii::MemorySpace::Default>;
-#define M_P_ORDER_DEVICE_2(z, p_order, TUPLE_1) \
-  BOOST_PP_REPEAT_FROM_TO(1, 6, M_FE_DEGREE_DEVICE_2, BOOST_PP_TUPLE_REPLACE(TUPLE_1, 2, p_order))
-#define M_DIM_DEVICE_2(z, dim, TUPLE_0) \
-  BOOST_PP_REPEAT_FROM_TO(0, 5, M_P_ORDER_DEVICE_2, BOOST_PP_TUPLE_REPLACE(TUPLE_0, 1, dim))
-#define INSTANTIATE_DIM_PORDER_FEDEGREE_DEVICE(TUPLE_0) BOOST_PP_REPEAT_FROM_TO(2, 4, M_DIM_DEVICE_2, TUPLE_0)
+#define M_FE_DEGREE_HOST_2(z, fe_degree, TUPLE_4) \
+  template class adamantine::BOOST_PP_TUPLE_ELEM(0, TUPLE_4)<BOOST_PP_TUPLE_ELEM(1, TUPLE_4),\
+  BOOST_PP_TUPLE_ELEM(2, TUPLE_4), BOOST_PP_TUPLE_ELEM(3, TUPLE_4), fe_degree,\
+  dealii::MemorySpace::Host>;
+#define M_P_ORDER_HOST_2(z, p_order, TUPLE_3) \
+  BOOST_PP_REPEAT_FROM_TO(1, 6, M_FE_DEGREE_HOST_2, BOOST_PP_TUPLE_REPLACE(TUPLE_3, 3, p_order))
+#define M_USE_TABLE_HOST_2(z, TUPLE_2, use_table) \
+  BOOST_PP_REPEAT_FROM_TO(0, 5, M_P_ORDER_HOST_2, BOOST_PP_TUPLE_REPLACE(TUPLE_2, 2, use_table))
+#define M_DIM_HOST_2(z, dim, TUPLE_1) \
+  BOOST_PP_SEQ_FOR_EACH(M_USE_TABLE_HOST_2, BOOST_PP_TUPLE_REPLACE(TUPLE_1, 1, dim), USE_TABLE)
+#define INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_HOST(TUPLE_0) BOOST_PP_REPEAT_FROM_TO(2, 4, M_DIM_HOST_2, TUPLE_0)
+
+#define M_FE_DEGREE_DEVICE_2(z, fe_degree, TUPLE_4) \
+  template class adamantine::BOOST_PP_TUPLE_ELEM(0, TUPLE_4)<BOOST_PP_TUPLE_ELEM(1, TUPLE_4),\
+  BOOST_PP_TUPLE_ELEM(2, TUPLE_4), BOOST_PP_TUPLE_ELEM(3, TUPLE_4), fe_degree,\
+  dealii::MemorySpace::Default>;
+#define M_P_ORDER_DEVICE_2(z, p_order, TUPLE_3) \
+  BOOST_PP_REPEAT_FROM_TO(1, 6, M_FE_DEGREE_DEVICE_2, BOOST_PP_TUPLE_REPLACE(TUPLE_3, 3, p_order))
+#define M_USE_TABLE_DEVICE_2(z, TUPLE_2, use_table) \
+  BOOST_PP_REPEAT_FROM_TO(0, 5, M_P_ORDER_DEVICE_2, BOOST_PP_TUPLE_REPLACE(TUPLE_2, 2, use_table))
+#define M_DIM_DEVICE_2(z, dim, TUPLE_1) \
+  BOOST_PP_SEQ_FOR_EACH(M_USE_TABLE_DEVICE_2, BOOST_PP_TUPLE_REPLACE(TUPLE_1, 1, dim), USE_TABLE)
+#define INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_DEVICE(TUPLE_0) BOOST_PP_REPEAT_FROM_TO(2, 4, M_DIM_DEVICE_2, TUPLE_0)
 
 // Instantiation of the class for:
 //   - dim = 2 and 3

@@ -84,7 +84,8 @@ void init_dof_vector(
     vector.local_element(i) = value;
 }
 
-template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MemorySpaceType,
           std::enable_if_t<std::is_same<MemorySpaceType,
                                         dealii::MemorySpace::Default>::value,
                            int> = 0>
@@ -101,9 +102,8 @@ evaluate_thermal_physics_impl(
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
     std::vector<Timer> &timers)
 {
-  auto thermal_operator_dev = std::dynamic_pointer_cast<
-      ThermalOperatorDevice<dim, p_order, fe_degree, MemorySpaceType>>(
-      thermal_operator);
+  auto thermal_operator_dev = std::dynamic_pointer_cast<ThermalOperatorDevice<
+      dim, use_table, p_order, fe_degree, MemorySpaceType>>(thermal_operator);
   timers[evol_time_update_bound_mat_prop].start();
   thermal_operator_dev->update_boundary_material_properties(y);
   timers[evol_time_update_bound_mat_prop].stop();
@@ -354,13 +354,37 @@ ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType, QuadratureType>::
 
   // Create the thermal operator
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
-    _thermal_operator = std::make_shared<
-        ThermalOperator<dim, p_order, fe_degree, MemorySpaceType>>(
-        communicator, _boundary_type, _material_properties, _heat_sources);
+  {
+    if (_material_properties.properties_use_table())
+    {
+      _thermal_operator = std::make_shared<
+          ThermalOperator<dim, true, p_order, fe_degree, MemorySpaceType>>(
+          communicator, _boundary_type, _material_properties, _heat_sources);
+    }
+    else
+    {
+      _thermal_operator = std::make_shared<
+          ThermalOperator<dim, false, p_order, fe_degree, MemorySpaceType>>(
+          communicator, _boundary_type, _material_properties, _heat_sources);
+    }
+  }
   else
-    _thermal_operator = std::make_shared<
-        ThermalOperatorDevice<dim, p_order, fe_degree, MemorySpaceType>>(
-        communicator, _boundary_type, _material_properties);
+  {
+    if (_material_properties.properties_use_table())
+    {
+      _thermal_operator =
+          std::make_shared<ThermalOperatorDevice<dim, true, p_order, fe_degree,
+                                                 MemorySpaceType>>(
+              communicator, _boundary_type, _material_properties);
+    }
+    else
+    {
+      _thermal_operator =
+          std::make_shared<ThermalOperatorDevice<dim, false, p_order, fe_degree,
+                                                 MemorySpaceType>>(
+              communicator, _boundary_type, _material_properties);
+    }
+  }
 
   // Create the time stepping scheme
   boost::property_tree::ptree const &time_stepping_database =
@@ -984,11 +1008,22 @@ ThermalPhysics<dim, p_order, fe_degree, MemorySpaceType, QuadratureType>::
   }
   else
   {
-    return evaluate_thermal_physics_impl<dim, p_order, fe_degree,
-                                         MemorySpaceType>(
-        _thermal_operator, _fe_collection, t, _dof_handler, _heat_sources,
-        _current_source_height, _boundary_type, _material_properties,
-        _affine_constraints, y, timers);
+    if (_material_properties.properties_use_table())
+    {
+      return evaluate_thermal_physics_impl<dim, true, p_order, fe_degree,
+                                           MemorySpaceType>(
+          _thermal_operator, _fe_collection, t, _dof_handler, _heat_sources,
+          _current_source_height, _boundary_type, _material_properties,
+          _affine_constraints, y, timers);
+    }
+    else
+    {
+      return evaluate_thermal_physics_impl<dim, false, p_order, fe_degree,
+                                           MemorySpaceType>(
+          _thermal_operator, _fe_collection, t, _dof_handler, _heat_sources,
+          _current_source_height, _boundary_type, _material_properties,
+          _affine_constraints, y, timers);
+    }
   }
 
   // Dummy to silence warning

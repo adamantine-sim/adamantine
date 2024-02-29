@@ -7,12 +7,9 @@
 
 #include <MaterialProperty.hh>
 
-#include <deal.II/base/aligned_vector.h>
-#include <deal.II/base/array_view.h>
 #include <deal.II/base/point.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/types.h>
-#include <deal.II/base/vectorization.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/mapping.h>
@@ -488,99 +485,6 @@ void MaterialProperty<dim, p_order, MemorySpaceType>::
         emissivity * Constant::stefan_boltzmann * (T + T_infty) *
         (T * T + T_infty * T_infty);
   }
-}
-
-template <int dim, int p_order, typename MemorySpaceType>
-dealii::VectorizedArray<double>
-MaterialProperty<dim, p_order, MemorySpaceType>::compute_material_property(
-    StateProperty state_property, dealii::types::material_id const *material_id,
-    dealii::VectorizedArray<double> const *state_ratios,
-    dealii::VectorizedArray<double> const &temperature,
-    dealii::AlignedVector<dealii::VectorizedArray<double>> const
-        &temperature_powers) const
-{
-  dealii::VectorizedArray<double> value = 0.0;
-  unsigned int const property_index = static_cast<unsigned int>(state_property);
-
-  if (_use_table)
-  {
-    for (unsigned int material_state = 0; material_state < g_n_material_states;
-         ++material_state)
-    {
-      for (unsigned int n = 0; n < dealii::VectorizedArray<double>::size(); ++n)
-      {
-        const dealii::types::material_id m_id = material_id[n];
-
-        value[n] += state_ratios[material_state][n] *
-                    compute_property_from_table(_state_property_tables, m_id,
-                                                material_state, property_index,
-                                                temperature[n]);
-      }
-    }
-  }
-  else
-  {
-    for (unsigned int material_state = 0; material_state < g_n_material_states;
-         ++material_state)
-    {
-      for (unsigned int n = 0; n < dealii::VectorizedArray<double>::size(); ++n)
-      {
-        dealii::types::material_id m_id = material_id[n];
-
-        for (unsigned int i = 0; i <= p_order; ++i)
-        {
-          value[n] += state_ratios[material_state][n] *
-                      _state_property_polynomials(m_id, material_state,
-                                                  property_index, i) *
-                      temperature_powers[i][n];
-        }
-      }
-    }
-  }
-
-  return value;
-}
-
-template <int dim, int p_order, typename MemorySpaceType>
-KOKKOS_FUNCTION double
-MaterialProperty<dim, p_order, MemorySpaceType>::compute_material_property(
-    StateProperty state_property, dealii::types::material_id const material_id,
-    double const *state_ratios, double temperature) const
-{
-  double value = 0.0;
-  unsigned int const property_index = static_cast<unsigned int>(state_property);
-
-  if (_use_table)
-  {
-    for (unsigned int material_state = 0; material_state < g_n_material_states;
-         ++material_state)
-    {
-      const dealii::types::material_id m_id = material_id;
-
-      value += state_ratios[material_state] *
-               compute_property_from_table(_state_property_tables, m_id,
-                                           material_state, property_index,
-                                           temperature);
-    }
-  }
-  else
-  {
-    for (unsigned int material_state = 0; material_state < g_n_material_states;
-         ++material_state)
-    {
-      dealii::types::material_id m_id = material_id;
-
-      for (unsigned int i = 0; i <= p_order; ++i)
-      {
-        value += state_ratios[material_state] *
-                 _state_property_polynomials(m_id, material_state,
-                                             property_index, i) *
-                 std::pow(temperature, i);
-      }
-    }
-  }
-
-  return value;
 }
 
 template <int dim, int p_order, typename MemorySpaceType>
