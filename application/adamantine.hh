@@ -317,36 +317,11 @@ initialize_thermal_physics(
     return initialize_quadrature<dim, 4, MemorySpaceType>(
         quadrature_type, communicator, database, geometry, material_properties);
   }
-  case 5:
-  {
-    return initialize_quadrature<dim, 5, MemorySpaceType>(
-        quadrature_type, communicator, database, geometry, material_properties);
-  }
-  case 6:
-  {
-    return initialize_quadrature<dim, 6, MemorySpaceType>(
-        quadrature_type, communicator, database, geometry, material_properties);
-  }
-  case 7:
-  {
-    return initialize_quadrature<dim, 7, MemorySpaceType>(
-        quadrature_type, communicator, database, geometry, material_properties);
-  }
-  case 8:
-  {
-    return initialize_quadrature<dim, 8, MemorySpaceType>(
-        quadrature_type, communicator, database, geometry, material_properties);
-  }
-  case 9:
-  {
-    return initialize_quadrature<dim, 9, MemorySpaceType>(
-        quadrature_type, communicator, database, geometry, material_properties);
-  }
   default:
   {
-    adamantine::ASSERT_THROW(fe_degree == 10,
-                             "fe_degree should be between 1 and 10.");
-    return initialize_quadrature<dim, 10, MemorySpaceType>(
+    adamantine::ASSERT_THROW(fe_degree == 5,
+                             "fe_degree should be between 1 and 5.");
+    return initialize_quadrature<dim, 5, MemorySpaceType>(
         quadrature_type, communicator, database, geometry, material_properties);
   }
   }
@@ -790,44 +765,9 @@ void refine_mesh(
                         time_steps_refinement, refinement_database);
     break;
   }
-  case 6:
-  {
-    refine_mesh<dim, 6>(thermal_physics, material_properties, solution,
-                        heat_sources, time, next_refinement_time,
-                        time_steps_refinement, refinement_database);
-    break;
-  }
-  case 7:
-  {
-    refine_mesh<dim, 7>(thermal_physics, material_properties, solution,
-                        heat_sources, time, next_refinement_time,
-                        time_steps_refinement, refinement_database);
-    break;
-  }
-  case 8:
-  {
-    refine_mesh<dim, 8>(thermal_physics, material_properties, solution,
-                        heat_sources, time, next_refinement_time,
-                        time_steps_refinement, refinement_database);
-    break;
-  }
-  case 9:
-  {
-    refine_mesh<dim, 9>(thermal_physics, material_properties, solution,
-                        heat_sources, time, next_refinement_time,
-                        time_steps_refinement, refinement_database);
-    break;
-  }
-  case 10:
-  {
-    refine_mesh<dim, 10>(thermal_physics, material_properties, solution,
-                         heat_sources, time, next_refinement_time,
-                         time_steps_refinement, refinement_database);
-    break;
-  }
   default:
   {
-    adamantine::ASSERT_THROW(false, "fe_degree should be between 1 and 10.");
+    adamantine::ASSERT_THROW(false, "fe_degree should be between 1 and 5.");
   }
   }
 }

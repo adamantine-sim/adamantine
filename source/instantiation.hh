@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -26,17 +26,17 @@
 
 // Instantiation of the class for:
 //   - dim = 2 and 3
-//   - fe_degree = 1 to 10
+//   - fe_degree = 1 to 5
 #define M_FE_DEGREE(z, fe_degree, TUPLE_1) \
   template class adamantine::BOOST_PP_TUPLE_ELEM(0, TUPLE_1)<BOOST_PP_TUPLE_ELEM(1, TUPLE_1),\
   fe_degree, dealii::MemorySpace::Host>;
 #define M_DIM(z, dim, TUPLE_0) \
-  BOOST_PP_REPEAT_FROM_TO(1, 11, M_FE_DEGREE, BOOST_PP_TUPLE_REPLACE(TUPLE_0, 1, dim))
+  BOOST_PP_REPEAT_FROM_TO(1, 6, M_FE_DEGREE, BOOST_PP_TUPLE_REPLACE(TUPLE_0, 1, dim))
 #define INSTANTIATE_DIM_FEDEGREE_HOST(TUPLE_0) BOOST_PP_REPEAT_FROM_TO(2, 4, M_DIM, TUPLE_0)
 
 // Instantiation of the class for:
 //   - dim = 2 and 3
-//   - fe_degree = 1 to 10
+//   - fe_degree = 1 to 5
 //   - QuadratureType = dealii::QGauss<1> and dealii::QGaussLobatto<1>
 #define QUADRATURE_TYPE (dealii::QGauss<1>)(dealii::QGaussLobatto<1>)
 
@@ -47,7 +47,7 @@ BOOST_PP_TUPLE_ELEM(2, TUPLE_2), dealii::MemorySpace::Host, quadrature>;
   BOOST_PP_SEQ_FOR_EACH(MA_QUADRATURE_TYPE, \
       BOOST_PP_TUPLE_REPLACE(TUPLE_1, 2, fe_degree), QUADRATURE_TYPE)
 #define MA_DIM(z, dim, TUPLE_0) \
-  BOOST_PP_REPEAT_FROM_TO(1, 11, MA_FE_DEGREE, BOOST_PP_TUPLE_REPLACE(TUPLE_0, 1, dim))
+  BOOST_PP_REPEAT_FROM_TO(1, 6, MA_FE_DEGREE, BOOST_PP_TUPLE_REPLACE(TUPLE_0, 1, dim))
 #define INSTANTIATE_DIM_FEDEGREE_QUAD_HOST(TUPLE_0) BOOST_PP_REPEAT_FROM_TO(2, 4, MA_DIM, TUPLE_0)
 
 // clang-format on

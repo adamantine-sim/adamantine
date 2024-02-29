@@ -77,8 +77,8 @@ void validate_input_database(boost::property_tree::ptree &database)
     // PropertyTreeInput discretization.thermal.fe_degree
     unsigned int const fe_degree =
         database.get<unsigned int>("discretization.thermal.fe_degree");
-    ASSERT_THROW(fe_degree > 0 && fe_degree < 11,
-                 "Error: fe_degree should be between 1 and 10.");
+    ASSERT_THROW(fe_degree > 0 && fe_degree < 6,
+                 "Error: fe_degree should be between 1 and 5.");
 
     // PropertyTreeInput discretization.thermal.quadrature
     boost::optional<std::string> quadrature_type_optional =
