@@ -292,12 +292,13 @@ void PostProcessor<dim>::material_dataout(
   dealii::Vector<double> powder(n_active_cells);
   dealii::Vector<double> liquid(n_active_cells);
   dealii::Vector<double> solid(n_active_cells);
+  // TODO
   unsigned int constexpr powder_index =
-      static_cast<unsigned int>(MaterialState::powder);
+      static_cast<unsigned int>(SolidLiquidPowder::State::powder);
   unsigned int constexpr liquid_index =
-      static_cast<unsigned int>(MaterialState::liquid);
+      static_cast<unsigned int>(SolidLiquidPowder::State::liquid);
   unsigned int constexpr solid_index =
-      static_cast<unsigned int>(MaterialState::solid);
+      static_cast<unsigned int>(SolidLiquidPowder::State::solid);
   auto mp_cell = material_dof_handler.begin_active();
   auto mp_end_cell = material_dof_handler.end();
   std::vector<dealii::types::global_dof_index> mp_dof_indices(1);

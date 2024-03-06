@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -8,6 +8,7 @@
 #define BOOST_TEST_MODULE Geometry
 
 #include <Geometry.hh>
+#include <MaterialStates.hh>
 #include <types.hh>
 
 #include <deal.II/grid/filtered_iterator.h>
@@ -34,20 +35,22 @@ void check_material_id(
         if ((cell->face(i)->at_boundary()) &&
             (cell->face(i)->boundary_id() == top_boundary))
         {
-          BOOST_TEST(
-              cell->user_index() ==
-              static_cast<unsigned int>(adamantine::MaterialState::powder));
+          BOOST_TEST(cell->user_index() ==
+                     static_cast<unsigned int>(
+                         adamantine::SolidLiquidPowder::State::powder));
           powder = true;
           break;
         }
       }
       if (powder == false)
         BOOST_TEST(cell->user_index() ==
-                   static_cast<unsigned int>(adamantine::MaterialState::solid));
+                   static_cast<unsigned int>(
+                       adamantine::SolidLiquidPowder::State::solid));
     }
     else
       BOOST_TEST(cell->user_index() ==
-                 static_cast<unsigned int>(adamantine::MaterialState::solid));
+                 static_cast<unsigned int>(
+                     adamantine::SolidLiquidPowder::State::solid));
   }
 }
 

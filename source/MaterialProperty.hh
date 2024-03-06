@@ -8,6 +8,7 @@
 #ifndef MATERIAL_PROPERTY_HH
 #define MATERIAL_PROPERTY_HH
 
+#include <MaterialStates.hh>
 #include <types.hh>
 #include <utils.hh>
 
@@ -36,7 +37,8 @@ namespace adamantine
 /**
  * This class stores the material properties for all the materials
  */
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 class MaterialProperty
 {
 public:
@@ -58,8 +60,8 @@ public:
    * Copy constructor. It should only be called by KOKKOS_CLASS_LAMBDA. The
    * copy constructor does not copy all the member variables of the class.
    */
-  MaterialProperty(
-      MaterialProperty<dim, p_order, MemorySpaceType> const &other);
+  MaterialProperty(MaterialProperty<dim, p_order, MaterialStates,
+                                    MemorySpaceType> const &other);
 
   /**
    * Return true if the material properties are given in table format.
@@ -104,8 +106,8 @@ public:
    * Return the properties of the material that are dependent of the state of
    * the material and which have been set using tables.
    */
-  Kokkos::View<double *[g_n_material_states][g_n_thermal_state_properties]
-                                            [table_size][2],
+  Kokkos::View<double * [MaterialStates::n_material_states]
+                            [g_n_thermal_state_properties][table_size][2],
                typename MemorySpaceType::kokkos_space>
   get_state_property_tables();
 
@@ -113,9 +115,9 @@ public:
    * Return the properties of the material that are dependent of the state of
    * the material and which have beese set using polynomials.
    */
-  Kokkos::View<
-      double *[g_n_material_states][g_n_thermal_state_properties][p_order + 1],
-      typename MemorySpaceType::kokkos_space>
+  Kokkos::View<double * [MaterialStates::n_material_states]
+                            [g_n_thermal_state_properties][p_order + 1],
+               typename MemorySpaceType::kokkos_space>
   get_state_property_polynomials();
 
   /**
@@ -180,7 +182,7 @@ public:
    */
   double get_state_ratio(
       typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
-      MaterialState material_state) const;
+      typename MaterialStates::State material_state) const;
 
   /**
    * Set the values in _state from the values of the user index of the
@@ -215,7 +217,8 @@ public:
    * Set the ratio of the material states at the cell level.
    */
   void set_cell_state(
-      std::vector<std::array<double, g_n_material_states>> const &cell_state);
+      std::vector<std::array<double, MaterialStates::n_material_states>> const
+          &cell_state);
 
   /**
    * Return the underlying the DoFHandler.
@@ -275,17 +278,17 @@ private:
   /**
    * Thermal material properties which have been set using tables.
    */
-  Kokkos::View<double *[g_n_material_states][g_n_thermal_state_properties]
-                                            [table_size][2],
+  Kokkos::View<double * [MaterialStates::n_material_states]
+                            [g_n_thermal_state_properties][table_size][2],
                typename MemorySpaceType::kokkos_space>
       _state_property_tables;
   /**
    * Thermal material properties which have been set
    * using polynomials.
    */
-  Kokkos::View<
-      double *[g_n_material_states][g_n_thermal_state_properties][p_order + 1],
-      typename MemorySpaceType::kokkos_space>
+  Kokkos::View<double * [MaterialStates::n_material_states]
+                            [g_n_thermal_state_properties][p_order + 1],
+               typename MemorySpaceType::kokkos_space>
       _state_property_polynomials;
   /**
    * Properties of the material that are independent of the state of the
@@ -340,53 +343,64 @@ private:
   std::unordered_map<dealii::types::global_dof_index, unsigned int> _dofs_map;
 };
 
-template <int dim, int p_order, typename MemorySpaceType>
-inline double MaterialProperty<dim, p_order, MemorySpaceType>::get(
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+inline double
+MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::get(
     dealii::types::material_id material_id, Property property) const
 {
   return _properties(material_id, static_cast<unsigned int>(property));
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 inline Kokkos::View<double *[g_n_properties],
                     typename MemorySpaceType::kokkos_space>
-MaterialProperty<dim, p_order, MemorySpaceType>::get_properties()
-{ return _properties; }
+MaterialProperty<dim, p_order, MaterialStates,
+                 MemorySpaceType>::get_properties() { return _properties; }
 
-template <int dim, int p_order, typename MemorySpaceType>
-inline bool MaterialProperty<dim, p_order,
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+inline bool MaterialProperty<dim, p_order, MaterialStates,
                              MemorySpaceType>::properties_use_table() const
 {
   return _use_table;
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
-inline Kokkos::View<
-    double
-        *[g_n_material_states][g_n_thermal_state_properties][MaterialProperty<
-             dim, p_order, MemorySpaceType>::table_size][2],
-    typename MemorySpaceType::kokkos_space>
-MaterialProperty<dim, p_order, MemorySpaceType>::get_state_property_tables()
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+inline Kokkos::View<double *[MaterialStates::n_material_states]
+                                [g_n_thermal_state_properties][MaterialProperty<
+                                    dim, p_order, MaterialStates,
+                                    MemorySpaceType>::table_size][2],
+                    typename MemorySpaceType::kokkos_space>
+MaterialProperty<dim, p_order, MaterialStates,
+                 MemorySpaceType>::get_state_property_tables()
 { return _state_property_tables; }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 inline Kokkos::View<
-    double *[g_n_material_states][g_n_thermal_state_properties][p_order + 1],
+    double *[MaterialStates::n_material_states][g_n_thermal_state_properties]
+                                               [p_order + 1],
     typename MemorySpaceType::kokkos_space> MaterialProperty<dim, p_order,
+                                                             MaterialStates,
                                                              MemorySpaceType>::
     get_state_property_polynomials() { return _state_property_polynomials; }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 inline Kokkos::
     View<double **, typename MemorySpaceType::kokkos_space> MaterialProperty<
-        dim, p_order, MemorySpaceType>::get_state() const
+        dim, p_order, MaterialStates, MemorySpaceType>::get_state() const
 {
   return _state;
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 inline dealii::types::global_dof_index
-MaterialProperty<dim, p_order, MemorySpaceType>::get_dof_index(
+MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::get_dof_index(
     typename dealii::Triangulation<dim>::active_cell_iterator const &cell) const
 {
   // Get a DoFCellAccessor from a Triangulation::active_cell_iterator.
@@ -399,9 +413,11 @@ MaterialProperty<dim, p_order, MemorySpaceType>::get_dof_index(
   return _dofs_map.at(mp_dof[0]);
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 inline dealii::DoFHandler<dim> const &
-MaterialProperty<dim, p_order, MemorySpaceType>::get_dof_handler() const
+MaterialProperty<dim, p_order, MaterialStates,
+                 MemorySpaceType>::get_dof_handler() const
 {
   return _mp_dof_handler;
 }
@@ -409,23 +425,26 @@ MaterialProperty<dim, p_order, MemorySpaceType>::get_dof_handler() const
 // We define the two compute_material_property in the header to simplify, the
 // instantiation. It also helps the compiler to inline the code.
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 template <bool use_table>
 dealii::VectorizedArray<double>
-MaterialProperty<dim, p_order, MemorySpaceType>::compute_material_property(
-    StateProperty state_property, dealii::types::material_id const *material_id,
-    dealii::VectorizedArray<double> const *state_ratios,
-    dealii::VectorizedArray<double> const &temperature,
-    dealii::AlignedVector<dealii::VectorizedArray<double>> const
-        &temperature_powers) const
+MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
+    compute_material_property(
+        StateProperty state_property,
+        dealii::types::material_id const *material_id,
+        dealii::VectorizedArray<double> const *state_ratios,
+        dealii::VectorizedArray<double> const &temperature,
+        dealii::AlignedVector<dealii::VectorizedArray<double>> const
+            &temperature_powers) const
 {
   dealii::VectorizedArray<double> value = 0.0;
   unsigned int const property_index = static_cast<unsigned int>(state_property);
 
   if constexpr (use_table)
   {
-    for (unsigned int material_state = 0; material_state < g_n_material_states;
-         ++material_state)
+    for (unsigned int material_state = 0;
+         material_state < MaterialStates::n_material_states; ++material_state)
     {
       for (unsigned int n = 0; n < dealii::VectorizedArray<double>::size(); ++n)
       {
@@ -440,8 +459,8 @@ MaterialProperty<dim, p_order, MemorySpaceType>::compute_material_property(
   }
   else
   {
-    for (unsigned int material_state = 0; material_state < g_n_material_states;
-         ++material_state)
+    for (unsigned int material_state = 0;
+         material_state < MaterialStates::n_material_states; ++material_state)
     {
       for (unsigned int n = 0; n < dealii::VectorizedArray<double>::size(); ++n)
       {
@@ -461,20 +480,23 @@ MaterialProperty<dim, p_order, MemorySpaceType>::compute_material_property(
   return value;
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 template <bool use_table>
 KOKKOS_FUNCTION double
-MaterialProperty<dim, p_order, MemorySpaceType>::compute_material_property(
-    StateProperty state_property, dealii::types::material_id const material_id,
-    double const *state_ratios, double temperature) const
+MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
+    compute_material_property(StateProperty state_property,
+                              dealii::types::material_id const material_id,
+                              double const *state_ratios,
+                              double temperature) const
 {
   double value = 0.0;
   unsigned int const property_index = static_cast<unsigned int>(state_property);
 
   if constexpr (use_table)
   {
-    for (unsigned int material_state = 0; material_state < g_n_material_states;
-         ++material_state)
+    for (unsigned int material_state = 0;
+         material_state < MaterialStates::n_material_states; ++material_state)
     {
       const dealii::types::material_id m_id = material_id;
 
@@ -486,8 +508,8 @@ MaterialProperty<dim, p_order, MemorySpaceType>::compute_material_property(
   }
   else
   {
-    for (unsigned int material_state = 0; material_state < g_n_material_states;
-         ++material_state)
+    for (unsigned int material_state = 0;
+         material_state < MaterialStates::n_material_states; ++material_state)
     {
       dealii::types::material_id m_id = material_id;
 

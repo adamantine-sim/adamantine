@@ -18,18 +18,19 @@
 
 namespace adamantine
 {
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 class MechanicalPhysics
 {
 public:
   /**
    * Constructor.
    */
-  MechanicalPhysics(
-      MPI_Comm const &communicator, unsigned int const fe_degree,
-      Geometry<dim> &geometry,
-      MaterialProperty<dim, p_order, MemorySpaceType> &material_properties,
-      std::vector<double> const &initial_temperatures);
+  MechanicalPhysics(MPI_Comm const &communicator, unsigned int const fe_degree,
+                    Geometry<dim> &geometry,
+                    MaterialProperty<dim, p_order, MaterialStates,
+                                     MemorySpaceType> &material_properties,
+                    std::vector<double> const &initial_temperatures);
 
   /**
    * Setup the DoFHandler, the AffineConstraints, and the
@@ -86,7 +87,8 @@ private:
   /**
    * Associated MaterialProperty.
    */
-  MaterialProperty<dim, p_order, MemorySpaceType> &_material_properties;
+  MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
+      &_material_properties;
   /**
    * Associated FECollection.
    */
@@ -106,7 +108,8 @@ private:
   /**
    * Pointer to the MechanicalOperator
    */
-  std::unique_ptr<MechanicalOperator<dim, p_order, MemorySpaceType>>
+  std::unique_ptr<
+      MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>>
       _mechanical_operator;
   /**
    * Whether to include a gravitional body force in the calculation.
@@ -135,23 +138,29 @@ private:
   std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> _back_stress;
 };
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 inline dealii::DoFHandler<dim> &
-MechanicalPhysics<dim, p_order, MemorySpaceType>::get_dof_handler()
+MechanicalPhysics<dim, p_order, MaterialStates,
+                  MemorySpaceType>::get_dof_handler()
 {
   return _dof_handler;
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 inline dealii::AffineConstraints<double> &
-MechanicalPhysics<dim, p_order, MemorySpaceType>::get_affine_constraints()
+MechanicalPhysics<dim, p_order, MaterialStates,
+                  MemorySpaceType>::get_affine_constraints()
 {
   return _affine_constraints;
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 inline std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> &
-MechanicalPhysics<dim, p_order, MemorySpaceType>::get_stress_tensor()
+MechanicalPhysics<dim, p_order, MaterialStates,
+                  MemorySpaceType>::get_stress_tensor()
 {
   return _stress;
 }

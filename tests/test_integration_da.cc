@@ -5,6 +5,7 @@
  * for the text and further information on this license.
  */
 
+#include "MaterialStates.hh"
 #define BOOST_TEST_MODULE Integration_Data_Assimilation
 
 #include "../application/adamantine.hh"
@@ -31,8 +32,9 @@ double integration_da(MPI_Comm communicator, bool l2_norm)
   boost::property_tree::info_parser::read_info(filename, database);
 
   // Run the simulation
-  auto result = run_ensemble<3, 1, dealii::MemorySpace::Host>(communicator,
-                                                              database, timers);
+  auto result =
+      run_ensemble<3, 1, adamantine::SolidLiquidPowder,
+                   dealii::MemorySpace::Host>(communicator, database, timers);
 
   if (l2_norm)
   {
@@ -100,8 +102,9 @@ double integration_da_point_cloud_add_mat(MPI_Comm communicator, bool l2_norm)
   boost::property_tree::info_parser::read_info(filename, database);
 
   // Run the simulation
-  auto result = run_ensemble<3, 1, dealii::MemorySpace::Host>(communicator,
-                                                              database, timers);
+  auto result =
+      run_ensemble<3, 1, adamantine::SolidLiquidPowder,
+                   dealii::MemorySpace::Host>(communicator, database, timers);
 
   if (l2_norm)
   {
@@ -182,8 +185,9 @@ double integration_da_ray_add_mat(MPI_Comm communicator, bool l2_norm)
   database.put("experiment.format", "ray");
 
   // Run the simulation
-  auto result = run_ensemble<3, 1, dealii::MemorySpace::Host>(communicator,
-                                                              database, timers);
+  auto result =
+      run_ensemble<3, 1, adamantine::SolidLiquidPowder,
+                   dealii::MemorySpace::Host>(communicator, database, timers);
 
   if (l2_norm)
   {

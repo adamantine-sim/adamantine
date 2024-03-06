@@ -21,12 +21,14 @@
 
 namespace adamantine
 {
-template <int dim, int p_order, typename MemorySpaceType>
-MechanicalPhysics<dim, p_order, MemorySpaceType>::MechanicalPhysics(
-    MPI_Comm const &communicator, unsigned int const fe_degree,
-    Geometry<dim> &geometry,
-    MaterialProperty<dim, p_order, MemorySpaceType> &material_properties,
-    std::vector<double> const &reference_temperatures)
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
+    MechanicalPhysics(MPI_Comm const &communicator,
+                      unsigned int const fe_degree, Geometry<dim> &geometry,
+                      MaterialProperty<dim, p_order, MaterialStates,
+                                       MemorySpaceType> &material_properties,
+                      std::vector<double> const &reference_temperatures)
     : _geometry(geometry), _material_properties(material_properties),
       _dof_handler(_geometry.get_triangulation())
 {
@@ -47,7 +49,8 @@ MechanicalPhysics<dim, p_order, MemorySpaceType>::MechanicalPhysics(
        dealii::filter_iterators(_dof_handler.active_cell_iterators(),
                                 dealii::IteratorFilters::LocallyOwnedCell()))
   {
-    if (_material_properties.get_state_ratio(cell, MaterialState::solid) > 0.99)
+    if (_material_properties.get_state_ratio(
+            cell, MaterialStates::State::solid) > 0.99)
     {
       cell->set_active_fe_index(0);
       ++n_local_cells;
@@ -59,9 +62,9 @@ MechanicalPhysics<dim, p_order, MemorySpaceType>::MechanicalPhysics(
   }
 
   // Create the mechanical operator
-  _mechanical_operator =
-      std::make_unique<MechanicalOperator<dim, p_order, MemorySpaceType>>(
-          communicator, _material_properties, reference_temperatures);
+  _mechanical_operator = std::make_unique<
+      MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>>(
+      communicator, _material_properties, reference_temperatures);
 
   // Create the data used to compute the stress tensor
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
@@ -81,9 +84,10 @@ MechanicalPhysics<dim, p_order, MemorySpaceType>::MechanicalPhysics(
                       std::vector<dealii::SymmetricTensor<2, dim>>(n_quad_pts));
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
-void MechanicalPhysics<dim, p_order, MemorySpaceType>::setup_dofs(
-    std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
+    setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   _dof_handler.distribute_dofs(_fe_collection);
   dealii::IndexSet locally_relevant_dofs;
@@ -106,13 +110,15 @@ void MechanicalPhysics<dim, p_order, MemorySpaceType>::setup_dofs(
                                body_forces);
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
-void MechanicalPhysics<dim, p_order, MemorySpaceType>::setup_dofs(
-    dealii::DoFHandler<dim> const &thermal_dof_handler,
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-        &temperature,
-    std::vector<bool> const &has_melted,
-    std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
+    setup_dofs(
+        dealii::DoFHandler<dim> const &thermal_dof_handler,
+        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+            &temperature,
+        std::vector<bool> const &has_melted,
+        std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
                                            has_melted);
@@ -169,7 +175,8 @@ void MechanicalPhysics<dim, p_order, MemorySpaceType>::setup_dofs(
                                 dealii::IteratorFilters::LocallyOwnedCell()))
   {
     auto current_fe_index = cell->active_fe_index();
-    if (_material_properties.get_state_ratio(cell, MaterialState::solid) > 0.99)
+    if (_material_properties.get_state_ratio(
+            cell, MaterialStates::State::solid) > 0.99)
     {
       // Only enable the cell if it is also enabled for the thermal simulation
       // Get the thermal DoFHandler cell iterator
@@ -243,9 +250,10 @@ void MechanicalPhysics<dim, p_order, MemorySpaceType>::setup_dofs(
   }
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-MechanicalPhysics<dim, p_order, MemorySpaceType>::solve()
+MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
 {
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       displacement(_mechanical_operator->rhs().get_partitioner());
@@ -284,10 +292,12 @@ MechanicalPhysics<dim, p_order, MemorySpaceType>::solve()
   return _old_displacement;
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
-void MechanicalPhysics<dim, p_order, MemorySpaceType>::compute_stress(
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-        &displacement)
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
+    compute_stress(
+        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+            &displacement)
 {
   dealii::hp::FEValues<dim> displacement_hp_fe_values(
       _fe_collection, _q_collection, dealii::update_gradients);
@@ -370,5 +380,5 @@ void MechanicalPhysics<dim, p_order, MemorySpaceType>::compute_stress(
 
 } // namespace adamantine
 
-INSTANTIATE_DIM_PORDER_HOST(TUPLE(MechanicalPhysics))
-INSTANTIATE_DIM_PORDER_DEVICE(TUPLE(MechanicalPhysics))
+INSTANTIATE_DIM_PORDER_MATERIALSTATES_HOST(TUPLE(MechanicalPhysics))
+INSTANTIATE_DIM_PORDER_MATERIALSTATES_DEVICE(TUPLE(MechanicalPhysics))

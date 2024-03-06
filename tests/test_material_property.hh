@@ -5,6 +5,7 @@
  * for the text and further information on this license.
  */
 
+#include "MaterialStates.hh"
 #include <Geometry.hh>
 #include <MaterialProperty.hh>
 
@@ -35,7 +36,8 @@ void material_property()
   for (auto cell : triangulation.cell_iterators())
   {
     cell->set_material_id(0);
-    cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
+    cell->set_user_index(
+        static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
   }
 
   // Create the MaterialProperty
@@ -51,8 +53,9 @@ void material_property()
   database.put("material_0.liquidus", "100");
   database.put("material_0.solid.lame_first_parameter", 2.);
   database.put("material_0.solid.lame_second_parameter", 3.);
-  adamantine::MaterialProperty<2, 2, MemorySpaceType> mat_prop(
-      communicator, triangulation, database);
+  adamantine::MaterialProperty<2, 2, adamantine::SolidLiquidPowder,
+                               MemorySpaceType>
+      mat_prop(communicator, triangulation, database);
   // Evaluate the material property at the given temperature
   dealii::FE_Q<2> fe(4);
   dealii::DoFHandler<2> dof_handler(triangulation);
@@ -103,7 +106,8 @@ void ratios()
   for (auto cell : triangulation.active_cell_iterators())
   {
     cell->set_material_id(0);
-    cell->set_user_index(static_cast<int>(adamantine::MaterialState::powder));
+    cell->set_user_index(
+        static_cast<int>(adamantine::SolidLiquidPowder::State::powder));
   }
   dealii::FE_Q<2> fe(1);
   dealii::DoFHandler<2> dof_handler(triangulation);
@@ -128,8 +132,9 @@ void ratios()
   database.put("material_0.solidus", "50");
   database.put("material_0.liquidus", "100");
   database.put("material_0.latent_heat", "1000");
-  adamantine::MaterialProperty<2, 0, MemorySpaceType> mat_prop(
-      communicator, triangulation, database);
+  adamantine::MaterialProperty<2, 0, adamantine::SolidLiquidPowder,
+                               MemorySpaceType>
+      mat_prop(communicator, triangulation, database);
   dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
       temperature(dof_handler.locally_owned_dofs(), communicator);
   mat_prop.update(dof_handler, temperature);
@@ -137,14 +142,14 @@ void ratios()
   // Check the material properties of the powder
   for (auto cell : triangulation.active_cell_iterators())
   {
-    double powder_ratio =
-        mat_prop.get_state_ratio(cell, adamantine::MaterialState::powder);
+    double powder_ratio = mat_prop.get_state_ratio(
+        cell, adamantine::SolidLiquidPowder::State::powder);
     BOOST_TEST(powder_ratio == 1.);
-    double solid_ratio =
-        mat_prop.get_state_ratio(cell, adamantine::MaterialState::solid);
+    double solid_ratio = mat_prop.get_state_ratio(
+        cell, adamantine::SolidLiquidPowder::State::solid);
     BOOST_TEST(solid_ratio == 0.);
-    double liquid_ratio =
-        mat_prop.get_state_ratio(cell, adamantine::MaterialState::liquid);
+    double liquid_ratio = mat_prop.get_state_ratio(
+        cell, adamantine::SolidLiquidPowder::State::liquid);
     BOOST_TEST(liquid_ratio == 0.);
 
     double const density =
@@ -181,14 +186,14 @@ void ratios()
   mat_prop.update(dof_handler, avg_temperature);
   for (auto cell : triangulation.active_cell_iterators())
   {
-    double powder_ratio =
-        mat_prop.get_state_ratio(cell, adamantine::MaterialState::powder);
+    double powder_ratio = mat_prop.get_state_ratio(
+        cell, adamantine::SolidLiquidPowder::State::powder);
     BOOST_TEST(powder_ratio == 0.);
-    double solid_ratio =
-        mat_prop.get_state_ratio(cell, adamantine::MaterialState::solid);
+    double solid_ratio = mat_prop.get_state_ratio(
+        cell, adamantine::SolidLiquidPowder::State::solid);
     BOOST_TEST(solid_ratio == 0.);
-    double liquid_ratio =
-        mat_prop.get_state_ratio(cell, adamantine::MaterialState::liquid);
+    double liquid_ratio = mat_prop.get_state_ratio(
+        cell, adamantine::SolidLiquidPowder::State::liquid);
     BOOST_TEST(liquid_ratio == 1.);
 
     double const density =
@@ -219,14 +224,14 @@ void ratios()
   mat_prop.update(dof_handler, avg_temperature);
   for (auto cell : triangulation.active_cell_iterators())
   {
-    double powder_ratio =
-        mat_prop.get_state_ratio(cell, adamantine::MaterialState::powder);
+    double powder_ratio = mat_prop.get_state_ratio(
+        cell, adamantine::SolidLiquidPowder::State::powder);
     BOOST_TEST(powder_ratio == 0.);
-    double solid_ratio =
-        mat_prop.get_state_ratio(cell, adamantine::MaterialState::solid);
+    double solid_ratio = mat_prop.get_state_ratio(
+        cell, adamantine::SolidLiquidPowder::State::solid);
     BOOST_TEST(solid_ratio == 1.);
-    double liquid_ratio =
-        mat_prop.get_state_ratio(cell, adamantine::MaterialState::liquid);
+    double liquid_ratio = mat_prop.get_state_ratio(
+        cell, adamantine::SolidLiquidPowder::State::liquid);
     BOOST_TEST(liquid_ratio == 0.);
 
     double const density =
@@ -277,9 +282,11 @@ void material_property_table()
       cell->set_material_id(1);
 
     if (n < 15)
-      cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
+      cell->set_user_index(
+          static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
     else
-      cell->set_user_index(static_cast<int>(adamantine::MaterialState::powder));
+      cell->set_user_index(
+          static_cast<int>(adamantine::SolidLiquidPowder::State::powder));
 
     ++n;
   }
@@ -301,8 +308,9 @@ void material_property_table()
                "0., 10.; 10., 100.; 18., 200.");
   database.put("material_1.powder.thermal_conductivity_z",
                "0., 10.; 10., 100.; 18., 200.");
-  adamantine::MaterialProperty<2, 0, MemorySpaceType> mat_prop(
-      communicator, triangulation, database);
+  adamantine::MaterialProperty<2, 0, adamantine::SolidLiquidPowder,
+                               MemorySpaceType>
+      mat_prop(communicator, triangulation, database);
   // Evaluate the material property at the given temperature
   dealii::FE_Q<2> fe(4);
   dealii::DoFHandler<2> dof_handler(triangulation);
@@ -390,9 +398,11 @@ void material_property_polynomials()
       cell->set_material_id(1);
 
     if (n < 15)
-      cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
+      cell->set_user_index(
+          static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
     else
-      cell->set_user_index(static_cast<int>(adamantine::MaterialState::powder));
+      cell->set_user_index(
+          static_cast<int>(adamantine::SolidLiquidPowder::State::powder));
 
     ++n;
   }
@@ -412,8 +422,9 @@ void material_property_polynomials()
   database.put("material_1.powder.density", "15., 2., 3.");
   database.put("material_1.powder.thermal_conductivity_x", " 10., 18., 200.");
   database.put("material_1.powder.thermal_conductivity_z", " 10., 18., 200.");
-  adamantine::MaterialProperty<2, 4, MemorySpaceType> mat_prop(
-      communicator, triangulation, database);
+  adamantine::MaterialProperty<2, 4, adamantine::SolidLiquidPowder,
+                               MemorySpaceType>
+      mat_prop(communicator, triangulation, database);
   // Evaluate the material property at the given temperature
   dealii::FE_Q<2> fe(4);
   dealii::DoFHandler<2> dof_handler(triangulation);

@@ -5,6 +5,7 @@
  * for the text and further information on this license.
  */
 
+#include "MaterialStates.hh"
 #define BOOST_TEST_MODULE MechanicalPhysics
 
 #include <Geometry.hh>
@@ -214,7 +215,8 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   for (auto cell : triangulation.cell_iterators())
   {
     cell->set_material_id(0);
-    cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
+    cell->set_user_index(
+        static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
   }
   // Create the MaterialProperty
   boost::property_tree::ptree material_database;
@@ -223,17 +225,19 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   material_database.put("material_0.solid.density", 1.);
   material_database.put("material_0.solid.lame_first_parameter", 2.);
   material_database.put("material_0.solid.lame_second_parameter", 3.);
-  adamantine::MaterialProperty<3, 4, dealii::MemorySpace::Host>
+  adamantine::MaterialProperty<3, 4, adamantine::SolidLiquidPowder,
+                               dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
   // Build MechanicalPhysics
   unsigned int const fe_degree = 1;
   std::vector<double> empty_vector;
-  adamantine::MechanicalPhysics<3, 4, dealii::MemorySpace::Host>
+  adamantine::MechanicalPhysics<3, 4, adamantine::SolidLiquidPowder,
+                                dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, material_properties,
                          empty_vector);
   std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
-  auto gravity_force = std::make_shared<
-      adamantine::GravityForce<3, 4, dealii::MemorySpace::Host>>(
+  auto gravity_force = std::make_shared<adamantine::GravityForce<
+      3, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
       material_properties);
   body_forces.push_back(gravity_force);
   mechanical_physics.setup_dofs(body_forces);
@@ -276,11 +280,13 @@ BOOST_AUTO_TEST_CASE(fe_nothing)
     cell->set_material_id(0);
     if (cell->center()[2] < 6.)
     {
-      cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
+      cell->set_user_index(
+          static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
     }
     else
     {
-      cell->set_user_index(static_cast<int>(adamantine::MaterialState::powder));
+      cell->set_user_index(
+          static_cast<int>(adamantine::SolidLiquidPowder::State::powder));
     }
   }
   // Create the MaterialProperty
@@ -290,17 +296,19 @@ BOOST_AUTO_TEST_CASE(fe_nothing)
   material_database.put("material_0.solid.density", 1.);
   material_database.put("material_0.solid.lame_first_parameter", 2.);
   material_database.put("material_0.solid.lame_second_parameter", 3.);
-  adamantine::MaterialProperty<3, 2, dealii::MemorySpace::Host>
+  adamantine::MaterialProperty<3, 2, adamantine::SolidLiquidPowder,
+                               dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
   // Build MechanicalPhysics
   unsigned int const fe_degree = 1;
   std::vector<double> empty_vector;
-  adamantine::MechanicalPhysics<3, 2, dealii::MemorySpace::Host>
+  adamantine::MechanicalPhysics<3, 2, adamantine::SolidLiquidPowder,
+                                dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, material_properties,
                          empty_vector);
   std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
-  auto gravity_force = std::make_shared<
-      adamantine::GravityForce<3, 2, dealii::MemorySpace::Host>>(
+  auto gravity_force = std::make_shared<adamantine::GravityForce<
+      3, 2, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
       material_properties);
   body_forces.push_back(gravity_force);
   mechanical_physics.setup_dofs(body_forces);
@@ -385,7 +393,8 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
                                   dealii::IteratorFilters::LocallyOwnedCell()))
     {
       cell->set_material_id(0);
-      cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
+      cell->set_user_index(
+          static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
       auto dist_from_center = center.distance(cell->center());
       auto rad = 3.0e-6;
       if (cycle == 0)
@@ -418,7 +427,8 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
 
   double const alpha = 0.01;
   material_database.put("material_0.solid.thermal_expansion_coef", alpha);
-  adamantine::MaterialProperty<dim, 3, dealii::MemorySpace::Host>
+  adamantine::MaterialProperty<dim, 3, adamantine::SolidLiquidPowder,
+                               dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
 
   // Build ThermalPhysics
@@ -441,8 +451,8 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
                "scan_path_test_thermal_physics.txt");
   database.put("sources.beam_0.scan_path_file_format", "segment");
   database.put("boundary.type", "adiabatic");
-  adamantine::ThermalPhysics<dim, 3, 1, dealii::MemorySpace::Host,
-                             dealii::QGauss<1>>
+  adamantine::ThermalPhysics<dim, 3, 1, adamantine::SolidLiquidPowder,
+                             dealii::MemorySpace::Host, dealii::QGauss<1>>
       thermal_physics(communicator, database, geometry, material_properties);
   thermal_physics.setup();
 
@@ -455,7 +465,8 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
   // Build MechanicalPhysics
   unsigned int const fe_degree = 1;
   std::vector<double> initial_temperature = {2.0};
-  adamantine::MechanicalPhysics<3, 3, dealii::MemorySpace::Host>
+  adamantine::MechanicalPhysics<3, 3, adamantine::SolidLiquidPowder,
+                                dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, material_properties,
                          initial_temperature);
 
@@ -544,7 +555,8 @@ BOOST_AUTO_TEST_CASE(elastoplastic)
   for (auto cell : triangulation.cell_iterators())
   {
     cell->set_material_id(0);
-    cell->set_user_index(static_cast<int>(adamantine::MaterialState::solid));
+    cell->set_user_index(
+        static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
   }
   // Create the MaterialProperty
   boost::property_tree::ptree material_database;
@@ -556,17 +568,19 @@ BOOST_AUTO_TEST_CASE(elastoplastic)
   material_database.put("material_0.solid.plastic_modulus", 1.5);
   material_database.put("material_0.solid.isotropic_hardening", 0.5);
   material_database.put("material_0.solid.elastic_limit", 0.1);
-  adamantine::MaterialProperty<3, 4, dealii::MemorySpace::Host>
+  adamantine::MaterialProperty<3, 4, adamantine::SolidLiquidPowder,
+                               dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
   // Build MechanicalPhysics
   unsigned int const fe_degree = 1;
   std::vector<double> empty_vector;
-  adamantine::MechanicalPhysics<3, 4, dealii::MemorySpace::Host>
+  adamantine::MechanicalPhysics<3, 4, adamantine::SolidLiquidPowder,
+                                dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, material_properties,
                          empty_vector);
   std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
-  auto gravity_force = std::make_shared<
-      adamantine::GravityForce<3, 4, dealii ::MemorySpace::Host>>(
+  auto gravity_force = std::make_shared<adamantine::GravityForce<
+      3, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
       material_properties);
   body_forces.push_back(gravity_force);
   mechanical_physics.setup_dofs(body_forces);

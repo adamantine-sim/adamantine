@@ -63,7 +63,8 @@ KOKKOS_FUNCTION void LocalMassMatrixOperator<dim, fe_degree>::operator()(
   fe_eval.distribute_local_to_global(dst);
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree>
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MaterialStates>
 class ThermalOperatorQuad
 {
 public:
@@ -111,7 +112,7 @@ private:
   static unsigned int constexpr _n_q_points =
       dealii::Utilities::pow(fe_degree + 1, dim);
   static unsigned int constexpr _n_material_states =
-      static_cast<unsigned int>(adamantine::MaterialState::SIZE);
+      MaterialStates::n_material_states;
   typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const *_gpu_data;
   Kokkos::View<double *, kokkos_default> _cos;
   Kokkos::View<double *, kokkos_default> _sin;
@@ -124,17 +125,21 @@ private:
   Kokkos::View<double ****, kokkos_default> _state_property_polynomials;
 };
 
-template <int dim, bool use_table, int p_order, int fe_degree>
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MaterialStates>
 KOKKOS_FUNCTION void
-ThermalOperatorQuad<dim, use_table, p_order, fe_degree>::update_state_ratios(
-    unsigned int pos, double temperature, double *state_ratios) const
+ThermalOperatorQuad<dim, use_table, p_order, fe_degree,
+                    MaterialStates>::update_state_ratios(unsigned int pos,
+                                                         double temperature,
+                                                         double *state_ratios)
+    const
 {
   unsigned int constexpr liquid =
-      static_cast<unsigned int>(adamantine::MaterialState::liquid);
+      static_cast<unsigned int>(MaterialStates::State::liquid);
   unsigned int constexpr powder =
-      static_cast<unsigned int>(adamantine::MaterialState::powder);
+      static_cast<unsigned int>(MaterialStates::State::powder);
   unsigned int constexpr solid =
-      static_cast<unsigned int>(adamantine::MaterialState::solid);
+      static_cast<unsigned int>(MaterialStates::State::solid);
 
   // Get the material id at this point
   auto material_id = _material_id[pos];
@@ -172,10 +177,13 @@ ThermalOperatorQuad<dim, use_table, p_order, fe_degree>::update_state_ratios(
   _liquid_ratio(pos) = state_ratios[liquid];
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree>
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MaterialStates>
 KOKKOS_FUNCTION void
-ThermalOperatorQuad<dim, use_table, p_order, fe_degree>::get_inv_rho_cp(
-    unsigned int pos, double *state_ratios, double temperature) const
+ThermalOperatorQuad<dim, use_table, p_order, fe_degree,
+                    MaterialStates>::get_inv_rho_cp(unsigned int pos,
+                                                    double *state_ratios,
+                                                    double temperature) const
 {
   // Here we need the specific heat (including the latent heat contribution)
   // and the density
@@ -201,7 +209,7 @@ ThermalOperatorQuad<dim, use_table, p_order, fe_degree>::get_inv_rho_cp(
 
   // Add in the latent heat contribution
   unsigned int constexpr liquid =
-      static_cast<unsigned int>(adamantine::MaterialState::liquid);
+      static_cast<unsigned int>(MaterialStates::State::liquid);
 
   if (state_ratios[liquid] > 0.0 && (state_ratios[liquid] < 1.0))
   {
@@ -211,8 +219,10 @@ ThermalOperatorQuad<dim, use_table, p_order, fe_degree>::get_inv_rho_cp(
   _inv_rho_cp(pos) = 1.0 / (density * specific_heat);
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree>
-KOKKOS_FUNCTION double ThermalOperatorQuad<dim, use_table, p_order, fe_degree>::
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MaterialStates>
+KOKKOS_FUNCTION double
+ThermalOperatorQuad<dim, use_table, p_order, fe_degree, MaterialStates>::
     compute_material_property(adamantine::StateProperty state_property,
                               dealii::types::material_id const material_id,
                               double const *state_ratios,
@@ -228,7 +238,7 @@ KOKKOS_FUNCTION double ThermalOperatorQuad<dim, use_table, p_order, fe_degree>::
       const dealii::types::material_id m_id = material_id;
 
       value += state_ratios[material_state] *
-               adamantine::MaterialProperty<dim, p_order,
+               adamantine::MaterialProperty<dim, p_order, MaterialStates,
                                             dealii::MemorySpace::Default>::
                    compute_property_from_table(_state_property_tables, m_id,
                                                material_state, property_index,
@@ -255,16 +265,16 @@ KOKKOS_FUNCTION double ThermalOperatorQuad<dim, use_table, p_order, fe_degree>::
   return value;
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree>
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MaterialStates>
 KOKKOS_FUNCTION void
-ThermalOperatorQuad<dim, use_table, p_order, fe_degree>::operator()(
-    dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval,
-    int const q_point) const
+ThermalOperatorQuad<dim, use_table, p_order, fe_degree, MaterialStates>::
+operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval,
+           int const q_point) const
 {
   double temperature = fe_eval->get_value(q_point);
 
-  double
-      state_ratios[static_cast<unsigned int>(adamantine::MaterialState::SIZE)];
+  double state_ratios[MaterialStates::n_material_states];
   unsigned int const pos =
       _gpu_data->local_q_point_id(_cell, _n_q_points, q_point);
   update_state_ratios(pos, temperature, state_ratios);
@@ -325,7 +335,8 @@ ThermalOperatorQuad<dim, use_table, p_order, fe_degree>::operator()(
   fe_eval->submit_gradient(-_inv_rho_cp[pos] * th_conductivity_grad, q_point);
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree>
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MaterialStates>
 class LocalThermalOperatorDevice
 {
 public:
@@ -364,7 +375,7 @@ public:
 
 private:
   static unsigned int constexpr _n_material_states =
-      static_cast<unsigned int>(adamantine::MaterialState::SIZE);
+      MaterialStates::n_material_states;
   Kokkos::View<double *, kokkos_default> _cos;
   Kokkos::View<double *, kokkos_default> _sin;
   Kokkos::View<double *, kokkos_default> _powder_ratio;
@@ -376,14 +387,15 @@ private:
   Kokkos::View<double ****, kokkos_default> _state_property_polynomials;
 };
 
-template <int dim, bool use_table, int p_order, int fe_degree>
+template <int dim, bool use_table, int p_order, int fe_degree,
+          typename MaterialStates>
 KOKKOS_FUNCTION void
-LocalThermalOperatorDevice<dim, use_table, p_order, fe_degree>::operator()(
-    unsigned int const cell,
-    typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
-        *gpu_data,
-    dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
-    double const *src, double *dst) const
+LocalThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates>::
+operator()(unsigned int const cell,
+           typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
+               *gpu_data,
+           dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
+           double const *src, double *dst) const
 {
   dealii::CUDAWrappers::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
       fe_eval(gpu_data, shared_data);
@@ -391,7 +403,7 @@ LocalThermalOperatorDevice<dim, use_table, p_order, fe_degree>::operator()(
   fe_eval.evaluate(/*values*/ true, /*gradients*/ true);
 
   fe_eval.apply_for_each_quad_point(
-      ThermalOperatorQuad<dim, use_table, p_order, fe_degree>(
+      ThermalOperatorQuad<dim, use_table, p_order, fe_degree, MaterialStates>(
           cell, gpu_data, _cos, _sin, _powder_ratio, _liquid_ratio,
           _material_id, _inv_rho_cp, _properties, _state_property_tables,
           _state_property_polynomials));
@@ -404,11 +416,13 @@ LocalThermalOperatorDevice<dim, use_table, p_order, fe_degree>::operator()(
 namespace adamantine
 {
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
+                      MemorySpaceType>::
     ThermalOperatorDevice(
         MPI_Comm const &communicator, BoundaryType boundary_type,
-        MaterialProperty<dim, p_order, MemorySpaceType> &material_properties)
+        MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
+            &material_properties)
     : _communicator(communicator), _boundary_type(boundary_type), _m(0),
       _n_owned_cells(0), _material_properties(material_properties),
       _inverse_mass_matrix(
@@ -420,8 +434,8 @@ ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                            MemorySpaceType>::
     reinit(dealii::DoFHandler<dim> const &dof_handler,
            dealii::AffineConstraints<double> const &affine_constraints,
@@ -472,8 +486,8 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                            MemorySpaceType>::
     compute_inverse_mass_matrix(
         dealii::DoFHandler<dim> const &dof_handler,
@@ -523,16 +537,16 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                            MemorySpaceType>::clear()
 {
   _inverse_mass_matrix->reinit(0);
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                            MemorySpaceType>::
     vmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
           dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
@@ -543,8 +557,8 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                            MemorySpaceType>::
     Tvmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
            dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
@@ -555,8 +569,8 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                            MemorySpaceType>::
     vmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
               dealii::LA::distributed::Vector<double, MemorySpaceType> const
@@ -564,18 +578,19 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
 {
   ASSERT(_material_id.extent(0), "material_id has not been initialized");
 
-  LocalThermalOperatorDevice<dim, use_table, p_order, fe_degree> local_operator(
-      _deposition_cos, _deposition_sin, _powder_ratio, _liquid_ratio,
-      _material_id, _inv_rho_cp, _material_properties.get_properties(),
-      _material_properties.get_state_property_tables(),
-      _material_properties.get_state_property_polynomials());
+  LocalThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates>
+      local_operator(_deposition_cos, _deposition_sin, _powder_ratio,
+                     _liquid_ratio, _material_id, _inv_rho_cp,
+                     _material_properties.get_properties(),
+                     _material_properties.get_state_property_tables(),
+                     _material_properties.get_state_property_polynomials());
   _matrix_free.cell_loop(local_operator, src, dst);
   _matrix_free.copy_constrained_values(src, dst);
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                            MemorySpaceType>::
     Tvmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
                dealii::LA::distributed::Vector<double, MemorySpaceType> const
@@ -586,9 +601,9 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
+          typename MaterialStates, typename MemorySpaceType>
 void ThermalOperatorDevice<
-    dim, use_table, p_order, fe_degree,
+    dim, use_table, p_order, fe_degree, MaterialStates,
     MemorySpaceType>::get_state_from_material_properties()
 {
   unsigned int const n_coefs =
@@ -618,10 +633,10 @@ void ThermalOperatorDevice<
   {
     // Cast to Triangulation<dim>::cell_iterator to access the material_id
     typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
-    double const cell_liquid_ratio =
-        _material_properties.get_state_ratio(cell_tria, MaterialState::liquid);
-    double const cell_powder_ratio =
-        _material_properties.get_state_ratio(cell_tria, MaterialState::powder);
+    double const cell_liquid_ratio = _material_properties.get_state_ratio(
+        cell_tria, MaterialStates::State::liquid);
+    double const cell_powder_ratio = _material_properties.get_state_ratio(
+        cell_tria, MaterialStates::State::powder);
     auto const cell_material_id = cell_tria->material_id();
 
     for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
@@ -640,8 +655,8 @@ void ThermalOperatorDevice<
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                            MemorySpaceType>::set_state_to_material_properties()
 {
   _material_properties.set_state_device(_liquid_ratio, _powder_ratio,
@@ -650,8 +665,8 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                            MemorySpaceType>::
     update_boundary_material_properties(
         dealii::LA::distributed::Vector<double, MemorySpaceType> const
@@ -663,8 +678,8 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                            MemorySpaceType>::
     initialize_dof_vector(
         dealii::LA::distributed::Vector<double, MemorySpaceType> &vector) const
@@ -673,8 +688,8 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                            MemorySpaceType>::
     set_material_deposition_orientation(
         std::vector<double> const &deposition_cos,
@@ -719,8 +734,8 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                            MemorySpaceType>::update_inv_rho_cp_cell()
 {
   auto inv_rho_cp_host =
@@ -756,4 +771,7 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
 }
 } // namespace adamantine
 
-INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_DEVICE(TUPLE(ThermalOperatorDevice))
+INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_S_DEVICE(TUPLE(ThermalOperatorDevice))
+INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_SL_DEVICE(TUPLE(ThermalOperatorDevice))
+INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_SLP_DEVICE(
+    TUPLE(ThermalOperatorDevice))

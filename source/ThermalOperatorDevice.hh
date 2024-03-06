@@ -17,14 +17,15 @@
 namespace adamantine
 {
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
+          typename MaterialStates, typename MemorySpaceType>
 class ThermalOperatorDevice final
     : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
-  ThermalOperatorDevice(
-      MPI_Comm const &communicator, BoundaryType boundary_type,
-      MaterialProperty<dim, p_order, MemorySpaceType> &material_properties);
+  ThermalOperatorDevice(MPI_Comm const &communicator,
+                        BoundaryType boundary_type,
+                        MaterialProperty<dim, p_order, MaterialStates,
+                                         MemorySpaceType> &material_properties);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
@@ -122,7 +123,8 @@ private:
   /**
    * Material properties associated with the domain.
    */
-  MaterialProperty<dim, p_order, MemorySpaceType> &_material_properties;
+  MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
+      &_material_properties;
   dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
   Kokkos::View<double *, kokkos_default> _liquid_ratio;
   Kokkos::View<double *, kokkos_default> _powder_ratio;
@@ -140,46 +142,46 @@ private:
 };
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
+          typename MaterialStates, typename MemorySpaceType>
 inline dealii::types::global_dof_index
-ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MemorySpaceType>::m()
-    const
+ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
+                      MemorySpaceType>::m() const
 {
   return _m;
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
+          typename MaterialStates, typename MemorySpaceType>
 inline dealii::types::global_dof_index
-ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MemorySpaceType>::n()
-    const
+ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
+                      MemorySpaceType>::n() const
 {
   // Operator must be square
   return _m;
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
+          typename MaterialStates, typename MemorySpaceType>
 inline std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
-ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                       MemorySpaceType>::get_inverse_mass_matrix() const
 {
   return _inverse_mass_matrix;
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
+          typename MaterialStates, typename MemorySpaceType>
 inline dealii::CUDAWrappers::MatrixFree<dim, double> const &
-ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                       MemorySpaceType>::get_matrix_free() const
 {
   return _matrix_free;
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-inline void
-ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+inline void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+                                  MaterialStates, MemorySpaceType>::
     jacobian_vmult(
         dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
         dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
@@ -189,9 +191,9 @@ ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-inline double
-ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+inline double ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
+                                    MaterialStates, MemorySpaceType>::
     get_inv_rho_cp(typename dealii::DoFHandler<dim>::cell_iterator const &cell,
                    unsigned int) const
 {

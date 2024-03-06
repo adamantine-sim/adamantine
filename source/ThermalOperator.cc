@@ -23,11 +23,13 @@ namespace adamantine
 {
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                MemorySpaceType>::
     ThermalOperator(
         MPI_Comm const &communicator, BoundaryType boundary_type,
-        MaterialProperty<dim, p_order, MemorySpaceType> &material_properties,
+        MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
+            &material_properties,
         std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources)
     : _communicator(communicator), _boundary_type(boundary_type),
       _material_properties(material_properties), _heat_sources(heat_sources),
@@ -46,8 +48,9 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                     MemorySpaceType>::
     reinit(dealii::DoFHandler<dim> const &dof_handler,
            dealii::AffineConstraints<double> const &affine_constraints,
            dealii::hp::QCollection<1> const &q_collection)
@@ -70,8 +73,9 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                     MemorySpaceType>::
     cell_local_mass(
         dealii::MatrixFree<dim, double> const &data,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
@@ -106,8 +110,9 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                     MemorySpaceType>::
     compute_inverse_mass_matrix(
         dealii::DoFHandler<dim> const &dof_handler,
         dealii::AffineConstraints<double> const &affine_constraints)
@@ -153,8 +158,8 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                      MemorySpaceType>::clear()
 {
   _cell_it_to_mf_cell_map.clear();
@@ -163,8 +168,9 @@ void ThermalOperator<dim, use_table, p_order, fe_degree,
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                     MemorySpaceType>::
     vmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
           dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
         const
@@ -174,8 +180,9 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                     MemorySpaceType>::
     Tvmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
            dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
         const
@@ -185,8 +192,9 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                     MemorySpaceType>::
     vmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
               dealii::LA::distributed::Vector<double, MemorySpaceType> const
                   &src) const
@@ -223,8 +231,9 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                     MemorySpaceType>::
     Tvmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
                dealii::LA::distributed::Vector<double, MemorySpaceType> const
                    &src) const
@@ -234,74 +243,113 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
-    update_state_ratios(unsigned int cell, unsigned int q,
-                        dealii::VectorizedArray<double> temperature,
-                        std::array<dealii::VectorizedArray<double>,
-                                   g_n_material_states> &state_ratios) const
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                     MemorySpaceType>::
+    update_state_ratios(
+        unsigned int cell, unsigned int q,
+        dealii::VectorizedArray<double> temperature,
+        std::array<dealii::VectorizedArray<double>,
+                   MaterialStates::n_material_states> &state_ratios) const
 {
-  unsigned int constexpr liquid =
-      static_cast<unsigned int>(MaterialState::liquid);
-  unsigned int constexpr powder =
-      static_cast<unsigned int>(MaterialState::powder);
   unsigned int constexpr solid =
-      static_cast<unsigned int>(MaterialState::solid);
-
-  // Loop over the vectorized arrays
-  for (unsigned int n = 0; n < temperature.size(); ++n)
+      static_cast<unsigned int>(MaterialStates::State::solid);
+  if constexpr (std::is_same_v<MaterialStates, Solid>)
   {
-    // Get the material id at this point
-    dealii::types::material_id const material_id = _material_id(cell, q)[n];
-
-    // Get the material thermodynamic properties
-    double const solidus =
-        _material_properties.get(material_id, Property::solidus);
-    double const liquidus =
-        _material_properties.get(material_id, Property::liquidus);
-
-    // Update the state ratios
-    state_ratios[powder] = _powder_ratio(cell, q);
-
-    if (temperature[n] < solidus)
-      state_ratios[liquid][n] = 0.;
-    else if (temperature[n] > liquidus)
-      state_ratios[liquid][n] = 1.;
-    else
-    {
-      state_ratios[liquid][n] =
-          (temperature[n] - solidus) / (liquidus - solidus);
-    }
-    // Because the powder can only become liquid, the solid can only
-    // become liquid, and the liquid can only become solid, the ratio of
-    // powder can only decrease.
-    state_ratios[powder][n] =
-        std::min(1. - state_ratios[liquid][n], state_ratios[powder][n]);
-    // Use max to make sure that we don't create matter because of
-    // round-off.
-    state_ratios[solid][n] =
-        std::max(1. - state_ratios[liquid][n] - state_ratios[powder][n], 0.);
+    state_ratios[solid] = 1.;
   }
+  else if constexpr (std::is_same_v<MaterialStates, SolidLiquid>)
+  {
+    unsigned int constexpr liquid =
+        static_cast<unsigned int>(MaterialStates::State::liquid);
+    // Loop over the vectorized arrays
+    for (unsigned int n = 0; n < temperature.size(); ++n)
+    {
+      // Get the material id at this point
+      dealii::types::material_id const material_id = _material_id(cell, q)[n];
 
-  _liquid_ratio(cell, q) = state_ratios[liquid];
-  _powder_ratio(cell, q) = state_ratios[powder];
+      // Get the material thermodynamic properties
+      double const solidus =
+          _material_properties.get(material_id, Property::solidus);
+      double const liquidus =
+          _material_properties.get(material_id, Property::liquidus);
+
+      // Update the state ratios
+      if (temperature[n] < solidus)
+        state_ratios[liquid][n] = 0.;
+      else if (temperature[n] > liquidus)
+        state_ratios[liquid][n] = 1.;
+      else
+      {
+        state_ratios[liquid][n] =
+            (temperature[n] - solidus) / (liquidus - solidus);
+      }
+      state_ratios[solid][n] = 1. - state_ratios[liquid][n];
+    }
+
+    _liquid_ratio(cell, q) = state_ratios[liquid];
+  }
+  else if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
+  {
+    unsigned int constexpr liquid =
+        static_cast<unsigned int>(MaterialStates::State::liquid);
+    unsigned int constexpr powder =
+        static_cast<unsigned int>(MaterialStates::State::powder);
+
+    // Loop over the vectorized arrays
+    for (unsigned int n = 0; n < temperature.size(); ++n)
+    {
+      // Get the material id at this point
+      dealii::types::material_id const material_id = _material_id(cell, q)[n];
+
+      // Get the material thermodynamic properties
+      double const solidus =
+          _material_properties.get(material_id, Property::solidus);
+      double const liquidus =
+          _material_properties.get(material_id, Property::liquidus);
+
+      // Update the state ratios
+      state_ratios[powder] = _powder_ratio(cell, q);
+
+      if (temperature[n] < solidus)
+        state_ratios[liquid][n] = 0.;
+      else if (temperature[n] > liquidus)
+        state_ratios[liquid][n] = 1.;
+      else
+      {
+        state_ratios[liquid][n] =
+            (temperature[n] - solidus) / (liquidus - solidus);
+      }
+      // Because the powder can only become liquid, the solid can only
+      // become liquid, and the liquid can only become solid, the ratio of
+      // powder can only decrease.
+      state_ratios[powder][n] =
+          std::min(1. - state_ratios[liquid][n], state_ratios[powder][n]);
+      state_ratios[solid][n] =
+          1. - state_ratios[liquid][n] - state_ratios[powder][n];
+    }
+
+    _liquid_ratio(cell, q) = state_ratios[liquid];
+    _powder_ratio(cell, q) = state_ratios[powder];
+  }
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                     MemorySpaceType>::
     update_face_state_ratios(
         unsigned int face, unsigned int q,
         dealii::VectorizedArray<double> temperature,
-        std::array<dealii::VectorizedArray<double>, g_n_material_states>
-            &face_state_ratios) const
+        std::array<dealii::VectorizedArray<double>,
+                   MaterialStates::n_material_states> &face_state_ratios) const
 {
   unsigned int constexpr liquid =
-      static_cast<unsigned int>(MaterialState::liquid);
+      static_cast<unsigned int>(MaterialStates::State::liquid);
   unsigned int constexpr powder =
-      static_cast<unsigned int>(MaterialState::powder);
+      static_cast<unsigned int>(MaterialStates::State::powder);
   unsigned int constexpr solid =
-      static_cast<unsigned int>(MaterialState::solid);
+      static_cast<unsigned int>(MaterialStates::State::solid);
 
   // Loop over the vectorized arrays
   for (unsigned int n = 0; n < temperature.size(); ++n)
@@ -343,14 +391,15 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
+          typename MaterialStates, typename MemorySpaceType>
 dealii::VectorizedArray<double>
-ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                MemorySpaceType>::
     get_inv_rho_cp(
         std::array<dealii::types::material_id,
                    dealii::VectorizedArray<double>::size()> const &material_id,
-        std::array<dealii::VectorizedArray<double>, g_n_material_states> const
-            &state_ratios,
+        std::array<dealii::VectorizedArray<double>,
+                   MaterialStates::n_material_states> const &state_ratios,
         dealii::VectorizedArray<double> const &temperature,
         dealii::AlignedVector<dealii::VectorizedArray<double>> const
             &temperature_powers) const
@@ -381,7 +430,7 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 
   // Add in the latent heat contribution
   unsigned int constexpr liquid =
-      static_cast<unsigned int>(MaterialState::liquid);
+      static_cast<unsigned int>(MaterialStates::State::liquid);
 
   for (unsigned int n = 0; n < specific_heat.size(); ++n)
   {
@@ -395,8 +444,9 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                     MemorySpaceType>::
     cell_local_apply(
         dealii::MatrixFree<dim, double> const &data,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
@@ -408,7 +458,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
       data.create_cell_subrange_hp_by_index(cell_range, 0);
 
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(data);
-  std::array<dealii::VectorizedArray<double>, g_n_material_states>
+  std::array<dealii::VectorizedArray<double>, MaterialStates::n_material_states>
       state_ratios = {{dealii::make_vectorized_array(-1.0),
                        dealii::make_vectorized_array(-1.0),
                        dealii::make_vectorized_array(-1.0)}};
@@ -537,8 +587,9 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                     MemorySpaceType>::
     face_local_apply(
         dealii::MatrixFree<dim, double> const &data,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
@@ -571,7 +622,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
   // to decided which cell the face should be exterior to.
   dealii::FEFaceEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
       fe_face_eval(data, adjacent_cells_fe_index.first == 0);
-  std::array<dealii::VectorizedArray<double>, g_n_material_states>
+  std::array<dealii::VectorizedArray<double>, MaterialStates::n_material_states>
       face_state_ratios = {{dealii::make_vectorized_array(-1.0),
                             dealii::make_vectorized_array(-1.0),
                             dealii::make_vectorized_array(-1.0)}};
@@ -661,8 +712,8 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                      MemorySpaceType>::get_state_from_material_properties()
 {
   unsigned int const n_cells = _matrix_free.n_cell_batches();
@@ -685,9 +736,9 @@ void ThermalOperator<dim, use_table, p_order, fe_degree,
             cell_it);
 
         _liquid_ratio(cell, q)[i] = _material_properties.get_state_ratio(
-            cell_tria, MaterialState::liquid);
+            cell_tria, MaterialStates::State::liquid);
         _powder_ratio(cell, q)[i] = _material_properties.get_state_ratio(
-            cell_tria, MaterialState::powder);
+            cell_tria, MaterialStates::State::powder);
         _material_id(cell, q)[i] = cell_tria->material_id();
       }
 
@@ -729,8 +780,8 @@ void ThermalOperator<dim, use_table, p_order, fe_degree,
           if (cell_tria->is_locally_owned())
           {
             _face_powder_ratio(face, q)[i] =
-                _material_properties.get_state_ratio(cell_tria,
-                                                     MaterialState::powder);
+                _material_properties.get_state_ratio(
+                    cell_tria, MaterialStates::State::powder);
             _face_material_id(face, q)[i] = cell_tria->material_id();
           }
         }
@@ -754,8 +805,8 @@ void ThermalOperator<dim, use_table, p_order, fe_degree,
           if (cell_tria->is_locally_owned())
           {
             _face_powder_ratio(face, q)[i] =
-                _material_properties.get_state_ratio(cell_tria,
-                                                     MaterialState::powder);
+                _material_properties.get_state_ratio(
+                    cell_tria, MaterialStates::State::powder);
             _face_material_id(face, q)[i] = cell_tria->material_id();
           }
         }
@@ -763,8 +814,8 @@ void ThermalOperator<dim, use_table, p_order, fe_degree,
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree,
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                      MemorySpaceType>::set_state_to_material_properties()
 {
   _material_properties.set_state(_liquid_ratio, _powder_ratio,
@@ -773,8 +824,9 @@ void ThermalOperator<dim, use_table, p_order, fe_degree,
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                     MemorySpaceType>::
     set_material_deposition_orientation(
         std::vector<double> const &deposition_cos,
         std::vector<double> const &deposition_sin)
@@ -818,4 +870,6 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 
 } // namespace adamantine
 
-INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_HOST(TUPLE(ThermalOperator))
+INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_S_HOST(TUPLE(ThermalOperator))
+INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_SL_HOST(TUPLE(ThermalOperator))
+INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_SLP_HOST(TUPLE(ThermalOperator))

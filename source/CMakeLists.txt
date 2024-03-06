@@ -11,6 +11,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.templates.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/MaterialStates.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.hh

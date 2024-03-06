@@ -8,5 +8,5 @@
 #include <MaterialProperty.templates.hh>
 #include <instantiation.hh>
 
-INSTANTIATE_DIM_PORDER_HOST(TUPLE(MaterialProperty))
-INSTANTIATE_DIM_PORDER_DEVICE(TUPLE(MaterialProperty))
+INSTANTIATE_DIM_PORDER_MATERIALSTATES_HOST(TUPLE(MaterialProperty))
+INSTANTIATE_DIM_PORDER_MATERIALSTATES_DEVICE(TUPLE(MaterialProperty))

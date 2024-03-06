@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2023, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -25,23 +25,6 @@ namespace LA = LinearAlgebra;
 
 namespace adamantine
 {
-/**
- * Enum on the possible materials.
- */
-enum class MaterialState
-{
-  powder,
-  solid,
-  liquid,
-  SIZE
-};
-
-/**
- * Maximum different number of states a given material can be.
- */
-static unsigned int constexpr g_n_material_states =
-    static_cast<unsigned int>(MaterialState::SIZE);
-
 /**
  * Enum on the possible material properties that depend on the state of the
  * material.
@@ -114,7 +97,7 @@ static unsigned int constexpr g_n_properties =
  * Array containing the possible material states.
  */
 static std::array<std::string, 3> const material_state_names = {
-    {"powder", "solid", "liquid"}};
+    {"solid", "liquid", "powder"}};
 
 /**
  * Array continaing the possible material properties that do not depend on the
