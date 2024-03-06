@@ -235,12 +235,12 @@ The implementation is done matrix-free for the following reasons:
 Usually, the powder layer is about 50 microns thick but the piece that is being
 built is several centimeters long. Moreover, since the material is melted using
 an electron beam or a laser, the melting zone is very localized. This means that
-a uniform would require a very large number of cells in place where nothing
+a uniform mesh would require a very large number of cells in places where nothing
 happens (material not heated yet or already cooled). Using AMR, we can refine
-the zones that are of interest for during a given time.
+the zones that are of interest for a given point in time.
 
 ## Data assimilation
 The goal of data assimilation is to combine a numerical simulation simulation.
 Experimental data from infra-red cameras and thermo-couples can
-be used to improve the simulation. This is done using  the stochastic Ensemble 
+be used to improve the simulation. This is done using the stochastic Ensemble
 Kalman filter method.
