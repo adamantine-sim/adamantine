@@ -249,8 +249,8 @@ template <int dim, bool use_table, int p_order, int fe_degree,
 void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                      MemorySpaceType>::
     update_state_ratios(
-        unsigned int cell, unsigned int q,
-        dealii::VectorizedArray<double> temperature,
+        [[maybe_unused]] unsigned int cell, [[maybe_unused]] unsigned int q,
+        [[maybe_unused]] dealii::VectorizedArray<double> temperature,
         std::array<dealii::VectorizedArray<double>,
                    MaterialStates::n_material_states> &state_ratios) const
 {
@@ -341,19 +341,26 @@ template <int dim, bool use_table, int p_order, int fe_degree,
 void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                      MemorySpaceType>::
     update_face_state_ratios(
-        unsigned int face, unsigned int q,
-        dealii::VectorizedArray<double> temperature,
+        [[maybe_unused]] unsigned int face, [[maybe_unused]] unsigned int q,
+        [[maybe_unused]] dealii::VectorizedArray<double> temperature,
         std::array<dealii::VectorizedArray<double>,
                    MaterialStates::n_material_states> &face_state_ratios) const
 {
   unsigned int constexpr solid =
       static_cast<unsigned int>(MaterialStates::State::solid);
-  unsigned int constexpr liquid =
-      static_cast<unsigned int>(MaterialStates::State::liquid);
 
-  // Take care of Solid and SolidLiquid
-  if constexpr (!std::is_same_v<MemorySpaceType, SolidLiquidPowder>)
+  if constexpr (std::is_same_v<MemorySpaceType, SolidLiquid>)
   {
+    // We just nee to fill state_ratios with 1.
+    for (unsigned int n = 0; n < face_state_ratios[solid].size(); ++n)
+    {
+      face_state_ratios[solid][n] = 1.;
+    }
+  }
+  else if constexpr (std::is_same_v<MemorySpaceType, SolidLiquid>)
+  {
+    unsigned int constexpr liquid =
+        static_cast<unsigned int>(MaterialStates::State::liquid);
     // Loop over the vectorized arrays
     for (unsigned int n = 0; n < temperature.size(); ++n)
     {
@@ -380,8 +387,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
       face_state_ratios[solid][n] = 1. - face_state_ratios[liquid][n];
     }
   }
-  else
+  else if constexpr (std::is_same_v<MemorySpaceType, SolidLiquidPowder>)
   {
+    unsigned int constexpr liquid =
+        static_cast<unsigned int>(MaterialStates::State::liquid);
     unsigned int constexpr powder =
         static_cast<unsigned int>(MaterialStates::State::powder);
 
@@ -440,17 +449,7 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   // Here we need the specific heat (including the latent heat contribution)
   // and the density
 
-  // First, get the state-independent material properties
-  dealii::VectorizedArray<double> solidus, liquidus, latent_heat;
-  for (unsigned int n = 0; n < solidus.size(); ++n)
-  {
-    solidus[n] = _material_properties.get(material_id[n], Property::solidus);
-    liquidus[n] = _material_properties.get(material_id[n], Property::liquidus);
-    latent_heat[n] =
-        _material_properties.get(material_id[n], Property::latent_heat);
-  }
-
-  // Now compute the state-dependent properties
+  // Compute the state-dependent properties
   dealii::VectorizedArray<double> density =
       _material_properties.template compute_material_property<use_table>(
           StateProperty::density, material_id.data(), state_ratios.data(),
@@ -462,14 +461,28 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
           temperature, temperature_powers);
 
   // Add in the latent heat contribution
-  unsigned int constexpr liquid =
-      static_cast<unsigned int>(MaterialStates::State::liquid);
-
-  for (unsigned int n = 0; n < specific_heat.size(); ++n)
+  if constexpr (!std::is_same_v<MaterialStates, Solid>)
   {
-    if (state_ratios[liquid][n] > 0.0 && (state_ratios[liquid][n] < 1.0))
+    // Get the state-independent material properties
+    dealii::VectorizedArray<double> solidus, liquidus, latent_heat;
+    for (unsigned int n = 0; n < solidus.size(); ++n)
     {
-      specific_heat[n] += latent_heat[n] / (liquidus[n] - solidus[n]);
+      solidus[n] = _material_properties.get(material_id[n], Property::solidus);
+      liquidus[n] =
+          _material_properties.get(material_id[n], Property::liquidus);
+      latent_heat[n] =
+          _material_properties.get(material_id[n], Property::latent_heat);
+    }
+
+    unsigned int constexpr liquid =
+        static_cast<unsigned int>(MaterialStates::State::liquid);
+
+    for (unsigned int n = 0; n < specific_heat.size(); ++n)
+    {
+      if (state_ratios[liquid][n] > 0.0 && (state_ratios[liquid][n] < 1.0))
+      {
+        specific_heat[n] += latent_heat[n] / (liquidus[n] - solidus[n]);
+      }
     }
   }
 
@@ -753,11 +766,16 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(
       _matrix_free);
 
-  _liquid_ratio.reinit(n_cells, fe_eval.n_q_points);
+  if constexpr (!std::is_same_v<MaterialStates, Solid>)
+  {
+    _liquid_ratio.reinit(n_cells, fe_eval.n_q_points);
+  }
+
   if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
   {
     _powder_ratio.reinit(n_cells, fe_eval.n_q_points);
   }
+
   _material_id.reinit(n_cells, fe_eval.n_q_points);
 
   for (unsigned int cell = 0; cell < n_cells; ++cell)
@@ -771,13 +789,18 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
         typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
             cell_it);
 
-        _liquid_ratio(cell, q)[i] = _material_properties.get_state_ratio(
-            cell_tria, MaterialStates::State::liquid);
+        if constexpr (!std::is_same_v<MaterialStates, Solid>)
+        {
+          _liquid_ratio(cell, q)[i] = _material_properties.get_state_ratio(
+              cell_tria, MaterialStates::State::liquid);
+        }
+
         if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
         {
           _powder_ratio(cell, q)[i] = _material_properties.get_state_ratio(
               cell_tria, MaterialStates::State::powder);
         }
+
         _material_id(cell, q)[i] = cell_tria->material_id();
       }
 
@@ -796,6 +819,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
     {
       _face_powder_ratio.reinit(n_faces, fe_face_eval.n_q_points);
     }
+
     _face_material_id.reinit(n_faces, fe_face_eval.n_q_points);
 
     for (unsigned int face = 0; face < n_inner_faces; ++face)
@@ -828,6 +852,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                   _material_properties.get_state_ratio(
                       cell_tria, MaterialStates::State::powder);
             }
+
             _face_material_id(face, q)[i] = cell_tria->material_id();
           }
         }
@@ -857,6 +882,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                   _material_properties.get_state_ratio(
                       cell_tria, MaterialStates::State::powder);
             }
+
             _face_material_id(face, q)[i] = cell_tria->material_id();
           }
         }

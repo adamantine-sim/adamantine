@@ -111,19 +111,21 @@ public:
 private:
   /**
    * Update the ratios of the material state.
+   * @Note The input variables are not used when the only valid state is solid.
    */
   void update_state_ratios(
-      unsigned int cell, unsigned int q,
-      dealii::VectorizedArray<double> temperature,
+      [[maybe_unused]] unsigned int cell, [[maybe_unused]] unsigned int q,
+      [[maybe_unused]] dealii::VectorizedArray<double> temperature,
       std::array<dealii::VectorizedArray<double>,
                  MaterialStates::n_material_states> &state_ratios) const;
 
   /**
    * Update the ratios of the material state at the face quadrature points.
+   * @Note The input variables are not used when the only valid state is solid.
    */
   void update_face_state_ratios(
-      unsigned int face, unsigned int q,
-      dealii::VectorizedArray<double> temperature,
+      [[maybe_unused]] unsigned int face, [[maybe_unused]] unsigned int q,
+      [[maybe_unused]] dealii::VectorizedArray<double> temperature,
       std::array<dealii::VectorizedArray<double>,
                  MaterialStates::n_material_states> &state_ratios) const;
   /**

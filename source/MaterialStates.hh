@@ -69,7 +69,6 @@ struct Solid
   enum class State
   {
     solid,
-    liquid,
     SIZE
   };
 

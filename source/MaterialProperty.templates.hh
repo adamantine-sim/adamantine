@@ -298,53 +298,57 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
       "adamantine::update_material_properties",
       Kokkos::RangePolicy<ExecutionSpace>(0, material_ids_size),
       KOKKOS_CLASS_LAMBDA(int i) {
-        unsigned int constexpr liquid =
-            static_cast<unsigned int>(MaterialStates::State::liquid);
         unsigned int constexpr solid =
             static_cast<unsigned int>(MaterialStates::State::solid);
         unsigned int constexpr prop_solidus =
             static_cast<unsigned int>(Property::solidus);
         unsigned int constexpr prop_liquidus =
             static_cast<unsigned int>(Property::liquidus);
+        // Set solid_ratio to one, since that's the value when MaterialStates is
+        // Solid
+        double solid_ratio = 1.;
+        double liquid_ratio = 0.;
 
         dealii::types::material_id material_id = material_ids_mirror(i);
         double const solidus = _properties(material_id, prop_solidus);
         double const liquidus = _properties(material_id, prop_liquidus);
         unsigned int const dof = mp_dofs_mirror(i);
 
-        // First determine the ratio of liquid.
-        double liquid_ratio = -1.;
-        double solid_ratio = -1.;
-        if (temperature_average_local[dof] < solidus)
-          liquid_ratio = 0.;
-        else if (temperature_average_local[dof] > liquidus)
-          liquid_ratio = 1.;
-        else
-          liquid_ratio =
-              (temperature_average_local[dof] - solidus) / (liquidus - solidus);
-
-        if constexpr (!std::is_same_v<MaterialStates, SolidLiquidPowder>)
+        if constexpr (!std::is_same_v<MaterialStates, Solid>)
         {
-          solid_ratio = 1. - liquid_ratio;
-        }
-        else
-        {
-          unsigned int constexpr powder =
-              static_cast<unsigned int>(MaterialStates::State::powder);
-          // Because the powder can only become liquid, the solid can only
-          // become liquid, and the liquid can only become solid, the ratio of
-          // powder can only decrease.
-          double powder_ratio =
-              Kokkos::min(1. - liquid_ratio, _state(powder, dof));
-          solid_ratio = 1. - liquid_ratio - powder_ratio;
+          unsigned int constexpr liquid =
+              static_cast<unsigned int>(MaterialStates::State::liquid);
+          // First determine the ratio of liquid.
+          if (temperature_average_local[dof] < solidus)
+            liquid_ratio = 0.;
+          else if (temperature_average_local[dof] > liquidus)
+            liquid_ratio = 1.;
+          else
+            liquid_ratio = (temperature_average_local[dof] - solidus) /
+                           (liquidus - solidus);
+          if constexpr (std::is_same_v<MaterialStates, SolidLiquid>)
+          {
+            solid_ratio = 1. - liquid_ratio;
+          }
+          else if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
+          {
+            unsigned int constexpr powder =
+                static_cast<unsigned int>(MaterialStates::State::powder);
+            // Because the powder can only become liquid, the solid can only
+            // become liquid, and the liquid can only become solid, the ratio of
+            // powder can only decrease.
+            double powder_ratio =
+                Kokkos::min(1. - liquid_ratio, _state(powder, dof));
+            solid_ratio = 1. - liquid_ratio - powder_ratio;
 
-          // Update _state
-          _state(powder, dof) = powder_ratio;
+            // Update _state
+            _state(powder, dof) = powder_ratio;
+          }
+          _state(liquid, dof) = liquid_ratio;
         }
 
         // Update _state
         _state(solid, dof) = solid_ratio;
-        _state(liquid, dof) = liquid_ratio;
 
         if (_use_table)
         {
@@ -386,20 +390,23 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
 
         // If we are in the mushy state, i.e., part liquid part solid, we need
         // to modify the rho C_p to take into account the latent heat.
-        if ((liquid_ratio > 0.) && (liquid_ratio < 1.))
+        if constexpr (!std::is_same_v<MaterialStates, Solid>)
         {
-          unsigned int const specific_heat_prop =
-              static_cast<unsigned int>(StateProperty::specific_heat);
-          unsigned int const latent_heat_prop =
-              static_cast<unsigned int>(Property::latent_heat);
-          for (unsigned int material_state = 0;
-               material_state < MaterialStates::n_material_states;
-               ++material_state)
+          if ((liquid_ratio > 0.) && (liquid_ratio < 1.))
           {
-            _property_values(specific_heat_prop, dof) +=
-                _state(material_state, dof) *
-                _properties(material_id, latent_heat_prop) /
-                (liquidus - solidus);
+            unsigned int const specific_heat_prop =
+                static_cast<unsigned int>(StateProperty::specific_heat);
+            unsigned int const latent_heat_prop =
+                static_cast<unsigned int>(Property::latent_heat);
+            for (unsigned int material_state = 0;
+                 material_state < MaterialStates::n_material_states;
+                 ++material_state)
+            {
+              _property_values(specific_heat_prop, dof) +=
+                  _state(material_state, dof) *
+                  _properties(material_id, latent_heat_prop) /
+                  (liquidus - solidus);
+            }
           }
         }
 
@@ -519,65 +526,81 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::set_state(
-    dealii::Table<2, dealii::VectorizedArray<double>> const &liquid_ratio,
-    dealii::Table<2, dealii::VectorizedArray<double>> const &powder_ratio,
-    std::map<typename dealii::DoFHandler<dim>::cell_iterator,
-             std::pair<unsigned int, unsigned int>> &cell_it_to_mf_cell_map,
-    dealii::DoFHandler<dim> const &dof_handler)
+    [[maybe_unused]] dealii::Table<2, dealii::VectorizedArray<double>> const
+        &liquid_ratio,
+    [[maybe_unused]] dealii::Table<2, dealii::VectorizedArray<double>> const
+        &powder_ratio,
+    [[maybe_unused]] std::map<typename dealii::DoFHandler<dim>::cell_iterator,
+                              std::pair<unsigned int, unsigned int>>
+        &cell_it_to_mf_cell_map,
+    [[maybe_unused]] dealii::DoFHandler<dim> const &dof_handler)
 {
-  auto constexpr solid_state =
-      static_cast<unsigned int>(MaterialStates::State::solid);
-  auto constexpr liquid_state =
-      static_cast<unsigned int>(MaterialStates::State::liquid);
-  std::vector<dealii::types::global_dof_index> mp_dof(1.);
 
-  if constexpr (!std::is_same_v<MaterialStates, SolidLiquidPowder>)
+  if constexpr (std::is_same_v<MaterialStates, Solid>)
   {
-    for (auto const &cell :
-         dealii::filter_iterators(dof_handler.active_cell_iterators(),
-                                  dealii::IteratorFilters::LocallyOwnedCell()))
-    {
-      typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
-      auto mp_dof_index = get_dof_index(cell_tria);
-      auto const &mf_cell_vector = cell_it_to_mf_cell_map[cell];
-      unsigned int const n_q_points = dof_handler.get_fe().tensor_degree() + 1;
-      double liquid_ratio_sum = 0.;
-      for (unsigned int q = 0; q < n_q_points; ++q)
-      {
-        liquid_ratio_sum +=
-            liquid_ratio(mf_cell_vector.first, q)[mf_cell_vector.second];
-      }
-      _state(liquid_state, mp_dof_index) = liquid_ratio_sum / n_q_points;
-      _state(solid_state, mp_dof_index) =
-          1. - _state(liquid_state, mp_dof_index);
-    }
+    // When there is only Solid, we know we can set all of _state to one.
+    Kokkos::deep_copy(_state, 1.);
   }
   else
   {
-    auto constexpr powder_state =
-        static_cast<unsigned int>(MaterialStates::State::powder);
-    for (auto const &cell :
-         dealii::filter_iterators(dof_handler.active_cell_iterators(),
-                                  dealii::IteratorFilters::LocallyOwnedCell()))
+    auto constexpr solid_state =
+        static_cast<unsigned int>(MaterialStates::State::solid);
+    auto constexpr liquid_state =
+        static_cast<unsigned int>(MaterialStates::State::liquid);
+    std::vector<dealii::types::global_dof_index> mp_dof(1.);
+
+    if constexpr (std::is_same_v<MaterialStates, SolidLiquid>)
     {
-      typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
-      auto mp_dof_index = get_dof_index(cell_tria);
-      auto const &mf_cell_vector = cell_it_to_mf_cell_map[cell];
-      unsigned int const n_q_points = dof_handler.get_fe().tensor_degree() + 1;
-      double liquid_ratio_sum = 0.;
-      double powder_ratio_sum = 0.;
-      for (unsigned int q = 0; q < n_q_points; ++q)
+      for (auto const &cell : dealii::filter_iterators(
+               dof_handler.active_cell_iterators(),
+               dealii::IteratorFilters::LocallyOwnedCell()))
       {
-        liquid_ratio_sum +=
-            liquid_ratio(mf_cell_vector.first, q)[mf_cell_vector.second];
-        powder_ratio_sum +=
-            powder_ratio(mf_cell_vector.first, q)[mf_cell_vector.second];
+        typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
+            cell);
+        auto mp_dof_index = get_dof_index(cell_tria);
+        auto const &mf_cell_vector = cell_it_to_mf_cell_map[cell];
+        unsigned int const n_q_points =
+            dof_handler.get_fe().tensor_degree() + 1;
+        double liquid_ratio_sum = 0.;
+        for (unsigned int q = 0; q < n_q_points; ++q)
+        {
+          liquid_ratio_sum +=
+              liquid_ratio(mf_cell_vector.first, q)[mf_cell_vector.second];
+        }
+        _state(liquid_state, mp_dof_index) = liquid_ratio_sum / n_q_points;
+        _state(solid_state, mp_dof_index) =
+            1. - _state(liquid_state, mp_dof_index);
       }
-      _state(liquid_state, mp_dof_index) = liquid_ratio_sum / n_q_points;
-      _state(powder_state, mp_dof_index) = powder_ratio_sum / n_q_points;
-      _state(solid_state, mp_dof_index) = 1. -
-                                          _state(liquid_state, mp_dof_index) -
-                                          _state(powder_state, mp_dof_index);
+    }
+    else if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
+    {
+      auto constexpr powder_state =
+          static_cast<unsigned int>(MaterialStates::State::powder);
+      for (auto const &cell : dealii::filter_iterators(
+               dof_handler.active_cell_iterators(),
+               dealii::IteratorFilters::LocallyOwnedCell()))
+      {
+        typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
+            cell);
+        auto mp_dof_index = get_dof_index(cell_tria);
+        auto const &mf_cell_vector = cell_it_to_mf_cell_map[cell];
+        unsigned int const n_q_points =
+            dof_handler.get_fe().tensor_degree() + 1;
+        double liquid_ratio_sum = 0.;
+        double powder_ratio_sum = 0.;
+        for (unsigned int q = 0; q < n_q_points; ++q)
+        {
+          liquid_ratio_sum +=
+              liquid_ratio(mf_cell_vector.first, q)[mf_cell_vector.second];
+          powder_ratio_sum +=
+              powder_ratio(mf_cell_vector.first, q)[mf_cell_vector.second];
+        }
+        _state(liquid_state, mp_dof_index) = liquid_ratio_sum / n_q_points;
+        _state(powder_state, mp_dof_index) = powder_ratio_sum / n_q_points;
+        _state(solid_state, mp_dof_index) = 1. -
+                                            _state(liquid_state, mp_dof_index) -
+                                            _state(powder_state, mp_dof_index);
+      }
     }
   }
 }
@@ -633,52 +656,62 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
              mp_dof_host.extent(0));
   Kokkos::deep_copy(mp_dof, mp_dof_host);
 
-  auto const solid_state =
-      static_cast<unsigned int>(MaterialStates::State::solid);
-  auto const liquid_state =
-      static_cast<unsigned int>(MaterialStates::State::liquid);
-  if constexpr (!std::is_same_v<MaterialStates, SolidLiquidPowder>)
+  if constexpr (std::is_same_v<MaterialStates, Solid>)
   {
-    using ExecutionSpace = std::conditional_t<
-        std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
-        Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
-    Kokkos::parallel_for(
-        "adamantine::set_state_device",
-        Kokkos::RangePolicy<ExecutionSpace>(0, cell_i),
-        KOKKOS_CLASS_LAMBDA(int i) {
-          double liquid_ratio_sum = 0.;
-          for (unsigned int q = 0; q < n_q_points; ++q)
-          {
-            liquid_ratio_sum += liquid_ratio(mapping(i, q));
-          }
-          _state(liquid_state, mp_dof(i)) = liquid_ratio_sum / n_q_points;
-          _state(solid_state, mp_dof(i)) = 1. - _state(liquid_state, mp_dof(i));
-        });
+    // When there is only Solid, we can just set _state to one.
+    Kokkos::deep_copy(_state, 1.);
   }
   else
   {
-    auto const powder_state =
-        static_cast<unsigned int>(MaterialStates::State::powder);
-    using ExecutionSpace = std::conditional_t<
-        std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
-        Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
-    Kokkos::parallel_for(
-        "adamantine::set_state_device",
-        Kokkos::RangePolicy<ExecutionSpace>(0, cell_i),
-        KOKKOS_CLASS_LAMBDA(int i) {
-          double liquid_ratio_sum = 0.;
-          double powder_ratio_sum = 0.;
-          for (unsigned int q = 0; q < n_q_points; ++q)
-          {
-            liquid_ratio_sum += liquid_ratio(mapping(i, q));
-            powder_ratio_sum += powder_ratio(mapping(i, q));
-          }
-          _state(liquid_state, mp_dof(i)) = liquid_ratio_sum / n_q_points;
-          _state(powder_state, mp_dof(i)) = powder_ratio_sum / n_q_points;
-          _state(solid_state, mp_dof(i)) = 1. -
-                                           _state(liquid_state, mp_dof(i)) -
-                                           _state(powder_state, mp_dof(i));
-        });
+    auto const solid_state =
+        static_cast<unsigned int>(MaterialStates::State::solid);
+    auto const liquid_state =
+        static_cast<unsigned int>(MaterialStates::State::liquid);
+
+    if constexpr (std::is_same_v<MaterialStates, SolidLiquid>)
+    {
+      using ExecutionSpace = std::conditional_t<
+          std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
+          Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
+      Kokkos::parallel_for(
+          "adamantine::set_state_device",
+          Kokkos::RangePolicy<ExecutionSpace>(0, cell_i),
+          KOKKOS_CLASS_LAMBDA(int i) {
+            double liquid_ratio_sum = 0.;
+            for (unsigned int q = 0; q < n_q_points; ++q)
+            {
+              liquid_ratio_sum += liquid_ratio(mapping(i, q));
+            }
+            _state(liquid_state, mp_dof(i)) = liquid_ratio_sum / n_q_points;
+            _state(solid_state, mp_dof(i)) =
+                1. - _state(liquid_state, mp_dof(i));
+          });
+    }
+    else if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
+    {
+      auto const powder_state =
+          static_cast<unsigned int>(MaterialStates::State::powder);
+      using ExecutionSpace = std::conditional_t<
+          std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
+          Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
+      Kokkos::parallel_for(
+          "adamantine::set_state_device",
+          Kokkos::RangePolicy<ExecutionSpace>(0, cell_i),
+          KOKKOS_CLASS_LAMBDA(int i) {
+            double liquid_ratio_sum = 0.;
+            double powder_ratio_sum = 0.;
+            for (unsigned int q = 0; q < n_q_points; ++q)
+            {
+              liquid_ratio_sum += liquid_ratio(mapping(i, q));
+              powder_ratio_sum += powder_ratio(mapping(i, q));
+            }
+            _state(liquid_state, mp_dof(i)) = liquid_ratio_sum / n_q_points;
+            _state(powder_state, mp_dof(i)) = powder_ratio_sum / n_q_points;
+            _state(solid_state, mp_dof(i)) = 1. -
+                                             _state(liquid_state, mp_dof(i)) -
+                                             _state(powder_state, mp_dof(i));
+          });
+    }
   }
 }
 
