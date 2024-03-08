@@ -47,7 +47,6 @@ struct SolidLiquid
   {
     solid,
     liquid,
-    powder,
     SIZE
   };
 
@@ -71,7 +70,6 @@ struct Solid
   {
     solid,
     liquid,
-    powder,
     SIZE
   };
 

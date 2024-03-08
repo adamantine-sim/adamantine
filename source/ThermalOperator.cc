@@ -19,6 +19,8 @@
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
 
+#include <type_traits>
+
 namespace adamantine
 {
 
@@ -344,50 +346,81 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
         std::array<dealii::VectorizedArray<double>,
                    MaterialStates::n_material_states> &face_state_ratios) const
 {
-  unsigned int constexpr liquid =
-      static_cast<unsigned int>(MaterialStates::State::liquid);
-  unsigned int constexpr powder =
-      static_cast<unsigned int>(MaterialStates::State::powder);
   unsigned int constexpr solid =
       static_cast<unsigned int>(MaterialStates::State::solid);
+  unsigned int constexpr liquid =
+      static_cast<unsigned int>(MaterialStates::State::liquid);
 
-  // Loop over the vectorized arrays
-  for (unsigned int n = 0; n < temperature.size(); ++n)
+  // Take care of Solid and SolidLiquid
+  if constexpr (!std::is_same_v<MemorySpaceType, SolidLiquidPowder>)
   {
-    // Get the material id at this point
-    dealii::types::material_id const material_id =
-        _face_material_id(face, q)[n];
-
-    // Get the material thermodynamic properties
-    double const solidus =
-        _material_properties.get(material_id, Property::solidus);
-    double const liquidus =
-        _material_properties.get(material_id, Property::liquidus);
-
-    // Update the state ratios
-    face_state_ratios[powder] = _face_powder_ratio(face, q);
-
-    if (temperature[n] < solidus)
-      face_state_ratios[liquid][n] = 0.;
-    else if (temperature[n] > liquidus)
-      face_state_ratios[liquid][n] = 1.;
-    else
+    // Loop over the vectorized arrays
+    for (unsigned int n = 0; n < temperature.size(); ++n)
     {
-      face_state_ratios[liquid][n] =
-          (temperature[n] - solidus) / (liquidus - solidus);
-    }
-    // Because the powder can only become liquid, the solid can only
-    // become liquid, and the liquid can only become solid, the ratio of
-    // powder can only decrease.
-    face_state_ratios[powder][n] = std::min(1. - face_state_ratios[liquid][n],
-                                            face_state_ratios[powder][n]);
-    // Use max to make sure that we don't create matter because of
-    // round-off.
-    face_state_ratios[solid][n] = std::max(
-        1. - face_state_ratios[liquid][n] - face_state_ratios[powder][n], 0.);
-  }
+      // Get the material id at this point
+      dealii::types::material_id const material_id =
+          _face_material_id(face, q)[n];
 
-  _face_powder_ratio(face, q) = face_state_ratios[powder];
+      // Get the material thermodynamic properties
+      double const solidus =
+          _material_properties.get(material_id, Property::solidus);
+      double const liquidus =
+          _material_properties.get(material_id, Property::liquidus);
+
+      // Update the state ratios
+      if (temperature[n] < solidus)
+        face_state_ratios[liquid][n] = 0.;
+      else if (temperature[n] > liquidus)
+        face_state_ratios[liquid][n] = 1.;
+      else
+      {
+        face_state_ratios[liquid][n] =
+            (temperature[n] - solidus) / (liquidus - solidus);
+      }
+      face_state_ratios[solid][n] = 1. - face_state_ratios[liquid][n];
+    }
+  }
+  else
+  {
+    unsigned int constexpr powder =
+        static_cast<unsigned int>(MaterialStates::State::powder);
+
+    // Loop over the vectorized arrays
+    for (unsigned int n = 0; n < temperature.size(); ++n)
+    {
+      // Get the material id at this point
+      dealii::types::material_id const material_id =
+          _face_material_id(face, q)[n];
+
+      // Get the material thermodynamic properties
+      double const solidus =
+          _material_properties.get(material_id, Property::solidus);
+      double const liquidus =
+          _material_properties.get(material_id, Property::liquidus);
+
+      // Update the state ratios
+      face_state_ratios[powder] = _face_powder_ratio(face, q);
+
+      if (temperature[n] < solidus)
+        face_state_ratios[liquid][n] = 0.;
+      else if (temperature[n] > liquidus)
+        face_state_ratios[liquid][n] = 1.;
+      else
+      {
+        face_state_ratios[liquid][n] =
+            (temperature[n] - solidus) / (liquidus - solidus);
+      }
+      // Because the powder can only become liquid, the solid can only
+      // become liquid, and the liquid can only become solid, the ratio of
+      // powder can only decrease.
+      face_state_ratios[powder][n] = std::min(1. - face_state_ratios[liquid][n],
+                                              face_state_ratios[powder][n]);
+      face_state_ratios[solid][n] =
+          1. - face_state_ratios[liquid][n] - face_state_ratios[powder][n];
+    }
+
+    _face_powder_ratio(face, q) = face_state_ratios[powder];
+  }
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
@@ -459,9 +492,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
 
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(data);
   std::array<dealii::VectorizedArray<double>, MaterialStates::n_material_states>
-      state_ratios = {{dealii::make_vectorized_array(-1.0),
-                       dealii::make_vectorized_array(-1.0),
-                       dealii::make_vectorized_array(-1.0)}};
+      state_ratios;
 
   // We need powers of temperature to compute the material properties. We
   // could compute it in MaterialProperty but because it's in a hot loop.
@@ -600,11 +631,14 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   auto const adjacent_cells_fe_index = data.get_face_range_category(face_range);
   // We now have four cases:
   //  - cell_1 = cell_2 = FE_Q: internal face of the activated domain
-  //  - cell_1/2 = FE_Q and cell_2/1 = FE_Nothing/does not exit: boundary of the
+  //  - cell_1/2 = FE_Q and cell_2/1 = FE_Nothing/does not exit: boundary of
+  //  the
   //      activated domain
-  //  - cell_1/2 = FE_Nothing and cell_2/1 = does not exit: external boundary of
+  //  - cell_1/2 = FE_Nothing and cell_2/1 = does not exit: external boundary
+  //  of
   //      the deactivated domain
-  //  - cell_1 = cell_2 = FE_Nothing: internal face of the non-activated domain
+  //  - cell_1 = cell_2 = FE_Nothing: internal face of the non-activated
+  //  domain
   // Since we only care on the faces that are at the boundary of the activated
   // domain, we need to check that cell_1 is different than cell_2 and that at
   // one of the two cells is using FE_Q
@@ -618,14 +652,13 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
     return;
   }
 
-  // Create the FEFaceEvaluation object. The boolean in the constructor is used
-  // to decided which cell the face should be exterior to.
+  // Create the FEFaceEvaluation object. The boolean in the constructor is
+  // used to decided which cell the face should be exterior to.
   dealii::FEFaceEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
       fe_face_eval(data, adjacent_cells_fe_index.first == 0);
   std::array<dealii::VectorizedArray<double>, MaterialStates::n_material_states>
-      face_state_ratios = {{dealii::make_vectorized_array(-1.0),
-                            dealii::make_vectorized_array(-1.0),
-                            dealii::make_vectorized_array(-1.0)}};
+      face_state_ratios;
+
   // Create variables used to compute boundary conditions.
   auto conv_temperature_infty = dealii::make_vectorized_array<double>(0.);
   auto conv_heat_transfer_coef = dealii::make_vectorized_array<double>(0.);
@@ -686,8 +719,8 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
               material_id[n], Property::radiation_temperature_infty);
         }
 
-        // We need the radiation heat transfer coefficient but it is not a real
-        // material property but it is derived from other material
+        // We need the radiation heat transfer coefficient but it is not a
+        // real material property but it is derived from other material
         // properties: h_rad = emissitivity * stefan-boltzmann constant * (T
         // + T_infty) (T^2 + T^2_infty).
         rad_heat_transfer_coef =
@@ -721,7 +754,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
       _matrix_free);
 
   _liquid_ratio.reinit(n_cells, fe_eval.n_q_points);
-  _powder_ratio.reinit(n_cells, fe_eval.n_q_points);
+  if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
+  {
+    _powder_ratio.reinit(n_cells, fe_eval.n_q_points);
+  }
   _material_id.reinit(n_cells, fe_eval.n_q_points);
 
   for (unsigned int cell = 0; cell < n_cells; ++cell)
@@ -737,8 +773,11 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
 
         _liquid_ratio(cell, q)[i] = _material_properties.get_state_ratio(
             cell_tria, MaterialStates::State::liquid);
-        _powder_ratio(cell, q)[i] = _material_properties.get_state_ratio(
-            cell_tria, MaterialStates::State::powder);
+        if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
+        {
+          _powder_ratio(cell, q)[i] = _material_properties.get_state_ratio(
+              cell_tria, MaterialStates::State::powder);
+        }
         _material_id(cell, q)[i] = cell_tria->material_id();
       }
 
@@ -753,7 +792,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
     dealii::FEFaceEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
         fe_face_eval(_matrix_free, true);
 
-    _face_powder_ratio.reinit(n_faces, fe_face_eval.n_q_points);
+    if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
+    {
+      _face_powder_ratio.reinit(n_faces, fe_face_eval.n_q_points);
+    }
     _face_material_id.reinit(n_faces, fe_face_eval.n_q_points);
 
     for (unsigned int face = 0; face < n_inner_faces; ++face)
@@ -774,14 +816,18 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
             continue;
           }
           // We need the cell that has FE_Q not the one that has FE_Nothing
-          // Cast to Triangulation<dim>::cell_iterator to access the material_id
+          // Cast to Triangulation<dim>::cell_iterator to access the
+          // material_id
           typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
               (active_fe_index_1 == 0) ? cell_1 : cell_2);
           if (cell_tria->is_locally_owned())
           {
-            _face_powder_ratio(face, q)[i] =
-                _material_properties.get_state_ratio(
-                    cell_tria, MaterialStates::State::powder);
+            if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
+            {
+              _face_powder_ratio(face, q)[i] =
+                  _material_properties.get_state_ratio(
+                      cell_tria, MaterialStates::State::powder);
+            }
             _face_material_id(face, q)[i] = cell_tria->material_id();
           }
         }
@@ -799,14 +845,18 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
             continue;
           }
           // We need the cell that has FE_Q not the one that has FE_Nothing
-          // Cast to Triangulation<dim>::cell_iterator to access the material_id
+          // Cast to Triangulation<dim>::cell_iterator to access the
+          // material_id
           typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(
               cell);
           if (cell_tria->is_locally_owned())
           {
-            _face_powder_ratio(face, q)[i] =
-                _material_properties.get_state_ratio(
-                    cell_tria, MaterialStates::State::powder);
+            if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
+            {
+              _face_powder_ratio(face, q)[i] =
+                  _material_properties.get_state_ratio(
+                      cell_tria, MaterialStates::State::powder);
+            }
             _face_material_id(face, q)[i] = cell_tria->material_id();
           }
         }

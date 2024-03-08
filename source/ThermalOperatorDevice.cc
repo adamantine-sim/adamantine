@@ -134,13 +134,6 @@ ThermalOperatorQuad<dim, use_table, p_order, fe_degree,
                                                          double *state_ratios)
     const
 {
-  unsigned int constexpr liquid =
-      static_cast<unsigned int>(MaterialStates::State::liquid);
-  unsigned int constexpr powder =
-      static_cast<unsigned int>(MaterialStates::State::powder);
-  unsigned int constexpr solid =
-      static_cast<unsigned int>(MaterialStates::State::solid);
-
   // Get the material id at this point
   auto material_id = _material_id[pos];
 
@@ -150,31 +143,59 @@ ThermalOperatorQuad<dim, use_table, p_order, fe_degree,
   double const liquidus = _properties(
       material_id, static_cast<unsigned int>(adamantine::Property::liquidus));
 
-  // Update the state ratios
-  state_ratios[powder] = _powder_ratio(pos);
+  unsigned int constexpr solid =
+      static_cast<unsigned int>(MaterialStates::State::solid);
+  unsigned int constexpr liquid =
+      static_cast<unsigned int>(MaterialStates::State::liquid);
 
-  if (temperature < solidus)
-    state_ratios[liquid] = 0.;
-  else if (temperature > liquidus)
-    state_ratios[liquid] = 1.;
+  if constexpr (!std::is_same_v<MaterialStates, adamantine::SolidLiquidPowder>)
+  {
+    // Update the state ratios
+    if (temperature < solidus)
+    {
+      state_ratios[liquid] = 0.;
+    }
+    else if (temperature > liquidus)
+    {
+      state_ratios[liquid] = 1.;
+    }
+    else
+    {
+      state_ratios[liquid] = (temperature - solidus) / (liquidus - solidus);
+    }
+
+    // round-off.
+    state_ratios[solid] = 1. - state_ratios[liquid];
+
+    _liquid_ratio(pos) = state_ratios[liquid];
+  }
   else
-    state_ratios[liquid] = (temperature - solidus) / (liquidus - solidus);
+  {
+    unsigned int constexpr powder =
+        static_cast<unsigned int>(MaterialStates::State::powder);
 
-  // Because the powder can only become liquid, the solid can only
-  // become liquid, and the liquid can only become solid, the ratio of
-  // powder can only decrease.
-  state_ratios[powder] = (1. - state_ratios[liquid]) < state_ratios[powder]
-                             ? (1. - state_ratios[liquid])
-                             : state_ratios[powder];
+    // Update the state ratios
+    state_ratios[powder] = _powder_ratio(pos);
 
-  // Use max to make sure that we don't create matter because of
-  // round-off.
-  state_ratios[solid] = (1. - state_ratios[liquid] - state_ratios[powder]) > 0.
-                            ? (1. - state_ratios[liquid] - state_ratios[powder])
-                            : 0.;
+    if (temperature < solidus)
+      state_ratios[liquid] = 0.;
+    else if (temperature > liquidus)
+      state_ratios[liquid] = 1.;
+    else
+      state_ratios[liquid] = (temperature - solidus) / (liquidus - solidus);
 
-  _powder_ratio(pos) = state_ratios[powder];
-  _liquid_ratio(pos) = state_ratios[liquid];
+    // Because the powder can only become liquid, the solid can only
+    // become liquid, and the liquid can only become solid, the ratio of
+    // powder can only decrease.
+    state_ratios[powder] = (1. - state_ratios[liquid]) < state_ratios[powder]
+                               ? (1. - state_ratios[liquid])
+                               : state_ratios[powder];
+
+    state_ratios[solid] = 1. - state_ratios[liquid] - state_ratios[powder];
+
+    _powder_ratio(pos) = state_ratios[powder];
+    _liquid_ratio(pos) = state_ratios[liquid];
+  }
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
@@ -608,49 +629,78 @@ void ThermalOperatorDevice<
 {
   unsigned int const n_coefs =
       dealii::Utilities::pow(fe_degree + 1, dim) * _n_owned_cells;
-  _liquid_ratio = Kokkos::View<double *, kokkos_default>(
-      Kokkos::view_alloc("liquid_ratio", Kokkos::WithoutInitializing), n_coefs);
-  auto liquid_ratio_host =
-      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _liquid_ratio);
-  _powder_ratio = Kokkos::View<double *, kokkos_default>(
-      Kokkos::view_alloc("powder_ratio", Kokkos::WithoutInitializing), n_coefs);
-  auto powder_ratio_host =
-      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _powder_ratio);
   _material_id = Kokkos::View<dealii::types::material_id *, kokkos_default>(
       Kokkos::view_alloc("material_id", Kokkos::WithoutInitializing), n_coefs);
   auto material_id_host =
       Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _material_id);
   _inv_rho_cp = Kokkos::View<double *, kokkos_default>(
       Kokkos::view_alloc("inv_rho_cp", Kokkos::WithoutInitializing), n_coefs);
-
   unsigned int constexpr n_dofs_1d = fe_degree + 1;
   unsigned int constexpr n_q_points_per_cell =
       dealii::Utilities::pow(n_dofs_1d, dim);
-  for (auto const &cell : dealii::filter_iterators(
-           _matrix_free.get_dof_handler().active_cell_iterators(),
-           dealii::IteratorFilters::LocallyOwnedCell(),
-           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
-  {
-    // Cast to Triangulation<dim>::cell_iterator to access the material_id
-    typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
-    double const cell_liquid_ratio = _material_properties.get_state_ratio(
-        cell_tria, MaterialStates::State::liquid);
-    double const cell_powder_ratio = _material_properties.get_state_ratio(
-        cell_tria, MaterialStates::State::powder);
-    auto const cell_material_id = cell_tria->material_id();
 
-    for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
+  _liquid_ratio = Kokkos::View<double *, kokkos_default>(
+      Kokkos::view_alloc("liquid_ratio", Kokkos::WithoutInitializing), n_coefs);
+  auto liquid_ratio_host =
+      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _liquid_ratio);
+
+  if constexpr (!std::is_same_v<MaterialStates, SolidLiquidPowder>)
+  {
+    for (auto const &cell : dealii::filter_iterators(
+             _matrix_free.get_dof_handler().active_cell_iterators(),
+             dealii::IteratorFilters::LocallyOwnedCell(),
+             dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
     {
-      unsigned int const pos = _cell_it_to_mf_pos[cell][i];
-      liquid_ratio_host(pos) = cell_liquid_ratio;
-      powder_ratio_host(pos) = cell_powder_ratio;
-      material_id_host(pos) = cell_material_id;
+      // Cast to Triangulation<dim>::cell_iterator to access the material_id
+      typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
+      double const cell_liquid_ratio = _material_properties.get_state_ratio(
+          cell_tria, MaterialStates::State::liquid);
+      auto const cell_material_id = cell_tria->material_id();
+
+      for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
+      {
+        unsigned int const pos = _cell_it_to_mf_pos[cell][i];
+        liquid_ratio_host(pos) = cell_liquid_ratio;
+        material_id_host(pos) = cell_material_id;
+      }
     }
+  }
+  else
+  {
+    _powder_ratio = Kokkos::View<double *, kokkos_default>(
+        Kokkos::view_alloc("powder_ratio", Kokkos::WithoutInitializing),
+        n_coefs);
+    auto powder_ratio_host =
+        Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _powder_ratio);
+
+    for (auto const &cell : dealii::filter_iterators(
+             _matrix_free.get_dof_handler().active_cell_iterators(),
+             dealii::IteratorFilters::LocallyOwnedCell(),
+             dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+    {
+      // Cast to Triangulation<dim>::cell_iterator to access the material_id
+      typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
+      double const cell_liquid_ratio = _material_properties.get_state_ratio(
+          cell_tria, MaterialStates::State::liquid);
+      double const cell_powder_ratio = _material_properties.get_state_ratio(
+          cell_tria, MaterialStates::State::powder);
+      auto const cell_material_id = cell_tria->material_id();
+
+      for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
+      {
+        unsigned int const pos = _cell_it_to_mf_pos[cell][i];
+        liquid_ratio_host(pos) = cell_liquid_ratio;
+        powder_ratio_host(pos) = cell_powder_ratio;
+        material_id_host(pos) = cell_material_id;
+      }
+    }
+
+    // Move data to the device
+    Kokkos::deep_copy(_powder_ratio, powder_ratio_host);
   }
 
   // Move data to the device
   Kokkos::deep_copy(_liquid_ratio, liquid_ratio_host);
-  Kokkos::deep_copy(_powder_ratio, powder_ratio_host);
   Kokkos::deep_copy(_material_id, material_id_host);
 }
 
