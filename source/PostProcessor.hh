@@ -292,7 +292,6 @@ void PostProcessor<dim>::material_dataout(
   dealii::Vector<double> powder(n_active_cells);
   dealii::Vector<double> liquid(n_active_cells);
   dealii::Vector<double> solid(n_active_cells);
-  // TODO
   unsigned int constexpr powder_index =
       static_cast<unsigned int>(SolidLiquidPowder::State::powder);
   unsigned int constexpr liquid_index =
@@ -308,9 +307,13 @@ void PostProcessor<dim>::material_dataout(
       mp_cell->get_dof_indices(mp_dof_indices);
       dealii::types::global_dof_index const mp_dof_index =
           dofs_map.at(mp_dof_indices[0]);
-      powder[i] = state(powder_index, mp_dof_index);
-      liquid[i] = state(liquid_index, mp_dof_index);
       solid[i] = state(solid_index, mp_dof_index);
+      liquid[i] = liquid_index < state.extent(0)
+                      ? state(liquid_index, mp_dof_index)
+                      : 0.;
+      powder[i] = powder_index < state.extent(0)
+                      ? state(powder_index, mp_dof_index)
+                      : 0;
     }
   _data_out.add_data_vector(powder, "powder");
   _data_out.add_data_vector(liquid, "liquid");
