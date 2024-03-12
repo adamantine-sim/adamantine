@@ -35,8 +35,8 @@ BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation_augmented,
   boost::property_tree::info_parser::read_info(filename, database);
 
   // Run the simulation
-  auto result = run_ensemble<3, dealii::MemorySpace::Host>(communicator,
-                                                           database, timers);
+  auto result = run_ensemble<3, 3, dealii::MemorySpace::Host>(communicator,
+                                                              database, timers);
 
   // Three ensemble members expected
   unsigned int local_result_size = result.size();

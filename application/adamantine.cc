@@ -25,6 +25,83 @@
 #include <caliper/cali-manager.h>
 #endif
 
+int get_p_order(boost::property_tree::ptree &database)
+{
+  // We need to detect the degree of the polynomial. There are two cases. First,
+  // we are using a table format. In this case, we return zero. Second, we are
+  // using the polynomial format. In this case, we need to loop over all the
+  // materials, all the states, and all the properties to determine the
+  // polynomial order.
+
+  // PropertyTreeInput materials.property_format
+  if (database.get<std::string>("property_format") == "table")
+  {
+    return 0;
+  }
+  else
+  {
+    int p_order = 0;
+    // PropertyTreeInput materials.n_materials
+    unsigned int const n_materials = database.get<unsigned int>("n_materials");
+    // Find all the material_ids being used.
+    std::vector<dealii::types::material_id> material_ids;
+    for (dealii::types::material_id id = 0;
+         id < dealii::numbers::invalid_material_id; ++id)
+    {
+      if (database.count("material_" + std::to_string(id)) != 0)
+        material_ids.push_back(id);
+      if (material_ids.size() == n_materials)
+        break;
+    }
+
+    for (auto const material_id : material_ids)
+    {
+      // Get the material property tree.
+      boost::property_tree::ptree const &material_database =
+          database.get_child("material_" + std::to_string(material_id));
+      // For each material, loop over the possible states.
+      for (unsigned int state = 0; state < adamantine::g_n_material_states;
+           ++state)
+      {
+        // The state may or may not exist for the material.
+        boost::optional<boost::property_tree::ptree const &> state_database =
+            material_database.get_child_optional(
+                adamantine::material_state_names[state]);
+        if (state_database)
+        {
+          // For each state, loop over the possible properties.
+          for (unsigned int p = 0; p < adamantine::g_n_state_properties; ++p)
+          {
+            // The property may or may not exist for that state
+            boost::optional<std::string> const property =
+                state_database.get().get_optional<std::string>(
+                    adamantine::state_property_names[p]);
+            // If the property exists, put it in the map. If the property does
+            // not exist, we have a nullptr.
+            if (property)
+            {
+              // Remove blank spaces
+              std::string property_string = property.get();
+              property_string.erase(std::remove_if(property_string.begin(),
+                                                   property_string.end(),
+                                                   [](unsigned char x)
+                                                   { return std::isspace(x); }),
+                                    property_string.end());
+              std::vector<std::string> parsed_property;
+              boost::split(parsed_property, property_string,
+                           [](char c) { return c == ','; });
+              p_order = std::max(static_cast<int>(parsed_property.size() - 1),
+                                 p_order);
+            }
+          }
+        }
+      }
+    }
+
+    return p_order;
+  }
+}
+
 int main(int argc, char *argv[])
 {
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -60,8 +137,8 @@ int main(int argc, char *argv[])
     description.add_options()("help,h", "Produce help message.")(
         "input-file,i", boost_po::value<std::string>(),
         "Name of the input file.");
-    // Declare a map that will contains the values read. Parse the command line
-    // and finally populate the map.
+    // Declare a map that will contains the values read. Parse the command
+    // line and finally populate the map.
     boost_po::variables_map map;
     boost_po::store(boost_po::parse_command_line(argc, argv, description), map);
     boost_po::notify(map);
@@ -132,6 +209,11 @@ int main(int argc, char *argv[])
     // PropertyTreeInput geometry.dim
     int const dim = geometry_database.get<int>("dim");
 
+    // Get the polynomial order used in the material properties
+    int const p_order = get_p_order(database.get_child("materials"));
+    adamantine::ASSERT_THROW(p_order < 5,
+                             "Material properties have too many coefficients.");
+
     unsigned int rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
     // PropertyTreeInput memory_space
@@ -160,8 +242,38 @@ int main(int argc, char *argv[])
         }
         else
         {
-          run_ensemble<2, dealii::MemorySpace::Host>(communicator, database,
-                                                     timers);
+          switch (p_order)
+          {
+          case 0:
+          {
+            run_ensemble<2, 0, dealii::MemorySpace::Host>(communicator,
+                                                          database, timers);
+            break;
+          }
+          case 1:
+          {
+            run_ensemble<2, 1, dealii::MemorySpace::Host>(communicator,
+                                                          database, timers);
+            break;
+          }
+          case 2:
+          {
+            run_ensemble<2, 2, dealii::MemorySpace::Host>(communicator,
+                                                          database, timers);
+            break;
+          }
+          case 3:
+          {
+            run_ensemble<2, 3, dealii::MemorySpace::Host>(communicator,
+                                                          database, timers);
+            break;
+          }
+          default:
+          {
+            run_ensemble<2, 4, dealii::MemorySpace::Host>(communicator,
+                                                          database, timers);
+          }
+          }
         }
       }
       else
@@ -171,11 +283,73 @@ int main(int argc, char *argv[])
 
         if (memory_space == "device")
         {
-          run<2, dealii::MemorySpace::Default>(communicator, database, timers);
+          switch (p_order)
+          {
+          case 0:
+          {
+            run<2, 0, dealii::MemorySpace::Default>(communicator, database,
+                                                    timers);
+            break;
+          }
+          case 1:
+          {
+            run<2, 1, dealii::MemorySpace::Default>(communicator, database,
+                                                    timers);
+            break;
+          }
+          case 2:
+          {
+            run<2, 2, dealii::MemorySpace::Default>(communicator, database,
+                                                    timers);
+            break;
+          }
+          case 3:
+          {
+            run<2, 3, dealii::MemorySpace::Default>(communicator, database,
+                                                    timers);
+            break;
+          }
+          default:
+          {
+            run<2, 4, dealii::MemorySpace::Default>(communicator, database,
+                                                    timers);
+          }
+          }
         }
         else
         {
-          run<2, dealii::MemorySpace::Host>(communicator, database, timers);
+          switch (p_order)
+          {
+          case 0:
+          {
+            run<2, 0, dealii::MemorySpace::Host>(communicator, database,
+                                                 timers);
+            break;
+          }
+          case 1:
+          {
+            run<2, 1, dealii::MemorySpace::Host>(communicator, database,
+                                                 timers);
+            break;
+          }
+          case 2:
+          {
+            run<2, 2, dealii::MemorySpace::Host>(communicator, database,
+                                                 timers);
+            break;
+          }
+          case 3:
+          {
+            run<2, 3, dealii::MemorySpace::Host>(communicator, database,
+                                                 timers);
+            break;
+          }
+          default:
+          {
+            run<2, 4, dealii::MemorySpace::Host>(communicator, database,
+                                                 timers);
+          }
+          }
         }
       }
     }
@@ -195,8 +369,38 @@ int main(int argc, char *argv[])
         }
         else
         {
-          run_ensemble<3, dealii::MemorySpace::Host>(communicator, database,
-                                                     timers);
+          switch (p_order)
+          {
+          case 0:
+          {
+            run_ensemble<3, 0, dealii::MemorySpace::Host>(communicator,
+                                                          database, timers);
+            break;
+          }
+          case 1:
+          {
+            run_ensemble<3, 1, dealii::MemorySpace::Host>(communicator,
+                                                          database, timers);
+            break;
+          }
+          case 2:
+          {
+            run_ensemble<3, 2, dealii::MemorySpace::Host>(communicator,
+                                                          database, timers);
+            break;
+          }
+          case 3:
+          {
+            run_ensemble<3, 3, dealii::MemorySpace::Host>(communicator,
+                                                          database, timers);
+            break;
+          }
+          default:
+          {
+            run_ensemble<3, 4, dealii::MemorySpace::Host>(communicator,
+                                                          database, timers);
+          }
+          }
         }
       }
       else
@@ -206,11 +410,75 @@ int main(int argc, char *argv[])
 
         if (memory_space == "device")
         {
-          run<3, dealii::MemorySpace::Default>(communicator, database, timers);
+          switch (p_order)
+          {
+          case 0:
+          {
+            run<3, 0, dealii::MemorySpace::Default>(communicator, database,
+                                                    timers);
+            break;
+          }
+          case 1:
+          {
+            run<3, 1, dealii::MemorySpace::Default>(communicator, database,
+                                                    timers);
+            break;
+          }
+          case 2:
+          {
+            run<3, 2, dealii::MemorySpace::Default>(communicator, database,
+                                                    timers);
+            break;
+          }
+          case 3:
+          {
+            run<3, 3, dealii::MemorySpace::Default>(communicator, database,
+                                                    timers);
+            break;
+          }
+          default:
+          {
+            run<3, 4, dealii::MemorySpace::Default>(communicator, database,
+                                                    timers);
+            break;
+          }
+          }
         }
         else
         {
-          run<3, dealii::MemorySpace::Host>(communicator, database, timers);
+          switch (p_order)
+          {
+          case 0:
+          {
+            run<3, 0, dealii::MemorySpace::Host>(communicator, database,
+                                                 timers);
+            break;
+          }
+          case 1:
+          {
+            run<3, 1, dealii::MemorySpace::Host>(communicator, database,
+                                                 timers);
+            break;
+          }
+          case 2:
+          {
+            run<3, 2, dealii::MemorySpace::Host>(communicator, database,
+                                                 timers);
+            break;
+          }
+          case 3:
+          {
+            run<3, 3, dealii::MemorySpace::Host>(communicator, database,
+                                                 timers);
+            break;
+          }
+          default:
+          {
+            run<3, 4, dealii::MemorySpace::Host>(communicator, database,
+                                                 timers);
+            break;
+          }
+          }
         }
       }
     }

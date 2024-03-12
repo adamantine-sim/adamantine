@@ -33,7 +33,7 @@ BOOST_AUTO_TEST_CASE(integration_3D_amr, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto [temperature, displacement] =
-      run<3, dealii::MemorySpace::Host>(communicator, database, timers);
+      run<3, 4, dealii::MemorySpace::Host>(communicator, database, timers);
 
   double min_val = std::numeric_limits<double>::max();
   double max_val = std::numeric_limits<double>::min();

@@ -1,4 +1,4 @@
-/* Copyright (c) 2022-2023, the adamantine authors.
+/* Copyright (c) 2022 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
   double const lame_second = 3.;
   material_database.put("material_0.solid.lame_first_parameter", lame_first);
   material_database.put("material_0.solid.lame_second_parameter", lame_second);
-  adamantine::MaterialProperty<dim, dealii::MemorySpace::Host>
+  adamantine::MaterialProperty<dim, 4, dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
   // Create the DoFHandler
   dealii::hp::FECollection<dim> fe_collection;
@@ -100,11 +100,11 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
 
   std::vector<double> empty_vector;
 
-  adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
+  adamantine::MechanicalOperator<dim, 4, dealii::MemorySpace::Host>
       mechanical_operator(communicator, material_properties, empty_vector);
   std::vector<std::shared_ptr<adamantine::BodyForce<dim>>> body_forces;
   auto gravity_force = std::make_shared<
-      adamantine::GravityForce<dim, dealii::MemorySpace::Host>>(
+      adamantine::GravityForce<dim, 4, dealii::MemorySpace::Host>>(
       material_properties);
   body_forces.push_back(gravity_force);
   mechanical_operator.reinit(dof_handler, affine_constraints, q_collection,
@@ -261,7 +261,7 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
   double const lame_second = 3.;
   material_database.put("material_0.solid.lame_first_parameter", lame_first);
   material_database.put("material_0.solid.lame_second_parameter", lame_second);
-  adamantine::MaterialProperty<dim, dealii::MemorySpace::Host>
+  adamantine::MaterialProperty<dim, 4, dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
   // Create the thermal DoFHandler
   dealii::hp::FECollection<dim> thermal_fe_collection;
@@ -298,7 +298,7 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
   temperature = 1.;
   // Create the MechanicalOperator
   std::vector<double> reference_temperatures = {0.0, 0.0};
-  adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
+  adamantine::MechanicalOperator<dim, 4, dealii::MemorySpace::Host>
       mechanical_operator(communicator, material_properties,
                           reference_temperatures);
   std::vector<bool> has_melted(triangulation.n_active_cells(), false);
@@ -306,7 +306,7 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
                                          has_melted);
   std::vector<std::shared_ptr<adamantine::BodyForce<dim>>> body_forces;
   auto gravity_force = std::make_shared<
-      adamantine::GravityForce<dim, dealii::MemorySpace::Host>>(
+      adamantine::GravityForce<dim, 4, dealii::MemorySpace::Host>>(
       material_properties);
   body_forces.push_back(gravity_force);
   mechanical_operator.reinit(mechanical_dof_handler,

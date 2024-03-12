@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2023, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  adamantine::MaterialProperty<2, dealii::MemorySpace::Host> mat_properties(
+  adamantine::MaterialProperty<2, 0, dealii::MemorySpace::Host> mat_properties(
       communicator, geometry.get_triangulation(), mat_prop_database);
 
   boost::property_tree::ptree beam_database;
@@ -81,9 +81,9 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, 2, dealii::MemorySpace::Host> thermal_operator(
-      communicator, adamantine::BoundaryType::adiabatic, mat_properties,
-      heat_sources);
+  adamantine::ThermalOperator<2, 0, 2, dealii::MemorySpace::Host>
+      thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
+                       mat_properties, heat_sources);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
@@ -186,12 +186,13 @@ BOOST_AUTO_TEST_CASE(mechanical_post_processor)
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.solid.lame_first_parameter", 2.);
   mat_prop_database.put("material_0.solid.lame_second_parameter", 3.);
-  adamantine::MaterialProperty<dim, dealii::MemorySpace::Host> mat_properties(
-      communicator, geometry.get_triangulation(), mat_prop_database);
+  adamantine::MaterialProperty<dim, 0, dealii::MemorySpace::Host>
+      mat_properties(communicator, geometry.get_triangulation(),
+                     mat_prop_database);
 
   std::vector<double> empty_vector;
 
-  adamantine::MechanicalOperator<dim, dealii::MemorySpace::Host>
+  adamantine::MechanicalOperator<dim, 0, dealii::MemorySpace::Host>
       mechanical_operator(communicator, mat_properties, empty_vector);
   mechanical_operator.reinit(dof_handler, affine_constraints, q_collection);
 

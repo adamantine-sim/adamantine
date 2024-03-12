@@ -35,15 +35,10 @@ namespace adamantine
 /**
  * This class stores the material properties for all the materials
  */
-template <int dim, typename MemorySpaceType>
+template <int dim, int p_order, typename MemorySpaceType>
 class MaterialProperty
 {
 public:
-  /**
-   * Order of the polynomial used to describe the material properties.
-   */
-  static unsigned int constexpr polynomial_order = 4;
-
   /**
    * Size of the table, i.e. number of temperature/property pairs, used to
    * describe the material properties.
@@ -62,7 +57,8 @@ public:
    * Copy constructor. It should only be called by KOKKOS_CLASS_LAMBDA. The
    * copy constructor does not copy all the member variables of the class.
    */
-  MaterialProperty(MaterialProperty<dim, MemorySpaceType> const &other);
+  MaterialProperty(
+      MaterialProperty<dim, p_order, MemorySpaceType> const &other);
 
   /**
    * Return true if the material properties are given in table format.
@@ -116,9 +112,9 @@ public:
    * Return the properties of the material that are dependent of the state of
    * the material and which have beese set using polynomials.
    */
-  Kokkos::View<double *[g_n_material_states][g_n_thermal_state_properties]
-                                            [polynomial_order + 1],
-               typename MemorySpaceType::kokkos_space>
+  Kokkos::View<
+      double *[g_n_material_states][g_n_thermal_state_properties][p_order + 1],
+      typename MemorySpaceType::kokkos_space>
   get_state_property_polynomials();
 
   /**
@@ -282,9 +278,9 @@ private:
    * Thermal material properties which have been set
    * using polynomials.
    */
-  Kokkos::View<double *[g_n_material_states][g_n_thermal_state_properties]
-                                            [polynomial_order + 1],
-               typename MemorySpaceType::kokkos_space>
+  Kokkos::View<
+      double *[g_n_material_states][g_n_thermal_state_properties][p_order + 1],
+      typename MemorySpaceType::kokkos_space>
       _state_property_polynomials;
   /**
    * Properties of the material that are independent of the state of the
@@ -316,7 +312,7 @@ private:
   /**
    * Mechanical properties which have been set using polynomials.
    */
-  Kokkos::View<double *[g_n_mechanical_state_properties][polynomial_order + 1],
+  Kokkos::View<double *[g_n_mechanical_state_properties][p_order + 1],
                dealii::MemorySpace::Host::kokkos_space>
       _mechanical_properties_polynomials_host;
   /**
@@ -339,52 +335,53 @@ private:
   std::unordered_map<dealii::types::global_dof_index, unsigned int> _dofs_map;
 };
 
-template <int dim, typename MemorySpaceType>
-inline double MaterialProperty<dim, MemorySpaceType>::get(
+template <int dim, int p_order, typename MemorySpaceType>
+inline double MaterialProperty<dim, p_order, MemorySpaceType>::get(
     dealii::types::material_id material_id, Property property) const
 {
   return _properties(material_id, static_cast<unsigned int>(property));
 }
 
-template <int dim, typename MemorySpaceType>
+template <int dim, int p_order, typename MemorySpaceType>
 inline Kokkos::View<double *[g_n_properties],
                     typename MemorySpaceType::kokkos_space>
-MaterialProperty<dim, MemorySpaceType>::get_properties() { return _properties; }
+MaterialProperty<dim, p_order, MemorySpaceType>::get_properties()
+{ return _properties; }
 
-template <int dim, typename MemorySpaceType>
-inline bool MaterialProperty<dim, MemorySpaceType>::properties_use_table() const
+template <int dim, int p_order, typename MemorySpaceType>
+inline bool MaterialProperty<dim, p_order,
+                             MemorySpaceType>::properties_use_table() const
 {
   return _use_table;
 }
 
-template <int dim, typename MemorySpaceType>
-inline Kokkos::View<double *[g_n_material_states]
-                                [g_n_thermal_state_properties][MaterialProperty<
-                                    dim, MemorySpaceType>::table_size][2],
-                    typename MemorySpaceType::kokkos_space>
-MaterialProperty<dim, MemorySpaceType>::get_state_property_tables()
+template <int dim, int p_order, typename MemorySpaceType>
+inline Kokkos::View<
+    double
+        *[g_n_material_states][g_n_thermal_state_properties][MaterialProperty<
+             dim, p_order, MemorySpaceType>::table_size][2],
+    typename MemorySpaceType::kokkos_space>
+MaterialProperty<dim, p_order, MemorySpaceType>::get_state_property_tables()
 { return _state_property_tables; }
 
-template <int dim, typename MemorySpaceType>
+template <int dim, int p_order, typename MemorySpaceType>
 inline Kokkos::View<
-    double *[g_n_material_states]
-                [g_n_thermal_state_properties]
-                [MaterialProperty<dim, MemorySpaceType>::polynomial_order + 1],
-    typename MemorySpaceType::kokkos_space> MaterialProperty<dim,
+    double *[g_n_material_states][g_n_thermal_state_properties][p_order + 1],
+    typename MemorySpaceType::kokkos_space> MaterialProperty<dim, p_order,
                                                              MemorySpaceType>::
     get_state_property_polynomials() { return _state_property_polynomials; }
 
-template <int dim, typename MemorySpaceType>
+template <int dim, int p_order, typename MemorySpaceType>
 inline Kokkos::
     View<double **, typename MemorySpaceType::kokkos_space> MaterialProperty<
-        dim, MemorySpaceType>::get_state() const
+        dim, p_order, MemorySpaceType>::get_state() const
 {
   return _state;
 }
 
-template <int dim, typename MemorySpaceType>
+template <int dim, int p_order, typename MemorySpaceType>
 inline dealii::types::global_dof_index
-MaterialProperty<dim, MemorySpaceType>::get_dof_index(
+MaterialProperty<dim, p_order, MemorySpaceType>::get_dof_index(
     typename dealii::Triangulation<dim>::active_cell_iterator const &cell) const
 {
   // Get a DoFCellAccessor from a Triangulation::active_cell_iterator.
@@ -397,9 +394,9 @@ MaterialProperty<dim, MemorySpaceType>::get_dof_index(
   return _dofs_map.at(mp_dof[0]);
 }
 
-template <int dim, typename MemorySpaceType>
+template <int dim, int p_order, typename MemorySpaceType>
 inline dealii::DoFHandler<dim> const &
-MaterialProperty<dim, MemorySpaceType>::get_dof_handler() const
+MaterialProperty<dim, p_order, MemorySpaceType>::get_dof_handler() const
 {
   return _mp_dof_handler;
 }
