@@ -74,7 +74,8 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev, *utf::tolerance(1e-10))
                      mat_prop_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperatorDevice<2, 0, 2, dealii::MemorySpace::Default>
+  adamantine::ThermalOperatorDevice<2, false, 0, 2,
+                                    dealii::MemorySpace::Default>
       thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
                            mat_properties);
   thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
@@ -163,7 +164,8 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
                      mat_prop_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperatorDevice<2, 3, 2, dealii::MemorySpace::Default>
+  adamantine::ThermalOperatorDevice<2, false, 3, 2,
+                                    dealii::MemorySpace::Default>
       thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
                            mat_properties);
   thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
@@ -281,7 +283,8 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
       std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperatorDevice<2, 4, 2, dealii::MemorySpace::Default>
+  adamantine::ThermalOperatorDevice<2, false, 4, 2,
+                                    dealii::MemorySpace::Default>
       thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
                            mat_properties);
   thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
@@ -296,7 +299,7 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   thermal_operator_dev.get_state_from_material_properties();
   BOOST_TEST(thermal_operator_dev.m() == thermal_operator_dev.n());
 
-  adamantine::ThermalOperator<2, 4, 2, dealii::MemorySpace::Host>
+  adamantine::ThermalOperator<2, false, 4, 2, dealii::MemorySpace::Host>
       thermal_operator_host(communicator, adamantine::BoundaryType::adiabatic,
                             mat_properties_host, heat_sources);
   thermal_operator_host.compute_inverse_mass_matrix(dof_handler,
@@ -397,7 +400,8 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
                      mat_prop_database);
 
   // Initialize the ThermalOperatorDevice
-  adamantine::ThermalOperatorDevice<3, 3, 2, dealii::MemorySpace::Default>
+  adamantine::ThermalOperatorDevice<3, false, 3, 2,
+                                    dealii::MemorySpace::Default>
       thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
                            mat_properties);
   double constexpr deposition_angle = M_PI / 6.;

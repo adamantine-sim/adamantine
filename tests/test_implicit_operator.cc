@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
 
   // Initialize the ThermalOperator
   auto thermal_operator = std::make_shared<
-      adamantine::ThermalOperator<2, 0, 2, dealii::MemorySpace::Host>>(
+      adamantine::ThermalOperator<2, false, 0, 2, dealii::MemorySpace::Host>>(
       communicator, adamantine::BoundaryType::adiabatic, mat_properties,
       heat_sources);
   std::vector<double> deposition_cos(
