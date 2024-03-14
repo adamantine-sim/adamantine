@@ -474,12 +474,19 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
           _material_properties.get(material_id[n], Property::latent_heat);
     }
 
+    unsigned int constexpr solid =
+        static_cast<unsigned int>(MaterialStates::State::solid);
     unsigned int constexpr liquid =
         static_cast<unsigned int>(MaterialStates::State::liquid);
 
+    // We only need to take the latent heat into account if both the liquid and
+    // the solid phases are present. We could use an if with two conditions but
+    // that is very slow. Instead, we create a new variable is_mushy that is
+    // non-zero when there is both solid and liquid.
+    auto is_mushy = state_ratios[liquid] * state_ratios[solid];
     for (unsigned int n = 0; n < specific_heat.size(); ++n)
     {
-      if (state_ratios[liquid][n] > 0.0 && (state_ratios[liquid][n] < 1.0))
+      if (is_mushy[n] > 0.0)
       {
         specific_heat[n] += latent_heat[n] / (liquidus[n] - solidus[n]);
       }
