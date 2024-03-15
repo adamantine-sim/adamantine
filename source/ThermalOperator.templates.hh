@@ -351,7 +351,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   unsigned int constexpr solid =
       static_cast<unsigned int>(MaterialStates::State::solid);
 
-  if constexpr (std::is_same_v<MemorySpaceType, SolidLiquid>)
+  if constexpr (std::is_same_v<MaterialStates, SolidLiquid>)
   {
     // We just nee to fill state_ratios with 1.
     for (unsigned int n = 0; n < face_state_ratios[solid].size(); ++n)
@@ -359,7 +359,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
       face_state_ratios[solid][n] = 1.;
     }
   }
-  else if constexpr (std::is_same_v<MemorySpaceType, SolidLiquid>)
+  else if constexpr (std::is_same_v<MaterialStates, SolidLiquid>)
   {
     unsigned int constexpr liquid =
         static_cast<unsigned int>(MaterialStates::State::liquid);
@@ -389,7 +389,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
       face_state_ratios[solid][n] = 1. - face_state_ratios[liquid][n];
     }
   }
-  else if constexpr (std::is_same_v<MemorySpaceType, SolidLiquidPowder>)
+  else if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
   {
     unsigned int constexpr liquid =
         static_cast<unsigned int>(MaterialStates::State::liquid);
