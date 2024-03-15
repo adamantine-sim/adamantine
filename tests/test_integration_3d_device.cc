@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_CASE(integration_3D_device, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto [temperature, displacement] =
-      run<3, 3, adamantine::SolidLiquidPowder, dealii::MemorySpace::Default>(
+      run<3, 3, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
           communicator, database, timers);
 
   std::ifstream gold_file("integration_3d_gold.txt");

@@ -33,7 +33,7 @@ BOOST_AUTO_TEST_CASE(integration_3D, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto [temperature, displacement] =
-      run<3, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
+      run<3, 4, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
           communicator, database, timers);
 
   int num_ranks = 0;
