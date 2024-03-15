@@ -105,10 +105,15 @@ The following options are available:
     * mesh\_format: abaqus, assimp, unv, ucd, dbmesh, gmsh, tecplot, xda, vtk,
     vtu, exodus, or default, i.e., use the file suffix to try to determine the
     mesh format (required)
+    * mesh\_scale\_factor: Apply a uniform scaling factor to the mesh (e.g. if the mesh is defined in mm or inches instead of m), (default value: 1)
+    * set\_material\_id\_to\_0: Clear the material IDs defined in the mesh and sets them all to zero: true or false (default value: false)
   * if import\_mesh is false:
     * length: the length of the domain in meters (required)
     * height: the height of the domain in meters (required)
     * width: the width of the domain in meters (only in 3D)
+    * length_origin: the reference location in the length direction (default value: 0)
+    * height_origin: the reference location in the height direction (default value: 0)
+    * width_origin: the reference location in the width direction (only in 3D) (default value: 0)
     * length\_divisions: number of cell layers in length (default value: 10)
     * height\_divisions: number of cell layers in the height (default value: 10)
     * width\_divisions: number of cell layers in width (only in 3D) (default value: 10)

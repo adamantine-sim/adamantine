@@ -99,16 +99,6 @@ void validate_input_database(boost::property_tree::ptree &database)
   unsigned int dim = database.get<unsigned int>("geometry.dim");
   ASSERT_THROW((dim == 2) || (dim == 3), "Error: dim should be 2 or 3");
 
-  boost::optional<double> material_height_optional =
-      database.get_optional<double>("geometry.material_height");
-
-  if (material_height_optional)
-  {
-    double material_height = material_height_optional.get();
-    ASSERT_THROW(material_height >= 0.0,
-                 "Error: Material height must be non-negative.");
-  }
-
   bool use_powder = database.get("geometry.use_powder", false);
 
   if (use_powder)

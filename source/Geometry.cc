@@ -16,6 +16,7 @@
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_in.h>
+#include <deal.II/grid/grid_tools.h>
 
 namespace adamantine
 {
@@ -88,6 +89,22 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
 
     grid_in.read(mesh_file, grid_in_format);
     _triangulation.copy_triangulation(serial_triangulation);
+
+    // Apply user-specified scaling to the mesh
+    // PropertyTreeInput geometry.mesh_scale_factor
+    auto mesh_scaling = database.get("mesh_scale_factor", 1.0);
+    dealii::GridTools::scale(mesh_scaling, _triangulation);
+
+    // Set the mesh material id to 0 if specified in the input
+    // PropertyTreeInput geometry.set_material_id_to_0
+    auto reset_material_id = database.get("set_material_id_to_0", false);
+    if (reset_material_id)
+    {
+      for (auto cell : _triangulation.active_cell_iterators())
+      {
+        cell->set_material_id(0);
+      }
+    }
   }
   else
   {
@@ -104,11 +121,21 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
     dealii::Point<dim> p2;
     // PropertyTreeInput geometry.length
     p2[axis<dim>::x] = database.get<double>("length");
+    // PropertyTreeInput geometry.length_origin
+    p1[axis<dim>::x] = database.get("length_origin", 0.0);
     // PropertyTreeInput geometry.height
     p2[axis<dim>::z] = database.get<double>("height");
-    // PropertyTreeInput geometry.width
+    // PropertyTreeInput geometry.height_origin
+    p1[axis<dim>::z] = database.get("height_origin", 0.0);
     if (dim == 3)
+    {
+      // PropertyTreeInput geometry.width
       p2[axis<dim>::y] = database.get<double>("width");
+      // PropertyTreeInput geometry.width_origin
+      p1[axis<dim>::y] = database.get("width_origin", 0.0);
+    }
+
+    p2 = p2 + p1;
 
     // For now we assume that the geometry is very simple.
     dealii::GridGenerator::subdivided_hyper_rectangle(
