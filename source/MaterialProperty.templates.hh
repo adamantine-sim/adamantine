@@ -317,18 +317,22 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
         double const liquidus = _properties(material_id, prop_liquidus);
         unsigned int const dof = mp_dofs_mirror(i);
 
+        // Work-around CUDA compiler complaining that the first call to a
+        // captured-variable is inside a constexpr.
+        double *temp_average_local = temperature_average_local;
+
         if constexpr (!std::is_same_v<MaterialStates, Solid>)
         {
           unsigned int constexpr liquid =
               static_cast<unsigned int>(MaterialStates::State::liquid);
           // First determine the ratio of liquid.
-          if (temperature_average_local[dof] < solidus)
+          if (temp_average_local[dof] < solidus)
             liquid_ratio = 0.;
-          else if (temperature_average_local[dof] > liquidus)
+          else if (temp_average_local[dof] > liquidus)
             liquid_ratio = 1.;
           else
-            liquid_ratio = (temperature_average_local[dof] - solidus) /
-                           (liquidus - solidus);
+            liquid_ratio =
+                (temp_average_local[dof] - solidus) / (liquidus - solidus);
           if constexpr (std::is_same_v<MaterialStates, SolidLiquid>)
           {
             solid_ratio = 1. - liquid_ratio;
@@ -366,7 +370,7 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
                   _state(material_state, dof) *
                   compute_property_from_table(
                       _state_property_tables, material_id, material_state,
-                      property, temperature_average_local[dof]);
+                      property, temp_average_local[dof]);
             }
           }
         }
@@ -385,7 +389,7 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
                     _state(material_state, dof) *
                     _state_property_polynomials(material_id, material_state,
                                                 property, i) *
-                    std::pow(temperature_average_local[dof], i);
+                    std::pow(temp_average_local[dof], i);
               }
             }
           }
@@ -424,7 +428,7 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
                 StateProperty::radiation_heat_transfer_coef);
         unsigned int const radiation_temperature_infty_prop =
             static_cast<unsigned int>(Property::radiation_temperature_infty);
-        double const T = temperature_average_local[dof];
+        double const T = temp_average_local[dof];
         double const T_infty =
             _properties(material_id, radiation_temperature_infty_prop);
         double const emissivity = _property_values(emissivity_prop, dof);
