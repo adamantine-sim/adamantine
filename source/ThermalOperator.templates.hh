@@ -5,8 +5,10 @@
  * for the text and further information on this license.
  */
 
+#ifndef THERMAL_OPERATOR_TEMPLATES_HH
+#define THERMAL_OPERATOR_TEMPLATES_HH
+
 #include <ThermalOperator.hh>
-#include <instantiation.hh>
 #include <utils.hh>
 
 #include <deal.II/base/aligned_vector.h>
@@ -953,6 +955,4 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
 
 } // namespace adamantine
 
-INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_S_HOST(TUPLE(ThermalOperator))
-INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_SL_HOST(TUPLE(ThermalOperator))
-INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_SLP_HOST(TUPLE(ThermalOperator))
+#endif

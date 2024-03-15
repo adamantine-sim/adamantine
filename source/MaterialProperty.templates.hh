@@ -5,6 +5,9 @@
  * for the text and further information on this license.
  */
 
+#ifndef MATERIAL_PROPERTY_TEMPLATES_HH
+#define MATERIAL_PROPERTY_TEMPLATES_HH
+
 #include <MaterialProperty.hh>
 
 #include <deal.II/base/point.h>
@@ -1132,3 +1135,5 @@ MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
 }
 
 } // namespace adamantine
+
+#endif

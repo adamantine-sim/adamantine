@@ -5,9 +5,11 @@
  * for the text and further information on this license.
  */
 
+#ifndef THERMAL_OPERATOR_DEVICE_TEMPLATES_HH
+#define THERMAL_OPERATOR_DEVICE_TEMPLATES_HH
+
 #include <MaterialProperty.templates.hh>
 #include <ThermalOperatorDevice.hh>
-#include <instantiation.hh>
 #include <types.hh>
 
 #include <deal.II/base/config.h>
@@ -860,7 +862,4 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
 }
 } // namespace adamantine
 
-INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_S_DEVICE(TUPLE(ThermalOperatorDevice))
-INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_SL_DEVICE(TUPLE(ThermalOperatorDevice))
-INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_SLP_DEVICE(
-    TUPLE(ThermalOperatorDevice))
+#endif
