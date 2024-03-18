@@ -11,6 +11,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.templates.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/MaterialStates.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.hh
@@ -21,7 +22,9 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ScanPath.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorBase.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.templates.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDevice.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDevice.templates.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysicsInterface.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.templates.hh
@@ -41,7 +44,8 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Geometry.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/GoldakHeatSource.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/MaterialPropertyInstDev.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/MaterialPropertyInstHost.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.cc
@@ -49,9 +53,18 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/RayTracing.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ScanPath.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperator.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDevice.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorInstSHost.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorInstSLHost.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorInstSLPHost.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDeviceInstSDev.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDeviceInstSLDev.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorDeviceInstSLPDev.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysicsInstSDev.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysicsInstSLDev.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysicsInstSLPDev.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysicsInstSHost.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysicsInstSLHost.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysicsInstSLPHost.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ensemble_management.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/experimental_data_utils.cc

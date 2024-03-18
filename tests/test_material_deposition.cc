@@ -5,6 +5,7 @@
  * for the text and further information on this license.
  */
 
+#include "MaterialStates.hh"
 #define BOOST_TEST_MODULE MaterialDeposition
 
 #include <Geometry.hh>
@@ -273,7 +274,8 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   // Build MaterialProperty
   boost::property_tree::ptree material_property_database =
       database.get_child("materials");
-  adamantine::MaterialProperty<dim, 1, dealii::MemorySpace::Host>
+  adamantine::MaterialProperty<dim, 1, adamantine::SolidLiquidPowder,
+                               dealii::MemorySpace::Host>
       material_properties(communicator, geometry.get_triangulation(),
                           material_property_database);
 
@@ -285,8 +287,8 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   database.put("boundary.type", "adiabatic");
 
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<dim, 1, dim, dealii::MemorySpace::Host,
-                             dealii::QGauss<1>>
+  adamantine::ThermalPhysics<dim, 1, dim, adamantine::SolidLiquidPowder,
+                             dealii::MemorySpace::Host, dealii::QGauss<1>>
       thermal_physics(communicator, database, geometry, material_properties);
   thermal_physics.setup();
   auto &dof_handler = thermal_physics.get_dof_handler();

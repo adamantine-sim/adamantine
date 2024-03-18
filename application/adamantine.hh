@@ -55,10 +55,11 @@
 #include <cmath>
 #include <iostream>
 
-template <int dim, int p_order, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value,
-              int> = 0>
+template <
+    int dim, int p_order, typename MaterialStates, typename MemorySpaceType,
+    std::enable_if_t<
+        std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value, int> =
+        0>
 void output_pvtu(
     adamantine::PostProcessor<dim> &post_processor, unsigned int n_time_step,
     double time,
@@ -67,13 +68,13 @@ void output_pvtu(
         &thermal_physics,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
         &temperature,
-    std::unique_ptr<
-        adamantine::MechanicalPhysics<dim, p_order, MemorySpaceType>> const
+    std::unique_ptr<adamantine::MechanicalPhysics<dim, p_order, MaterialStates,
+                                                  MemorySpaceType>> const
         &mechanical_physics,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
         &displacement,
-    adamantine::MaterialProperty<dim, p_order, MemorySpaceType> const
-        &material_properties,
+    adamantine::MaterialProperty<dim, p_order, MaterialStates,
+                                 MemorySpaceType> const &material_properties,
     std::vector<adamantine::Timer> &timers)
 {
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -115,10 +116,11 @@ void output_pvtu(
   timers[adamantine::output].stop();
 }
 
-template <int dim, int p_order, typename MemorySpaceType,
-          std::enable_if_t<std::is_same<MemorySpaceType,
-                                        dealii::MemorySpace::Default>::value,
-                           int> = 0>
+template <
+    int dim, int p_order, typename MaterialStates, typename MemorySpaceType,
+    std::enable_if_t<
+        std::is_same<MemorySpaceType, dealii::MemorySpace::Default>::value,
+        int> = 0>
 void output_pvtu(
     adamantine::PostProcessor<dim> &post_processor, unsigned int n_time_step,
     double time,
@@ -127,13 +129,13 @@ void output_pvtu(
         &thermal_physics,
     dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
         &temperature,
-    std::unique_ptr<
-        adamantine::MechanicalPhysics<dim, p_order, MemorySpaceType>> const
+    std::unique_ptr<adamantine::MechanicalPhysics<dim, p_order, MaterialStates,
+                                                  MemorySpaceType>> const
         &mechanical_physics,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
         &displacement,
-    adamantine::MaterialProperty<dim, p_order, MemorySpaceType> const
-        &material_properties,
+    adamantine::MaterialProperty<dim, p_order, MaterialStates,
+                                 MemorySpaceType> const &material_properties,
     std::vector<adamantine::Timer> &timers)
 {
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -255,89 +257,98 @@ inline void initialize_timers(MPI_Comm const &communicator,
   timers.push_back(adamantine::Timer(communicator, "Output"));
 }
 
-template <int dim, int p_order, int fe_degree, typename MemorySpaceType,
-          typename QuadratureType>
+template <int dim, int p_order, int fe_degree, typename MaterialStates,
+          typename MemorySpaceType, typename QuadratureType>
 std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
 initialize(MPI_Comm const &communicator,
            boost::property_tree::ptree const &database,
            adamantine::Geometry<dim> &geometry,
-           adamantine::MaterialProperty<dim, p_order, MemorySpaceType>
-               &material_properties)
+           adamantine::MaterialProperty<dim, p_order, MaterialStates,
+                                        MemorySpaceType> &material_properties)
 {
-  return std::make_unique<adamantine::ThermalPhysics<
-      dim, p_order, fe_degree, MemorySpaceType, QuadratureType>>(
+  return std::make_unique<
+      adamantine::ThermalPhysics<dim, p_order, fe_degree, MaterialStates,
+                                 MemorySpaceType, QuadratureType>>(
       communicator, database, geometry, material_properties);
 }
 
-template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+template <int dim, int p_order, int fe_degree, typename MaterialStates,
+          typename MemorySpaceType>
 std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
 initialize_quadrature(
     std::string const &quadrature_type, MPI_Comm const &communicator,
     boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
-    adamantine::MaterialProperty<dim, p_order, MemorySpaceType>
+    adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties)
 {
   if (quadrature_type.compare("gauss") == 0)
-    return initialize<dim, p_order, fe_degree, MemorySpaceType,
+    return initialize<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
                       dealii::QGauss<1>>(communicator, database, geometry,
                                          material_properties);
   else
   {
     adamantine::ASSERT_THROW(quadrature_type.compare("lobatto") == 0,
                              "quadrature should be Gauss or Lobatto.");
-    return initialize<dim, p_order, fe_degree, MemorySpaceType,
+    return initialize<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
                       dealii::QGaussLobatto<1>>(communicator, database,
                                                 geometry, material_properties);
   }
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
 initialize_thermal_physics(
     unsigned int fe_degree, std::string const &quadrature_type,
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::Geometry<dim> &geometry,
-    adamantine::MaterialProperty<dim, p_order, MemorySpaceType>
+    adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties)
 {
   switch (fe_degree)
   {
   case 1:
   {
-    return initialize_quadrature<dim, p_order, 1, MemorySpaceType>(
+    return initialize_quadrature<dim, p_order, 1, MaterialStates,
+                                 MemorySpaceType>(
         quadrature_type, communicator, database, geometry, material_properties);
   }
   case 2:
   {
-    return initialize_quadrature<dim, p_order, 2, MemorySpaceType>(
+    return initialize_quadrature<dim, p_order, 2, MaterialStates,
+                                 MemorySpaceType>(
         quadrature_type, communicator, database, geometry, material_properties);
   }
   case 3:
   {
-    return initialize_quadrature<dim, p_order, 3, MemorySpaceType>(
+    return initialize_quadrature<dim, p_order, 3, MaterialStates,
+                                 MemorySpaceType>(
         quadrature_type, communicator, database, geometry, material_properties);
   }
   case 4:
   {
-    return initialize_quadrature<dim, p_order, 4, MemorySpaceType>(
+    return initialize_quadrature<dim, p_order, 4, MaterialStates,
+                                 MemorySpaceType>(
         quadrature_type, communicator, database, geometry, material_properties);
   }
   default:
   {
     adamantine::ASSERT_THROW(fe_degree == 5,
                              "fe_degree should be between 1 and 5.");
-    return initialize_quadrature<dim, p_order, 5, MemorySpaceType>(
+    return initialize_quadrature<dim, p_order, 5, MaterialStates,
+                                 MemorySpaceType>(
         quadrature_type, communicator, database, geometry, material_properties);
   }
   }
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 void refine_and_transfer(
     std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
         &thermal_physics,
-    adamantine::MaterialProperty<dim, p_order, MemorySpaceType>
+    adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::DoFHandler<dim> &dof_handler,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
@@ -367,7 +378,7 @@ void refine_and_transfer(
   // Transfer material state
   unsigned int const direction_data_size = 2;
   unsigned int const phase_history_data_size = 1;
-  unsigned int constexpr n_material_states = adamantine::g_n_material_states;
+  unsigned int constexpr n_material_states = MaterialStates::n_material_states;
   std::vector<std::vector<double>> data_to_transfer;
   std::vector<double> dummy_cell_data(n_material_states + direction_data_size +
                                           phase_history_data_size,
@@ -598,11 +609,12 @@ compute_cells_to_refine(
   return cells_to_refine;
 }
 
-template <int dim, int p_order, int fe_degree, typename MemorySpaceType>
+template <int dim, int p_order, int fe_degree, typename MaterialStates,
+          typename MemorySpaceType>
 void refine_mesh(
     std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
         &thermal_physics,
-    adamantine::MaterialProperty<dim, p_order, MemorySpaceType>
+    adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
     std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
@@ -667,15 +679,16 @@ void refine_mesh(
 
   // Refine the mesh along the trajectory of the sources.
   double current_source_height =
-      dynamic_cast<adamantine::ThermalPhysics<
-          dim, p_order, fe_degree, MemorySpaceType, dealii::QGauss<1>> *>(
+      dynamic_cast<
+          adamantine::ThermalPhysics<dim, p_order, fe_degree, MaterialStates,
+                                     MemorySpaceType, dealii::QGauss<1>> *>(
           thermal_physics.get())
           ? dynamic_cast<adamantine::ThermalPhysics<
-                dim, p_order, fe_degree, MemorySpaceType, dealii::QGauss<1>> *>(
-                thermal_physics.get())
+                dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
+                dealii::QGauss<1>> *>(thermal_physics.get())
                 ->get_current_source_height()
           : dynamic_cast<adamantine::ThermalPhysics<
-                dim, p_order, fe_degree, MemorySpaceType,
+                dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
                 dealii::QGaussLobatto<1>> *>(thermal_physics.get())
                 ->get_current_source_height();
 
@@ -722,11 +735,12 @@ void refine_mesh(
   thermal_physics->compute_inverse_mass_matrix();
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 void refine_mesh(
     std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
         &thermal_physics,
-    adamantine::MaterialProperty<dim, p_order, MemorySpaceType>
+    adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
     std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
@@ -741,37 +755,37 @@ void refine_mesh(
   {
   case 1:
   {
-    refine_mesh<dim, p_order, 1>(thermal_physics, material_properties, solution,
-                                 heat_sources, time, next_refinement_time,
-                                 time_steps_refinement, refinement_database);
+    refine_mesh<dim, p_order, 1, MaterialStates>(
+        thermal_physics, material_properties, solution, heat_sources, time,
+        next_refinement_time, time_steps_refinement, refinement_database);
     break;
   }
   case 2:
   {
-    refine_mesh<dim, p_order, 2>(thermal_physics, material_properties, solution,
-                                 heat_sources, time, next_refinement_time,
-                                 time_steps_refinement, refinement_database);
+    refine_mesh<dim, p_order, 2, MaterialStates>(
+        thermal_physics, material_properties, solution, heat_sources, time,
+        next_refinement_time, time_steps_refinement, refinement_database);
     break;
   }
   case 3:
   {
-    refine_mesh<dim, p_order, 3>(thermal_physics, material_properties, solution,
-                                 heat_sources, time, next_refinement_time,
-                                 time_steps_refinement, refinement_database);
+    refine_mesh<dim, p_order, 3, MaterialStates>(
+        thermal_physics, material_properties, solution, heat_sources, time,
+        next_refinement_time, time_steps_refinement, refinement_database);
     break;
   }
   case 4:
   {
-    refine_mesh<dim, p_order, 4>(thermal_physics, material_properties, solution,
-                                 heat_sources, time, next_refinement_time,
-                                 time_steps_refinement, refinement_database);
+    refine_mesh<dim, p_order, 4, MaterialStates>(
+        thermal_physics, material_properties, solution, heat_sources, time,
+        next_refinement_time, time_steps_refinement, refinement_database);
     break;
   }
   case 5:
   {
-    refine_mesh<dim, p_order, 5>(thermal_physics, material_properties, solution,
-                                 heat_sources, time, next_refinement_time,
-                                 time_steps_refinement, refinement_database);
+    refine_mesh<dim, p_order, 5, MaterialStates>(
+        thermal_physics, material_properties, solution, heat_sources, time,
+        next_refinement_time, time_steps_refinement, refinement_database);
     break;
   }
   default:
@@ -781,7 +795,8 @@ void refine_mesh(
   }
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 std::pair<dealii::LinearAlgebra::distributed::Vector<double,
                                                      dealii::MemorySpace::Host>,
           dealii::LinearAlgebra::distributed::Vector<double,
@@ -801,7 +816,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // Create the MaterialProperty
   boost::property_tree::ptree material_database =
       database.get_child("materials");
-  adamantine::MaterialProperty<dim, p_order, MemorySpaceType>
+  adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
       material_properties(communicator, geometry.get_triangulation(),
                           material_database);
 
@@ -864,15 +879,16 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   material_reference_temps.push_back(initial_temperature);
 
   // Create MechanicalPhysics
-  std::unique_ptr<adamantine::MechanicalPhysics<dim, p_order, MemorySpaceType>>
+  std::unique_ptr<adamantine::MechanicalPhysics<dim, p_order, MaterialStates,
+                                                MemorySpaceType>>
       mechanical_physics;
   if (use_mechanical_physics)
   {
     // PropertyTreeInput discretization.mechanical.fe_degree
     unsigned int const fe_degree =
         discretization_database.get<unsigned int>("mechanical.fe_degree");
-    mechanical_physics = std::make_unique<
-        adamantine::MechanicalPhysics<dim, p_order, MemorySpaceType>>(
+    mechanical_physics = std::make_unique<adamantine::MechanicalPhysics<
+        dim, p_order, MaterialStates, MemorySpaceType>>(
         communicator, fe_degree, geometry, material_properties,
         material_reference_temps);
     post_processor_database.put("mechanical_output", true);
@@ -1311,7 +1327,8 @@ void split_global_communicator(MPI_Comm global_communicator,
   MPI_Comm_split(global_communicator, my_color, 0, &local_communicator);
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 std::vector<dealii::LA::distributed::BlockVector<double>>
 run_ensemble(MPI_Comm const &global_communicator,
              boost::property_tree::ptree const &database,
@@ -1448,8 +1465,8 @@ run_ensemble(MPI_Comm const &global_communicator,
 
   std::vector<std::unique_ptr<adamantine::Geometry<dim>>> geometry_ensemble;
 
-  std::vector<std::unique_ptr<
-      adamantine::MaterialProperty<dim, p_order, MemorySpaceType>>>
+  std::vector<std::unique_ptr<adamantine::MaterialProperty<
+      dim, p_order, MaterialStates, MemorySpaceType>>>
       material_properties_ensemble;
 
   std::vector<std::unique_ptr<adamantine::PostProcessor<dim>>>
@@ -1584,8 +1601,8 @@ run_ensemble(MPI_Comm const &global_communicator,
         local_communicator, geometry_database));
 
     material_properties_ensemble.push_back(
-        std::make_unique<
-            adamantine::MaterialProperty<dim, p_order, MemorySpaceType>>(
+        std::make_unique<adamantine::MaterialProperty<
+            dim, p_order, MaterialStates, MemorySpaceType>>(
             local_communicator, geometry_ensemble.back()->get_triangulation(),
             material_database));
 
@@ -1717,7 +1734,8 @@ run_ensemble(MPI_Comm const &global_communicator,
       geometry_database.get<double>("deposition_time", 0.);
 
   // ----- Output the initial solution -----
-  std::unique_ptr<adamantine::MechanicalPhysics<dim, p_order, MemorySpaceType>>
+  std::unique_ptr<adamantine::MechanicalPhysics<dim, p_order, MaterialStates,
+                                                MemorySpaceType>>
       mechanical_physics;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       displacement;

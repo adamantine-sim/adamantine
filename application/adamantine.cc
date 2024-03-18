@@ -7,6 +7,8 @@
 
 #include "adamantine.hh"
 
+#include "MaterialStates.hh"
+#include "utils.hh"
 #include <validate_input_database.hh>
 
 #include <boost/program_options.hpp>
@@ -16,6 +18,7 @@
 #include <Kokkos_Core.hpp>
 
 #include <filesystem>
+#include <utility>
 
 #ifdef ADAMANTINE_WITH_ADIAK
 #include <adiak.hpp>
@@ -25,7 +28,8 @@
 #include <caliper/cali-manager.h>
 #endif
 
-int get_p_order(boost::property_tree::ptree &database)
+std::pair<int, int>
+get_p_order_and_n_material_states(boost::property_tree::ptree &database)
 {
   // We need to detect the degree of the polynomial. There are two cases. First,
   // we are using a table format. In this case, we return zero. Second, we are
@@ -33,52 +37,52 @@ int get_p_order(boost::property_tree::ptree &database)
   // materials, all the states, and all the properties to determine the
   // polynomial order.
 
+  unsigned int p_order = 0;
+  unsigned int n_material_states = 0;
   // PropertyTreeInput materials.property_format
-  if (database.get<std::string>("property_format") == "table")
-  {
-    return 0;
-  }
-  else
-  {
-    int p_order = 0;
-    // PropertyTreeInput materials.n_materials
-    unsigned int const n_materials = database.get<unsigned int>("n_materials");
-    // Find all the material_ids being used.
-    std::vector<dealii::types::material_id> material_ids;
-    for (dealii::types::material_id id = 0;
-         id < dealii::numbers::invalid_material_id; ++id)
-    {
-      if (database.count("material_" + std::to_string(id)) != 0)
-        material_ids.push_back(id);
-      if (material_ids.size() == n_materials)
-        break;
-    }
+  bool use_table = database.get<std::string>("property_format") == "table";
 
-    for (auto const material_id : material_ids)
+  // PropertyTreeInput materials.n_materials
+  unsigned int const n_materials = database.get<unsigned int>("n_materials");
+  // Find all the material_ids being used.
+  std::vector<dealii::types::material_id> material_ids;
+  for (dealii::types::material_id id = 0;
+       id < dealii::numbers::invalid_material_id; ++id)
+  {
+    if (database.count("material_" + std::to_string(id)) != 0)
+      material_ids.push_back(id);
+    if (material_ids.size() == n_materials)
+      break;
+  }
+
+  for (auto const material_id : material_ids)
+  {
+    // Get the material property tree.
+    boost::property_tree::ptree const &material_database =
+        database.get_child("material_" + std::to_string(material_id));
+    // For each material, loop over the possible states.
+    for (unsigned int state = 0;
+         state < adamantine::SolidLiquidPowder::n_material_states; ++state)
     {
-      // Get the material property tree.
-      boost::property_tree::ptree const &material_database =
-          database.get_child("material_" + std::to_string(material_id));
-      // For each material, loop over the possible states.
-      for (unsigned int state = 0; state < adamantine::g_n_material_states;
-           ++state)
+      // The state may or may not exist for the material.
+      boost::optional<boost::property_tree::ptree const &> state_database =
+          material_database.get_child_optional(
+              adamantine::material_state_names[state]);
+      if (state_database)
       {
-        // The state may or may not exist for the material.
-        boost::optional<boost::property_tree::ptree const &> state_database =
-            material_database.get_child_optional(
-                adamantine::material_state_names[state]);
-        if (state_database)
+        // For each state, loop over the possible properties.
+        for (unsigned int p = 0; p < adamantine::g_n_state_properties; ++p)
         {
-          // For each state, loop over the possible properties.
-          for (unsigned int p = 0; p < adamantine::g_n_state_properties; ++p)
+          // The property may or may not exist for that state
+          boost::optional<std::string> const property =
+              state_database.get().get_optional<std::string>(
+                  adamantine::state_property_names[p]);
+          // If the property exists, put it in the map. If the property does
+          // not exist, we have a nullptr.
+          if (property)
           {
-            // The property may or may not exist for that state
-            boost::optional<std::string> const property =
-                state_database.get().get_optional<std::string>(
-                    adamantine::state_property_names[p]);
-            // If the property exists, put it in the map. If the property does
-            // not exist, we have a nullptr.
-            if (property)
+            n_material_states = std::max(state, n_material_states);
+            if (!use_table)
             {
               // Remove blank spaces
               std::string property_string = property.get();
@@ -90,16 +94,25 @@ int get_p_order(boost::property_tree::ptree &database)
               std::vector<std::string> parsed_property;
               boost::split(parsed_property, property_string,
                            [](char c) { return c == ','; });
-              p_order = std::max(static_cast<int>(parsed_property.size() - 1),
-                                 p_order);
+              p_order = std::max(
+                  static_cast<unsigned int>(parsed_property.size() - 1),
+                  p_order);
             }
           }
         }
       }
     }
-
-    return p_order;
   }
+
+  // Sanity check
+  adamantine::ASSERT_THROW(
+      p_order >= 0 && p_order < 5,
+      "Error when computing the polynomial order of the material properties");
+  adamantine::ASSERT_THROW(
+      n_material_states > 0 && n_material_states < 4,
+      "Error when computing the number of material states");
+
+  return std::make_pair(p_order, n_material_states);
 }
 
 int main(int argc, char *argv[])
@@ -210,7 +223,8 @@ int main(int argc, char *argv[])
     int const dim = geometry_database.get<int>("dim");
 
     // Get the polynomial order used in the material properties
-    int const p_order = get_p_order(database.get_child("materials"));
+    auto const [p_order, n_material_states] =
+        get_p_order_and_n_material_states(database.get_child("materials"));
     adamantine::ASSERT_THROW(p_order < 5,
                              "Material properties have too many coefficients.");
 
@@ -244,34 +258,143 @@ int main(int argc, char *argv[])
         {
           switch (p_order)
           {
+          // p_order case
           case 0:
           {
-            run_ensemble<2, 0, dealii::MemorySpace::Host>(communicator,
-                                                          database, timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run_ensemble<2, 0, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run_ensemble<2, 0, adamantine::SolidLiquid,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+              break;
+            }
+            default:
+            {
+              run_ensemble<2, 0, adamantine::SolidLiquidPowder,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 1:
           {
-            run_ensemble<2, 1, dealii::MemorySpace::Host>(communicator,
-                                                          database, timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run_ensemble<2, 1, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run_ensemble<2, 1, adamantine::SolidLiquid,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+              break;
+            }
+            default:
+            {
+              run_ensemble<2, 1, adamantine::SolidLiquidPowder,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 2:
           {
-            run_ensemble<2, 2, dealii::MemorySpace::Host>(communicator,
-                                                          database, timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run_ensemble<2, 2, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run_ensemble<2, 2, adamantine::SolidLiquid,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+              break;
+            }
+            default:
+            {
+              run_ensemble<2, 2, adamantine::SolidLiquidPowder,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 3:
           {
-            run_ensemble<2, 3, dealii::MemorySpace::Host>(communicator,
-                                                          database, timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run_ensemble<2, 3, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run_ensemble<2, 3, adamantine::SolidLiquid,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+              break;
+            }
+            default:
+            {
+              run_ensemble<2, 3, adamantine::SolidLiquidPowder,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           default:
           {
-            run_ensemble<2, 4, dealii::MemorySpace::Host>(communicator,
-                                                          database, timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run_ensemble<2, 4, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run_ensemble<2, 4, adamantine::SolidLiquid,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+              break;
+            }
+            default:
+            {
+              run_ensemble<2, 4, adamantine::SolidLiquidPowder,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+            }
+            }
           }
           }
         }
@@ -285,34 +408,133 @@ int main(int argc, char *argv[])
         {
           switch (p_order)
           {
+          // p_order case
           case 0:
           {
-            run<2, 0, dealii::MemorySpace::Default>(communicator, database,
-                                                    timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<2, 0, adamantine::Solid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<2, 0, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<2, 0, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Default>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 1:
           {
-            run<2, 1, dealii::MemorySpace::Default>(communicator, database,
-                                                    timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<2, 1, adamantine::Solid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<2, 1, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<2, 1, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Default>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 2:
           {
-            run<2, 2, dealii::MemorySpace::Default>(communicator, database,
-                                                    timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<2, 2, adamantine::Solid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<2, 2, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<2, 2, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Default>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 3:
           {
-            run<2, 3, dealii::MemorySpace::Default>(communicator, database,
-                                                    timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<2, 3, adamantine::Solid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<2, 3, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<2, 3, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Default>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           default:
           {
-            run<2, 4, dealii::MemorySpace::Default>(communicator, database,
-                                                    timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<2, 4, adamantine::Solid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<2, 4, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<2, 4, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Default>(communicator, database, timers);
+            }
+            }
           }
           }
         }
@@ -320,34 +542,133 @@ int main(int argc, char *argv[])
         {
           switch (p_order)
           {
+          // p_order case
           case 0:
           {
-            run<2, 0, dealii::MemorySpace::Host>(communicator, database,
-                                                 timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<2, 0, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<2, 0, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<2, 0, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Host>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 1:
           {
-            run<2, 1, dealii::MemorySpace::Host>(communicator, database,
-                                                 timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<2, 1, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<2, 1, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<2, 1, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Host>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 2:
           {
-            run<2, 2, dealii::MemorySpace::Host>(communicator, database,
-                                                 timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<2, 2, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<2, 2, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<2, 2, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Host>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 3:
           {
-            run<2, 3, dealii::MemorySpace::Host>(communicator, database,
-                                                 timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<2, 3, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<2, 3, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<2, 3, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Host>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           default:
           {
-            run<2, 4, dealii::MemorySpace::Host>(communicator, database,
-                                                 timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<2, 4, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<2, 4, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<2, 4, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Host>(communicator, database, timers);
+            }
+            }
           }
           }
         }
@@ -371,34 +692,143 @@ int main(int argc, char *argv[])
         {
           switch (p_order)
           {
+          // p_order case
           case 0:
           {
-            run_ensemble<3, 0, dealii::MemorySpace::Host>(communicator,
-                                                          database, timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run_ensemble<3, 0, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run_ensemble<3, 0, adamantine::SolidLiquid,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+              break;
+            }
+            default:
+            {
+              run_ensemble<3, 0, adamantine::SolidLiquidPowder,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 1:
           {
-            run_ensemble<3, 1, dealii::MemorySpace::Host>(communicator,
-                                                          database, timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run_ensemble<3, 1, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run_ensemble<3, 1, adamantine::SolidLiquid,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+              break;
+            }
+            default:
+            {
+              run_ensemble<3, 1, adamantine::SolidLiquidPowder,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 2:
           {
-            run_ensemble<3, 2, dealii::MemorySpace::Host>(communicator,
-                                                          database, timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run_ensemble<3, 2, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run_ensemble<3, 2, adamantine::SolidLiquid,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+              break;
+            }
+            default:
+            {
+              run_ensemble<3, 2, adamantine::SolidLiquidPowder,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 3:
           {
-            run_ensemble<3, 3, dealii::MemorySpace::Host>(communicator,
-                                                          database, timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run_ensemble<3, 3, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run_ensemble<3, 3, adamantine::SolidLiquid,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+              break;
+            }
+            default:
+            {
+              run_ensemble<3, 3, adamantine::SolidLiquidPowder,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           default:
           {
-            run_ensemble<3, 4, dealii::MemorySpace::Host>(communicator,
-                                                          database, timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run_ensemble<3, 4, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run_ensemble<3, 4, adamantine::SolidLiquid,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+              break;
+            }
+            default:
+            {
+              run_ensemble<3, 4, adamantine::SolidLiquidPowder,
+                           dealii::MemorySpace::Host>(communicator, database,
+                                                      timers);
+            }
+            }
           }
           }
         }
@@ -412,34 +842,129 @@ int main(int argc, char *argv[])
         {
           switch (p_order)
           {
+          // p_order case
           case 0:
           {
-            run<3, 0, dealii::MemorySpace::Default>(communicator, database,
-                                                    timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<3, 0, adamantine::Solid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<3, 0, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<3, 0, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Default>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 1:
           {
-            run<3, 1, dealii::MemorySpace::Default>(communicator, database,
-                                                    timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<3, 1, adamantine::Solid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<3, 1, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            }
+
             break;
           }
+          // p_order case
           case 2:
           {
-            run<3, 2, dealii::MemorySpace::Default>(communicator, database,
-                                                    timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<3, 2, adamantine::Solid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<3, 2, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<3, 2, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Default>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 3:
           {
-            run<3, 3, dealii::MemorySpace::Default>(communicator, database,
-                                                    timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<3, 3, adamantine::Solid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<3, 3, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<3, 3, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Default>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           default:
           {
-            run<3, 4, dealii::MemorySpace::Default>(communicator, database,
-                                                    timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<3, 4, adamantine::Solid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<3, 4, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<3, 4, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Default>(communicator, database, timers);
+            }
+            }
+
             break;
           }
           }
@@ -448,35 +973,133 @@ int main(int argc, char *argv[])
         {
           switch (p_order)
           {
+          // p_order case
           case 0:
           {
-            run<3, 0, dealii::MemorySpace::Host>(communicator, database,
-                                                 timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<3, 0, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<3, 0, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<3, 0, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Host>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 1:
           {
-            run<3, 1, dealii::MemorySpace::Host>(communicator, database,
-                                                 timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<3, 1, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<3, 1, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<3, 1, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 2:
           {
-            run<3, 2, dealii::MemorySpace::Host>(communicator, database,
-                                                 timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<3, 2, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<3, 2, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<3, 2, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Host>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           case 3:
           {
-            run<3, 3, dealii::MemorySpace::Host>(communicator, database,
-                                                 timers);
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<3, 3, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<3, 3, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<3, 3, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Host>(communicator, database, timers);
+            }
+            }
+
             break;
           }
+          // p_order case
           default:
           {
-            run<3, 4, dealii::MemorySpace::Host>(communicator, database,
-                                                 timers);
-            break;
+            switch (n_material_states)
+            {
+            case 1:
+            {
+              run<3, 4, adamantine::Solid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            case 2:
+            {
+              run<3, 4, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
+                  communicator, database, timers);
+              break;
+            }
+            default:
+            {
+              run<3, 4, adamantine::SolidLiquidPowder,
+                  dealii::MemorySpace::Host>(communicator, database, timers);
+            }
+            }
           }
           }
         }

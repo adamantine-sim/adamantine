@@ -5,6 +5,7 @@
  * for the text and further information on this license.
  */
 
+#include "MaterialStates.hh"
 #define BOOST_TEST_MODULE Integration_Data_Assimilation_Augmented
 
 #include "../application/adamantine.hh"
@@ -35,8 +36,9 @@ BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation_augmented,
   boost::property_tree::info_parser::read_info(filename, database);
 
   // Run the simulation
-  auto result = run_ensemble<3, 3, dealii::MemorySpace::Host>(communicator,
-                                                              database, timers);
+  auto result =
+      run_ensemble<3, 3, adamantine::SolidLiquidPowder,
+                   dealii::MemorySpace::Host>(communicator, database, timers);
 
   // Three ensemble members expected
   unsigned int local_result_size = result.size();

@@ -5,6 +5,7 @@
  * for the text and further information on this license.
  */
 
+#include "MaterialStates.hh"
 #define BOOST_TEST_MODULE ImplicitOperator
 
 #include <Geometry.hh>
@@ -67,8 +68,10 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  adamantine::MaterialProperty<2, 0, dealii::MemorySpace::Host> mat_properties(
-      communicator, geometry.get_triangulation(), mat_prop_database);
+  adamantine::MaterialProperty<2, 0, adamantine::SolidLiquidPowder,
+                               dealii::MemorySpace::Host>
+      mat_properties(communicator, geometry.get_triangulation(),
+                     mat_prop_database);
 
   boost::property_tree::ptree beam_database;
   beam_database.put("depth", 0.1);
@@ -84,7 +87,8 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
 
   // Initialize the ThermalOperator
   auto thermal_operator = std::make_shared<
-      adamantine::ThermalOperator<2, false, 0, 2, dealii::MemorySpace::Host>>(
+      adamantine::ThermalOperator<2, false, 0, 2, adamantine::SolidLiquidPowder,
+                                  dealii::MemorySpace::Host>>(
       communicator, adamantine::BoundaryType::adiabatic, mat_properties,
       heat_sources);
   std::vector<double> deposition_cos(

@@ -29,7 +29,8 @@ namespace adamantine
  * The class is templated on the MemorySpace because it use MaterialProperty
  * which itself is templated on the MemorySpace but the operator is CPU only.
  */
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 class MechanicalOperator : public Operator<dealii::MemorySpace::Host>
 {
 public:
@@ -37,10 +38,10 @@ public:
    * Constructor. If the initial temperature is negative, the simulation is
    * mechanical only. Otherwise, we solve a thermo-mechanical problem.
    */
-  MechanicalOperator(
-      MPI_Comm const &communicator,
-      MaterialProperty<dim, p_order, MemorySpaceType> &material_properties,
-      std::vector<double> reference_temperatures);
+  MechanicalOperator(MPI_Comm const &communicator,
+                     MaterialProperty<dim, p_order, MaterialStates,
+                                      MemorySpaceType> &material_properties,
+                     std::vector<double> reference_temperatures);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
@@ -106,7 +107,8 @@ private:
   /**
    * Reference to the MaterialProperty from MechanicalPhysics.
    */
-  MaterialProperty<dim, p_order, MemorySpaceType> &_material_properties;
+  MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
+      &_material_properties;
   /**
    * Non-owning pointer to the DoFHandler from MechanicalPhysics
    */
@@ -145,31 +147,36 @@ private:
   std::vector<bool> _has_melted;
 };
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 inline dealii::types::global_dof_index
-MechanicalOperator<dim, p_order, MemorySpaceType>::m() const
+MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::m() const
 {
   return _system_matrix.m();
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 inline dealii::types::global_dof_index
-MechanicalOperator<dim, p_order, MemorySpaceType>::n() const
+MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::n() const
 {
   return _system_matrix.n();
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 inline dealii::LA::distributed::Vector<double,
                                        dealii::MemorySpace::Host> const &
-MechanicalOperator<dim, p_order, MemorySpaceType>::rhs() const
+MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::rhs() const
 {
   return _system_rhs;
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 inline dealii::TrilinosWrappers::SparseMatrix const &
-MechanicalOperator<dim, p_order, MemorySpaceType>::system_matrix() const
+MechanicalOperator<dim, p_order, MaterialStates,
+                   MemorySpaceType>::system_matrix() const
 {
   return _system_matrix;
 }

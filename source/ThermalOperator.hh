@@ -10,6 +10,7 @@
 
 #include <HeatSource.hh>
 #include <MaterialProperty.hh>
+#include <MaterialStates.hh>
 #include <ThermalOperatorBase.hh>
 
 #include <deal.II/base/aligned_vector.h>
@@ -23,13 +24,14 @@ namespace adamantine
  * performs \f$ dst = -\nabla k \nabla src \f$.
  */
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
+          typename MaterialStates, typename MemorySpaceType>
 class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
   ThermalOperator(
       MPI_Comm const &communicator, BoundaryType boundary_type,
-      MaterialProperty<dim, p_order, MemorySpaceType> &material_properties,
+      MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
+          &material_properties,
       std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources);
 
   /**
@@ -109,23 +111,23 @@ public:
 private:
   /**
    * Update the ratios of the material state.
+   * @Note The input variables are not used when the only valid state is solid.
    */
-  void
-  update_state_ratios(unsigned int cell, unsigned int q,
-                      dealii::VectorizedArray<double> temperature,
-                      std::array<dealii::VectorizedArray<double>,
-                                 static_cast<unsigned int>(MaterialState::SIZE)>
-                          &state_ratios) const;
+  void update_state_ratios(
+      [[maybe_unused]] unsigned int cell, [[maybe_unused]] unsigned int q,
+      [[maybe_unused]] dealii::VectorizedArray<double> temperature,
+      std::array<dealii::VectorizedArray<double>,
+                 MaterialStates::n_material_states> &state_ratios) const;
 
   /**
    * Update the ratios of the material state at the face quadrature points.
+   * @Note The input variables are not used when the only valid state is solid.
    */
   void update_face_state_ratios(
-      unsigned int face, unsigned int q,
-      dealii::VectorizedArray<double> temperature,
+      [[maybe_unused]] unsigned int face, [[maybe_unused]] unsigned int q,
+      [[maybe_unused]] dealii::VectorizedArray<double> temperature,
       std::array<dealii::VectorizedArray<double>,
-                 static_cast<unsigned int>(MaterialState::SIZE)> &state_ratios)
-      const;
+                 MaterialStates::n_material_states> &state_ratios) const;
   /**
    * Return the value of \f$ \frac{1}{\rho C_p} \f$ for a given matrix-free
    * cell/face and quadrature point.
@@ -134,8 +136,7 @@ private:
       std::array<dealii::types::material_id,
                  dealii::VectorizedArray<double>::size()> const &material_id,
       std::array<dealii::VectorizedArray<double>,
-                 static_cast<unsigned int>(MaterialState::SIZE)> const
-          &state_ratios,
+                 MaterialStates::n_material_states> const &state_ratios,
       dealii::VectorizedArray<double> const &temperature,
       dealii::AlignedVector<dealii::VectorizedArray<double>> const
           &temperature_powers) const;
@@ -190,7 +191,8 @@ private:
   /**
    * Material properties associated with the domain.
    */
-  MaterialProperty<dim, p_order, MemorySpaceType> &_material_properties;
+  MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
+      &_material_properties;
   /**
    * Vector of heat sources.
    */
@@ -256,43 +258,45 @@ private:
 };
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
+          typename MaterialStates, typename MemorySpaceType>
 inline dealii::types::global_dof_index
-ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::m() const
+ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                MemorySpaceType>::m() const
 {
   return _matrix_free.get_vector_partitioner()->size();
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
+          typename MaterialStates, typename MemorySpaceType>
 inline dealii::types::global_dof_index
-ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::n() const
+ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                MemorySpaceType>::n() const
 {
   return _matrix_free.get_vector_partitioner()->size();
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
+          typename MaterialStates, typename MemorySpaceType>
 inline std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
-ThermalOperator<dim, use_table, p_order, fe_degree,
+ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                 MemorySpaceType>::get_inverse_mass_matrix() const
 {
   return _inverse_mass_matrix;
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
+          typename MaterialStates, typename MemorySpaceType>
 inline dealii::MatrixFree<dim, double> const &
-ThermalOperator<dim, use_table, p_order, fe_degree,
+ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                 MemorySpaceType>::get_matrix_free() const
 {
   return _matrix_free;
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-inline void
-ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+inline void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                            MemorySpaceType>::
     jacobian_vmult(
         dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
         dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
@@ -302,9 +306,9 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
-inline void
-ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
+          typename MaterialStates, typename MemorySpaceType>
+inline void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+                            MemorySpaceType>::
     initialize_dof_vector(
         dealii::LA::distributed::Vector<double, MemorySpaceType> &vector) const
 {
@@ -312,9 +316,9 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MemorySpaceType>::
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MemorySpaceType>
+          typename MaterialStates, typename MemorySpaceType>
 inline void
-ThermalOperator<dim, use_table, p_order, fe_degree,
+ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                 MemorySpaceType>::set_time_and_source_height(double t,
                                                              double height)
 {

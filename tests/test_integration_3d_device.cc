@@ -5,6 +5,7 @@
  * for the text and further information on this license.
  */
 
+#include "MaterialStates.hh"
 #define BOOST_TEST_MODULE Integration_3D_Device
 
 #include "../application/adamantine.hh"
@@ -33,7 +34,8 @@ BOOST_AUTO_TEST_CASE(integration_3D_device, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto [temperature, displacement] =
-      run<3, 3, dealii::MemorySpace::Default>(communicator, database, timers);
+      run<3, 3, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
+          communicator, database, timers);
 
   std::ifstream gold_file("integration_3d_gold.txt");
   for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
@@ -64,11 +66,13 @@ BOOST_AUTO_TEST_CASE(integration_3D_checkpoint_restart_device)
   database.put("checkpoint.overwrite_files", true);
   database.put("checkpoint.time_steps_between_checkpoint", 80);
   auto [temperature_1, displacement_1] =
-      run<3, 3, dealii::MemorySpace::Host>(communicator, database, timers);
+      run<3, 3, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
+          communicator, database, timers);
   // Restart of the simulation
   database.put("restart.filename_prefix", checkpoint_filename);
   auto [temperature_2, displacement_2] =
-      run<3, 3, dealii::MemorySpace::Host>(communicator, database, timers);
+      run<3, 3, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
+          communicator, database, timers);
 
   // Compare the temperatures. When using more than one processor, the
   // partitioning is different and so the distribution of the dofs are

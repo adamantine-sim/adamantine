@@ -11,16 +11,19 @@
 
 namespace adamantine
 {
-template <int dim, int p_order, typename MemorySpaceType>
-GravityForce<dim, p_order, MemorySpaceType>::GravityForce(
-    MaterialProperty<dim, p_order, MemorySpaceType> &material_properties)
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+GravityForce<dim, p_order, MaterialStates, MemorySpaceType>::GravityForce(
+    MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
+        &material_properties)
     : _material_properties(material_properties)
 {
 }
 
-template <int dim, int p_order, typename MemorySpaceType>
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 dealii::Tensor<1, dim, double>
-GravityForce<dim, p_order, MemorySpaceType>::eval(
+GravityForce<dim, p_order, MaterialStates, MemorySpaceType>::eval(
     typename dealii::Triangulation<dim>::active_cell_iterator const &cell)
 {
   // Note that the density is independent of the temperature
@@ -33,5 +36,5 @@ GravityForce<dim, p_order, MemorySpaceType>::eval(
 }
 } // namespace adamantine
 
-INSTANTIATE_DIM_PORDER_HOST(TUPLE(GravityForce))
-INSTANTIATE_DIM_PORDER_DEVICE(TUPLE(GravityForce))
+INSTANTIATE_DIM_PORDER_MATERIALSTATES_HOST(TUPLE(GravityForce))
+INSTANTIATE_DIM_PORDER_MATERIALSTATES_DEVICE(TUPLE(GravityForce))

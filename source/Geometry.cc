@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -9,6 +9,7 @@
 #define GEOMETRY_TEMPLATES_HH
 
 #include <Geometry.hh>
+#include <MaterialStates.hh>
 #include <instantiation.hh>
 #include <types.hh>
 #include <utils.hh>
@@ -143,11 +144,12 @@ void Geometry<dim>::assign_material_state(
     {
       if (cell->center()[axis<dim>::z] < solid_height)
       {
-        cell->set_user_index(static_cast<int>(MaterialState::solid));
+        cell->set_user_index(static_cast<int>(SolidLiquidPowder::State::solid));
       }
       else
       {
-        cell->set_user_index(static_cast<int>(MaterialState::powder));
+        cell->set_user_index(
+            static_cast<int>(SolidLiquidPowder::State::powder));
       }
     }
   }
@@ -156,7 +158,7 @@ void Geometry<dim>::assign_material_state(
     // Everything is made of solid material
     for (auto cell : _triangulation.active_cell_iterators())
     {
-      cell->set_user_index(static_cast<int>(MaterialState::solid));
+      cell->set_user_index(static_cast<int>(SolidLiquidPowder::State::solid));
     }
   }
 }
