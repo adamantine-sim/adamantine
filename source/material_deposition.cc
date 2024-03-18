@@ -217,8 +217,8 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
           bounding_pt_a[d] = center[d] - 0.5 * box_size[d];
           bounding_pt_b[d] = center[d] + 0.5 * box_size[d];
         }
-        bounding_pt_a[dim - 1] = center[dim - 1];
-        bounding_pt_b[dim - 1] = center[dim - 1] + box_size[dim - 1];
+        bounding_pt_a[dim - 1] = center[dim - 1] - box_size[dim - 1];
+        bounding_pt_b[dim - 1] = center[dim - 1];
 
         std::get<tuple_box>(deposition_path)
             .push_back(std::make_pair(bounding_pt_a, bounding_pt_b));

@@ -414,19 +414,19 @@ BOOST_AUTO_TEST_CASE(deposition_from_scan_path_3d, *utf::tolerance(1e-13))
 
   // Check the first and last boxes
   BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(0) == -0.00025);
-  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(1) == -0.05);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(1) == 0.05);
   BOOST_TEST(bounding_boxes.at(0).get_boundary_points().first(2) == 0.0);
   BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(0) == 0.00025);
-  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(1) == 0.05);
+  BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(1) == 0.15);
   BOOST_TEST(bounding_boxes.at(0).get_boundary_points().second(2) == 0.1);
 
   BOOST_TEST(bounding_boxes.at(4).get_boundary_points().first(0) ==
              (0.002 - 0.00025));
-  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().first(1) == -0.05);
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().first(1) == 0.05);
   BOOST_TEST(bounding_boxes.at(4).get_boundary_points().first(2) == 0.0);
   BOOST_TEST(bounding_boxes.at(4).get_boundary_points().second(0) ==
              (0.002 + 0.00025));
-  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().second(1) == 0.05);
+  BOOST_TEST(bounding_boxes.at(4).get_boundary_points().second(1) == 0.15);
   BOOST_TEST(bounding_boxes.at(4).get_boundary_points().second(2) == 0.1);
 
   // Check the times
