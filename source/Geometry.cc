@@ -96,8 +96,8 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
     dealii::GridTools::scale(mesh_scaling, _triangulation);
 
     // Set the mesh material id to 0 if specified in the input
-    // PropertyTreeInput geometry.set_material_id_to_0
-    auto reset_material_id = database.get("set_material_id_to_0", false);
+    // PropertyTreeInput geometry.reset_material_id
+    auto reset_material_id = database.get("reset_material_id", false);
     if (reset_material_id)
     {
       for (auto cell : _triangulation.active_cell_iterators())
