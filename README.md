@@ -106,14 +106,14 @@ The following options are available:
     vtu, exodus, or default, i.e., use the file suffix to try to determine the
     mesh format (required)
     * mesh\_scale\_factor: Apply a uniform scaling factor to the mesh (e.g. if the mesh is defined in mm or inches instead of m), (default value: 1)
-    * set\_material\_id\_to\_0: Clear the material IDs defined in the mesh and sets them all to zero: true or false (default value: false)
+    * reset\_material\_id: Clear the material IDs defined in the mesh and set them all to zero so all material properties are given by the `material\_0` input block: true or false (default value: false)
   * if import\_mesh is false:
     * length: the length of the domain in meters (required)
     * height: the height of the domain in meters (required)
     * width: the width of the domain in meters (only in 3D)
-    * length_origin: the reference location in the length direction (default value: 0)
-    * height_origin: the reference location in the height direction (default value: 0)
-    * width_origin: the reference location in the width direction (only in 3D) (default value: 0)
+    * length\_origin: the reference location in the length direction (default value: 0)
+    * height\_origin: the reference location in the height direction (default value: 0)
+    * width\_origin: the reference location in the width direction (only in 3D) (default value: 0)
     * length\_divisions: number of cell layers in length (default value: 10)
     * height\_divisions: number of cell layers in the height (default value: 10)
     * width\_divisions: number of cell layers in width (only in 3D) (default value: 10)
