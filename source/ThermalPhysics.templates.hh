@@ -1109,18 +1109,18 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
       // Get the state
       if constexpr (n_material_states == 1)
       {
-        cell_state.push_back({data_to_deserialize[cell_id][0]});
+        cell_state.push_back({{data_to_deserialize[cell_id][0]}});
       }
       else if constexpr (n_material_states == 2)
       {
-        cell_state.push_back(
-            {data_to_deserialize[cell_id][0], data_to_deserialize[cell_id][1]});
+        cell_state.push_back({{data_to_deserialize[cell_id][0],
+                               data_to_deserialize[cell_id][1]}});
       }
       else if constexpr (n_material_states == 3)
       {
-        cell_state.push_back({data_to_deserialize[cell_id][0],
-                              data_to_deserialize[cell_id][1],
-                              data_to_deserialize[cell_id][2]});
+        cell_state.push_back(
+            {{data_to_deserialize[cell_id][0], data_to_deserialize[cell_id][1],
+              data_to_deserialize[cell_id][2]}});
       }
 
       // Set the fe index
