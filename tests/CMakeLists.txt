@@ -37,12 +37,15 @@ list(APPEND
      test_integration_3d
      test_integration_3d_amr
      test_integration_3d_amr_device
-     test_integration_da
      test_integration_da_augmented
      test_material_deposition
      test_thermal_physics
      test_ensemble_management
     )
+
+# test_integration_da is a special test that we need to test with more
+# processors than the others
+adamantine_ADD_BOOST_TEST(test_integration_da 1 2 3 6)
 
 foreach(TEST_NAME ${UNIT_TESTS})
   adamantine_ADD_BOOST_TEST(${TEST_NAME})

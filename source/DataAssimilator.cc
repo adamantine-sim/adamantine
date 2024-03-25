@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023, the adamantine authors.
+/* Copyright (c) 2021 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -41,6 +41,12 @@ DataAssimilator::DataAssimilator(MPI_Comm const &global_communicator,
   _global_comm_size =
       dealii::Utilities::MPI::n_mpi_processes(_global_communicator);
 
+  // We need all the processors to know the cutoff distance for ArborX
+  // DistributedTree to work correctly.
+  // PropertyTreeInput data_assimilation.localization_cutoff_distance
+  _localization_cutoff_distance = database.get(
+      "localization_cutoff_distance", std::numeric_limits<double>::max());
+
   if (_global_rank == 0)
   {
     // Set the solver parameters from the input database
@@ -59,10 +65,6 @@ DataAssimilator::DataAssimilator(MPI_Comm const &global_communicator,
     if (boost::optional<double> tolerance =
             database.get_optional<double>("solver.convergence_tolerance"))
       _solver_control.set_tolerance(*tolerance);
-
-    // PropertyTreeInput data_assimilation.localization_cutoff_distance
-    _localization_cutoff_distance = database.get(
-        "localization_cutoff_distance", std::numeric_limits<double>::max());
 
     // PropertyTreeInput data_assimilation.localization_cutoff_function
     std::string localization_cutoff_function_str =
@@ -390,8 +392,12 @@ void DataAssimilator::scatter_ensemble_members(
       {
         rw_vector[i] = recv_buffer[m][offset + i];
       }
-      augmented_state_ensemble[m].block(b).import(
-          rw_vector, dealii::VectorOperation::insert);
+      // We cannot insert the elements because deal.II checks that the local
+      // elements and the remote ones match. Instead, we set everything to zero
+      // and then, we add the imported elements.
+      augmented_state_ensemble[m].block(b) = 0.;
+      augmented_state_ensemble[m].block(b).import_elements(
+          rw_vector, dealii::VectorOperation::add);
     }
   }
 }
