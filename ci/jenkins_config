@@ -22,7 +22,7 @@ pipeline {
             docker {
               image "rombur/adamantine-stack:no_gpu-latest"
                 alwaysPull true
-                label 'docker || nvidia-docker || rocm-docker'
+                label 'nvidia-docker || rocm-docker'
             }
           }
           steps {
@@ -38,7 +38,7 @@ pipeline {
                   -D DEAL_II_DIR=${DEAL_II_DIR} \
                   ..
                 '''
-                sh 'make -j3'
+                sh 'make -j8'
                 sh 'ctest --no-compress-output -R test_ -T Test'
               }
           }
