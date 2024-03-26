@@ -361,25 +361,17 @@ void validate_input_database(boost::property_tree::ptree &database)
   // Tree: time_stepping
   std::string time_stepping_method =
       database.get<std::string>("time_stepping.method");
-  ASSERT_THROW(
-      boost::iequals(time_stepping_method, "forward_euler") ||
-          boost::iequals(time_stepping_method, "rk_third_order") ||
-          boost::iequals(time_stepping_method, "rk_fourth_order") ||
-          boost::iequals(time_stepping_method, "heun_euler") ||
-          boost::iequals(time_stepping_method, "bogacki_shampine") ||
-          boost::iequals(time_stepping_method, "dopri") ||
-          boost::iequals(time_stepping_method, "fehlberg") ||
-          boost::iequals(time_stepping_method, "cash_karp") ||
-          boost::iequals(time_stepping_method, "backward_euler") ||
-          boost::iequals(time_stepping_method, "implicit_midpoint") ||
-          boost::iequals(time_stepping_method, "crank_nicolson") ||
-          boost::iequals(time_stepping_method, "sdirk2"),
-      "Error: Time stepping method, '" + time_stepping_method +
-          "', is not recognized. Valid options are: 'forward_euler', "
-          "'rk_third_order', 'rk_fourth_order', 'heun_euler', "
-          "'bogacki_shampine', 'dopri', 'fehlberg', 'cash_karp', "
-          "'backward_euler', 'implicit_midpoint', 'crank_nicolson', and "
-          "'sdirk2'.");
+  ASSERT_THROW(boost::iequals(time_stepping_method, "forward_euler") ||
+                   boost::iequals(time_stepping_method, "rk_third_order") ||
+                   boost::iequals(time_stepping_method, "rk_fourth_order") ||
+                   boost::iequals(time_stepping_method, "backward_euler") ||
+                   boost::iequals(time_stepping_method, "implicit_midpoint") ||
+                   boost::iequals(time_stepping_method, "crank_nicolson") ||
+                   boost::iequals(time_stepping_method, "sdirk2"),
+               "Error: Time stepping method, '" + time_stepping_method +
+                   "', is not recognized. Valid options are: 'forward_euler', "
+                   "'rk_third_order', 'rk_fourth_order', 'backward_euler', "
+                   "'implicit_midpoint', 'crank_nicolson', and 'sdirk2'.");
 
   ASSERT_THROW(database.get<double>("time_stepping.duration") >= 0.0,
                "Error: Time stepping duration must be non-negative.");

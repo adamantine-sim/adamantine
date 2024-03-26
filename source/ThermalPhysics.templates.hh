@@ -411,41 +411,6 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
     _time_stepping =
         std::make_unique<dealii::TimeStepping::ExplicitRungeKutta<LA_Vector>>(
             dealii::TimeStepping::RK_CLASSIC_FOURTH_ORDER);
-  else if (method.compare("heun_euler") == 0)
-  {
-    _time_stepping = std::make_unique<
-        dealii::TimeStepping::EmbeddedExplicitRungeKutta<LA_Vector>>(
-        dealii::TimeStepping::HEUN_EULER);
-    _embedded_method = true;
-  }
-  else if (method.compare("bogacki_shampine") == 0)
-  {
-    _time_stepping = std::make_unique<
-        dealii::TimeStepping::EmbeddedExplicitRungeKutta<LA_Vector>>(
-        dealii::TimeStepping::BOGACKI_SHAMPINE);
-    _embedded_method = true;
-  }
-  else if (method.compare("dopri") == 0)
-  {
-    _time_stepping = std::make_unique<
-        dealii::TimeStepping::EmbeddedExplicitRungeKutta<LA_Vector>>(
-        dealii::TimeStepping::DOPRI);
-    _embedded_method = true;
-  }
-  else if (method.compare("fehlberg") == 0)
-  {
-    _time_stepping = std::make_unique<
-        dealii::TimeStepping::EmbeddedExplicitRungeKutta<LA_Vector>>(
-        dealii::TimeStepping::FEHLBERG);
-    _embedded_method = true;
-  }
-  else if (method.compare("cash_karp") == 0)
-  {
-    _time_stepping = std::make_unique<
-        dealii::TimeStepping::EmbeddedExplicitRungeKutta<LA_Vector>>(
-        dealii::TimeStepping::CASH_KARP);
-    _embedded_method = true;
-  }
   else if (method.compare("backward_euler") == 0)
   {
     _time_stepping =
@@ -473,31 +438,6 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
         std::make_unique<dealii::TimeStepping::ImplicitRungeKutta<LA_Vector>>(
             dealii::TimeStepping::SDIRK_TWO_STAGES);
     _implicit_method = true;
-  }
-
-  if (_embedded_method == true)
-  {
-    // PropertyTreeInput time_steppping.coarsening_parameter
-    double coarsen_param =
-        time_stepping_database.get("coarsening_parameter", 1.2);
-    // PropertyTreeInput time_steppping.refining_parameter
-    double refine_param = time_stepping_database.get("refining_parameter", 0.8);
-    // PropertyTreeInput time_stepping.min_time_step
-    double min_delta = time_stepping_database.get("min_time_step", 1e-14);
-    // PropertyTreeInput time_stepping.max_time_step
-    double max_delta = time_stepping_database.get("max_time_step", 1e100);
-    // PropertyTreeInput time_stepping.refining_tolerance
-    double refine_tol = time_stepping_database.get("refining_tolerance", 1e-8);
-    // PropertyTreeInput time_stepping.coarsening_tolerance
-    double coarsen_tol =
-        time_stepping_database.get("coarsening_tolerance", 1e-12);
-    dealii::TimeStepping::EmbeddedExplicitRungeKutta<LA_Vector> *embedded_rk =
-        static_cast<
-            dealii::TimeStepping::EmbeddedExplicitRungeKutta<LA_Vector> *>(
-            _time_stepping.get());
-    embedded_rk->set_time_adaptation_parameters(coarsen_param, refine_param,
-                                                min_delta, max_delta,
-                                                refine_tol, coarsen_tol);
   }
 
   // If the time stepping scheme is implicit, set the parameters for the solver
@@ -948,21 +888,7 @@ double ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
   double time = _time_stepping->evolve_one_time_step(eval, id_m_Jinv, t,
                                                      delta_t, solution);
 
-  // If the method is embedded, get the next time step. Otherwise, just use the
-  // current time step.
-  if (_embedded_method == false)
-    _delta_t_guess = delta_t;
-  else
-  {
-    dealii::TimeStepping::EmbeddedExplicitRungeKutta<LA_Vector> *embedded_rk =
-        static_cast<
-            dealii::TimeStepping::EmbeddedExplicitRungeKutta<LA_Vector> *>(
-            _time_stepping.get());
-    _delta_t_guess = embedded_rk->get_status().delta_t_guess;
-  }
-
-  // Return the time at the end of the time step. This may be different than
-  // t+delta_t for embedded methods.
+  // Return the time at the end of the time step.
   return time;
 }
 

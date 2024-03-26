@@ -1040,7 +1040,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // PropertyTreeInput post_processor.time_steps_between_output
   unsigned int const time_steps_output =
       post_processor_database.get("time_steps_between_output", 1);
-  double next_refinement_time = time;
   // PropertyTreeInput materials.new_material_temperature
   double const new_material_temperature =
       database.get("materials.new_material_temperature", 300.);
@@ -1056,15 +1055,11 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     if ((time + time_step) > duration)
       time_step = duration - time;
 
-    // Refine the mesh after time_steps_refinement time steps or when time
-    // is greater or equal than the next predicted time for refinement. This
-    // is necessary when using an embedded method.
-    if ((((n_time_step % time_steps_refinement) == 0) ||
-         (time >= next_refinement_time)) &&
-        use_thermal_physics)
+    // Refine the mesh after time_steps_refinement time steps.
+    if (((n_time_step % time_steps_refinement) == 0) && use_thermal_physics)
     {
-      next_refinement_time = time + time_steps_refinement * time_step;
       timers[adamantine::refine].start();
+      double next_refinement_time = time + time_steps_refinement * time_step;
       refine_mesh(thermal_physics, material_properties, temperature,
                   heat_sources, time, next_refinement_time,
                   time_steps_refinement, refinement_database);
@@ -1172,16 +1167,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     }
 
     timers[adamantine::evol_time].stop();
-
-    // Get the new time step
-    if (use_thermal_physics)
-    {
-      time_step = thermal_physics->get_delta_t_guess();
-    }
-    else
-    {
-      time_step += time_step;
-    }
 
     if (n_time_step % time_steps_checkpoint == 0)
     {
@@ -1751,7 +1736,6 @@ run_ensemble(MPI_Comm const &global_communicator,
   // PropertyTreeInput refinement.time_steps_between_refinement
   unsigned int const time_steps_refinement =
       refinement_database.get("time_steps_between_refinement", 10);
-  double next_refinement_time = time;
   // PropertyTreeInput time_stepping.time_step
   double time_step = time_stepping_database.get<double>("time_step");
   // PropertyTreeInput time_stepping.duration
@@ -1798,14 +1782,12 @@ run_ensemble(MPI_Comm const &global_communicator,
       time_step = duration - time;
 
     // ----- Refine the mesh if necessary -----
-    // Refine the mesh after time_steps_refinement time steps or when time
-    // is greater or equal than the next predicted time for refinement. This
-    // is necessary when using an embedded method.
-    if (((n_time_step % time_steps_refinement) == 0) ||
-        (time >= next_refinement_time))
+    // Refine the mesh after time_steps_refinement time steps.
+    if ((n_time_step % time_steps_refinement) == 0)
     {
-      next_refinement_time = time + time_steps_refinement * time_step;
       timers[adamantine::refine].start();
+      double const next_refinement_time =
+          time + time_steps_refinement * time_step;
 
       for (unsigned int member = 0; member < local_ensemble_size; ++member)
       {
@@ -1884,11 +1866,6 @@ run_ensemble(MPI_Comm const &global_communicator,
           solution_augmented_ensemble[member].block(base_state), timers);
     }
     timers[adamantine::evol_time].stop();
-
-    // ----- Get the new time step size -----
-    // Needs to be the same for all ensemble members, obtained from the 0th
-    // member
-    time_step = thermal_physics_ensemble[0]->get_delta_t_guess();
 
     // ----- Perform data assimilation -----
     if (assimilate_data)

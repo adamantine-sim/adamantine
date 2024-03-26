@@ -162,22 +162,10 @@ The following options are available:
   * beam\_X.diameter: diameter of the beam in meters (default value: 2e-3)
 * time\_stepping (required):
   * method: name of the method to use for the time integration: forward\_euler,
-  rk\_third\_order, rk\_fourth\_order, heun\_euler, bogacki\_shampine, dopri,
-  fehlberg, cash\_karp, backward\_euler, implicit\_midpoint, crank\_nicolson, or
-  sdirk2 (required)
+  rk\_third\_order, rk\_fourth\_order, backward\_euler, implicit\_midpoint, 
+  crank\_nicolson, or sdirk2 (required)
   * duration: duration of the simulation in seconds (required)
   * time\_step: length of the time steps used for the simulation in seconds (required)
-  * for embedded methods:
-    * coarsening\_parameter: coarsening of the time step when the error is small
-    enough (default value: 1.2)
-    * refining\_parameter: refining of the time step when the error is too large
-    (default value: 0.8)
-    * min\_time\_step: minimal time step (default value: 1e-14)
-    * max\_time\_step: maximal time step (default value: 1e100)
-    * refining\_tolerance: if the error is above the threshold, the time step is
-    refined (default value: 1e-8)
-    * coarsening\_tolerance: if the error is under the threshold, the time step
-    is coarsen (default value: 1e-12)
   * for implicit method:
     * max\_iteration: mamximum number of the iterations of the linear solver
     (default value: 1000)

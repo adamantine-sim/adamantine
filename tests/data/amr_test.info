@@ -97,8 +97,7 @@ time_stepping
 {
   method forward_euler ; Possibilities: backward_euler, implicit_midpoint,
                         ; crank_nicolson, sdirk2, forward_euler, rk_third_order,
-                        ; rk_fourth_order, bogacki_shampine, dopri,
-                        ; fehlberg, cash_karp
+                        ; rk_fourth_order
   duration 25.0e-5 ; [s]
   time_step 1.0e-6 ; [s]
 }
