@@ -184,51 +184,6 @@ void output_pvtu(
   timers[adamantine::output].stop();
 }
 
-template <int dim, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value,
-              int> = 0>
-dealii::Vector<float> estimate_error(
-    dealii::parallel::distributed::Triangulation<dim> const &triangulation,
-    dealii::DoFHandler<dim> const &dof_handler, int fe_degree,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> const &solution)
-{
-  dealii::Vector<float> estimated_error_per_cell(
-      triangulation.n_active_cells());
-  dealii::KellyErrorEstimator<dim>::estimate(
-      dof_handler, dealii::QGauss<dim - 1>(fe_degree + 1),
-      std::map<dealii::types::boundary_id,
-               const dealii::Function<dim, double> *>(),
-      solution, estimated_error_per_cell, dealii::ComponentMask(), nullptr, 0,
-      triangulation.locally_owned_subdomain());
-
-  return estimated_error_per_cell;
-}
-
-template <int dim, typename MemorySpaceType,
-          std::enable_if_t<std::is_same<MemorySpaceType,
-                                        dealii::MemorySpace::Default>::value,
-                           int> = 0>
-dealii::Vector<float> estimate_error(
-    dealii::parallel::distributed::Triangulation<dim> const &triangulation,
-    dealii::DoFHandler<dim> const &dof_handler, int fe_degree,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> const &solution)
-{
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      solution_host(solution.get_partitioner());
-  solution_host.import(solution, dealii::VectorOperation::insert);
-  dealii::Vector<float> estimated_error_per_cell(
-      triangulation.n_active_cells());
-  dealii::KellyErrorEstimator<dim>::estimate(
-      dof_handler, dealii::QGauss<dim - 1>(fe_degree + 1),
-      std::map<dealii::types::boundary_id,
-               const dealii::Function<dim, double> *>(),
-      solution_host, estimated_error_per_cell, dealii::ComponentMask(), nullptr,
-      0, triangulation.locally_owned_subdomain());
-
-  return estimated_error_per_cell;
-}
-
 // inlining this function so we can have in the header
 inline void initialize_timers(MPI_Comm const &communicator,
                               std::vector<adamantine::Timer> &timers)
@@ -626,56 +581,10 @@ void refine_mesh(
   CALI_CXX_MARK_FUNCTION;
 #endif
   dealii::DoFHandler<dim> &dof_handler = thermal_physics->get_dof_handler();
-  // Use the Kelly error estimator to refine the mesh. This is done so that the
-  // part of the domain that were heated stay refined.
-  // PropertyTreeInput refinement.n_heat_refinements
-  unsigned int const n_kelly_refinements =
-      refinement_database.get("n_heat_refinements", 2);
-  double coarsening_fraction = 0.3;
-  double refining_fraction = 0.6;
-  // PropertyTreeInput refinement.heat_cell_ratio
-  double cells_fraction = refinement_database.get("heat_cell_ratio", 1.);
   dealii::parallel::distributed::Triangulation<dim> &triangulation =
       dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
           const_cast<dealii::Triangulation<dim> &>(
               dof_handler.get_triangulation()));
-  // Number of times the mesh on the beam paths will be refined and maximum
-  // number of time a cell can be refined.
-  // PropertyTreeInput refinement.n_beam_refinements
-  unsigned int const n_beam_refinements =
-      refinement_database.get("n_beam_refinements", 2);
-  // PropertyTreeInput refinement.max_level
-  int max_level = refinement_database.get<int>("max_level");
-
-  // PropertyTreeInput refinement.beam_cutoff
-  const double refinement_beam_cutoff =
-      refinement_database.get<double>("beam_cutoff", 1.0e-15);
-
-  for (unsigned int i = 0; i < n_kelly_refinements; ++i)
-  {
-    // Estimate the error. For simplicity, always use dealii::QGauss
-    dealii::Vector<float> estimated_error_per_cell =
-        estimate_error(triangulation, dof_handler, fe_degree, solution);
-
-    // Flag the cells for refinement.
-    unsigned int new_n_cells = static_cast<unsigned int>(
-        cells_fraction *
-        static_cast<double>(triangulation.n_global_active_cells()));
-    dealii::GridRefinement::refine_and_coarsen_fixed_fraction(
-        triangulation, estimated_error_per_cell, refining_fraction,
-        coarsening_fraction, new_n_cells);
-
-    // Don't refine cells that are already as much refined as it is allowed.
-    for (auto cell :
-         dealii::filter_iterators(triangulation.active_cell_iterators(),
-                                  dealii::IteratorFilters::LocallyOwnedCell()))
-      if (cell->level() >= max_level)
-        cell->clear_refine_flag();
-
-    // Execute the refinement and transfer the solution onto the new mesh.
-    refine_and_transfer(thermal_physics, material_properties, dof_handler,
-                        solution);
-  }
 
   // Refine the mesh along the trajectory of the sources.
   double current_source_height =
@@ -692,7 +601,15 @@ void refine_mesh(
                 dealii::QGaussLobatto<1>> *>(thermal_physics.get())
                 ->get_current_source_height();
 
-  for (unsigned int i = 0; i < n_beam_refinements; ++i)
+  // PropertyTreeInput refinement.n_refinements
+  unsigned int const n_refinements =
+      refinement_database.get("n_refinements", 2);
+
+  // PropertyTreeInput refinement.beam_cutoff
+  const double refinement_beam_cutoff =
+      refinement_database.get<double>("beam_cutoff", 1.0e-15);
+
+  for (unsigned int i = 0; i < n_refinements; ++i)
   {
     // Compute the cells to be refined.
     std::vector<typename dealii::parallel::distributed::Triangulation<
@@ -722,7 +639,8 @@ void refine_mesh(
     {
       if (coarsen_after_beam)
         cell->clear_coarsen_flag();
-      if (cell->level() < max_level)
+
+      if (cell->level() < static_cast<int>(n_refinements))
         cell->set_refine_flag();
     }
 

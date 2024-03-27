@@ -53,14 +53,10 @@ boundary
 
 refinement
 {
-  n_heat_refinements 0 ; Number of coarsening/refinement executed (uses Kelly's
-                       ; error estimator)
-  heat_cell_ratio    2.0 ;
-  n_beam_refinements 0 ; Number of time the cells on the paths of the beams are
-                       ; refined
-  max_level          0 ; Maximum number of time a cell can be refined
+  n_refinements 0 ; Number of time the cells on the paths of the beams are
+                  ; refined
   time_steps_between_refinement 2000000000 ; number of time steps after which
-                                                 ; the refinement process is performed
+                                           ; the refinement process is performed
 }
 
 materials

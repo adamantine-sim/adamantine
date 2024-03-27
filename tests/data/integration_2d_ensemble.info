@@ -22,11 +22,8 @@ physics
 
 refinement
 {
-  n_heat_refinements 0 ; Number of coarsening/refinement executed (uses Kelly's
-                       ; error estimator)
-  n_beam_refinements 2 ; Number of time the cells on the paths of the beams are
-                       ; refined
-  max_level          2 ; Maximum number of time a cell can be refined
+  n_refinements 2 ; Number of time the cells on the paths of the beams are
+                  ; refined
 }
 
 materials
