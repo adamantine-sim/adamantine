@@ -1,4 +1,4 @@
-FROM rombur/adamantine-stack:no_gpu-latest
+FROM rombur/adamantine-stack:no_gpu-24.01.0
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
