@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023, the adamantine authors.
+/* Copyright (c) 2021 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -8,7 +8,7 @@
 #include <experimental_data_utils.hh>
 #include <utils.hh>
 
-#include <deal.II/arborx/bvh.h>
+#include <deal.II/arborx/distributed_tree.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/mapping_q1.h>
 #include <deal.II/grid/filtered_iterator.h>
@@ -73,28 +73,37 @@ get_expt_to_dof_mapping(PointsValues<dim> const &points_values,
 {
   auto [dof_indices, support_points] = get_dof_to_support_mapping(dof_handler);
 
+  auto communicator = dof_handler.get_communicator();
+  int my_rank = dealii::Utilities::MPI::this_mpi_process(communicator);
+
   // Perform the search
-  dealii::ArborXWrappers::BVH bvh(support_points);
+  dealii::ArborXWrappers::DistributedTree distributed_tree(communicator,
+                                                           support_points);
   dealii::ArborXWrappers::PointNearestPredicate pt_nearest(points_values.points,
                                                            1);
-  auto [indices, offset] = bvh.query(pt_nearest);
+  auto [indices_ranks, offset] = distributed_tree.query(pt_nearest);
 
   // Convert the indices and offsets to a pair that maps experimental indices to
   // dof indices
-  std::pair<std::vector<int>, std::vector<int>> expt_to_dof_mapping;
-  expt_to_dof_mapping.first.resize(indices.size());
-  expt_to_dof_mapping.second.resize(indices.size());
+  std::vector<int> obs_indices;
+  std::vector<int> global_indices;
+  obs_indices.resize(indices_ranks.size());
+  global_indices.resize(indices_ranks.size());
   unsigned int const n_queries = points_values.points.size();
   for (unsigned int i = 0; i < n_queries; ++i)
   {
     for (int j = offset[i]; j < offset[i + 1]; ++j)
     {
-      expt_to_dof_mapping.first[j] = i;
-      expt_to_dof_mapping.second[j] = dof_indices[indices[j]];
+      obs_indices[j] = i;
+      global_indices[j] = indices_ranks[j].second == my_rank
+                              ? dof_indices[indices_ranks[j].first]
+                              : -1;
     }
   }
 
-  return expt_to_dof_mapping;
+  dealii::Utilities::MPI::max(global_indices, communicator, global_indices);
+
+  return std::make_pair(obs_indices, global_indices);
 }
 
 template <int dim>
@@ -114,9 +123,12 @@ void set_with_experimental_data(
               << std::endl;
   }
 
+  auto locally_owned_dofs = temperature.locally_owned_elements();
   for (unsigned int i = 0; i < points_values.values.size(); ++i)
   {
-    temperature[expt_to_dof_mapping.second[i]] = points_values.values[i];
+    // Only add locally owned elements
+    if (locally_owned_dofs.is_element(expt_to_dof_mapping.second[i]))
+      temperature[expt_to_dof_mapping.second[i]] = points_values.values[i];
   }
 
   temperature.compress(dealii::VectorOperation::insert);

@@ -1286,10 +1286,6 @@ void split_global_communicator(MPI_Comm global_communicator,
       static_cast<double>(global_ensemble_size);
   if (avg_n_procs_per_member > 1)
   {
-    // FIXME This branch does not work currently
-    adamantine::ASSERT_THROW(false, "Number of MPI ranks should be less than "
-                                    "the number of ensemble members");
-
     local_ensemble_size = 1;
     // We need all the members to use the same partitioning otherwise the dofs
     // may be number differently which is problematic for the data assimulation.
