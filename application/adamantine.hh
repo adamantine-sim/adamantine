@@ -973,8 +973,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     if ((time + time_step) > duration)
       time_step = duration - time;
 
-    // Refine the mesh after time_steps_refinement time steps.
-    if (((n_time_step % time_steps_refinement) == 0) && use_thermal_physics)
+    // Refine the mesh the first time we get in the loop and after
+    // time_steps_refinement time steps.
+    if (((n_time_step == 1) || ((n_time_step % time_steps_refinement) == 0)) &&
+        use_thermal_physics)
     {
       timers[adamantine::refine].start();
       double next_refinement_time = time + time_steps_refinement * time_step;
@@ -983,8 +985,11 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                   time_steps_refinement, refinement_database);
       timers[adamantine::refine].stop();
       if ((rank == 0) && (verbose_output == true))
-        std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
+      {
+        std::cout << "n_time_step: " << n_time_step << " time: " << time
+                  << " n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
                   << std::endl;
+      }
     }
 
     // Add material if necessary.
@@ -1033,8 +1038,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       if ((rank == 0) && (verbose_output == true) &&
           (activation_end - activation_start > 0) && use_thermal_physics)
       {
-        std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
-                  << std::endl;
+        std::cout << "n_dofs after cell activation: "
+                  << thermal_physics->get_dof_handler().n_dofs() << std::endl;
       }
     }
     timers[adamantine::add_material_activate].stop();
@@ -1700,8 +1705,9 @@ run_ensemble(MPI_Comm const &global_communicator,
       time_step = duration - time;
 
     // ----- Refine the mesh if necessary -----
-    // Refine the mesh after time_steps_refinement time steps.
-    if ((n_time_step % time_steps_refinement) == 0)
+    // Refine the mesh the first time we get in the loop and after
+    // time_steps_refinement time steps.
+    if ((n_time_step == 1) || ((n_time_step % time_steps_refinement) == 0))
     {
       timers[adamantine::refine].start();
       double const next_refinement_time =
@@ -1719,9 +1725,12 @@ run_ensemble(MPI_Comm const &global_communicator,
 
       timers[adamantine::refine].stop();
       if ((global_rank == 0) && (verbose_output == true))
-        std::cout << "n_dofs: "
+      {
+        std::cout << "n_time_step: " << n_time_step << " time: " << time
+                  << " n_dofs: "
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
+      }
     }
 
     // We use an epsilon to get the "expected" behavior when the deposition
@@ -1767,9 +1776,11 @@ run_ensemble(MPI_Comm const &global_communicator,
 
       if ((global_rank == 0) && (verbose_output == true) &&
           (activation_end - activation_start > 0))
-        std::cout << "n_dofs: "
+      {
+        std::cout << "n_dofs after cell activation: "
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
+      }
     }
     timers[adamantine::add_material_activate].stop();
 
