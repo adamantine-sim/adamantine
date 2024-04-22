@@ -84,11 +84,6 @@ public:
       std::vector<Timer> &timers) = 0;
 
   /**
-   * Return a guess of what should be the nex time step.
-   */
-  virtual double get_delta_t_guess() const = 0;
-
-  /**
    * Initialize the given vector with the given value.
    */
   virtual void

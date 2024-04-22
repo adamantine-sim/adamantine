@@ -22,11 +22,8 @@ boundary
 
 refinement
 {
-  n_heat_refinements 0 ; Number of coarsening/refinement executed (uses Kelly's
-                       ; error estimator)
-  n_beam_refinements 2 ; Number of time the cells on the paths of the beams are
-                       ; refined
-  max_level          2 ; Maximum number of time a cell can be refined
+  n_refinements 2 ; Number of time the cells on the paths of the beams are
+                  ; refined
 }
 
 materials
@@ -89,10 +86,9 @@ sources
 
 time_stepping
 {
-  method backward_euler ; Possibilities: backward_euler, implicit_midpoint,
-                        ; crank_nicolson, sdirk2, forward_euler, rk_third_order,
-                        ; rk_fourth_order, bogacki_shampine, dopri,
-                        ; fehlberg, cash_karp
+  method forward_euler ; Possibilities: backward_euler, implicit_midpoint,
+                       ; crank_nicolson, sdirk2, forward_euler, rk_third_order,
+                       ; rk_fourth_order
   duration 1e-9 ; [s]
   time_step 5e-11 ; [s]
 }

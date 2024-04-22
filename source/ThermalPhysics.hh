@@ -73,8 +73,6 @@ public:
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
       std::vector<Timer> &timers) override;
 
-  double get_delta_t_guess() const override;
-
   void
   initialize_dof_vector(double const value,
                         dealii::LA::distributed::Vector<double, MemorySpaceType>
@@ -147,10 +145,6 @@ private:
                                    std::vector<Timer> &timers) const;
 
   /**
-   * This flag is true if the time stepping method is embedded.
-   */
-  bool _embedded_method = false;
-  /**
    * This flag is true if the time stepping method is implicit.
    */
   bool _implicit_method = false;
@@ -167,10 +161,6 @@ private:
    * Maximum number of temporary vectors when inverting the ImplicitOperator.
    */
   unsigned int _max_n_tmp_vectors;
-  /**
-   * Guess of the next time step.
-   */
-  double _delta_t_guess;
   /**
    * Tolerance to inverte the ImplicitOperator.
    */
@@ -244,15 +234,6 @@ private:
    */
   std::unique_ptr<dealii::TimeStepping::RungeKutta<LA_Vector>> _time_stepping;
 };
-
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
-inline double
-ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
-               QuadratureType>::get_delta_t_guess() const
-{
-  return _delta_t_guess;
-}
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,
           typename MemorySpaceType, typename QuadratureType>

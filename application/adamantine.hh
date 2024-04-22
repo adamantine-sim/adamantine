@@ -184,51 +184,6 @@ void output_pvtu(
   timers[adamantine::output].stop();
 }
 
-template <int dim, typename MemorySpaceType,
-          std::enable_if_t<
-              std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value,
-              int> = 0>
-dealii::Vector<float> estimate_error(
-    dealii::parallel::distributed::Triangulation<dim> const &triangulation,
-    dealii::DoFHandler<dim> const &dof_handler, int fe_degree,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> const &solution)
-{
-  dealii::Vector<float> estimated_error_per_cell(
-      triangulation.n_active_cells());
-  dealii::KellyErrorEstimator<dim>::estimate(
-      dof_handler, dealii::QGauss<dim - 1>(fe_degree + 1),
-      std::map<dealii::types::boundary_id,
-               const dealii::Function<dim, double> *>(),
-      solution, estimated_error_per_cell, dealii::ComponentMask(), nullptr, 0,
-      triangulation.locally_owned_subdomain());
-
-  return estimated_error_per_cell;
-}
-
-template <int dim, typename MemorySpaceType,
-          std::enable_if_t<std::is_same<MemorySpaceType,
-                                        dealii::MemorySpace::Default>::value,
-                           int> = 0>
-dealii::Vector<float> estimate_error(
-    dealii::parallel::distributed::Triangulation<dim> const &triangulation,
-    dealii::DoFHandler<dim> const &dof_handler, int fe_degree,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> const &solution)
-{
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      solution_host(solution.get_partitioner());
-  solution_host.import(solution, dealii::VectorOperation::insert);
-  dealii::Vector<float> estimated_error_per_cell(
-      triangulation.n_active_cells());
-  dealii::KellyErrorEstimator<dim>::estimate(
-      dof_handler, dealii::QGauss<dim - 1>(fe_degree + 1),
-      std::map<dealii::types::boundary_id,
-               const dealii::Function<dim, double> *>(),
-      solution_host, estimated_error_per_cell, dealii::ComponentMask(), nullptr,
-      0, triangulation.locally_owned_subdomain());
-
-  return estimated_error_per_cell;
-}
-
 // inlining this function so we can have in the header
 inline void initialize_timers(MPI_Comm const &communicator,
                               std::vector<adamantine::Timer> &timers)
@@ -626,56 +581,10 @@ void refine_mesh(
   CALI_CXX_MARK_FUNCTION;
 #endif
   dealii::DoFHandler<dim> &dof_handler = thermal_physics->get_dof_handler();
-  // Use the Kelly error estimator to refine the mesh. This is done so that the
-  // part of the domain that were heated stay refined.
-  // PropertyTreeInput refinement.n_heat_refinements
-  unsigned int const n_kelly_refinements =
-      refinement_database.get("n_heat_refinements", 2);
-  double coarsening_fraction = 0.3;
-  double refining_fraction = 0.6;
-  // PropertyTreeInput refinement.heat_cell_ratio
-  double cells_fraction = refinement_database.get("heat_cell_ratio", 1.);
   dealii::parallel::distributed::Triangulation<dim> &triangulation =
       dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
           const_cast<dealii::Triangulation<dim> &>(
               dof_handler.get_triangulation()));
-  // Number of times the mesh on the beam paths will be refined and maximum
-  // number of time a cell can be refined.
-  // PropertyTreeInput refinement.n_beam_refinements
-  unsigned int const n_beam_refinements =
-      refinement_database.get("n_beam_refinements", 2);
-  // PropertyTreeInput refinement.max_level
-  int max_level = refinement_database.get<int>("max_level");
-
-  // PropertyTreeInput refinement.beam_cutoff
-  const double refinement_beam_cutoff =
-      refinement_database.get<double>("beam_cutoff", 1.0e-15);
-
-  for (unsigned int i = 0; i < n_kelly_refinements; ++i)
-  {
-    // Estimate the error. For simplicity, always use dealii::QGauss
-    dealii::Vector<float> estimated_error_per_cell =
-        estimate_error(triangulation, dof_handler, fe_degree, solution);
-
-    // Flag the cells for refinement.
-    unsigned int new_n_cells = static_cast<unsigned int>(
-        cells_fraction *
-        static_cast<double>(triangulation.n_global_active_cells()));
-    dealii::GridRefinement::refine_and_coarsen_fixed_fraction(
-        triangulation, estimated_error_per_cell, refining_fraction,
-        coarsening_fraction, new_n_cells);
-
-    // Don't refine cells that are already as much refined as it is allowed.
-    for (auto cell :
-         dealii::filter_iterators(triangulation.active_cell_iterators(),
-                                  dealii::IteratorFilters::LocallyOwnedCell()))
-      if (cell->level() >= max_level)
-        cell->clear_refine_flag();
-
-    // Execute the refinement and transfer the solution onto the new mesh.
-    refine_and_transfer(thermal_physics, material_properties, dof_handler,
-                        solution);
-  }
 
   // Refine the mesh along the trajectory of the sources.
   double current_source_height =
@@ -692,7 +601,15 @@ void refine_mesh(
                 dealii::QGaussLobatto<1>> *>(thermal_physics.get())
                 ->get_current_source_height();
 
-  for (unsigned int i = 0; i < n_beam_refinements; ++i)
+  // PropertyTreeInput refinement.n_refinements
+  unsigned int const n_refinements =
+      refinement_database.get("n_refinements", 2);
+
+  // PropertyTreeInput refinement.beam_cutoff
+  const double refinement_beam_cutoff =
+      refinement_database.get<double>("beam_cutoff", 1.0e-15);
+
+  for (unsigned int i = 0; i < n_refinements; ++i)
   {
     // Compute the cells to be refined.
     std::vector<typename dealii::parallel::distributed::Triangulation<
@@ -722,7 +639,8 @@ void refine_mesh(
     {
       if (coarsen_after_beam)
         cell->clear_coarsen_flag();
-      if (cell->level() < max_level)
+
+      if (cell->level() < static_cast<int>(n_refinements))
         cell->set_refine_flag();
     }
 
@@ -1040,7 +958,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // PropertyTreeInput post_processor.time_steps_between_output
   unsigned int const time_steps_output =
       post_processor_database.get("time_steps_between_output", 1);
-  double next_refinement_time = time;
   // PropertyTreeInput materials.new_material_temperature
   double const new_material_temperature =
       database.get("materials.new_material_temperature", 300.);
@@ -1056,22 +973,23 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     if ((time + time_step) > duration)
       time_step = duration - time;
 
-    // Refine the mesh after time_steps_refinement time steps or when time
-    // is greater or equal than the next predicted time for refinement. This
-    // is necessary when using an embedded method.
-    if ((((n_time_step % time_steps_refinement) == 0) ||
-         (time >= next_refinement_time)) &&
+    // Refine the mesh the first time we get in the loop and after
+    // time_steps_refinement time steps.
+    if (((n_time_step == 1) || ((n_time_step % time_steps_refinement) == 0)) &&
         use_thermal_physics)
     {
-      next_refinement_time = time + time_steps_refinement * time_step;
       timers[adamantine::refine].start();
+      double next_refinement_time = time + time_steps_refinement * time_step;
       refine_mesh(thermal_physics, material_properties, temperature,
                   heat_sources, time, next_refinement_time,
                   time_steps_refinement, refinement_database);
       timers[adamantine::refine].stop();
       if ((rank == 0) && (verbose_output == true))
-        std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
+      {
+        std::cout << "n_time_step: " << n_time_step << " time: " << time
+                  << " n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
                   << std::endl;
+      }
     }
 
     // Add material if necessary.
@@ -1120,8 +1038,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       if ((rank == 0) && (verbose_output == true) &&
           (activation_end - activation_start > 0) && use_thermal_physics)
       {
-        std::cout << "n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
-                  << std::endl;
+        std::cout << "n_dofs after cell activation: "
+                  << thermal_physics->get_dof_handler().n_dofs() << std::endl;
       }
     }
     timers[adamantine::add_material_activate].stop();
@@ -1172,16 +1090,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     }
 
     timers[adamantine::evol_time].stop();
-
-    // Get the new time step
-    if (use_thermal_physics)
-    {
-      time_step = thermal_physics->get_delta_t_guess();
-    }
-    else
-    {
-      time_step += time_step;
-    }
 
     if (n_time_step % time_steps_checkpoint == 0)
     {
@@ -1751,7 +1659,6 @@ run_ensemble(MPI_Comm const &global_communicator,
   // PropertyTreeInput refinement.time_steps_between_refinement
   unsigned int const time_steps_refinement =
       refinement_database.get("time_steps_between_refinement", 10);
-  double next_refinement_time = time;
   // PropertyTreeInput time_stepping.time_step
   double time_step = time_stepping_database.get<double>("time_step");
   // PropertyTreeInput time_stepping.duration
@@ -1798,14 +1705,13 @@ run_ensemble(MPI_Comm const &global_communicator,
       time_step = duration - time;
 
     // ----- Refine the mesh if necessary -----
-    // Refine the mesh after time_steps_refinement time steps or when time
-    // is greater or equal than the next predicted time for refinement. This
-    // is necessary when using an embedded method.
-    if (((n_time_step % time_steps_refinement) == 0) ||
-        (time >= next_refinement_time))
+    // Refine the mesh the first time we get in the loop and after
+    // time_steps_refinement time steps.
+    if ((n_time_step == 1) || ((n_time_step % time_steps_refinement) == 0))
     {
-      next_refinement_time = time + time_steps_refinement * time_step;
       timers[adamantine::refine].start();
+      double const next_refinement_time =
+          time + time_steps_refinement * time_step;
 
       for (unsigned int member = 0; member < local_ensemble_size; ++member)
       {
@@ -1819,9 +1725,12 @@ run_ensemble(MPI_Comm const &global_communicator,
 
       timers[adamantine::refine].stop();
       if ((global_rank == 0) && (verbose_output == true))
-        std::cout << "n_dofs: "
+      {
+        std::cout << "n_time_step: " << n_time_step << " time: " << time
+                  << " n_dofs: "
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
+      }
     }
 
     // We use an epsilon to get the "expected" behavior when the deposition
@@ -1867,9 +1776,11 @@ run_ensemble(MPI_Comm const &global_communicator,
 
       if ((global_rank == 0) && (verbose_output == true) &&
           (activation_end - activation_start > 0))
-        std::cout << "n_dofs: "
+      {
+        std::cout << "n_dofs after cell activation: "
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
+      }
     }
     timers[adamantine::add_material_activate].stop();
 
@@ -1884,11 +1795,6 @@ run_ensemble(MPI_Comm const &global_communicator,
           solution_augmented_ensemble[member].block(base_state), timers);
     }
     timers[adamantine::evol_time].stop();
-
-    // ----- Get the new time step size -----
-    // Needs to be the same for all ensemble members, obtained from the 0th
-    // member
-    time_step = thermal_physics_ensemble[0]->get_delta_t_guess();
 
     // ----- Perform data assimilation -----
     if (assimilate_data)
