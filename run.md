@@ -94,14 +94,10 @@ The following options are available:
   * **time\_steps\_between\_output**: number of time steps between the
   fields being written to the output files (default value: 1)
 * **refinement** (required):
-  * **n\_heat\_refinements**: number of coarsening/refinement to execute (default value: 2)
-  * **heat\_cell\_ratio**: this is the ratio (n new cells)/(n old cells) after heat
-  refinement (default value: 1)
-  * **n\_beam\_refinements**: number of times the cells on the paths of the beams
+  * **n\_refinements**: number of times the cells on the paths of the beams
   are refined (default value: 2)
   * **beam\_cutoff**: the cutoff value of the heat source terms above which beam-based refinement occurs (default value: 1e-15)
-  * **coarsen\_after\_beam**: whether to coarsen cells where the beam has already passed (may conflict with heat refinement, default value: false)
-  * **max\_level**: maximum number of times a cell can be refined
+  * **coarsen\_after\_beam**: whether to coarsen cells where the beam has already passed (default value: false)
   * **time\_steps\_between\_refinement**: number of time steps after which the
   refinement process is performed (default value: 2)
 * **sources** (required):
@@ -118,22 +114,10 @@ The following options are available:
   * **beam\_X.diameter**: diameter of the beam in meters (default value: 2e-3)
 * **time\_stepping** (required):
   * **method**: name of the method to use for the time integration: `forward_euler`,
-  `rk_third_order`, `rk_fourth_order`, `heun_euler`, `bogacki_shampine`, `dopri`,
-  `fehlberg`, `cash_karp`, `backward_euler`, `implicit_midpoint`, `crank_nicolson`, or
+  `rk_third_order`, `rk_fourth_order`, `backward_euler`, `implicit_midpoint`, `crank_nicolson`, or
   `sdirk2` (required)
   * **duration**: duration of the simulation in seconds (required)
   * **time\_step**: length of the time steps used for the simulation in seconds (required)
-  * for embedded methods:
-    * **coarsening\_parameter**: coarsening of the time step when the error is small
-    enough (default value: 1.2)
-    * **refining\_parameter**: refining of the time step when the error is too large
-    (default value: 0.8)
-    * **min\_time\_step**: minimal time step (default value: 1e-14)
-    * **max\_time\_step**: maximal time step (default value: 1e100)
-    * **refining\_tolerance**: if the error is above the threshold, the time step is
-    refined (default value: 1e-8)
-    * **coarsening\_tolerance**: if the error is under the threshold, the time step
-    is coarsen (default value: 1e-12)
   * for implicit method:
     * **max\_iteration**: mamximum number of the iterations of the linear solver
     (default value: 1000)
