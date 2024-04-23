@@ -59,3 +59,34 @@ BOOST_AUTO_TEST_CASE(integration_3D_amr, *utf::tolerance(0.1))
   BOOST_TEST(expected_max == global_max);
   BOOST_TEST(expected_min == global_min);
 }
+
+BOOST_AUTO_TEST_CASE(integration_3D_amr_refine_coarsen, *utf::tolerance(0.1))
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  std::vector<adamantine::Timer> timers;
+  initialize_timers(communicator, timers);
+
+  // Read the input.
+  std::string const filename = "demo_316_short_amr.info";
+  adamantine::ASSERT_THROW(std::filesystem::exists(filename) == true,
+                           "The file " + filename + " does not exist.");
+  boost::property_tree::ptree database;
+  boost::property_tree::info_parser::read_info(filename, database);
+
+  auto [temperature, displacement] =
+      run<3, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
+          communicator, database, timers);
+
+  auto global_size = temperature.size();
+  double l1_norm = temperature.l1_norm();
+
+  // Check for the expected number of degrees of freedom
+  BOOST_TEST(global_size == 13005);
+
+  // Check that AMR hasn't caused any NaNs
+  // NOTE: This check is only relevant in some cases. In debug mode the test
+  // should fail earlier through an assert. In release model with --ffast-math
+  // all NaN checks (including isnan and isfinite) are skipped.
+  BOOST_TEST(std::isfinite(l1_norm));
+}
