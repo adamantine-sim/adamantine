@@ -9,7 +9,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 # TPL and adamantine
 include(SetupDealII)
 
-project(adamantine LANGUAGES CXX VERSION 0.1.0)
+project(adamantine LANGUAGES CXX VERSION 1.0.9)
 
 include(SetupTPLs)
 include(SetupAdamantine)
