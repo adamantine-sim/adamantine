@@ -1,0 +1,138 @@
+geometry
+{
+  import_mesh false ; Use built-in mesh generator
+  dim 3 ; dimension of the domain
+  length 5e-3 ; [m]
+  height 5e-4 ; [m] In 3D, the third parameters is width
+  width  5e-3
+  length_divisions 25 ; Number of cell layers in the length direction
+  height_divisions 2 ; Number of cell layers in the height direction
+  width_divisions  25
+  material_deposition true
+  material_deposition_method scan_paths
+  deposition_length 0.0003
+  deposition_height 0.0002
+  deposition_width 0.0003
+  deposition_lead_time 0.0005
+  material_height 0.75e-3
+}
+
+boundary
+{
+  type convective,radiative
+}
+
+physics
+{
+  thermal true
+  mechanical false
+}
+
+refinement
+{
+  n_refinements 1 ; Number of time the cells on the paths of the beams are
+                  ; refined
+  time_steps_between_refinement 5 ; number of time steps after which
+                                           ; the refinement process is performed
+  coarsen_after_beam true
+}
+
+materials
+{
+  n_materials 1
+
+  property_format polynomial
+  material_0
+  {
+    solid
+    {
+      density 7904; [kg/m^3] For now all the states needs to have the same
+                    ; density.
+      specific_heat 714; [J/kg K]
+      thermal_conductivity_x 31.4 ; [W/m K]
+      thermal_conductivity_y 31.4 ; [W/m K]
+      thermal_conductivity_z 31.4 ; [W/m K]
+      convection_heat_transfer_coef 100 ; [W/(m^2*K)]
+      emissivity 0.15
+    }
+
+    powder
+    {
+      specific_heat 714; [J/kg K]
+      density 7904; [kg/m^3]
+      thermal_conductivity_x 0.314 ; [W/m K]
+      thermal_conductivity_y 0.314 ; [W/m K]
+      thermal_conductivity_z 0.314 ; [W/m K]
+      convection_heat_transfer_coef 100 ; [W/(m^2*K)]
+      emissivity 0.15
+    }
+
+    liquid
+    {
+      specific_heat 847; [J/kg K]
+      density 7904; [kg/m^3]
+      thermal_conductivity_x 37.3 ; [W/m k]
+      thermal_conductivity_y 37.3 ; [W/m k]
+      thermal_conductivity_z 37.3 ; [W/m k]
+      convection_heat_transfer_coef 100 ; [W/(m^2*K)]
+      emissivity 0.15
+      ; Not all three states need to define the same properties or to exist
+    }
+
+    solidus 1675; [K]
+    liquidus 1708; [K]
+    latent_heat 290000 ; [J/kg]
+    radiation_temperature_infty 300 ; [K]
+    convection_temperature_infty 300 ; [K]
+  }
+}
+
+sources
+{
+  n_beams 1
+
+  beam_0
+  {
+    type goldak ; goldak (laser) or electron_beam
+    depth 0.5e-3 ; [m] maximum depth reached by the laser
+    diameter 0.6e-3 ; [m]
+    scan_path_file demo_316_short_scan_path_amr.txt
+    scan_path_file_format segment
+    absorption_efficiency 0.3 ; number between 0 and 1 equivalent to
+                              ; energy_conversion_efficiency * control_efficiency
+                              ; for an electron beam
+    max_power 400.0 ; [W], current * voltage for an electron beam
+  }
+}
+
+time_stepping
+{
+  method forward_euler ; Possibilities: backward_euler, implicit_midpoint,
+                        ; crank_nicolson, sdirk2, forward_euler, rk_third_order,
+                        ; rk_fourth_order
+  duration 0.004 ; [s]
+  time_step 1.0e-4 ; [s]
+}
+
+post_processor
+{
+  filename_prefix output
+  time_steps_between_output 10
+}
+
+discretization
+{
+  thermal
+  {
+    fe_degree 2
+    quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+  }
+}
+
+profiling
+{
+  timer false
+  caliper "spot(profile.mpi),loop-report,runtime-report"
+}
+
+memory_space host ; Always run on the host
