@@ -16,7 +16,9 @@ bool init_function() { return true; }
 
 int main(int argc, char *argv[])
 {
+#ifndef __APPLE__
   feenableexcept(FE_INVALID);
+#endif
   dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
       argc, argv, dealii::numbers::invalid_unsigned_int);
 
