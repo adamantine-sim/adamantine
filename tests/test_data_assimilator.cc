@@ -33,7 +33,11 @@ public:
     BOOST_TEST(da0._solver_control.tolerance() - 1.0e-10 == 0.,
                tt::tolerance(tol));
     BOOST_TEST(da0._solver_control.max_steps() == 100u);
+#if DEAL_II_VERSION_GTE(9, 6, 0)
+    BOOST_TEST(da0._additional_data.max_basis_size == 30u);
+#else
     BOOST_TEST(da0._additional_data.max_n_tmp_vectors == 30u);
+#endif
 
     // Now explicitly setting them
     database.put("solver.convergence_tolerance", 1.0e-6);
@@ -43,7 +47,11 @@ public:
     BOOST_TEST(da1._solver_control.tolerance() - 1.0e-6 == 0.,
                tt::tolerance(tol));
     BOOST_TEST(da1._solver_control.max_steps() == 25u);
+#if DEAL_II_VERSION_GTE(9, 6, 0)
+    BOOST_TEST(da1._additional_data.max_basis_size == 2u);
+#else
     BOOST_TEST(da1._additional_data.max_n_tmp_vectors == 4u);
+#endif
   };
 
   void test_calc_kalman_gain()

@@ -14,7 +14,9 @@
 #include <deal.II/fe/mapping_q1_eulerian.h>
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/la_parallel_block_vector.h>
+#if !DEAL_II_VERSION_GTE(9, 6, 0)
 #include <deal.II/lac/la_vector.h>
+#endif
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/lac/trilinos_sparse_matrix.h>
