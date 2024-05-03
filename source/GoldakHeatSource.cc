@@ -22,6 +22,9 @@ GoldakHeatSource<dim>::GoldakHeatSource(
 template <int dim>
 void GoldakHeatSource<dim>::update_time(double time)
 {
+  static const double _pi_over_3_to_1p5 =
+      std::pow(dealii::numbers::PI / 3.0, 1.5);
+
   _beam_center = this->_scan_path.value(time);
   double segment_power_modifier = this->_scan_path.get_power_modifier(time);
   _alpha = 2.0 * this->_beam.absorption_efficiency * this->_beam.max_power *

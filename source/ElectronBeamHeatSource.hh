@@ -48,7 +48,6 @@ public:
 private:
   dealii::Point<3> _beam_center;
   double _alpha;
-  double const _log_01 = std::log(0.1);
 };
 } // namespace adamantine
 

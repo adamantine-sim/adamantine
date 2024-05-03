@@ -175,7 +175,7 @@ public:
   /**
    * Return the heat sources.
    */
-  virtual std::vector<std::shared_ptr<HeatSource<dim>>> &get_heat_sources() = 0;
+  virtual HeatSources<MemorySpaceType, dim> &get_heat_sources() = 0;
 
   /**
    * Return the degree of the finite element.

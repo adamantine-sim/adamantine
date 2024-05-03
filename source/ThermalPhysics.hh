@@ -9,7 +9,7 @@
 #define THERMAL_PHYSICS_HH
 
 #include <Geometry.hh>
-#include <HeatSource.hh>
+#include <HeatSources.hh>
 #include <ImplicitOperator.hh>
 #include <ThermalOperatorBase.hh>
 #include <ThermalPhysicsInterface.hh>
@@ -112,7 +112,7 @@ public:
 
   dealii::AffineConstraints<double> &get_affine_constraints() override;
 
-  std::vector<std::shared_ptr<HeatSource<dim>>> &get_heat_sources() override;
+  HeatSources<MemorySpaceType, dim> &get_heat_sources() override;
 
   unsigned int get_fe_degree() const override;
 
@@ -220,7 +220,7 @@ private:
   /**
    * Vector of heat sources.
    */
-  std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
+  mutable HeatSources<MemorySpaceType, dim> _heat_sources;
   /**
    * Shared pointer to the underlying ThermalOperator.
    */
@@ -324,7 +324,7 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,
           typename MemorySpaceType, typename QuadratureType>
-inline std::vector<std::shared_ptr<HeatSource<dim>>> &
+inline HeatSources<MemorySpaceType, dim> &
 ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
                QuadratureType>::get_heat_sources()
 {

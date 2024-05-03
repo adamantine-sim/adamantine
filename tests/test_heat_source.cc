@@ -9,7 +9,7 @@
 
 #include <ElectronBeamHeatSource.hh>
 #include <GoldakHeatSource.hh>
-#include <HeatSource.hh>
+#include <HeatSources.hh>
 #include <ScanPath.hh>
 
 #include "main.cc"

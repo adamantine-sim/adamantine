@@ -48,7 +48,6 @@ public:
 private:
   dealii::Point<3> _beam_center;
   double _alpha;
-  double const _pi_over_3_to_1p5 = std::pow(dealii::numbers::PI / 3.0, 1.5);
 };
 } // namespace adamantine
 

@@ -8,7 +8,7 @@
 #ifndef MATERIAL_DEPOSITION_HH
 #define MATERIAL_DEPOSITION_HH
 
-#include <HeatSource.hh>
+#include <HeatSources.hh>
 
 #include <deal.II/base/bounding_box.h>
 #include <deal.II/dofs/dof_handler.h>
@@ -26,7 +26,7 @@ std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
            std::vector<double>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    std::vector<std::shared_ptr<HeatSource<dim>>> &heat_sources);
+    HeatSources<dealii::MemorySpace::Host, dim> &heat_sources);
 /**
  * Read the material deposition file and return the bounding boxes, the
  * deposition times, the cosine of the deposition angles, and the sine of the

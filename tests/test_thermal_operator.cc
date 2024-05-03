@@ -94,10 +94,13 @@ BOOST_AUTO_TEST_CASE(thermal_operator, *utf::tolerance(1e-15))
   beam_database.put("max_power", 10.);
   beam_database.put("scan_path_file", "scan_path.txt");
   beam_database.put("scan_path_file_format", "segment");
-  std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
-  heat_sources.resize(1);
-  heat_sources[0] =
-      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
+  Kokkos::View<adamantine::GoldakHeatSource<2> *, Kokkos::HostSpace>
+      goldak_heat_sources(Kokkos::view_alloc(Kokkos::WithoutInitializing,
+                                             "goldak_heat_sources"),
+                          1);
+  goldak_heat_sources(0) = adamantine::GoldakHeatSource<2>(beam_database);
+  adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
+      {}, {}, goldak_heat_sources);
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, false, 1, 2, adamantine::SolidLiquidPowder,
@@ -199,10 +202,13 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   beam_database.put("max_power", 10.);
   beam_database.put("scan_path_file", "scan_path.txt");
   beam_database.put("scan_path_file_format", "segment");
-  std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
-  heat_sources.resize(1);
-  heat_sources[0] =
-      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
+  Kokkos::View<adamantine::GoldakHeatSource<2> *, Kokkos::HostSpace>
+      goldak_heat_sources(Kokkos::view_alloc(Kokkos::WithoutInitializing,
+                                             "goldak_heat_sources"),
+                          1);
+  goldak_heat_sources(0) = adamantine::GoldakHeatSource<2>(beam_database);
+  adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
+      {}, {}, goldak_heat_sources);
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, false, 2, 2, adamantine::SolidLiquidPowder,
@@ -308,10 +314,13 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic, *utf::tolerance(1e-12))
   beam_database.put("max_power", 10.);
   beam_database.put("scan_path_file", "scan_path.txt");
   beam_database.put("scan_path_file_format", "segment");
-  std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
-  heat_sources.resize(1);
-  heat_sources[0] =
-      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
+  Kokkos::View<adamantine::GoldakHeatSource<2> *, Kokkos::HostSpace>
+      goldak_heat_sources(Kokkos::view_alloc(Kokkos::WithoutInitializing,
+                                             "goldak_heat_sources"),
+                          1);
+  goldak_heat_sources(0) = adamantine::GoldakHeatSource<2>(beam_database);
+  adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
+      {}, {}, goldak_heat_sources);
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, false, 2, 2, adamantine::SolidLiquidPowder,
@@ -450,7 +459,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
                      mat_prop_database);
 
   // Create the heat sources
-  std::vector<std::shared_ptr<adamantine::HeatSource<3>>> heat_sources;
+  adamantine::HeatSources<dealii::MemorySpace::Host, 3> heat_sources;
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<3, false, 1, 2, adamantine::SolidLiquidPowder,
@@ -615,10 +624,13 @@ BOOST_AUTO_TEST_CASE(spmv_rad, *utf::tolerance(1e-12))
   beam_database.put("max_power", 10.);
   beam_database.put("scan_path_file", "scan_path.txt");
   beam_database.put("scan_path_file_format", "segment");
-  std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
-  heat_sources.resize(1);
-  heat_sources[0] =
-      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
+  Kokkos::View<adamantine::GoldakHeatSource<2> *, Kokkos::HostSpace>
+      goldak_heat_sources(Kokkos::view_alloc(Kokkos::WithoutInitializing,
+                                             "goldak_heat_sources"),
+                          1);
+  goldak_heat_sources(0) = adamantine::GoldakHeatSource<2>(beam_database);
+  adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
+      {}, {}, goldak_heat_sources);
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, false, 1, 2, adamantine::SolidLiquidPowder,
@@ -799,10 +811,13 @@ BOOST_AUTO_TEST_CASE(spmv_conv, *utf::tolerance(1e-12))
   beam_database.put("max_power", 10.);
   beam_database.put("scan_path_file", "scan_path.txt");
   beam_database.put("scan_path_file_format", "segment");
-  std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
-  heat_sources.resize(1);
-  heat_sources[0] =
-      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
+  Kokkos::View<adamantine::GoldakHeatSource<2> *, Kokkos::HostSpace>
+      goldak_heat_sources(Kokkos::view_alloc(Kokkos::WithoutInitializing,
+                                             "goldak_heat_sources"),
+                          1);
+  goldak_heat_sources(0) = adamantine::GoldakHeatSource<2>(beam_database);
+  adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
+      {}, {}, goldak_heat_sources);
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, false, 1, 2, adamantine::SolidLiquidPowder,

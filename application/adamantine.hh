@@ -520,7 +520,7 @@ compute_cells_to_refine(
     dealii::parallel::distributed::Triangulation<dim> &triangulation,
     double const time, double const next_refinement_time,
     unsigned int const n_time_steps,
-    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    adamantine::HeatSources<dealii::MemorySpace::Host, dim> &heat_sources,
     double const current_source_height, double const refinement_beam_cutoff)
 {
 
@@ -537,25 +537,22 @@ compute_cells_to_refine(
     double const current_time = time + static_cast<double>(i) /
                                            static_cast<double>(n_time_steps) *
                                            (next_refinement_time - time);
-    for (auto &beam : heat_sources)
+    heat_sources.update_time(current_time);
+    for (auto cell :
+         dealii::filter_iterators(triangulation.active_cell_iterators(),
+                                  dealii::IteratorFilters::LocallyOwnedCell()))
     {
-      beam->update_time(current_time);
-      for (auto cell : dealii::filter_iterators(
-               triangulation.active_cell_iterators(),
-               dealii::IteratorFilters::LocallyOwnedCell()))
+      // Check the value at the center of the cell faces. For most cases this
+      // should be sufficient, but if the beam is small compared to the
+      // coarsest mesh we may need to add other points to check (e.g.
+      // quadrature points, vertices).
+      for (unsigned int f = 0; f < cell->reference_cell().n_faces(); ++f)
       {
-        // Check the value at the center of the cell faces. For most cases this
-        // should be sufficient, but if the beam is small compared to the
-        // coarsest mesh we may need to add other points to check (e.g.
-        // quadrature points, vertices).
-        for (unsigned int f = 0; f < cell->reference_cell().n_faces(); ++f)
+        if (heat_sources.max_value(cell->face(f)->center(), current_source_height) >
+            refinement_beam_cutoff)
         {
-          if (beam->value(cell->face(f)->center(), current_source_height) >
-              refinement_beam_cutoff)
-          {
-            cells_to_refine.push_back(cell);
-            break;
-          }
+          cells_to_refine.push_back(cell);
+          break;
         }
       }
     }
@@ -572,7 +569,7 @@ void refine_mesh(
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    adamantine::HeatSources<MemorySpaceType, dim> const &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
@@ -609,6 +606,8 @@ void refine_mesh(
   const double refinement_beam_cutoff =
       refinement_database.get<double>("beam_cutoff", 1.0e-15);
 
+  adamantine::HeatSources<dealii::MemorySpace::Host, dim> host_heat_sources = heat_sources.copy_to_host();
+
   for (unsigned int i = 0; i < n_refinements; ++i)
   {
     // Compute the cells to be refined.
@@ -616,7 +615,7 @@ void refine_mesh(
         dim>::active_cell_iterator>
         cells_to_refine = compute_cells_to_refine(
             triangulation, time, next_refinement_time, time_steps_refinement,
-            heat_sources, current_source_height, refinement_beam_cutoff);
+            host_heat_sources, current_source_height, refinement_beam_cutoff);
 
     // PropertyTreeInput refinement.coarsen_after_beam
     const bool coarsen_after_beam =
@@ -661,7 +660,7 @@ void refine_mesh(
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    adamantine::HeatSources<MemorySpaceType, dim> const &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
@@ -759,7 +758,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // Create ThermalPhysics if necessary
   std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
       thermal_physics;
-  std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> heat_sources;
+  adamantine::HeatSources<MemorySpaceType, dim> heat_sources;
   if (use_thermal_physics)
   {
     // PropertyTreeInput discretization.thermal.fe_degree
@@ -936,11 +935,13 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
               mechanical_physics, displacement, material_properties, timers);
   ++n_time_step;
 
+  adamantine::HeatSources<dealii::MemorySpace::Host, dim> host_heat_sources = heat_sources.copy_to_host();
+
   // Create the bounding boxes used for material deposition
   auto [material_deposition_boxes, deposition_times, deposition_cos,
         deposition_sin] =
       adamantine::create_material_deposition_boxes<dim>(geometry_database,
-                                                        heat_sources);
+                                                        host_heat_sources);
   // Extract the time-stepping database
   boost::property_tree::ptree time_stepping_database =
       database.get_child("time_stepping");
@@ -1364,7 +1365,7 @@ run_ensemble(MPI_Comm const &global_communicator,
       adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>>
       thermal_physics_ensemble(local_ensemble_size);
 
-  std::vector<std::vector<std::shared_ptr<adamantine::HeatSource<dim>>>>
+  std::vector<adamantine::HeatSources<MemorySpaceType, dim>>
       heat_sources_ensemble(local_ensemble_size);
 
   std::vector<std::unique_ptr<adamantine::Geometry<dim>>> geometry_ensemble;
@@ -1718,7 +1719,7 @@ run_ensemble(MPI_Comm const &global_communicator,
         refine_mesh(thermal_physics_ensemble[member],
                     *material_properties_ensemble[member],
                     solution_augmented_ensemble[member].block(base_state),
-                    heat_sources_ensemble[member], time, next_refinement_time,
+                    heat_sources_ensemble[member].copy_to_host(), time, next_refinement_time,
                     time_steps_refinement, refinement_database);
         solution_augmented_ensemble[member].collect_sizes();
       }
