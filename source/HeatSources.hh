@@ -217,8 +217,7 @@ template <typename MemorySpace, int dim>
 double HeatSources<MemorySpace, dim>::get_current_height(double time) const
 {
   // Right now this is just the maximum heat source height, which can lead to
-  // unexpected behavior for
-  //  different sources with different heights.
+  // unexpected behavior for different sources with different heights.
   double temp_height = std::numeric_limits<double>::lowest();
   for (unsigned int i = 0; i < _electron_beam_heat_sources.size(); ++i)
     temp_height = std::max(

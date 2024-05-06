@@ -22,12 +22,12 @@ public:
   std::vector<ScanPathSegment> get_segment_format_list()
   {
     ScanPath scan_path("scan_path.txt", "segment");
-    return scan_path._segment_list;
+    return scan_path.get_segment_list();
   };
   std::vector<ScanPathSegment> get_event_series_format_list()
   {
     ScanPath scan_path("scan_path_event_series.inp", "event_series");
-    return scan_path._segment_list;
+    return scan_path.get_segment_list();
   };
 };
 

@@ -19,6 +19,8 @@
 #include <istream>
 #include <vector>
 
+#define MAX_NUMBER_OF_SEGMENTS 100
+
 namespace adamantine
 {
 /**
@@ -94,7 +96,9 @@ private:
   /**
    * The list of information about each segment in the scan path.
    */
-  std::vector<ScanPathSegment> _segment_list;
+  ScanPathSegment _segment_list[MAX_NUMBER_OF_SEGMENTS];
+
+  int _segment_list_length = 0;
 
   /**
    * The index of the current segment in the scan path.

@@ -60,7 +60,7 @@ void ScanPath::load_segment_scan_path(std::string scan_path_file)
     {
       // Check to make sure the segment isn't the first, if it is, throw an
       // exception (the first segment must be a point in the spec).
-      ASSERT_THROW(_segment_list.size() > 0,
+      ASSERT_THROW(_segment_list_length > 0,
                    "Error: Scan paths must begin with a 'point' segment.");
     }
     else if (split_line[0] == "1")
@@ -85,10 +85,10 @@ void ScanPath::load_segment_scan_path(std::string scan_path_file)
     // Set the velocity and end time
     if (segment_type == ScanPathSegmentType::point)
     {
-      if (_segment_list.size() > 0)
+      if (_segment_list_length > 0)
       {
-        segment.end_time =
-            _segment_list.back().end_time + std::stod(split_line[5]);
+        segment.end_time = _segment_list[_segment_list_length - 1].end_time +
+                           std::stod(split_line[5]);
       }
       else
       {
@@ -98,12 +98,14 @@ void ScanPath::load_segment_scan_path(std::string scan_path_file)
     else
     {
       double velocity = std::stod(split_line[5]);
-      double line_length =
-          segment.end_point.distance(_segment_list.back().end_point);
-      segment.end_time =
-          _segment_list.back().end_time + std::abs(line_length / velocity);
+      double line_length = segment.end_point.distance(
+          _segment_list[_segment_list_length - 1].end_point);
+      segment.end_time = _segment_list[_segment_list_length - 1].end_time +
+                         std::abs(line_length / velocity);
     }
-    _segment_list.push_back(segment);
+    if (_segment_list_length == MAX_NUMBER_OF_SEGMENTS)
+      Kokkos::abort("too many segmnets");
+    _segment_list[_segment_list_length++] = segment;
     data_index++;
   }
   file.close();
@@ -138,7 +140,9 @@ void ScanPath::load_event_series_scan_path(std::string scan_path_file)
     segment.power_modifier = last_power;
     last_power = std::stod(split_line[4]);
 
-    _segment_list.push_back(segment);
+    if (_segment_list_length == MAX_NUMBER_OF_SEGMENTS)
+      Kokkos::abort("too many segmnets");
+    _segment_list[_segment_list_length++] = segment;
   }
 }
 
@@ -169,7 +173,7 @@ dealii::Point<3> ScanPath::value(double const &time) const
 {
   // If the current time is after the scan path data is over, return a point
   // that is (presumably) out of the domain.
-  if (time > _segment_list.back().end_time)
+  if (time > _segment_list[_segment_list_length - 1].end_time)
   {
     dealii::Point<3> out_of_domain_point(std::numeric_limits<double>::lowest(),
                                          std::numeric_limits<double>::lowest(),
@@ -196,7 +200,7 @@ double ScanPath::get_power_modifier(double const &time) const
 {
   // If the current time is after the scan path data is over, set the power to
   // zero.
-  if (time > _segment_list.back().end_time)
+  if (time > _segment_list[_segment_list_length - 1].end_time)
     return 0.0;
 
   // Get to the correct segment
@@ -209,7 +213,7 @@ double ScanPath::get_power_modifier(double const &time) const
 
 std::vector<ScanPathSegment> ScanPath::get_segment_list() const
 {
-  return _segment_list;
+  return {&_segment_list[0], &_segment_list[0] + _segment_list_length};
 }
 
 } // namespace adamantine
