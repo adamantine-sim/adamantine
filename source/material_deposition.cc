@@ -133,7 +133,7 @@ template <int dim>
 std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
            std::vector<double>, std::vector<double>>
 deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
-                           ScanPath const &scan_path)
+                           ScanPath<dealii::MemorySpace::Host> const &scan_path)
 {
   std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
              std::vector<double>, std::vector<double>>

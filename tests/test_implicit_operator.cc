@@ -80,13 +80,8 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   beam_database.put("max_power", 10.);
   beam_database.put("scan_path_file", "scan_path.txt");
   beam_database.put("scan_path_file_format", "segment");
-  Kokkos::View<adamantine::GoldakHeatSource<2> *, Kokkos::HostSpace>
-      goldak_heat_sources(Kokkos::view_alloc(Kokkos::WithoutInitializing,
-                                             "goldak_heat_sources"),
-                          1);
-  goldak_heat_sources(0) = adamantine::GoldakHeatSource<2>(beam_database);
   adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
-      {}, {}, goldak_heat_sources);
+      beam_database);
 
   // Initialize the ThermalOperator
   auto thermal_operator = std::make_shared<

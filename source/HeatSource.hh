@@ -29,7 +29,7 @@ namespace adamantine
  * of the part, and the second component is the thickness. That is, the last two
  * components are swapped between the two coordinate systems.
  */
-template <int dim>
+template <int dim, typename MemorySpaceType>
 class HeatSource
 {
 public:
@@ -49,12 +49,9 @@ public:
    *   - <B>input_file</B>: name of the file that contains the scan path
    *     segments
    */
-  HeatSource(boost::property_tree::ptree const &database)
-      : _beam(database),
-        // PropertyTreeInput sources.beam_X.scan_path_file
-        // PropertyTreeInput sources.beam_X.scan_path_format
-        _scan_path(database.get<std::string>("scan_path_file"),
-                   database.get<std::string>("scan_path_file_format"))
+  HeatSource(BeamHeatSourceProperties const &beam,
+             ScanPath<MemorySpaceType> const &scan_path)
+      : _beam(beam), _scan_path(scan_path)
   {
   }
 
@@ -77,7 +74,7 @@ public:
   /**
    * Return the scan path for the heat source.
    */
-  virtual ScanPath const &get_scan_path() const;
+  virtual ScanPath<MemorySpaceType> const &get_scan_path() const;
 
   /**
    * Compute the current height of the where the heat source meets the material
@@ -100,23 +97,25 @@ protected:
   /**
    * The scan path for the heat source.
    */
-  ScanPath _scan_path;
+  ScanPath<MemorySpaceType> _scan_path;
 };
 
-template <int dim>
-inline ScanPath const &HeatSource<dim>::get_scan_path() const
+template <int dim, typename MemorySpaceType>
+inline ScanPath<MemorySpaceType> const &
+HeatSource<dim, MemorySpaceType>::get_scan_path() const
 {
   return _scan_path;
 }
 
-template <int dim>
-inline double HeatSource<dim>::get_current_height(double const time) const
+template <int dim, typename MemorySpaceType>
+inline double
+HeatSource<dim, MemorySpaceType>::get_current_height(double const time) const
 {
   return _scan_path.value(time)[2];
 }
 
-template <int dim>
-inline void HeatSource<dim>::set_beam_properties(
+template <int dim, typename MemorySpaceType>
+inline void HeatSource<dim, MemorySpaceType>::set_beam_properties(
     boost::property_tree::ptree const &database)
 {
   _beam.set_from_database(database);

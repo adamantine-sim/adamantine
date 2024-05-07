@@ -17,8 +17,8 @@ namespace adamantine
  * The form of the heat source model is taken from the following reference:
  * Raghavan et al, Acta Materilia, 112, 2016, pp 303-314.
  */
-template <int dim>
-class ElectronBeamHeatSource final : public HeatSource<dim>
+template <int dim, typename MemorySpaceType>
+class ElectronBeamHeatSource final : public HeatSource<dim, MemorySpaceType>
 {
 public:
   /**
@@ -31,7 +31,8 @@ public:
    *   - <B>input_file</B>: name of the file that contains the scan path
    *     segments
    */
-  ElectronBeamHeatSource(boost::property_tree::ptree const &database);
+  ElectronBeamHeatSource(BeamHeatSourceProperties const &beam,
+                         ScanPath<MemorySpaceType> const &scan_path);
 
   /**
    * Set the time variable.

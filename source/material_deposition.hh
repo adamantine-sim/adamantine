@@ -43,8 +43,9 @@ read_material_deposition(boost::property_tree::ptree const &geometry_database);
 template <int dim>
 std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
            std::vector<double>, std::vector<double>>
-deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
-                           ScanPath const &scan_path);
+deposition_along_scan_path(
+    boost::property_tree::ptree const &geometry_database,
+    ScanPath<dealii::MemorySpace::Host> const &scan_path);
 /**
  * Merge a vector of tuple of bounding boxes, deposition times, cosine of
  * deposition angles, and sine of deposition angles into a

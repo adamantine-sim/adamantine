@@ -19,7 +19,7 @@ namespace adamantine
 // Forward declarations
 class Timer;
 
-template <int dim>
+template <int dim, typename MemorySpaceType>
 class HeatSource;
 
 /**

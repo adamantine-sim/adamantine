@@ -9,18 +9,21 @@
 #include <instantiation.hh>
 #include <types.hh>
 
+#include <deal.II/base/memory_space.h>
+
 namespace adamantine
 {
 
-template <int dim>
-GoldakHeatSource<dim>::GoldakHeatSource(
-    boost::property_tree::ptree const &database)
-    : HeatSource<dim>(database)
+template <int dim, typename MemorySpaceType>
+GoldakHeatSource<dim, MemorySpaceType>::GoldakHeatSource(
+    BeamHeatSourceProperties const &beam,
+    ScanPath<MemorySpaceType> const &scan_path)
+    : HeatSource<dim, MemorySpaceType>(beam, scan_path)
 {
 }
 
-template <int dim>
-void GoldakHeatSource<dim>::update_time(double time)
+template <int dim, typename MemorySpaceType>
+void GoldakHeatSource<dim, MemorySpaceType>::update_time(double time)
 {
   static const double _pi_over_3_to_1p5 =
       std::pow(dealii::numbers::PI / 3.0, 1.5);
@@ -32,9 +35,10 @@ void GoldakHeatSource<dim>::update_time(double time)
            (this->_beam.radius_squared * this->_beam.depth * _pi_over_3_to_1p5);
 }
 
-template <int dim>
-double GoldakHeatSource<dim>::value(dealii::Point<dim> const &point,
-                                    double const height) const
+template <int dim, typename MemorySpaceType>
+double
+GoldakHeatSource<dim, MemorySpaceType>::value(dealii::Point<dim> const &point,
+                                              double const height) const
 {
   double const z = point[axis<dim>::z] - height;
   if ((z + this->_beam.depth) < 0.)
@@ -61,4 +65,5 @@ double GoldakHeatSource<dim>::value(dealii::Point<dim> const &point,
 }
 } // namespace adamantine
 
-INSTANTIATE_DIM(GoldakHeatSource)
+INSTANTIATE_DIM_DEVICE(GoldakHeatSource)
+INSTANTIATE_DIM_HOST(GoldakHeatSource)

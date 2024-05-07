@@ -9,18 +9,21 @@
 #include <instantiation.hh>
 #include <types.hh>
 
+#include <deal.II/base/memory_space.h>
+
 namespace adamantine
 {
 
-template <int dim>
-ElectronBeamHeatSource<dim>::ElectronBeamHeatSource(
-    boost::property_tree::ptree const &database)
-    : HeatSource<dim>(database)
+template <int dim, typename MemorySpaceType>
+ElectronBeamHeatSource<dim, MemorySpaceType>::ElectronBeamHeatSource(
+    BeamHeatSourceProperties const &beam,
+    ScanPath<MemorySpaceType> const &scan_path)
+    : HeatSource<dim, MemorySpaceType>(beam, scan_path)
 {
 }
 
-template <int dim>
-void ElectronBeamHeatSource<dim>::update_time(double time)
+template <int dim, typename MemorySpaceType>
+void ElectronBeamHeatSource<dim, MemorySpaceType>::update_time(double time)
 {
   static const double log_01 = std::log(0.1);
   _beam_center = this->_scan_path.value(time);
@@ -31,9 +34,9 @@ void ElectronBeamHeatSource<dim>::update_time(double time)
       (dealii::numbers::PI * this->_beam.radius_squared * this->_beam.depth);
 }
 
-template <int dim>
-double ElectronBeamHeatSource<dim>::value(dealii::Point<dim> const &point,
-                                          double const height) const
+template <int dim, typename MemorySpaceType>
+double ElectronBeamHeatSource<dim, MemorySpaceType>::value(
+    dealii::Point<dim> const &point, double const height) const
 {
   double const z = point[axis<dim>::z] - height;
   if ((z + this->_beam.depth) < 0.)
@@ -65,4 +68,5 @@ double ElectronBeamHeatSource<dim>::value(dealii::Point<dim> const &point,
 }
 } // namespace adamantine
 
-INSTANTIATE_DIM(ElectronBeamHeatSource)
+INSTANTIATE_DIM_DEVICE(ElectronBeamHeatSource)
+INSTANTIATE_DIM_HOST(ElectronBeamHeatSource)

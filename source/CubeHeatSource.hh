@@ -16,8 +16,8 @@ namespace adamantine
  * Cube heat source. This source does not represent a physical source, it is
  * used for verification purpose.
  */
-template <int dim>
-class CubeHeatSource final : public HeatSource<dim>
+template <int dim, typename MemorySpaceType>
+class CubeHeatSource final : public HeatSource<dim, MemorySpaceType>
 {
 public:
   /**

@@ -29,8 +29,17 @@ BOOST_AUTO_TEST_CASE(heat_source_value_2d, *utf::tolerance(1e-12))
   database.put("max_power", 10.);
   database.put("scan_path_file", "scan_path.txt");
   database.put("scan_path_file_format", "segment");
-  GoldakHeatSource<2> goldak_heat_source(database);
-  ElectronBeamHeatSource<2> eb_heat_source(database);
+  std::vector<ScanPathSegment> scan_path_segments =
+      ScanPath<dealii::MemorySpace::Host>::extract_scan_paths(
+          database.get<std::string>("scan_path_file"),
+          database.get<std::string>("scan_path_file_format"));
+  Kokkos::View<ScanPathSegment *, Kokkos::HostSpace> scan_paths_segments_view(
+      scan_path_segments.data(), scan_path_segments.size());
+  BeamHeatSourceProperties beam(database);
+  GoldakHeatSource<2, dealii::MemorySpace::Host> goldak_heat_source(
+      beam, ScanPath<dealii::MemorySpace::Host>(scan_paths_segments_view));
+  ElectronBeamHeatSource<2, dealii::MemorySpace::Host> eb_heat_source(
+      database, ScanPath<dealii::MemorySpace::Host>(scan_paths_segments_view));
 
   double g_value = 0.0;
   double eb_value = 0.0;
@@ -109,9 +118,18 @@ BOOST_AUTO_TEST_CASE(heat_source_value_3d, *utf::tolerance(1e-12))
   database.put("max_power", 10.);
   database.put("scan_path_file", "scan_path.txt");
   database.put("scan_path_file_format", "segment");
+  std::vector<ScanPathSegment> scan_path_segments =
+      ScanPath<dealii::MemorySpace::Host>::extract_scan_paths(
+          database.get<std::string>("scan_path_file"),
+          database.get<std::string>("scan_path_file_format"));
+  Kokkos::View<ScanPathSegment *, Kokkos::HostSpace> scan_paths_segments_view(
+      scan_path_segments.data(), scan_path_segments.size());
+  BeamHeatSourceProperties beam(database);
 
-  GoldakHeatSource<3> goldak_heat_source(database);
-  ElectronBeamHeatSource<3> eb_heat_source(database);
+  GoldakHeatSource<3, dealii::MemorySpace::Host> goldak_heat_source(
+      beam, ScanPath<dealii::MemorySpace::Host>(scan_paths_segments_view));
+  ElectronBeamHeatSource<3, dealii::MemorySpace::Host> eb_heat_source(
+      beam, ScanPath<dealii::MemorySpace::Host>(scan_paths_segments_view));
 
   double g_value = 0.0;
   double eb_value = 0.0;
@@ -178,8 +196,18 @@ BOOST_AUTO_TEST_CASE(heat_source_height, *utf::tolerance(1e-12))
   database.put("max_power", 10.);
   database.put("scan_path_file", "scan_path_layers.txt");
   database.put("scan_path_file_format", "segment");
-  GoldakHeatSource<2> goldak_heat_source(database);
-  ElectronBeamHeatSource<2> eb_heat_source(database);
+  std::vector<ScanPathSegment> scan_path_segments =
+      ScanPath<dealii::MemorySpace::Host>::extract_scan_paths(
+          database.get<std::string>("scan_path_file"),
+          database.get<std::string>("scan_path_file_format"));
+  Kokkos::View<ScanPathSegment *, Kokkos::HostSpace> scan_paths_segments_view(
+      scan_path_segments.data(), scan_path_segments.size());
+  BeamHeatSourceProperties beam(database);
+
+  GoldakHeatSource<2, dealii::MemorySpace::Host> goldak_heat_source(
+      beam, ScanPath<dealii::MemorySpace::Host>(scan_paths_segments_view));
+  ElectronBeamHeatSource<2, dealii::MemorySpace::Host> eb_heat_source(
+      beam, ScanPath<dealii::MemorySpace::Host>(scan_paths_segments_view));
 
   double g_height = 0.0;
   double eb_height = 0.0;

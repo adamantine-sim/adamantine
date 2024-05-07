@@ -9,11 +9,14 @@
 #include <instantiation.hh>
 #include <types.hh>
 
+#include <deal.II/base/memory_space.h>
+
 namespace adamantine
 {
-template <int dim>
-CubeHeatSource<dim>::CubeHeatSource(boost::property_tree::ptree const &database)
-    : HeatSource<dim>()
+template <int dim, typename MemorySpaceType>
+CubeHeatSource<dim, MemorySpaceType>::CubeHeatSource(
+    boost::property_tree::ptree const &database)
+    : HeatSource<dim, MemorySpaceType>()
 {
   _start_time = database.get<double>("start_time");
   _end_time = database.get<double>("end_time");
@@ -29,15 +32,16 @@ CubeHeatSource<dim>::CubeHeatSource(boost::property_tree::ptree const &database)
   }
 }
 
-template <int dim>
-void CubeHeatSource<dim>::update_time(double time)
+template <int dim, typename MemorySpaceType>
+void CubeHeatSource<dim, MemorySpaceType>::update_time(double time)
 {
   _source_on = ((time > _start_time) && (time < _end_time));
 }
 
-template <int dim>
-double CubeHeatSource<dim>::value(dealii::Point<dim> const &point,
-                                  double const /*height*/) const
+template <int dim, typename MemorySpaceType>
+double
+CubeHeatSource<dim, MemorySpaceType>::value(dealii::Point<dim> const &point,
+                                            double const /*height*/) const
 {
   if (_source_on)
   {
@@ -58,12 +62,14 @@ double CubeHeatSource<dim>::value(dealii::Point<dim> const &point,
   return 0.;
 }
 
-template <int dim>
-double CubeHeatSource<dim>::get_current_height(double const /*time*/) const
+template <int dim, typename MemorySpaceType>
+double CubeHeatSource<dim, MemorySpaceType>::get_current_height(
+    double const /*time*/) const
 {
   return _max_point[axis<dim>::z];
 }
 
 } // namespace adamantine
 
-INSTANTIATE_DIM(CubeHeatSource)
+INSTANTIATE_DIM_DEVICE(CubeHeatSource)
+INSTANTIATE_DIM_HOST(CubeHeatSource)

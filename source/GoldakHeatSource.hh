@@ -17,8 +17,8 @@ namespace adamantine
  * The form of the heat source model is taken from the following reference:
  * Coleman et al, Journal of Heat Transfer, (in press, 2020).
  */
-template <int dim>
-class GoldakHeatSource final : public HeatSource<dim>
+template <int dim, typename MemorySpaceType>
+class GoldakHeatSource final : public HeatSource<dim, MemorySpaceType>
 {
 public:
   /**
@@ -31,7 +31,8 @@ public:
    *   - <B>input_file</B>: name of the file that contains the scan path
    *     segments
    */
-  GoldakHeatSource(boost::property_tree::ptree const &database);
+  GoldakHeatSource(BeamHeatSourceProperties const &beam,
+                   ScanPath<MemorySpaceType> const &scan_path);
 
   /**
    * Set the time variable.

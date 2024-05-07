@@ -31,20 +31,6 @@ public:
    */
   HeatSources(boost::property_tree::ptree const &source_database);
 
-  HeatSources(
-      Kokkos::View<ElectronBeamHeatSource<dim> *,
-                   typename MemorySpace::kokkos_space>
-          electron_beam_heat_sources,
-      Kokkos::View<CubeHeatSource<dim> *, typename MemorySpace::kokkos_space>
-          cube_heat_sources,
-      Kokkos::View<GoldakHeatSource<dim> *, typename MemorySpace::kokkos_space>
-          goldak_heat_sources)
-      : _electron_beam_heat_sources(electron_beam_heat_sources),
-        _cube_heat_sources(cube_heat_sources),
-        _goldak_heat_sources(goldak_heat_sources)
-  {
-  }
-
   HeatSources<dealii::MemorySpace::Host, dim> copy_to_host() const
   {
     return {Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{},
@@ -77,7 +63,7 @@ public:
   /**
    * Return the scan paths for the heat source.
    */
-  std::vector<ScanPath> get_scan_paths() const;
+  std::vector<ScanPath<MemorySpace>> get_scan_paths() const;
 
   /**
    * (Re)sets the BeamHeatSourceProperties member variable, necessary if the
@@ -93,13 +79,19 @@ public:
   double get_current_height(double time) const;
 
 private:
-  Kokkos::View<ElectronBeamHeatSource<dim> *,
+  Kokkos::View<ElectronBeamHeatSource<dim, MemorySpace> *,
                typename MemorySpace::kokkos_space>
       _electron_beam_heat_sources;
-  Kokkos::View<CubeHeatSource<dim> *, typename MemorySpace::kokkos_space>
+  Kokkos::View<CubeHeatSource<dim, MemorySpace> *,
+               typename MemorySpace::kokkos_space>
       _cube_heat_sources;
-  Kokkos::View<GoldakHeatSource<dim> *, typename MemorySpace::kokkos_space>
+  Kokkos::View<GoldakHeatSource<dim, MemorySpace> *,
+               typename MemorySpace::kokkos_space>
       _goldak_heat_sources;
+  Kokkos::View<ScanPathSegment *, typename MemorySpace::kokkos_space>
+      _electron_beam_scan_path_segments;
+  Kokkos::View<ScanPathSegment *, typename MemorySpace::kokkos_space>
+      _goldak_scan_path_segments;
 };
 
 template <typename MemorySpace, int dim>
@@ -107,21 +99,30 @@ HeatSources<MemorySpace, dim>::HeatSources(
     boost::property_tree::ptree const &source_database)
 {
   unsigned int const n_beams = source_database.get<unsigned int>("n_beams");
-  std::vector<ElectronBeamHeatSource<dim>> electron_beam_heat_sources;
-  std::vector<CubeHeatSource<dim>> cube_heat_sources;
-  std::vector<GoldakHeatSource<dim>> goldak_heat_sources;
+  std::vector<BeamHeatSourceProperties> goldak_beams;
+  std::vector<BeamHeatSourceProperties> electron_beam_beams;
+  std::vector<std::vector<ScanPathSegment>> goldak_scan_path_segments;
+  std::vector<std::vector<ScanPathSegment>> electron_beam_scan_path_segments;
+  std::vector<CubeHeatSource<dim, MemorySpace>> cube_heat_sources;
+
   for (unsigned int i = 0; i < n_beams; ++i)
   {
     boost::property_tree::ptree const &beam_database =
         source_database.get_child("beam_" + std::to_string(i));
     std::string type = beam_database.get<std::string>("type");
+    std::vector<ScanPathSegment> scan_path_segments =
+        ScanPath<MemorySpace>::extract_scan_paths(
+            beam_database.get<std::string>("scan_path_file"),
+            beam_database.get<std::string>("scan_path_file_format"));
     if (type == "goldak")
     {
-      goldak_heat_sources.emplace_back(beam_database);
+      goldak_beams.emplace_back(beam_database);
+      goldak_scan_path_segments.push_back(scan_path_segments);
     }
     else if (type == "electron_beam")
     {
-      electron_beam_heat_sources.emplace_back(beam_database);
+      electron_beam_beams.emplace_back(beam_database);
+      electron_beam_scan_path_segments.push_back(scan_path_segments);
     }
     else if (type == "cube")
     {
@@ -134,6 +135,65 @@ HeatSources<MemorySpace, dim>::HeatSources(
                               "' not recognized.");
     }
   }
+
+  std::vector<GoldakHeatSource<dim, MemorySpace>> goldak_heat_sources;
+  {
+    std::vector<int> goldak_scan_path_segment_start(
+        goldak_scan_path_segments.size() + 1);
+    for (unsigned int i = 1; i < goldak_scan_path_segments.size() + 1; ++i)
+      goldak_scan_path_segment_start[i] =
+          goldak_scan_path_segment_start[i - 1] +
+          goldak_scan_path_segments[i - 1].size();
+    _goldak_scan_path_segments = decltype(_goldak_scan_path_segments)(
+        Kokkos::view_alloc(Kokkos::WithoutInitializing,
+                           "goldak_scan_path_segments"),
+        goldak_scan_path_segment_start.back());
+    for (unsigned int i = 0; i < goldak_scan_path_segments.size(); ++i)
+    {
+      auto goldak_scan_path_segment =
+          Kokkos::subview(_goldak_scan_path_segments,
+                          Kokkos::pair(goldak_scan_path_segment_start[i],
+                                       goldak_scan_path_segment_start[i + 1]));
+      Kokkos::deep_copy(goldak_scan_path_segment,
+                        Kokkos::View<ScanPathSegment *, Kokkos::HostSpace>(
+                            goldak_scan_path_segments[i].data(),
+                            goldak_scan_path_segments[i].size()));
+      goldak_heat_sources.emplace_back(
+          goldak_beams[i], ScanPath<MemorySpace>(goldak_scan_path_segment));
+    }
+  }
+
+  std::vector<ElectronBeamHeatSource<dim, MemorySpace>>
+      electron_beam_heat_sources;
+  {
+    std::vector<int> electron_beam_scan_path_segment_start(
+        electron_beam_scan_path_segments.size() + 1);
+    for (unsigned int i = 1; i < electron_beam_scan_path_segments.size() + 1;
+         ++i)
+      electron_beam_scan_path_segment_start[i] =
+          electron_beam_scan_path_segment_start[i - 1] +
+          electron_beam_scan_path_segments[i - 1].size();
+    _electron_beam_scan_path_segments =
+        decltype(_electron_beam_scan_path_segments)(
+            Kokkos::view_alloc(Kokkos::WithoutInitializing,
+                               "electron_beam_scan_path_segments"),
+            electron_beam_scan_path_segment_start.back());
+    for (unsigned int i = 0; i < electron_beam_scan_path_segments.size(); ++i)
+    {
+      auto electron_beam_scan_path_segment = Kokkos::subview(
+          _electron_beam_scan_path_segments,
+          Kokkos::pair(electron_beam_scan_path_segment_start[i],
+                       electron_beam_scan_path_segment_start[i + 1]));
+      Kokkos::deep_copy(electron_beam_scan_path_segment,
+                        Kokkos::View<ScanPathSegment *, Kokkos::HostSpace>(
+                            electron_beam_scan_path_segments[i].data(),
+                            electron_beam_scan_path_segments[i].size()));
+      electron_beam_heat_sources.emplace_back(
+          electron_beam_beams[i],
+          ScanPath<MemorySpace>(electron_beam_scan_path_segment));
+    }
+  }
+
   _goldak_heat_sources = decltype(_goldak_heat_sources)(
       Kokkos::view_alloc(Kokkos::WithoutInitializing, "goldak_heat_sources"),
       goldak_heat_sources.size());
@@ -146,16 +206,17 @@ HeatSources<MemorySpace, dim>::HeatSources(
       cube_heat_sources.size());
   Kokkos::deep_copy(
       _goldak_heat_sources,
-      Kokkos::View<GoldakHeatSource<dim> *, Kokkos::HostSpace>(
+      Kokkos::View<GoldakHeatSource<dim, MemorySpace> *, Kokkos::HostSpace>(
           goldak_heat_sources.data(), goldak_heat_sources.size()));
   Kokkos::deep_copy(
       _electron_beam_heat_sources,
-      Kokkos::View<ElectronBeamHeatSource<dim> *, Kokkos::HostSpace>(
-          electron_beam_heat_sources.data(),
-          electron_beam_heat_sources.size()));
-  Kokkos::deep_copy(_cube_heat_sources,
-                    Kokkos::View<CubeHeatSource<dim> *, Kokkos::HostSpace>(
-                        cube_heat_sources.data(), cube_heat_sources.size()));
+      Kokkos::View<ElectronBeamHeatSource<dim, MemorySpace> *,
+                   Kokkos::HostSpace>(electron_beam_heat_sources.data(),
+                                      electron_beam_heat_sources.size()));
+  Kokkos::deep_copy(
+      _cube_heat_sources,
+      Kokkos::View<CubeHeatSource<dim, MemorySpace> *, Kokkos::HostSpace>(
+          cube_heat_sources.data(), cube_heat_sources.size()));
 }
 
 template <typename MemorySpace, int dim>
@@ -201,9 +262,10 @@ HeatSources<MemorySpace, dim>::max_value(dealii::Point<dim> const &point,
 }
 
 template <typename MemorySpace, int dim>
-std::vector<ScanPath> HeatSources<MemorySpace, dim>::get_scan_paths() const
+std::vector<ScanPath<MemorySpace>>
+HeatSources<MemorySpace, dim>::get_scan_paths() const
 {
-  std::vector<ScanPath> scan_paths;
+  std::vector<ScanPath<MemorySpace>> scan_paths;
   for (unsigned int i = 0; i < _electron_beam_heat_sources.size(); ++i)
     scan_paths.push_back(_electron_beam_heat_sources(i).get_scan_path());
   for (unsigned int i = 0; i < _cube_heat_sources.size(); ++i)
