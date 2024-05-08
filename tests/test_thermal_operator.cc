@@ -88,12 +88,14 @@ BOOST_AUTO_TEST_CASE(thermal_operator, *utf::tolerance(1e-15))
 
   // Create the heat sources
   boost::property_tree::ptree beam_database;
-  beam_database.put("depth", 0.1);
-  beam_database.put("absorption_efficiency", 0.1);
-  beam_database.put("diameter", 1.0);
-  beam_database.put("max_power", 10.);
-  beam_database.put("scan_path_file", "scan_path.txt");
-  beam_database.put("scan_path_file_format", "segment");
+  beam_database.put("n_beams", 1);
+  beam_database.put("beam_0.type", "goldak");
+  beam_database.put("beam_0.depth", 0.1);
+  beam_database.put("beam_0.absorption_efficiency", 0.1);
+  beam_database.put("beam_0.diameter", 1.0);
+  beam_database.put("beam_0.max_power", 10.);
+  beam_database.put("beam_0.scan_path_file", "scan_path.txt");
+  beam_database.put("beam_0.scan_path_file_format", "segment");
   adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
       beam_database);
 
@@ -191,12 +193,14 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
 
   // Create the heat sources
   boost::property_tree::ptree beam_database;
-  beam_database.put("sources.beam_0.depth", 0.1);
-  beam_database.put("sources.beam_0.absorption_efficiency", 0.1);
-  beam_database.put("sources.beam_0.diameter", 1.0);
-  beam_database.put("sources.beam_0.max_power", 10.);
-  beam_database.put("sources.beam_0.scan_path_file", "scan_path.txt");
-  beam_database.put("sources.beam_0.scan_path_file_format", "segment");
+  beam_database.put("n_beams", 1);
+  beam_database.put("beam_0.type", "goldak");
+  beam_database.put("beam_0.depth", 0.1);
+  beam_database.put("beam_0.absorption_efficiency", 0.1);
+  beam_database.put("beam_0.diameter", 1.0);
+  beam_database.put("beam_0.max_power", 10.);
+  beam_database.put("beam_0.scan_path_file", "scan_path.txt");
+  beam_database.put("beam_0.scan_path_file_format", "segment");
   adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
       beam_database);
 
@@ -298,12 +302,14 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic, *utf::tolerance(1e-12))
 
   // Create the heat sources
   boost::property_tree::ptree beam_database;
-  beam_database.put("depth", 0.1);
-  beam_database.put("absorption_efficiency", 0.1);
-  beam_database.put("diameter", 1.0);
-  beam_database.put("max_power", 10.);
-  beam_database.put("scan_path_file", "scan_path.txt");
-  beam_database.put("scan_path_file_format", "segment");
+  beam_database.put("n_beams", 1);
+  beam_database.put("beam_0.type", "goldak");
+  beam_database.put("beam_0.depth", 0.1);
+  beam_database.put("beam_0.absorption_efficiency", 0.1);
+  beam_database.put("beam_0.diameter", 1.0);
+  beam_database.put("beam_0.max_power", 10.);
+  beam_database.put("beam_0.scan_path_file", "scan_path.txt");
+  beam_database.put("beam_0.scan_path_file_format", "segment");
   adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
       beam_database);
 
@@ -603,12 +609,14 @@ BOOST_AUTO_TEST_CASE(spmv_rad, *utf::tolerance(1e-12))
 
   // Create the heat sources
   boost::property_tree::ptree beam_database;
-  beam_database.put("depth", 0.1);
-  beam_database.put("absorption_efficiency", 0.1);
-  beam_database.put("diameter", 1.0);
-  beam_database.put("max_power", 10.);
-  beam_database.put("scan_path_file", "scan_path.txt");
-  beam_database.put("scan_path_file_format", "segment");
+  beam_database.put("n_beams", 1);
+  beam_database.put("beam_0.type", "goldak");
+  beam_database.put("beam_0.depth", 0.1);
+  beam_database.put("beam_0.absorption_efficiency", 0.1);
+  beam_database.put("beam_0.diameter", 1.0);
+  beam_database.put("beam_0.max_power", 10.);
+  beam_database.put("beam_0.scan_path_file", "scan_path.txt");
+  beam_database.put("beam_0.scan_path_file_format", "segment");
   adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
       beam_database);
 
@@ -785,12 +793,14 @@ BOOST_AUTO_TEST_CASE(spmv_conv, *utf::tolerance(1e-12))
 
   // Create the heat sources
   boost::property_tree::ptree beam_database;
-  beam_database.put("depth", 0.1);
-  beam_database.put("absorption_efficiency", 0.1);
-  beam_database.put("diameter", 1.0);
-  beam_database.put("max_power", 10.);
-  beam_database.put("scan_path_file", "scan_path.txt");
-  beam_database.put("scan_path_file_format", "segment");
+  beam_database.put("n_beams", 1);
+  beam_database.put("beam_0.type", "goldak");
+  beam_database.put("beam_0.depth", 0.1);
+  beam_database.put("beam_0.absorption_efficiency", 0.1);
+  beam_database.put("beam_0.diameter", 1.0);
+  beam_database.put("beam_0.max_power", 10.);
+  beam_database.put("beam_0.scan_path_file", "scan_path.txt");
+  beam_database.put("beam_0.scan_path_file_format", "segment");
   adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
       beam_database);
 

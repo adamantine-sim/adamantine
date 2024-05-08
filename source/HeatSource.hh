@@ -88,6 +88,8 @@ public:
    */
   virtual void set_beam_properties(boost::property_tree::ptree const &database);
 
+  BeamHeatSourceProperties get_beam_properties() const { return _beam; }
+
 protected:
   /**
    * Structure of the physical properties of the beam heat source.

@@ -10,14 +10,17 @@
 
 #include <HeatSource.hh>
 
+#include <deal.II/base/memory_space.h>
+
 namespace adamantine
 {
 /**
  * Cube heat source. This source does not represent a physical source, it is
  * used for verification purpose.
  */
-template <int dim, typename MemorySpaceType>
-class CubeHeatSource final : public HeatSource<dim, MemorySpaceType>
+template <int dim>
+class CubeHeatSource final
+    : public HeatSource<dim, dealii::MemorySpace::Default>
 {
 public:
   /**
