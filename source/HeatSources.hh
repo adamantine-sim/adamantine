@@ -88,11 +88,11 @@ public:
           _electron_beam_heat_sources.size());
 
       for (unsigned int i = 0; i < _goldak_heat_sources.size(); ++i)
-        goldak_beams.push_back(
-            host_copy_goldak_heat_sources(i).get_beam_properties());
+        goldak_beams[i] =
+            host_copy_goldak_heat_sources(i).get_beam_properties();
       for (unsigned int i = 0; i < _electron_beam_heat_sources.size(); ++i)
-        electron_beam_beams.push_back(
-            host_copy_electron_beam_heat_sources(i).get_beam_properties());
+        electron_beam_beams[i] =
+            host_copy_electron_beam_heat_sources(i).get_beam_properties();
 
       Kokkos::View<ElectronBeamHeatSource<dim, dealii::MemorySpace::Host> *,
                    Kokkos::HostSpace>

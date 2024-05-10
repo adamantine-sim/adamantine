@@ -120,7 +120,8 @@ evaluate_thermal_physics_impl(
 
   // Compute the source term.
   // TODO do this on the GPU
-  heat_sources.update_time(t);
+  auto host_heat_sources = heat_sources.copy_to_host();
+  host_heat_sources.update_time(t);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> source(
       y.get_partitioner());
   source = 0.;
@@ -165,7 +166,8 @@ evaluate_thermal_physics_impl(
         double const inv_rho_cp = thermal_operator_dev->get_inv_rho_cp(cell, q);
         double quad_pt_source = 0.;
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
-        quad_pt_source += heat_sources.value(q_point, current_source_height);
+        quad_pt_source +=
+            host_heat_sources.value(q_point, current_source_height);
 
         cell_source[i] += inv_rho_cp * quad_pt_source *
                           fe_values.shape_value(i, q) * fe_values.JxW(q);
@@ -464,7 +466,8 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
       cell->set_active_fe_index(1);
   }
 
-  _current_source_height = _heat_sources.get_current_height(0.0);
+  auto host_heat_sources = _heat_sources.copy_to_host();
+  _current_source_height = host_heat_sources.get_current_height(0.0);
 }
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,
@@ -818,7 +821,7 @@ double ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
         std::vector<Timer> &timers)
 {
-  _current_source_height = _heat_sources.get_current_height(t);
+  _current_source_height = _heat_sources.copy_to_host().get_current_height(t);
 
   auto eval = [&](double const t, LA_Vector const &y)
   { return evaluate_thermal_physics(t, y, timers); };
