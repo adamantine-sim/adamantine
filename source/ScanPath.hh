@@ -15,6 +15,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>
 
+#include <Kokkos_Core.hpp>
+
 #include <iostream>
 #include <istream>
 #include <vector>

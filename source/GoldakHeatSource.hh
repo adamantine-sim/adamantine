@@ -8,17 +8,18 @@
 #ifndef GOLDAK_HEAT_SOURCE_HH
 #define GOLDAK_HEAT_SOURCE_HH
 
-#include <HeatSource.hh>
+#include <BeamHeatSourceProperties.hh>
+#include <ScanPath.hh>
 
 namespace adamantine
 {
 /**
- * A derived class from HeatSource for the Goldak model of a laser heat source.
+ * Goldak model of a laser heat source.
  * The form of the heat source model is taken from the following reference:
  * Coleman et al, Journal of Heat Transfer, (in press, 2020).
  */
 template <int dim, typename MemorySpaceType>
-class GoldakHeatSource final : public HeatSource<dim, MemorySpaceType>
+class GoldakHeatSource
 {
 public:
   /**
@@ -37,18 +38,40 @@ public:
   /**
    * Set the time variable.
    */
-  void update_time(double time) final;
+  void update_time(double time);
 
   /**
    * Returns the value of a Goldak heat source at a specified point and
    * time.
    */
-  double value(dealii::Point<dim> const &point,
-               double const height) const final;
+  double value(dealii::Point<dim> const &point, double const height) const;
+
+  ScanPath<MemorySpaceType> const &get_scan_path() const { return _scan_path; }
+
+  double get_current_height(double const time) const
+  {
+    return _scan_path.value(time)[2];
+  }
+
+  void set_beam_properties(boost::property_tree::ptree const &database)
+  {
+    _beam.set_from_database(database);
+  }
+
+  BeamHeatSourceProperties get_beam_properties() const { return _beam; }
 
 private:
   dealii::Point<3> _beam_center;
   double _alpha;
+  /**
+   * Structure of the physical properties of the beam heat source.
+   */
+  BeamHeatSourceProperties _beam;
+
+  /**
+   * The scan path for the heat source.
+   */
+  ScanPath<MemorySpaceType> _scan_path;
 };
 } // namespace adamantine
 

@@ -18,7 +18,7 @@ template <int dim, typename MemorySpaceType>
 GoldakHeatSource<dim, MemorySpaceType>::GoldakHeatSource(
     BeamHeatSourceProperties const &beam,
     ScanPath<MemorySpaceType> const &scan_path)
-    : HeatSource<dim, MemorySpaceType>(beam, scan_path)
+    : _beam(beam), _scan_path(scan_path)
 {
 }
 

@@ -19,9 +19,6 @@ namespace adamantine
 // Forward declarations
 class Timer;
 
-template <int dim, typename MemorySpaceType>
-class HeatSource;
-
 /**
  * This class defines the interface for ThermalPhysics used in run(). The
  * objective of this class is to simplify code in run() by reducing the number

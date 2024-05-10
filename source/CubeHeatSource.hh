@@ -8,9 +8,9 @@
 #ifndef CUBE_HEAT_SOURCE_HH
 #define CUBE_HEAT_SOURCE_HH
 
-#include <HeatSource.hh>
+#include <BeamHeatSourceProperties.hh>
 
-#include <deal.II/base/memory_space.h>
+#include <deal.II/base/point.h>
 
 namespace adamantine
 {
@@ -20,7 +20,6 @@ namespace adamantine
  */
 template <int dim>
 class CubeHeatSource final
-    : public HeatSource<dim, dealii::MemorySpace::Default>
 {
 public:
   /**
@@ -41,18 +40,24 @@ public:
   /**
    * Set the time variable.
    */
-  void update_time(double time) final;
+  void update_time(double time);
 
   /**
    * Return the value of the source for a given point and time.
    */
-  double value(dealii::Point<dim> const &point,
-               double const /*height*/) const final;
+  double value(dealii::Point<dim> const &point, double const /*height*/) const;
   /**
    * Compute the current height of the where the heat source meets the material
    * (i.e. the current scan path height).
    */
-  double get_current_height(double const time) const final;
+  double get_current_height(double const time) const;
+
+  void set_beam_properties(boost::property_tree::ptree const &database)
+  {
+    _beam.set_from_database(database);
+  }
+
+  BeamHeatSourceProperties get_beam_properties() const { return _beam; }
 
 private:
   bool _source_on = false;
@@ -61,6 +66,11 @@ private:
   double _value;
   dealii::Point<dim> _min_point;
   dealii::Point<dim> _max_point;
+  double _alpha;
+  /**
+   * Structure of the physical properties of the beam heat source.
+   */
+  BeamHeatSourceProperties _beam;
 };
 } // namespace adamantine
 
