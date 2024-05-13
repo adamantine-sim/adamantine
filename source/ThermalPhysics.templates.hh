@@ -120,7 +120,7 @@ evaluate_thermal_physics_impl(
 
   // Compute the source term.
   // TODO do this on the GPU
-  auto host_heat_sources = heat_sources.copy_to_host();
+  auto host_heat_sources = heat_sources.copy_to(dealii::MemorySpace::Host{});
   host_heat_sources.update_time(t);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> source(
       y.get_partitioner());
@@ -466,7 +466,7 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
       cell->set_active_fe_index(1);
   }
 
-  auto host_heat_sources = _heat_sources.copy_to_host();
+  auto host_heat_sources = _heat_sources.copy_to(dealii::MemorySpace::Host{});
   _current_source_height = host_heat_sources.get_current_height(0.0);
 }
 
@@ -809,7 +809,9 @@ void ThermalPhysics<
 {
   // Update the heat source from heat_source_database to reflect changes during
   // the simulation (i.e. due to data assimilation)
-  _heat_sources.set_beam_properties(heat_source_database);
+  auto host_heat_sources = _heat_sources.copy_to(dealii::MemorySpace::Host{});
+  host_heat_sources.set_beam_properties(heat_source_database);
+  _heat_sources = host_heat_sources.copy_to(MemorySpaceType{});
 }
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,
@@ -821,7 +823,8 @@ double ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
         std::vector<Timer> &timers)
 {
-  _current_source_height = _heat_sources.copy_to_host().get_current_height(t);
+  _current_source_height =
+      _heat_sources.copy_to(dealii::MemorySpace::Host{}).get_current_height(t);
 
   auto eval = [&](double const t, LA_Vector const &y)
   { return evaluate_thermal_physics(t, y, timers); };

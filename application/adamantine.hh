@@ -606,7 +606,7 @@ void refine_mesh(
   const double refinement_beam_cutoff =
       refinement_database.get<double>("beam_cutoff", 1.0e-15);
 
-  adamantine::HeatSources<dealii::MemorySpace::Host, dim> host_heat_sources = heat_sources.copy_to_host();
+  adamantine::HeatSources<dealii::MemorySpace::Host, dim> host_heat_sources = heat_sources.copy_to(dealii::MemorySpace::Host{});
 
   for (unsigned int i = 0; i < n_refinements; ++i)
   {
@@ -935,7 +935,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
               mechanical_physics, displacement, material_properties, timers);
   ++n_time_step;
 
-  adamantine::HeatSources<dealii::MemorySpace::Host, dim> host_heat_sources = heat_sources.copy_to_host();
+  adamantine::HeatSources<dealii::MemorySpace::Host, dim> host_heat_sources = heat_sources.copy_to(dealii::MemorySpace::Host{});
 
   // Create the bounding boxes used for material deposition
   auto [material_deposition_boxes, deposition_times, deposition_cos,
@@ -1719,7 +1719,7 @@ run_ensemble(MPI_Comm const &global_communicator,
         refine_mesh(thermal_physics_ensemble[member],
                     *material_properties_ensemble[member],
                     solution_augmented_ensemble[member].block(base_state),
-                    heat_sources_ensemble[member].copy_to_host(), time, next_refinement_time,
+                    heat_sources_ensemble[member].copy_to(dealii::MemorySpace::Host{}), time, next_refinement_time,
                     time_steps_refinement, refinement_database);
         solution_augmented_ensemble[member].collect_sizes();
       }
