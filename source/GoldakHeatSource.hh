@@ -46,33 +46,64 @@ public:
    */
   double value(dealii::Point<dim> const &point, double const height) const;
 
-  ScanPath<MemorySpaceType> const &get_scan_path() const { return _scan_path; }
+  /**
+   * Return the scan path.
+   */
+  ScanPath<MemorySpaceType> const &get_scan_path() const;
 
-  double get_current_height(double const time) const
-  {
-    return _scan_path.value(time)[2];
-  }
+  /**
+   * Compute the current height of the where the heat source meets the material
+   * (i.e. the current scan path height).
+   */
+  double get_current_height(double const time) const;
 
-  void set_beam_properties(boost::property_tree::ptree const &database)
-  {
-    _beam.set_from_database(database);
-  }
+  /**
+   * (Re)sets the BeamHeatSourceProperties member variable, necessary if the
+   * beam parameters vary in time (e.g. due to data assimilation).
+   */
+  void set_beam_properties(boost::property_tree::ptree const &database);
 
-  BeamHeatSourceProperties get_beam_properties() const { return _beam; }
+  /**
+   * Return the beam properties.
+   */
+  BeamHeatSourceProperties get_beam_properties() const;
 
 private:
   dealii::Point<3> _beam_center;
   double _alpha;
-  /**
-   * Structure of the physical properties of the beam heat source.
-   */
   BeamHeatSourceProperties _beam;
 
-  /**
-   * The scan path for the heat source.
-   */
   ScanPath<MemorySpaceType> _scan_path;
 };
+
+template <int dim, typename MemorySpaceType>
+ScanPath<MemorySpaceType> const &
+GoldakHeatSource<dim, MemorySpaceType>::get_scan_path() const
+{
+  return _scan_path;
+}
+
+template <int dim, typename MemorySpaceType>
+double GoldakHeatSource<dim, MemorySpaceType>::get_current_height(
+    double const time) const
+{
+  return _scan_path.value(time)[2];
+}
+
+template <int dim, typename MemorySpaceType>
+void GoldakHeatSource<dim, MemorySpaceType>::set_beam_properties(
+    boost::property_tree::ptree const &database)
+{
+  _beam.set_from_database(database);
+}
+
+template <int dim, typename MemorySpaceType>
+BeamHeatSourceProperties
+GoldakHeatSource<dim, MemorySpaceType>::get_beam_properties() const
+{
+  return _beam;
+}
+
 } // namespace adamantine
 
 #endif
