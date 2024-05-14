@@ -95,7 +95,7 @@ evaluate_thermal_physics_impl(
         &thermal_operator,
     dealii::hp::FECollection<dim> const &fe_collection, double const t,
     dealii::DoFHandler<dim> const &dof_handler,
-    HeatSources<MemorySpaceType, dim> &heat_sources,
+    HeatSources<dim, MemorySpaceType> &heat_sources,
     double current_source_height, BoundaryType boundary_type,
     MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
@@ -289,7 +289,7 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
   // Create the heat sources
   boost::property_tree::ptree const &source_database =
       database.get_child("sources");
-  _heat_sources = HeatSources<MemorySpaceType, dim>(source_database);
+  _heat_sources = HeatSources<dim, MemorySpaceType>(source_database);
 
   // Create the boundary condition type
   // PropertyTreeInput boundary.type

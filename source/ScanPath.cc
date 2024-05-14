@@ -15,10 +15,10 @@
 namespace adamantine
 {
 
-template <typename MemorySpace>
+template <typename MemorySpaceType>
 std::vector<ScanPathSegment>
-ScanPath<MemorySpace>::extract_scan_paths(std::string scan_path_file,
-                                          std::string file_format)
+ScanPath<MemorySpaceType>::extract_scan_paths(std::string scan_path_file,
+                                              std::string file_format)
 {
   // Parse the scan path
   wait_for_file(scan_path_file,
@@ -40,9 +40,9 @@ ScanPath<MemorySpace>::extract_scan_paths(std::string scan_path_file,
   return {};
 }
 
-template <typename MemorySpace>
+template <typename MemorySpaceType>
 std::vector<ScanPathSegment>
-ScanPath<MemorySpace>::load_segment_scan_path(std::string scan_path_file)
+ScanPath<MemorySpaceType>::load_segment_scan_path(std::string scan_path_file)
 {
   std::vector<ScanPathSegment> segment_list;
 
@@ -122,9 +122,10 @@ ScanPath<MemorySpace>::load_segment_scan_path(std::string scan_path_file)
   return segment_list;
 }
 
-template <typename MemorySpace>
+template <typename MemorySpaceType>
 std::vector<ScanPathSegment>
-ScanPath<MemorySpace>::load_event_series_scan_path(std::string scan_path_file)
+ScanPath<MemorySpaceType>::load_event_series_scan_path(
+    std::string scan_path_file)
 {
   std::vector<ScanPathSegment> segment_list;
 
@@ -160,8 +161,8 @@ ScanPath<MemorySpace>::load_event_series_scan_path(std::string scan_path_file)
   return segment_list;
 }
 
-template <typename MemorySpace>
-void ScanPath<MemorySpace>::update_current_segment_info(
+template <typename MemorySpaceType>
+void ScanPath<MemorySpaceType>::update_current_segment_info(
     double time, dealii::Point<3> &segment_start_point,
     double &segment_start_time) const
 {
@@ -184,8 +185,8 @@ void ScanPath<MemorySpace>::update_current_segment_info(
   }
 }
 
-template <typename MemorySpace>
-dealii::Point<3> ScanPath<MemorySpace>::value(double const &time) const
+template <typename MemorySpaceType>
+dealii::Point<3> ScanPath<MemorySpaceType>::value(double const &time) const
 {
   // If the current time is after the scan path data is over, return a point
   // that is (presumably) out of the domain.
@@ -212,8 +213,8 @@ dealii::Point<3> ScanPath<MemorySpace>::value(double const &time) const
   return position;
 }
 
-template <typename MemorySpace>
-double ScanPath<MemorySpace>::get_power_modifier(double const &time) const
+template <typename MemorySpaceType>
+double ScanPath<MemorySpaceType>::get_power_modifier(double const &time) const
 {
   // If the current time is after the scan path data is over, set the power to
   // zero.
@@ -228,8 +229,8 @@ double ScanPath<MemorySpace>::get_power_modifier(double const &time) const
   return _segment_list[_current_segment].power_modifier;
 }
 
-template <typename MemorySpace>
-std::vector<ScanPathSegment> ScanPath<MemorySpace>::get_segment_list() const
+template <typename MemorySpaceType>
+std::vector<ScanPathSegment> ScanPath<MemorySpaceType>::get_segment_list() const
 {
   return {&_segment_list[0], &_segment_list[0] + _segment_list.size()};
 }

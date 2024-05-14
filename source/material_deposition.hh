@@ -26,7 +26,7 @@ std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
            std::vector<double>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    HeatSources<dealii::MemorySpace::Host, dim> &heat_sources);
+    HeatSources<dim, dealii::MemorySpace::Host> &heat_sources);
 /**
  * Read the material deposition file and return the bounding boxes, the
  * deposition times, the cosine of the deposition angles, and the sine of the

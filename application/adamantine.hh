@@ -520,7 +520,7 @@ compute_cells_to_refine(
     dealii::parallel::distributed::Triangulation<dim> &triangulation,
     double const time, double const next_refinement_time,
     unsigned int const n_time_steps,
-    adamantine::HeatSources<dealii::MemorySpace::Host, dim> &heat_sources,
+    adamantine::HeatSources<dim, dealii::MemorySpace::Host> &heat_sources,
     double const current_source_height, double const refinement_beam_cutoff)
 {
 
@@ -569,7 +569,7 @@ void refine_mesh(
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    adamantine::HeatSources<MemorySpaceType, dim> const &heat_sources,
+    adamantine::HeatSources<dim, MemorySpaceType> const &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
@@ -606,7 +606,7 @@ void refine_mesh(
   const double refinement_beam_cutoff =
       refinement_database.get<double>("beam_cutoff", 1.0e-15);
 
-  adamantine::HeatSources<dealii::MemorySpace::Host, dim> host_heat_sources = heat_sources.copy_to(dealii::MemorySpace::Host{});
+  adamantine::HeatSources<dim, dealii::MemorySpace::Host> host_heat_sources = heat_sources.copy_to(dealii::MemorySpace::Host{});
 
   for (unsigned int i = 0; i < n_refinements; ++i)
   {
@@ -660,7 +660,7 @@ void refine_mesh(
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    adamantine::HeatSources<MemorySpaceType, dim> const &heat_sources,
+    adamantine::HeatSources<dim, MemorySpaceType> const &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
@@ -758,7 +758,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // Create ThermalPhysics if necessary
   std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
       thermal_physics;
-  adamantine::HeatSources<MemorySpaceType, dim> heat_sources;
+  adamantine::HeatSources<dim, MemorySpaceType> heat_sources;
   if (use_thermal_physics)
   {
     // PropertyTreeInput discretization.thermal.fe_degree
@@ -935,7 +935,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
               mechanical_physics, displacement, material_properties, timers);
   ++n_time_step;
 
-  adamantine::HeatSources<dealii::MemorySpace::Host, dim> host_heat_sources = heat_sources.copy_to(dealii::MemorySpace::Host{});
+  adamantine::HeatSources<dim, dealii::MemorySpace::Host> host_heat_sources = heat_sources.copy_to(dealii::MemorySpace::Host{});
 
   // Create the bounding boxes used for material deposition
   auto [material_deposition_boxes, deposition_times, deposition_cos,
@@ -1365,7 +1365,7 @@ run_ensemble(MPI_Comm const &global_communicator,
       adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>>
       thermal_physics_ensemble(local_ensemble_size);
 
-  std::vector<adamantine::HeatSources<MemorySpaceType, dim>>
+  std::vector<adamantine::HeatSources<dim, MemorySpaceType>>
       heat_sources_ensemble(local_ensemble_size);
 
   std::vector<std::unique_ptr<adamantine::Geometry<dim>>> geometry_ensemble;

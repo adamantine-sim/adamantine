@@ -31,7 +31,7 @@ public:
   ThermalOperator(MPI_Comm const &communicator, BoundaryType boundary_type,
                   MaterialProperty<dim, p_order, MaterialStates,
                                    MemorySpaceType> &material_properties,
-                  HeatSources<MemorySpaceType, dim> const &heat_sources);
+                  HeatSources<dim, MemorySpaceType> const &heat_sources);
 
   /**
    * Associate the AffineConstraints<double> and the MatrixFree objects to the
@@ -195,7 +195,7 @@ private:
   /**
    * Vector of heat sources.
    */
-  HeatSources<MemorySpaceType, dim> _heat_sources;
+  HeatSources<dim, MemorySpaceType> _heat_sources;
   /**
    * Underlying MatrixFree object.
    */

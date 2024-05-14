@@ -25,7 +25,7 @@ std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
            std::vector<double>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    HeatSources<dealii::MemorySpace::Host, dim> &heat_sources)
+    HeatSources<dim, dealii::MemorySpace::Host> &heat_sources)
 {
   // PropertyTreeInput geometry.material_deposition
   bool material_deposition =
@@ -359,12 +359,12 @@ template std::tuple<std::vector<dealii::BoundingBox<2>>, std::vector<double>,
                     std::vector<double>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    HeatSources<dealii::MemorySpace::Host, 2> &heat_sources);
+    HeatSources<2, dealii::MemorySpace::Host> &heat_sources);
 template std::tuple<std::vector<dealii::BoundingBox<3>>, std::vector<double>,
                     std::vector<double>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    HeatSources<dealii::MemorySpace::Host, 3> &heat_sources);
+    HeatSources<3, dealii::MemorySpace::Host> &heat_sources);
 
 template std::tuple<std::vector<dealii::BoundingBox<2>>, std::vector<double>,
                     std::vector<double>, std::vector<double>>

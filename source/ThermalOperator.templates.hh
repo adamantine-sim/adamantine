@@ -33,7 +33,7 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
     ThermalOperator(MPI_Comm const &communicator, BoundaryType boundary_type,
                     MaterialProperty<dim, p_order, MaterialStates,
                                      MemorySpaceType> &material_properties,
-                    HeatSources<MemorySpaceType, dim> const &heat_sources)
+                    HeatSources<dim, MemorySpaceType> const &heat_sources)
     : _communicator(communicator), _boundary_type(boundary_type),
       _material_properties(material_properties), _heat_sources(heat_sources),
       _inverse_mass_matrix(

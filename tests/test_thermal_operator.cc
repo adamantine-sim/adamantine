@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(thermal_operator, *utf::tolerance(1e-15))
   beam_database.put("beam_0.max_power", 10.);
   beam_database.put("beam_0.scan_path_file", "scan_path.txt");
   beam_database.put("beam_0.scan_path_file_format", "segment");
-  adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
+  adamantine::HeatSources<2, dealii::MemorySpace::Host> heat_sources(
       beam_database);
 
   // Initialize the ThermalOperator
@@ -201,7 +201,7 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   beam_database.put("beam_0.max_power", 10.);
   beam_database.put("beam_0.scan_path_file", "scan_path.txt");
   beam_database.put("beam_0.scan_path_file_format", "segment");
-  adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
+  adamantine::HeatSources<2, dealii::MemorySpace::Host> heat_sources(
       beam_database);
 
   // Initialize the ThermalOperator
@@ -310,7 +310,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic, *utf::tolerance(1e-12))
   beam_database.put("beam_0.max_power", 10.);
   beam_database.put("beam_0.scan_path_file", "scan_path.txt");
   beam_database.put("beam_0.scan_path_file_format", "segment");
-  adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
+  adamantine::HeatSources<2, dealii::MemorySpace::Host> heat_sources(
       beam_database);
 
   // Initialize the ThermalOperator
@@ -450,7 +450,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
                      mat_prop_database);
 
   // Create the heat sources
-  adamantine::HeatSources<dealii::MemorySpace::Host, 3> heat_sources;
+  adamantine::HeatSources<3, dealii::MemorySpace::Host> heat_sources;
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<3, false, 1, 2, adamantine::SolidLiquidPowder,
@@ -617,7 +617,7 @@ BOOST_AUTO_TEST_CASE(spmv_rad, *utf::tolerance(1e-12))
   beam_database.put("beam_0.max_power", 10.);
   beam_database.put("beam_0.scan_path_file", "scan_path.txt");
   beam_database.put("beam_0.scan_path_file_format", "segment");
-  adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
+  adamantine::HeatSources<2, dealii::MemorySpace::Host> heat_sources(
       beam_database);
 
   // Initialize the ThermalOperator
@@ -801,7 +801,7 @@ BOOST_AUTO_TEST_CASE(spmv_conv, *utf::tolerance(1e-12))
   beam_database.put("beam_0.max_power", 10.);
   beam_database.put("beam_0.scan_path_file", "scan_path.txt");
   beam_database.put("beam_0.scan_path_file_format", "segment");
-  adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
+  adamantine::HeatSources<2, dealii::MemorySpace::Host> heat_sources(
       beam_database);
 
   // Initialize the ThermalOperator

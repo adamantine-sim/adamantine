@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   beam_database.put("beam_0.max_power", 10.);
   beam_database.put("beam_0.scan_path_file", "scan_path.txt");
   beam_database.put("beam_0.scan_path_file_format", "segment");
-  adamantine::HeatSources<dealii::MemorySpace::Host, 2> heat_sources(
+  adamantine::HeatSources<2, dealii::MemorySpace::Host> heat_sources(
       beam_database);
 
   // Initialize the ThermalOperator
