@@ -91,12 +91,15 @@ private:
       Kokkos::View<GoldakHeatSource<dim, MemorySpace> *,
                    typename MemorySpace::kokkos_space>
           goldak_heat_sources,
-      std::vector<
-          Kokkos::View<ScanPathSegment *, typename MemorySpace::kokkos_space>>
-          electron_beam_scan_path_segments,
-      std::vector<
-          Kokkos::View<ScanPathSegment *, typename MemorySpace::kokkos_space>>
-          goldak_scan_path_segments);
+      std::vector<Kokkos::View<ScanPathSegment *,
+                               typename MemorySpace::kokkos_space>> const
+          &electron_beam_scan_path_segments,
+      std::vector<Kokkos::View<ScanPathSegment *,
+                               typename MemorySpace::kokkos_space>> const
+          &goldak_scan_path_segments,
+      std::vector<int> const &electron_beam_indices,
+      std::vector<int> const &cube_indices,
+      std::vector<int> const &goldak_indices);
 
   Kokkos::View<ElectronBeamHeatSource<dim, MemorySpace> *,
                typename MemorySpace::kokkos_space>
@@ -112,6 +115,9 @@ private:
   std::vector<
       Kokkos::View<ScanPathSegment *, typename MemorySpace::kokkos_space>>
       _goldak_scan_path_segments;
+  std::vector<int> _electron_beam_indices;
+  std::vector<int> _cube_indices;
+  std::vector<int> _goldak_indices;
 };
 
 template <typename MemorySpace, int dim>
@@ -137,6 +143,7 @@ HeatSources<MemorySpace, dim>::HeatSources(
           ScanPath<MemorySpace>::extract_scan_paths(
               beam_database.get<std::string>("scan_path_file"),
               beam_database.get<std::string>("scan_path_file_format")));
+      _goldak_indices.push_back(i);
     }
     else if (type == "electron_beam")
     {
@@ -145,10 +152,12 @@ HeatSources<MemorySpace, dim>::HeatSources(
           ScanPath<MemorySpace>::extract_scan_paths(
               beam_database.get<std::string>("scan_path_file"),
               beam_database.get<std::string>("scan_path_file_format")));
+      _electron_beam_indices.push_back(i);
     }
     else if (type == "cube")
     {
       cube_heat_sources.emplace_back(beam_database);
+      _cube_indices.push_back(i);
     }
     else
     {
@@ -226,17 +235,22 @@ HeatSources<MemorySpace, dim>::HeatSources(
     Kokkos::View<GoldakHeatSource<dim, MemorySpace> *,
                  typename MemorySpace::kokkos_space>
         goldak_heat_sources,
-    std::vector<
-        Kokkos::View<ScanPathSegment *, typename MemorySpace::kokkos_space>>
-        electron_beam_scan_path_segments,
-    std::vector<
-        Kokkos::View<ScanPathSegment *, typename MemorySpace::kokkos_space>>
-        goldak_scan_path_segments)
+    std::vector<Kokkos::View<ScanPathSegment *,
+                             typename MemorySpace::kokkos_space>> const
+        &electron_beam_scan_path_segments,
+    std::vector<Kokkos::View<ScanPathSegment *,
+                             typename MemorySpace::kokkos_space>> const
+        &goldak_scan_path_segments,
+    std::vector<int> const &electron_beam_indices,
+    std::vector<int> const &cube_indices,
+    std::vector<int> const &goldak_indices)
     : _electron_beam_heat_sources(electron_beam_heat_sources),
       _cube_heat_sources(cube_heat_sources),
       _goldak_heat_sources(goldak_heat_sources),
       _electron_beam_scan_path_segments(electron_beam_scan_path_segments),
-      _goldak_scan_path_segments(goldak_scan_path_segments)
+      _goldak_scan_path_segments(goldak_scan_path_segments),
+      _electron_beam_indices(electron_beam_indices),
+      _cube_indices(cube_indices), _goldak_indices(goldak_indices)
 {
 }
 
@@ -316,9 +330,7 @@ template <typename MemorySpace, int dim>
 void HeatSources<MemorySpace, dim>::set_beam_properties(
     boost::property_tree::ptree const &heat_source_database)
 {
-  unsigned int source_index = 0;
-
-  auto set_properties = [&](auto &source)
+  auto set_properties = [&](auto &source, int const source_index)
   {
     // PropertyTreeInput sources.beam_X
     boost::property_tree::ptree const &beam_database =
@@ -329,16 +341,14 @@ void HeatSources<MemorySpace, dim>::set_beam_properties(
 
     if (type == "goldak" || type == "electron_beam")
       source.set_beam_properties(beam_database);
-
-    source_index++;
   };
 
   for (unsigned int i = 0; i < _electron_beam_heat_sources.size(); ++i)
-    set_properties(_electron_beam_heat_sources[i]);
+    set_properties(_electron_beam_heat_sources[i], _electron_beam_indices[i]);
   for (unsigned int i = 0; i < _cube_heat_sources.size(); ++i)
-    set_properties(_cube_heat_sources[i]);
+    set_properties(_cube_heat_sources[i], _cube_indices[i]);
   for (unsigned int i = 0; i < _goldak_heat_sources.size(); ++i)
-    set_properties(_goldak_heat_sources[i]);
+    set_properties(_goldak_heat_sources[i], _goldak_indices[i]);
 }
 
 template <typename MemorySpace, int dim>
@@ -428,9 +438,14 @@ HeatSources<TargetMemorySpace, dim> HeatSources<MemorySpace, dim>::copy_to(
     auto target_cube_heat_sources = Kokkos::create_mirror_view_and_copy(
         typename TargetMemorySpace::kokkos_space{}, _cube_heat_sources);
 
-    return {target_electron_beam_heat_sources, target_cube_heat_sources,
-            target_goldak_heat_sources, target_electron_beam_scan_path_segments,
-            target_goldak_scan_path_segments};
+    return {target_electron_beam_heat_sources,
+            target_cube_heat_sources,
+            target_goldak_heat_sources,
+            target_electron_beam_scan_path_segments,
+            target_goldak_scan_path_segments,
+            _cube_indices,
+            _electron_beam_indices,
+            _goldak_indices};
   }
 }
 
