@@ -276,3 +276,7 @@ The first entry of the file is the dimension the problem: 2 or 3.
 ## Questions
 If you have any question, find a bug, or have feature request please open an
 issue.
+
+## Contributing
+We encourage you to contribute to adamantine! Please check out the
+[guidelines](CONTRIBUTING.md) about how to proceed.
