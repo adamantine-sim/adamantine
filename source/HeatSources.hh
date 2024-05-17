@@ -377,7 +377,8 @@ HeatSources<dim, MemorySpaceType>::copy_to(
            ++i)
         target_electron_beam_scan_path_segments[i] =
             Kokkos::create_mirror_view_and_copy(
-                Kokkos::HostSpace{}, _electron_beam_scan_path_segments[i]);
+                typename TargetMemorySpaceType::kokkos_space{},
+                _electron_beam_scan_path_segments[i]);
       auto target_copy_electron_beam_heat_sources =
           Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{},
                                               _electron_beam_heat_sources);
