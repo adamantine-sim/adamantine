@@ -41,21 +41,19 @@ public:
   /**
    * Set the time variable.
    */
-  KOKKOS_FUNCTION void update_time(double time);
+  void update_time(double time);
 
   /**
    * Compute the cumulative heat source at a given point at a given time given
    * the current height of the object being manufactured.
    */
-  KOKKOS_FUNCTION double value(dealii::Point<dim> const &point,
-                               double const height) const;
+  double value(dealii::Point<dim> const &point, double const height) const;
 
   /**
    * Compute the maxiumum heat source at a given point at a given time given the
    * current height of the object being manufactured.
    */
-  KOKKOS_FUNCTION double max_value(dealii::Point<dim> const &point,
-                                   double const height) const;
+  double max_value(dealii::Point<dim> const &point, double const height) const;
 
   /**
    * Return the scan paths for the heat source.
@@ -256,7 +254,7 @@ HeatSources<dim, MemorySpaceType>::HeatSources(
 }
 
 template <int dim, typename MemorySpaceType>
-KOKKOS_FUNCTION void HeatSources<dim, MemorySpaceType>::update_time(double time)
+void HeatSources<dim, MemorySpaceType>::update_time(double time)
 {
   for (unsigned int i = 0; i < _electron_beam_heat_sources.size(); ++i)
     _electron_beam_heat_sources(i).update_time(time);
@@ -267,9 +265,8 @@ KOKKOS_FUNCTION void HeatSources<dim, MemorySpaceType>::update_time(double time)
 }
 
 template <int dim, typename MemorySpaceType>
-KOKKOS_FUNCTION double
-HeatSources<dim, MemorySpaceType>::value(dealii::Point<dim> const &point,
-                                         double const height) const
+double HeatSources<dim, MemorySpaceType>::value(dealii::Point<dim> const &point,
+                                                double const height) const
 {
   double value = 0;
   for (unsigned int i = 0; i < _electron_beam_heat_sources.size(); ++i)
@@ -282,7 +279,7 @@ HeatSources<dim, MemorySpaceType>::value(dealii::Point<dim> const &point,
 }
 
 template <int dim, typename MemorySpaceType>
-KOKKOS_FUNCTION double
+double
 HeatSources<dim, MemorySpaceType>::max_value(dealii::Point<dim> const &point,
                                              double const height) const
 {
