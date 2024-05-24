@@ -3,26 +3,19 @@ find_package(deal.II 9.5 REQUIRED PATHS ${DEAL_II_DIR})
 
 deal_ii_initialize_cached_variables()
 
-if(NOT DEAL_II_WITH_CXX17)
-  message(FATAL_ERROR "deal.II needs to be configured with C++17 support.")
-endif()
+set(DEAL_II_REQUIRED_FEATURES ARBORX CXX17 MPI P4EST TRILINOS)
 
-if(NOT DEAL_II_WITH_MPI)
-  message(FATAL_ERROR "deal.II needs to be configured with MPI support.")
-endif()
+foreach(FEATURE ${DEAL_II_REQUIRED_FEATURES})
+  if(NOT DEAL_II_WITH_${FEATURE})
+    list(APPEND DEAL_II_MISSING_FEATURES ${FEATURE})
+  endif()
+endforeach()
 
-if(NOT DEAL_II_WITH_ARBORX)
-  message(FATAL_ERROR "deal.II needs to be configured with ArborX support.")
+if(DEAL_II_MISSING_FEATURES)
+  string(REPLACE ";"  ", " DEAL_II_MISSING_FEATURES "${DEAL_II_MISSING_FEATURES}")
+  message(FATAL_ERROR "deal.II wasn't configured with all required dependencies. The missing dependencies are ${DEAL_II_MISSING_FEATURES}.")
 endif()
 
 if(NOT DEAL_II_ARBORX_WITH_MPI)
   message(FATAL_ERROR "ArborX needs to be configured with MPI support.")
-endif()
-
-if(NOT DEAL_II_WITH_P4EST)
-  message(FATAL_ERROR "deal.II needs to be configured with P4EST support.")
-endif()
-
-if(NOT DEAL_II_WITH_TRILINOS)
-  message(FATAL_ERROR "deal.II needs to be configured with Trilinos support.")
 endif()
