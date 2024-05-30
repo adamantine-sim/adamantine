@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 - 2021, the adamantine authors.
+/* Copyright (c) 2020 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -77,7 +77,7 @@ public:
   /**
    * Return the scan path for the heat source.
    */
-  virtual ScanPath const &get_scan_path() const;
+  virtual ScanPath &get_scan_path();
 
   /**
    * Compute the current height of the where the heat source meets the material
@@ -104,7 +104,7 @@ protected:
 };
 
 template <int dim>
-inline ScanPath const &HeatSource<dim>::get_scan_path() const
+inline ScanPath &HeatSource<dim>::get_scan_path()
 {
   return _scan_path;
 }

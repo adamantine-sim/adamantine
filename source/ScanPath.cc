@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2023, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -8,34 +8,41 @@
 #include <ScanPath.hh>
 #include <utils.hh>
 
+#include <boost/algorithm/string.hpp>
+
 #include <fstream>
 
 namespace adamantine
 {
 ScanPath::ScanPath(std::string scan_path_file, std::string file_format)
+    : _scan_path_file(scan_path_file), _file_format(file_format)
 {
-  // Parse the scan path
-  wait_for_file(scan_path_file,
-                "Waiting for scan path file: " + scan_path_file);
+  ASSERT_THROW((_file_format == "segment") || (_file_format == "event_series"),
+               "Error: Format of scan path file not recognized.");
 
-  if (file_format == "segment")
+  wait_for_file(_scan_path_file,
+                "Waiting for scan path file: " + _scan_path_file);
+
+  read_file();
+}
+
+void ScanPath::read_file()
+{
+  if (_file_format == "segment")
   {
-    load_segment_scan_path(scan_path_file);
-  }
-  else if (file_format == "event_series")
-  {
-    load_event_series_scan_path(scan_path_file);
+    load_segment_scan_path();
   }
   else
   {
-    ASSERT_THROW(false, "Error: Format of scan path file not recognized.");
+    load_event_series_scan_path();
   }
 }
 
-void ScanPath::load_segment_scan_path(std::string scan_path_file)
+void ScanPath::load_segment_scan_path()
 {
+  _segment_list.clear();
   std::ifstream file;
-  file.open(scan_path_file);
+  file.open(_scan_path_file);
   std::string line;
   unsigned int data_index = 0;
   // Skip first line
@@ -109,10 +116,11 @@ void ScanPath::load_segment_scan_path(std::string scan_path_file)
   file.close();
 }
 
-void ScanPath::load_event_series_scan_path(std::string scan_path_file)
+void ScanPath::load_event_series_scan_path()
 {
+  _segment_list.clear();
   std::ifstream file;
-  file.open(scan_path_file);
+  file.open(_scan_path_file);
   std::string line;
 
   double last_power = 0.0;

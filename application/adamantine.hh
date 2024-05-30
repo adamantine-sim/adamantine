@@ -37,6 +37,7 @@
 #include <deal.II/lac/vector_operation.h>
 #include <deal.II/numerics/error_estimator.h>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -760,6 +761,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
       thermal_physics;
   std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> heat_sources;
+  std::vector<std::pair<double, bool>> scan_path_end;
   if (use_thermal_physics)
   {
     // PropertyTreeInput discretization.thermal.fe_degree
@@ -772,6 +774,13 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         fe_degree, quadrature_type, communicator, database, geometry,
         material_properties);
     heat_sources = thermal_physics->get_heat_sources();
+    // Store the current end time of each heat source and set a flag that the
+    // scan path has changed
+    for (auto const &source : heat_sources)
+    {
+      scan_path_end.emplace_back(
+          source->get_scan_path().get_segment_list().back().end_time, true);
+    }
     post_processor_database.put("thermal_output", true);
   }
 
@@ -1000,6 +1009,43 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     if (time > activation_time_end)
     {
       double const eps = time_step / 1e10;
+
+      // We may need to check if the scan path has been updated. We don't want
+      // to keep reading the file if it's not going to be updated. Once we
+      // reach the end of the scan path, we reread the scan path file. If it was
+      // not updated, we won't try to read it again.
+      bool scan_path_updated = false;
+      for (unsigned int s = 0; s < scan_path_end.size(); ++s)
+      {
+        if ((time > scan_path_end[s].first - eps) && (scan_path_end[s].second))
+        {
+          scan_path_updated = true;
+          break;
+        }
+      }
+      if (scan_path_updated)
+      {
+        for (unsigned int s = 0; s < scan_path_end.size(); ++s)
+        {
+          // Read the scan path file
+          heat_sources[s]->get_scan_path().read_file();
+
+          // Update scan_path_end
+          double new_end_time = heat_sources[s]
+                                    ->get_scan_path()
+                                    .get_segment_list()
+                                    .back()
+                                    .end_time;
+          scan_path_end[s].second = scan_path_end[s].first != new_end_time;
+          scan_path_end[s].first = new_end_time;
+        }
+
+        std::tie(material_deposition_boxes, deposition_times, deposition_cos,
+                 deposition_sin) =
+            adamantine::create_material_deposition_boxes<dim>(geometry_database,
+                                                              heat_sources);
+      }
+
       auto activation_start =
           std::lower_bound(deposition_times.begin(), deposition_times.end(),
                            time - eps) -
