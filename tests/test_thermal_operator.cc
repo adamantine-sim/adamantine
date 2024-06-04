@@ -93,11 +93,12 @@ BOOST_AUTO_TEST_CASE(thermal_operator, *utf::tolerance(1e-15))
   beam_database.put("beam_0.depth", 0.1);
   beam_database.put("beam_0.absorption_efficiency", 0.1);
   beam_database.put("beam_0.diameter", 1.0);
-  beam_database.put("beam_0.max_power", 10.);
+  beam_database.put("beam_0.max_power", 0.);
   beam_database.put("beam_0.scan_path_file", "scan_path.txt");
   beam_database.put("beam_0.scan_path_file_format", "segment");
   adamantine::HeatSources<2, dealii::MemorySpace::Host> heat_sources(
       beam_database);
+  heat_sources.update_time(0.);
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, false, 1, 2, adamantine::SolidLiquidPowder,
@@ -198,11 +199,12 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   beam_database.put("beam_0.depth", 0.1);
   beam_database.put("beam_0.absorption_efficiency", 0.1);
   beam_database.put("beam_0.diameter", 1.0);
-  beam_database.put("beam_0.max_power", 10.);
+  beam_database.put("beam_0.max_power", 0.);
   beam_database.put("beam_0.scan_path_file", "scan_path.txt");
   beam_database.put("beam_0.scan_path_file_format", "segment");
   adamantine::HeatSources<2, dealii::MemorySpace::Host> heat_sources(
       beam_database);
+  heat_sources.update_time(0.);
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, false, 2, 2, adamantine::SolidLiquidPowder,
@@ -307,11 +309,12 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic, *utf::tolerance(1e-12))
   beam_database.put("beam_0.depth", 0.1);
   beam_database.put("beam_0.absorption_efficiency", 0.1);
   beam_database.put("beam_0.diameter", 1.0);
-  beam_database.put("beam_0.max_power", 10.);
+  beam_database.put("beam_0.max_power", 0.);
   beam_database.put("beam_0.scan_path_file", "scan_path.txt");
   beam_database.put("beam_0.scan_path_file_format", "segment");
   adamantine::HeatSources<2, dealii::MemorySpace::Host> heat_sources(
       beam_database);
+  heat_sources.update_time(0.);
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, false, 2, 2, adamantine::SolidLiquidPowder,
@@ -614,11 +617,12 @@ BOOST_AUTO_TEST_CASE(spmv_rad, *utf::tolerance(1e-12))
   beam_database.put("beam_0.depth", 0.1);
   beam_database.put("beam_0.absorption_efficiency", 0.1);
   beam_database.put("beam_0.diameter", 1.0);
-  beam_database.put("beam_0.max_power", 10.);
+  beam_database.put("beam_0.max_power", 0.);
   beam_database.put("beam_0.scan_path_file", "scan_path.txt");
   beam_database.put("beam_0.scan_path_file_format", "segment");
   adamantine::HeatSources<2, dealii::MemorySpace::Host> heat_sources(
       beam_database);
+  heat_sources.update_time(0.);
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, false, 1, 2, adamantine::SolidLiquidPowder,
@@ -798,11 +802,12 @@ BOOST_AUTO_TEST_CASE(spmv_conv, *utf::tolerance(1e-12))
   beam_database.put("beam_0.depth", 0.1);
   beam_database.put("beam_0.absorption_efficiency", 0.1);
   beam_database.put("beam_0.diameter", 1.0);
-  beam_database.put("beam_0.max_power", 10.);
+  beam_database.put("beam_0.max_power", 0.);
   beam_database.put("beam_0.scan_path_file", "scan_path.txt");
   beam_database.put("beam_0.scan_path_file_format", "segment");
   adamantine::HeatSources<2, dealii::MemorySpace::Host> heat_sources(
       beam_database);
+  heat_sources.update_time(0.);
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperator<2, false, 1, 2, adamantine::SolidLiquidPowder,

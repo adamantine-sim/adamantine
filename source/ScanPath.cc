@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2023, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -9,6 +9,7 @@
 #include <utils.hh>
 
 #include <deal.II/base/memory_space.h>
+#include <boost/algorithm/string.hpp>
 
 #include <fstream>
 
@@ -20,21 +21,24 @@ std::vector<ScanPathSegment>
 ScanPath<MemorySpaceType>::extract_scan_paths(std::string scan_path_file,
                                               std::string file_format)
 {
-  // Parse the scan path
-  wait_for_file(scan_path_file,
-                "Waiting for scan path file: " + scan_path_file);
+  ASSERT_THROW((_file_format == "segment") || (_file_format == "event_series"),
+               "Error: Format of scan path file not recognized.");
 
-  if (file_format == "segment")
+  wait_for_file(_scan_path_file,
+                "Waiting for scan path file: " + _scan_path_file);
+
+  read_file();
+}
+
+void ScanPath::read_file()
+{
+  if (_file_format == "segment")
   {
-    return load_segment_scan_path(scan_path_file);
-  }
-  else if (file_format == "event_series")
-  {
-    return load_event_series_scan_path(scan_path_file);
+    load_segment_scan_path(scan_path_file);
   }
   else
   {
-    ASSERT_THROW(false, "Error: Format of scan path file not recognized.");
+    load_event_series_scan_path();
   }
 
   return {};
@@ -42,12 +46,11 @@ ScanPath<MemorySpaceType>::extract_scan_paths(std::string scan_path_file,
 
 template <typename MemorySpaceType>
 std::vector<ScanPathSegment>
-ScanPath<MemorySpaceType>::load_segment_scan_path(std::string scan_path_file)
+ScanPath<MemorySpaceType>::load_segment_scan_path()
 {
-  std::vector<ScanPathSegment> segment_list;
-
+  _segment_list.clear();
   std::ifstream file;
-  file.open(scan_path_file);
+  file.open(_scan_path_file);
   std::string line;
   unsigned int data_index = 0;
   // Skip first line
@@ -124,13 +127,11 @@ ScanPath<MemorySpaceType>::load_segment_scan_path(std::string scan_path_file)
 
 template <typename MemorySpaceType>
 std::vector<ScanPathSegment>
-ScanPath<MemorySpaceType>::load_event_series_scan_path(
-    std::string scan_path_file)
+ScanPath<MemorySpaceType>::load_event_series_scan_path()
 {
-  std::vector<ScanPathSegment> segment_list;
-
+  _segment_list.clear();
   std::ifstream file;
-  file.open(scan_path_file);
+  file.open(_scan_path_file);
   std::string line;
 
   double last_power = 0.0;

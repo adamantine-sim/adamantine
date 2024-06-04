@@ -79,11 +79,12 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   beam_database.put("beam_0.depth", 0.1);
   beam_database.put("beam_0.absorption_efficiency", 0.1);
   beam_database.put("beam_0.diameter", 1.0);
-  beam_database.put("beam_0.max_power", 10.);
+  beam_database.put("beam_0.max_power", 0.);
   beam_database.put("beam_0.scan_path_file", "scan_path.txt");
   beam_database.put("beam_0.scan_path_file_format", "segment");
   adamantine::HeatSources<2, dealii::MemorySpace::Host> heat_sources(
       beam_database);
+  heat_sources.update_time(0.);
 
   // Initialize the ThermalOperator
   auto thermal_operator = std::make_shared<

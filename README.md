@@ -150,6 +150,7 @@ The following options are available:
   * beam\_X.scan\_path\_file: scan path filename (required)
   * beam\_X.scan\_path\_file\_format: format of the scan path: segment or
   event\_series (required)
+  * beam\_X.max\_power: maximum power of the beam in watts (required)
   * beam\_X.depth: maximum depth reached by the electron beam in meters (required)
   * beam\_X.absorption\_efficiency: absorption efficiency of the beam equivalent
   to energy\_conversion\_efficiency * control\_efficiency for electon beam. Number
@@ -276,3 +277,7 @@ The first entry of the file is the dimension the problem: 2 or 3.
 ## Questions
 If you have any question, find a bug, or have feature request please open an
 issue.
+
+## Contributing
+We encourage you to contribute to adamantine! Please check out the
+[guidelines](CONTRIBUTING.md) about how to proceed.

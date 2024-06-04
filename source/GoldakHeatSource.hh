@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 - 2022, the adamantine authors.
+/* Copyright (c) 2020 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -10,6 +10,8 @@
 
 #include <BeamHeatSourceProperties.hh>
 #include <ScanPath.hh>
+
+#include <limits>
 
 namespace adamantine
 {
@@ -70,7 +72,7 @@ public:
 
 private:
   dealii::Point<3> _beam_center;
-  double _alpha;
+  double _alpha = std::numeric_limits<double>::signaling_NaN();
   BeamHeatSourceProperties _beam;
 
   ScanPath<MemorySpaceType> _scan_path;
