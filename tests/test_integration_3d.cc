@@ -145,3 +145,29 @@ BOOST_AUTO_TEST_CASE(integration_3D_checkpoint_restart)
   std::filesystem::remove(checkpoint_filename + "_variable.data");
   std::filesystem::remove(checkpoint_filename + "_time.txt");
 }
+
+BOOST_AUTO_TEST_CASE(hourglass, *utf::tolerance(0.1))
+{
+  // The HourGlass test would crash in parallel. This test makes sure it
+  // doesn't happen anymore. We do not check the result, we just make sure that
+  // the code runs to completion.
+
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  if (dealii::Utilities::MPI::n_mpi_processes(communicator) == 2)
+  {
+
+    std::vector<adamantine::Timer> timers;
+    initialize_timers(communicator, timers);
+
+    // Read the input.
+    std::string const filename = "HourGlass_AOP.info";
+    adamantine::ASSERT_THROW(std::filesystem::exists(filename) == true,
+                             "The file " + filename + " does not exist.");
+    boost::property_tree::ptree database;
+    boost::property_tree::info_parser::read_info(filename, database);
+
+    run<3, 1, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
+        communicator, database, timers);
+  }
+}
