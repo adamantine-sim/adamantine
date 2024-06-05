@@ -20,27 +20,26 @@ bibliography: paper.bib
 ---
 
 # Summary
-`Adamantine` is a thermomechanical C++ code build on top of deal.II [@dealII95], 
-ArborX [@arborx2020], Trilinos [@trilinos-website], and Kokkos [@kokkos2022].
+`Adamantine` is a thermomechanical simulation code that is written in C++ and built on top of deal.II [@dealII95], ArborX [@arborx2020], Trilinos [@trilinos-website], and Kokkos [@kokkos2022]. 
 `Adamantine` was developed with additive manufacturing in mind and it is
 particularly well adapted to simulate fused filament fabrication, direct energy 
-deposition, and powder bed fusion. In order to support these different processes, 
-`adamantine` solve the anisotropic heat equation. It can handle materials in
+deposition, and powder bed fusion. In order to support these different additive manufacturing processes, 
+`adamantine` solves a nonlinear anisotropic heat equation. It can handle materials in
 three distinct phases (solid, liquid, and powder) to accurately reflect the
 physical state during different stages of the manufacturing process. To enhance
 simulation accuracy, `adamantine` incorporates data assimilation techniques [@da2016].
 This allows it to integrate experimental data from sensors like thermocouples
-and Infra-Red (IR) cameras. This combined approach helps account for errors
+and infrared (IR) cameras. This combined approach helps account for errors
 arising from input parameters, material properties, models, and numerical
-calculations, leading to more realistic simulations.
+calculations, leading to more realistic simulations that reflect what occurs in a particular print.
 
 # Statement of Need
-Manufacturing "born-qualified" objects, i.e., parts ready for critical
+Manufacturing "born-qualified" components, i.e., parts ready for critical
 applications straight from the printer, requires a new approach to additive
 manufacturing (AM). This vision demands not only precise simulations for 
 planning the build but also real-time adjustments throughout the process 
 to obtained the desired thermomechanical evolution of the part. Currently, 
-setting AM process parameters is an expert-driven, oftentrial-and-error 
+setting AM process parameters is an expert-driven, often trial-and-error 
 process. Material changes and geometry complexities can lead to unpredictable 
 adjustments in parameters, making it slow and expensive. We can overcome 
 this by using advanced simulations for both planning and adaptive control.
@@ -53,8 +52,8 @@ thermocouples. This data is integrated using the Ensemble Kalman Filter (EnKF) m
 allowing the simulation to constantly adapt and reflect the actual build process.
 
 With a continuously refined simulation, `adamantine` can predict the final state 
-of the object with greater accuracy. This enables adjustments to the build parameters 
-mid-print, if needed, ensuring the creation of born-qualified parts.
+of the object with greater accuracy. This simulation-enhanced monitoring capability enables a human operator or an adaptive control algorithm to adjust to the build parameters 
+mid-print, if needed, to ensure that printed parts conform to the necessary tolerances. 
 
 While other open-source software like AdditiveFOAM [@additivefoam] excels at heat
 and mass transfer simulations in additive manufacturing, and commercial options
@@ -65,49 +64,35 @@ simulations, leading to better process optimization and final part quality.
 
 # Simulated Physics
 
-## Thermal Simulation
-We solve the heat equation with change of phases: powder $\Rightarrow$ liquid, 
-solid $\Rightarrow$ liquid, and liquid $\Rightarrow$ solid. The simulation 
-requires the presence of a "mushy" zone, i.e., the liquidus and the solidus are 
-different. This is generally the case for alloys. The following boundary conditions 
-are implemented: adiabatic, convective, and radiative.
+## Thermal simulation
+`Adamantine` solves an anisotropic version of standard continuum heat transfer model used in additive manufacturing simulations [@Megahed2016,@KELLER2017244]. The model includes the change of phases between powder, liquid, and solid and accounts for latent heat release for melting/solidification phase transformations. The model assumes the presence of a "mushy" zone, i.e., the liquidus and the solidus are different, as is generally the case for alloys. The heat input by the laser, electron beam, electric-arc, or other process-specific heat source is introduced using a volumetric source term [@Goldak1984,@KNAPP2023111904]. Adiabatic, convective, and radiative boundary conditions are implemented, with the option to combine convective and radiative boundary conditions. 
 
-## Mechanical Simulation
-We solve an elasto-plastic problem. The plastic model is the linear combination of
-the isotropic and kinematic hardening describe in [@borja2013]. This allows us to 
+## Mechanical simulation
+`Adamantine` can perform elasto-plastic simulations. The plastic model is the linear combination of
+the isotropic and kinematic hardening described in [@borja2013]. This allows us to 
 model both the change in yield stress and the Bauschinger effect.
 
-## Thermomechanical Simulation
-We solve the thermomechanical problem where the thermal and the mechanical
-simulations are coupled. In this case, we have an extra term in the mechanial
-simulation which takes into account the thermal expansion of the material [@fung2001]. 
-We assume a one-way coupling and neglect the effect of the deformation on the thermal
-simulation.
+## Thermomechanical simulation
+Thermomechanical simulations in `adamantine` are performed with one-way coupling from the temperature evolution to the mechanical evolution. We neglect the effect of demoformation on the thermal simulation. An extra term in the mechanical simulation accounts fosr the eigenstrain assosciated with by thermal expansion of the material [@fung2001,@Megahed2016].
 
 # Data Assimilation
 Data assimilation "is the approximation of a true state of some physical system
 at a given time by combining time-distributed observations with a dynamic model
 in an optimal way" [@da2016]. `Adamantine` leverages this technique to enhance
-the precision of its simulations.
+the accuracy of simulations during and after prints with in-situ characterization. It also ties the simulation results to the particular events (e.g. resulting for stocastic processes) for a specific print.
 
 We have implemented a data assimilation algorithm called the Ensemble Kalman
-Filter (EnKF). This statistical technique seamlessly combines the simulation's
-predictions with experimental data. EnKF requires to perform an ensemble of 
-simulations with slightly different input simulations. These EnKF ensemble 
-simulations are done inside a unique instance of `adamantine`.  This allows 
-experimental data from IR cameras and thermocouples ton be assimilated in order
-to provide insight into the actual AM process.
+Filter (EnKF) [@da2016]. This statistical technique incorporates experimental observations into a simulation to provide the best estimate (in the Bayesian sense) of the state of the system that reflects uncertainties from both data sources. EnKF requires to perform an ensemble of 
+simulations with slightly different input model parameters and/or initial conditions. The EnKF calculation and the coordination of simulations of ensemble 
+members are done from inside `adamantine`.  
 
 # Algorithmic Choices
 
-## Matrix-free
-We have made the choice of using explicit time-stepping schemes and thus,
-it is necessary to perform each time step efficiently. Since a time step 
-correspond to the evaluation of an operator, we use a matrix-free technique 
-[@kronbichler2012]. This technique avoids explicitly storing the full system matrix, 
-which becomes computationally expensive for higher-degree finite elements. Instead, 
-`adamantine` calculates the operator's action directly, significantly reducing 
-computational cost compared to traditional matrix-vector multiplication.
+## Time integration
+`Adamantine` includes several options for time integration methods that it inherits from the deal.II library [@dealII95]. These are: forward Euler, 3rd order explicit Runge-Kutta, 4th order explicit Runge-Kutta, backward Euler, implicit midpoint, Crank-Nicolson, and singly diagonally implicit Runge-Kutta. 
+
+## Matrix-free finite element formulation
+`Adamantine` uses a variable-order finite element spatial discretization with a matrix-free approach [@kronbichler2012]. This approach calculates the action of an operator directly, rather than explicitly storing the full (sparse) system matrix. This matrix-free approach significantly reduces computational cost, especially for higher-degree finite elements. The matrix-free method also leads to a diagonal mass matrix, which facilitates low-overhead explicit time stepping -- important since explicit methods are performant for additive manufacturing simulations due to the small time steps needed to resolve the heat source motion.
 
 ## MPI support
 While mechanical and thermomechanical simulations are limited to serial
@@ -124,10 +109,12 @@ ensemble simulations, the partitioning scheme works as follows:
  only if Nproc is a multiple of N. This ensures that all the simulations are
  partitioned in the same way.
 
+ MPI support for mechanical and thermomechanical simulations are a subject of ongoing work.
+
 ## GPU support
-There is partial support for GPU through the use of the Kokkos library. Part of 
+`Adamantine` includes partial support for GPU-accelerated calculations through the use of the Kokkos library. Part of 
 the thermal simulation can be performed on the GPU but the mechanical simulation is CPU only.
-Performing the entire computation on the GPU is part of our future plan.
+Performing the entire computation on the GPU is the subject of ongoing work.
 
 # Acknowledgments
 This manuscript has been authored by UT-Battelle, LLC, under contract
