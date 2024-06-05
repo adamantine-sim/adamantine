@@ -107,6 +107,7 @@ The following options are available:
   * **beam\_X.scan\_path\_file**: scan path filename (required)
   * **beam\_X.scan\_path\_file\_format**: format of the scan path: `segment` or
   `event_series` (required)
+  * ** beam\_X.max\_power**: maximum power of the beam in watts (required)
   * **beam\_X.depth**: maximum depth reached by the electron beam in meters (required)
   * **beam\_X.absorption\_efficiency**: absorption efficiency of the beam equivalent
   to `energy_conversion_efficiency * control_efficiency` for electon beam. Number
