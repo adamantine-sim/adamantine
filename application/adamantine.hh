@@ -775,10 +775,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     heat_sources = thermal_physics->get_heat_sources();
     // Store the current end time of each heat source and set a flag that the
     // scan path has changed
-    for (auto const &source : heat_sources)
+    auto const& scan_paths = heat_sources.get_scan_paths();
+    for (auto const &scan_path : scan_paths)
     {
-      scan_path_end.emplace_back(
-          source->get_scan_path().get_segment_list().back().end_time, true);
+      scan_path_end.emplace_back(scan_path.get_segment_list().back().end_time, true);
     }
     post_processor_database.put("thermal_output", true);
   }
@@ -1026,14 +1026,15 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       }
       if (scan_path_updated)
       {
+        adamantine::HeatSources<dim, dealii::MemorySpace::Host> host_heat_sources = heat_sources.copy_to(dealii::MemorySpace::Host{});
+        host_heat_sources.update_scan_paths();
+        heat_sources = host_heat_sources.copy_to(MemorySpaceType{});
+  
+    auto const& scan_paths = heat_sources.get_scan_paths();
         for (unsigned int s = 0; s < scan_path_end.size(); ++s)
         {
-          // Read the scan path file
-          heat_sources[s]->get_scan_path().read_file();
-
           // Update scan_path_end
-          double new_end_time = heat_sources[s]
-                                    ->get_scan_path()
+          double new_end_time = scan_paths[s]
                                     .get_segment_list()
                                     .back()
                                     .end_time;
@@ -1044,7 +1045,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         std::tie(material_deposition_boxes, deposition_times, deposition_cos,
                  deposition_sin) =
             adamantine::create_material_deposition_boxes<dim>(geometry_database,
-                                                              heat_sources);
+                                                              host_heat_sources);
       }
 
       auto activation_start =

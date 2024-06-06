@@ -53,6 +53,11 @@ public:
    */
   ScanPath<MemorySpaceType> const &get_scan_path() const;
 
+  void set_scan_path(ScanPath<MemorySpaceType> const scan_path)
+  {
+    _scan_path = scan_path;
+  }
+
   /**
    * Compute the current height of the where the heat source meets the material
    * (i.e. the current scan path height).

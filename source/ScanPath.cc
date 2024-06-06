@@ -9,6 +9,7 @@
 #include <utils.hh>
 
 #include <deal.II/base/memory_space.h>
+
 #include <boost/algorithm/string.hpp>
 
 #include <fstream>
@@ -21,24 +22,19 @@ std::vector<ScanPathSegment>
 ScanPath<MemorySpaceType>::extract_scan_paths(std::string scan_path_file,
                                               std::string file_format)
 {
-  ASSERT_THROW((_file_format == "segment") || (_file_format == "event_series"),
+  ASSERT_THROW((file_format == "segment") || (file_format == "event_series"),
                "Error: Format of scan path file not recognized.");
 
-  wait_for_file(_scan_path_file,
-                "Waiting for scan path file: " + _scan_path_file);
+  wait_for_file(scan_path_file,
+                "Waiting for scan path file: " + scan_path_file);
 
-  read_file();
-}
-
-void ScanPath::read_file()
-{
-  if (_file_format == "segment")
+  if (file_format == "segment")
   {
-    load_segment_scan_path(scan_path_file);
+    return load_segment_scan_path(scan_path_file);
   }
   else
   {
-    load_event_series_scan_path();
+    return load_event_series_scan_path(scan_path_file);
   }
 
   return {};
@@ -46,11 +42,11 @@ void ScanPath::read_file()
 
 template <typename MemorySpaceType>
 std::vector<ScanPathSegment>
-ScanPath<MemorySpaceType>::load_segment_scan_path()
+ScanPath<MemorySpaceType>::load_segment_scan_path(std::string scan_path_file)
 {
-  _segment_list.clear();
+  std::vector<ScanPathSegment> segment_list;
   std::ifstream file;
-  file.open(_scan_path_file);
+  file.open(scan_path_file);
   std::string line;
   unsigned int data_index = 0;
   // Skip first line
@@ -127,11 +123,12 @@ ScanPath<MemorySpaceType>::load_segment_scan_path()
 
 template <typename MemorySpaceType>
 std::vector<ScanPathSegment>
-ScanPath<MemorySpaceType>::load_event_series_scan_path()
+ScanPath<MemorySpaceType>::load_event_series_scan_path(
+    std::string scan_path_file)
 {
-  _segment_list.clear();
+  std::vector<ScanPathSegment> segment_list;
   std::ifstream file;
-  file.open(_scan_path_file);
+  file.open(scan_path_file);
   std::string line;
 
   double last_power = 0.0;

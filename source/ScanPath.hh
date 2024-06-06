@@ -1,5 +1,5 @@
 /* Copyright (c) 2016 - 2024, the adamantine authors.
-*
+ *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
  * for the text and further information on this license.
@@ -65,11 +65,11 @@ public:
    */
   ScanPath() = default;
 
-  ScanPath(
+  KOKKOS_FUNCTION ScanPath(
       Kokkos::View<ScanPathSegment *, typename MemorySpaceType::kokkos_space,
                    Kokkos::MemoryTraits<Kokkos::Unmanaged>>
           scan_path_segments)
-      : _segment_list(scan_path_segments)
+      : _segment_list(scan_path_segments.data(), scan_path_segments.size())
   {
   }
 
@@ -99,18 +99,6 @@ public:
 
 private:
   /**
-   * The list of information about each segment in the scan path.
-   */
-  Kokkos::View<ScanPathSegment *, typename MemorySpaceType::kokkos_space,
-               Kokkos::MemoryTraits<Kokkos::Unmanaged>>
-      _segment_list;
-
-  /**
-   * The index of the current segment in the scan path.
-   */
-  mutable unsigned int _current_segment = 0;
-
-  /**
    * Method to load a "segment" scan path file
    */
   static std::vector<ScanPathSegment>
@@ -130,17 +118,12 @@ private:
                                    double &segment_start_time) const;
 
   /**
-   * File name of the scan path
-   */
-  std::string _scan_path_file;
-  /**
-   * Format of the scan path file, either segment of event_series.
-   */
-  std::string _file_format;
-  /**
    * The list of information about each segment in the scan path.
    */
-  std::vector<ScanPathSegment> _segment_list;
+  Kokkos::View<ScanPathSegment *, typename MemorySpaceType::kokkos_space,
+               Kokkos::MemoryTraits<Kokkos::Unmanaged>>
+      _segment_list;
+
   /**
    * The index of the current segment in the scan path.
    */
