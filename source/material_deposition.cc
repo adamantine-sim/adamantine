@@ -382,4 +382,28 @@ template std::vector<
 get_elements_to_activate(
     dealii::DoFHandler<3> const &dof_handler,
     std::vector<dealii::BoundingBox<3>> const &material_deposition_boxes);
+
+template std::tuple<std::vector<dealii::BoundingBox<2, double>>,
+                    std::vector<double>, std::vector<double>,
+                    std::vector<double>>
+merge_deposition_paths(
+    std::vector<std::tuple<std::vector<dealii::BoundingBox<2, double>>,
+                           std::vector<double>, std::vector<double>,
+                           std::vector<double>>> const &deposition_paths);
+template std::tuple<std::vector<dealii::BoundingBox<3, double>>,
+                    std::vector<double>, std::vector<double>,
+                    std::vector<double>>
+merge_deposition_paths(
+    std::vector<std::tuple<std::vector<dealii::BoundingBox<3, double>>,
+                           std::vector<double>, std::vector<double>,
+                           std::vector<double>>> const &deposition_paths);
+
+template std::tuple<std::vector<dealii::BoundingBox<2>>, std::vector<double>,
+                    std::vector<double>, std::vector<double>>
+deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
+                           ScanPath const &scan_path);
+template std::tuple<std::vector<dealii::BoundingBox<3>>, std::vector<double>,
+                    std::vector<double>, std::vector<double>>
+deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
+                           ScanPath const &scan_path);
 } // namespace adamantine
