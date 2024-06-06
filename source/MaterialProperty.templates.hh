@@ -148,19 +148,6 @@ MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
 
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
-    MaterialProperty(MaterialProperty<dim, p_order, MaterialStates,
-                                      MemorySpaceType> const &other)
-    : _use_table(other._use_table),
-      _state_property_tables(other._state_property_tables),
-      _state_property_polynomials(other._state_property_polynomials),
-      _properties(other._properties), _state(other._state),
-      _property_values(other._property_values), _fe(0)
-{
-}
-
-template <int dim, int p_order, typename MaterialStates,
-          typename MemorySpaceType>
 double
 MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::get_cell_value(
     typename dealii::Triangulation<dim>::active_cell_iterator const &cell,
@@ -243,14 +230,15 @@ void MaterialProperty<dim, p_order, MaterialStates,
 #ifdef ADAMANTINE_DEBUG
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
   {
+    auto state = _state;
     Kokkos::parallel_for(
         "adamantine::set_state_nan",
         Kokkos::MDRangePolicy<Kokkos::DefaultHostExecutionSpace,
                               Kokkos::Rank<2>>(
             {{0, 0}}, {{MaterialStates::n_material_states,
                         static_cast<int>(_dofs_map.size())}}),
-        KOKKOS_CLASS_LAMBDA(int i, int j) {
-          _state(i, j) = std::numeric_limits<double>::signaling_NaN();
+        KOKKOS_LAMBDA(int i, int j) {
+          state(i, j) = std::numeric_limits<double>::signaling_NaN();
         });
   }
 #endif
@@ -297,10 +285,16 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
   using ExecutionSpace = std::conditional_t<
       std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
       Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
+  auto properties = _properties;
+  auto state = _state;
+  auto use_table = _use_table;
+  auto property_values = _property_values;
+  auto state_property_tables = _state_property_tables;
+  auto state_property_polynomials = _state_property_polynomials;
   Kokkos::parallel_for(
       "adamantine::update_material_properties",
       Kokkos::RangePolicy<ExecutionSpace>(0, material_ids_size),
-      KOKKOS_CLASS_LAMBDA(int i) {
+      KOKKOS_LAMBDA(int i) {
         unsigned int constexpr solid =
             static_cast<unsigned int>(MaterialStates::State::solid);
         unsigned int constexpr prop_solidus =
@@ -313,13 +307,14 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
         double liquid_ratio = 0.;
 
         dealii::types::material_id material_id = material_ids_mirror(i);
-        double const solidus = _properties(material_id, prop_solidus);
-        double const liquidus = _properties(material_id, prop_liquidus);
+        double const solidus = properties(material_id, prop_solidus);
+        double const liquidus = properties(material_id, prop_liquidus);
         unsigned int const dof = mp_dofs_mirror(i);
 
         // Work-around CUDA compiler complaining that the first call to a
         // captured-variable is inside a constexpr.
         double *temp_average_local = temperature_average_local;
+        auto local_state = state;
 
         if constexpr (!std::is_same_v<MaterialStates, Solid>)
         {
@@ -345,19 +340,19 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
             // become liquid, and the liquid can only become solid, the ratio of
             // powder can only decrease.
             double powder_ratio =
-                Kokkos::min(1. - liquid_ratio, _state(powder, dof));
+                Kokkos::min(1. - liquid_ratio, state(powder, dof));
             solid_ratio = 1. - liquid_ratio - powder_ratio;
 
             // Update _state
-            _state(powder, dof) = powder_ratio;
+            state(powder, dof) = powder_ratio;
           }
-          _state(liquid, dof) = liquid_ratio;
+          state(liquid, dof) = liquid_ratio;
         }
 
         // Update _state
-        _state(solid, dof) = solid_ratio;
+        state(solid, dof) = solid_ratio;
 
-        if (_use_table)
+        if (use_table)
         {
           for (unsigned int property = 0;
                property < g_n_thermal_state_properties; ++property)
@@ -366,10 +361,10 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
                  material_state < MaterialStates::n_material_states;
                  ++material_state)
             {
-              _property_values(property, dof) +=
-                  _state(material_state, dof) *
+              property_values(property, dof) +=
+                  state(material_state, dof) *
                   compute_property_from_table(
-                      _state_property_tables, material_id, material_state,
+                      state_property_tables, material_id, material_state,
                       property, temp_average_local[dof]);
             }
           }
@@ -385,10 +380,10 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
             {
               for (unsigned int i = 0; i <= p_order; ++i)
               {
-                _property_values(property, dof) +=
-                    _state(material_state, dof) *
-                    _state_property_polynomials(material_id, material_state,
-                                                property, i) *
+                property_values(property, dof) +=
+                    state(material_state, dof) *
+                    state_property_polynomials(material_id, material_state,
+                                               property, i) *
                     std::pow(temp_average_local[dof], i);
               }
             }
@@ -409,9 +404,9 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
                  material_state < MaterialStates::n_material_states;
                  ++material_state)
             {
-              _property_values(specific_heat_prop, dof) +=
-                  _state(material_state, dof) *
-                  _properties(material_id, latent_heat_prop) /
+              property_values(specific_heat_prop, dof) +=
+                  state(material_state, dof) *
+                  properties(material_id, latent_heat_prop) /
                   (liquidus - solidus);
             }
           }
@@ -430,9 +425,9 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
             static_cast<unsigned int>(Property::radiation_temperature_infty);
         double const T = temp_average_local[dof];
         double const T_infty =
-            _properties(material_id, radiation_temperature_infty_prop);
-        double const emissivity = _property_values(emissivity_prop, dof);
-        _property_values(radiation_heat_transfer_coef_prop, dof) =
+            properties(material_id, radiation_temperature_infty_prop);
+        double const emissivity = property_values(emissivity_prop, dof);
+        property_values(radiation_heat_transfer_coef_prop, dof) =
             emissivity * Constant::stefan_boltzmann * (T + T_infty) *
             (T * T + T_infty * T_infty);
       });
@@ -680,18 +675,17 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
       using ExecutionSpace = std::conditional_t<
           std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
           Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
+      auto state = _state;
       Kokkos::parallel_for(
           "adamantine::set_state_device",
-          Kokkos::RangePolicy<ExecutionSpace>(0, cell_i),
-          KOKKOS_CLASS_LAMBDA(int i) {
+          Kokkos::RangePolicy<ExecutionSpace>(0, cell_i), KOKKOS_LAMBDA(int i) {
             double liquid_ratio_sum = 0.;
             for (unsigned int q = 0; q < n_q_points; ++q)
             {
               liquid_ratio_sum += liquid_ratio(mapping(i, q));
             }
-            _state(liquid_state, mp_dof(i)) = liquid_ratio_sum / n_q_points;
-            _state(solid_state, mp_dof(i)) =
-                1. - _state(liquid_state, mp_dof(i));
+            state(liquid_state, mp_dof(i)) = liquid_ratio_sum / n_q_points;
+            state(solid_state, mp_dof(i)) = 1. - state(liquid_state, mp_dof(i));
           });
     }
     else if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
@@ -701,10 +695,10 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
       using ExecutionSpace = std::conditional_t<
           std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
           Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
+      auto state = _state;
       Kokkos::parallel_for(
           "adamantine::set_state_device",
-          Kokkos::RangePolicy<ExecutionSpace>(0, cell_i),
-          KOKKOS_CLASS_LAMBDA(int i) {
+          Kokkos::RangePolicy<ExecutionSpace>(0, cell_i), KOKKOS_LAMBDA(int i) {
             double liquid_ratio_sum = 0.;
             double powder_ratio_sum = 0.;
             for (unsigned int q = 0; q < n_q_points; ++q)
@@ -712,11 +706,11 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
               liquid_ratio_sum += liquid_ratio(mapping(i, q));
               powder_ratio_sum += powder_ratio(mapping(i, q));
             }
-            _state(liquid_state, mp_dof(i)) = liquid_ratio_sum / n_q_points;
-            _state(powder_state, mp_dof(i)) = powder_ratio_sum / n_q_points;
-            _state(solid_state, mp_dof(i)) = 1. -
-                                             _state(liquid_state, mp_dof(i)) -
-                                             _state(powder_state, mp_dof(i));
+            state(liquid_state, mp_dof(i)) = liquid_ratio_sum / n_q_points;
+            state(powder_state, mp_dof(i)) = powder_ratio_sum / n_q_points;
+            state(solid_state, mp_dof(i)) = 1. -
+                                            state(liquid_state, mp_dof(i)) -
+                                            state(powder_state, mp_dof(i));
           });
     }
   }
@@ -775,10 +769,11 @@ void MaterialProperty<dim, p_order, MaterialStates,
   using ExecutionSpace = std::conditional_t<
       std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>,
       Kokkos::DefaultHostExecutionSpace, Kokkos::DefaultExecutionSpace>;
+  auto state = _state;
   Kokkos::parallel_for(
       "adamantine::set_initial_state",
       Kokkos::RangePolicy<ExecutionSpace>(0, user_indices.extent(0)),
-      KOKKOS_CLASS_LAMBDA(int i) { _state(user_indices(i), mp_dofs(i)) = 1.; });
+      KOKKOS_LAMBDA(int i) { state(user_indices(i), mp_dofs(i)) = 1.; });
 }
 
 template <int dim, int p_order, typename MaterialStates,

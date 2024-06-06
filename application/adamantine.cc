@@ -106,7 +106,7 @@ get_p_order_and_n_material_states(boost::property_tree::ptree &database)
 
   // Sanity check
   adamantine::ASSERT_THROW(
-      p_order >= 0 && p_order < 5,
+      p_order < 5,
       "Error when computing the polynomial order of the material properties");
   adamantine::ASSERT_THROW(
       n_material_states > 0 && n_material_states < 4,

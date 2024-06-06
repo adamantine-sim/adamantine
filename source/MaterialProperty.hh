@@ -57,13 +57,6 @@ public:
       boost::property_tree::ptree const &database);
 
   /**
-   * Copy constructor. It should only be called by KOKKOS_CLASS_LAMBDA. The
-   * copy constructor does not copy all the member variables of the class.
-   */
-  MaterialProperty(MaterialProperty<dim, p_order, MaterialStates,
-                                    MemorySpaceType> const &other);
-
-  /**
    * Return true if the material properties are given in table format.
    * Return false if they are given in polynomial format.
    */

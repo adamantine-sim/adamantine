@@ -8,6 +8,8 @@
 #ifndef TYPES_HH
 #define TYPES_HH
 
+#include <Kokkos_NumericTraits.hpp>
+
 #include <array>
 #include <string>
 
@@ -163,18 +165,19 @@ struct axis;
 template <>
 struct axis<2>
 {
-  static int constexpr x = 0;
-  static int constexpr y = -1;
-  static int constexpr z = 1;
+  static unsigned int constexpr x = 0;
+  static unsigned int constexpr y =
+      Kokkos::Experimental::finite_max_v<unsigned int>;
+  static unsigned int constexpr z = 1;
 };
 
 // dim == 3 specialization
 template <>
 struct axis<3>
 {
-  static int constexpr x = 0;
-  static int constexpr y = 1;
-  static int constexpr z = 2;
+  static unsigned int constexpr x = 0;
+  static unsigned int constexpr y = 1;
+  static unsigned int constexpr z = 2;
 };
 
 /**

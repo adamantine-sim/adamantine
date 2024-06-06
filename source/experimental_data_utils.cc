@@ -229,4 +229,10 @@ get_expt_to_dof_mapping(PointsValues<2> const &points_values,
 template std::pair<std::vector<int>, std::vector<int>>
 get_expt_to_dof_mapping(PointsValues<3> const &points_values,
                         dealii::DoFHandler<3> const &dof_handler);
+template std::pair<std::vector<dealii::types::global_dof_index>,
+                   std::vector<dealii::Point<2>>>
+get_dof_to_support_mapping(dealii::DoFHandler<2> const &dof_handler);
+template std::pair<std::vector<dealii::types::global_dof_index>,
+                   std::vector<dealii::Point<3>>>
+get_dof_to_support_mapping(dealii::DoFHandler<3> const &dof_handler);
 } // namespace adamantine
