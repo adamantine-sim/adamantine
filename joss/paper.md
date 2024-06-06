@@ -65,15 +65,15 @@ simulations, leading to better process optimization and final part quality.
 # Simulated Physics
 
 ## Thermal simulation
-`Adamantine` solves an anisotropic version of standard continuum heat transfer model used in additive manufacturing simulations [@Megahed2016,@KELLER2017244]. The model includes the change of phases between powder, liquid, and solid and accounts for latent heat release for melting/solidification phase transformations. The model assumes the presence of a "mushy" zone, i.e., the liquidus and the solidus are different, as is generally the case for alloys. The heat input by the laser, electron beam, electric-arc, or other process-specific heat source is introduced using a volumetric source term [@Goldak1984,@KNAPP2023111904]. Adiabatic, convective, and radiative boundary conditions are implemented, with the option to combine convective and radiative boundary conditions. 
+`Adamantine` solves an anisotropic version of standard continuum heat transfer model used in additive manufacturing simulations [@Megahed2016; @KELLER2017244]. The model includes the change of phases between powder, liquid, and solid and accounts for latent heat release for melting/solidification phase transformations. It assumes the presence of a "mushy" zone, i.e., the liquidus and the solidus are different, as is generally the case for alloys. The heat input by the laser, electron beam, electric-arc, or other process-specific heat source is introduced using a volumetric source term [@Goldak1984; @KNAPP2023111904]. Adiabatic, convective, and radiative boundary conditions are implemented, with the option to combine convective and radiative boundary conditions. 
 
 ## Mechanical simulation
-`Adamantine` can perform elasto-plastic simulations. The plastic model is the linear combination of
-the isotropic and kinematic hardening described in [@borja2013]. This allows us to 
+`Adamantine` can perform elastoplastic simulations. The plastic model is the linear combination of
+the isotropic and kinematic hardening described in @borja2013. This allows us to 
 model both the change in yield stress and the Bauschinger effect.
 
 ## Thermomechanical simulation
-Thermomechanical simulations in `adamantine` are performed with one-way coupling from the temperature evolution to the mechanical evolution. We neglect the effect of demoformation on the thermal simulation. An extra term in the mechanical simulation accounts fosr the eigenstrain assosciated with by thermal expansion of the material [@fung2001,@Megahed2016].
+Thermomechanical simulations in `adamantine` are performed with one-way coupling from the temperature evolution to the mechanical evolution. We neglect the effect of deformation on the thermal simulation. An extra term in the mechanical simulation accounts fosr the eigenstrain assosciated with by thermal expansion of the material [@fung2001; @Megahed2016].
 
 # Data Assimilation
 Data assimilation "is the approximation of a true state of some physical system
