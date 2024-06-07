@@ -171,6 +171,12 @@ The following options are available:
 * **profiling** (optional):
   * **timer**: output timing information (default value: false)
   * **caliper**: configuration string for Caliper (optional)
+* **checkpoint** (optional):
+  * **time\_steps\_between\_checkpoint**: number of time steps after which checkpointing is performed (required)
+  * **filename\_prefix**: prefix of the checkpoint files (required)
+  * **overwrite\_files**: if true the checkpoint files are overwritten by newer ones. If false, the time steps is added to the filename prefix (required)
+* **restart** (optional):
+  * **filename\_prefix**: prefix of the restart files (required)
 * **verbose\_output** (optional): true or false (default value: false)
 
 
