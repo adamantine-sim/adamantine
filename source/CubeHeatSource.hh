@@ -19,7 +19,7 @@ namespace adamantine
  * used for verification purpose.
  */
 template <int dim>
-class CubeHeatSource final
+class CubeHeatSource
 {
 public:
   /**
