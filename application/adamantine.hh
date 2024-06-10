@@ -549,7 +549,7 @@ compute_cells_to_refine(
       // quadrature points, vertices).
       for (unsigned int f = 0; f < cell->reference_cell().n_faces(); ++f)
       {
-        if (heat_sources.max_value(cell->face(f)->center(), current_source_height) >
+        if (heat_sources.value(cell->face(f)->center(), current_source_height) >
             refinement_beam_cutoff)
         {
           cells_to_refine.push_back(cell);

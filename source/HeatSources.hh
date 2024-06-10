@@ -58,12 +58,6 @@ public:
   double value(dealii::Point<dim> const &point, double const height) const;
 
   /**
-   * Compute the maxiumum heat source at a given point at a given time given the
-   * current height of the object being manufactured.
-   */
-  double max_value(dealii::Point<dim> const &point, double const height) const;
-
-  /**
    * Return the scan paths for the heat source.
    */
   std::vector<ScanPath<MemorySpaceType>> get_scan_paths() const;
@@ -326,22 +320,6 @@ double HeatSources<dim, MemorySpaceType>::value(dealii::Point<dim> const &point,
     value += _cube_heat_sources(i).value(point, height);
   for (unsigned int i = 0; i < _goldak_heat_sources.size(); ++i)
     value += _goldak_heat_sources(i).value(point, height);
-  return value;
-}
-
-template <int dim, typename MemorySpaceType>
-double
-HeatSources<dim, MemorySpaceType>::max_value(dealii::Point<dim> const &point,
-                                             double const height) const
-{
-  double value = 0;
-  for (unsigned int i = 0; i < _electron_beam_heat_sources.size(); ++i)
-    value =
-        std::max(value, _electron_beam_heat_sources(i).value(point, height));
-  for (unsigned int i = 0; i < _cube_heat_sources.size(); ++i)
-    value = std::max(value, _cube_heat_sources(i).value(point, height));
-  for (unsigned int i = 0; i < _goldak_heat_sources.size(); ++i)
-    value = std::max(value, _goldak_heat_sources(i).value(point, height));
   return value;
 }
 
