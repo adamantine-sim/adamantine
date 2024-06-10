@@ -25,14 +25,14 @@ GoldakHeatSource<dim, MemorySpaceType>::GoldakHeatSource(
 template <int dim, typename MemorySpaceType>
 void GoldakHeatSource<dim, MemorySpaceType>::update_time(double time)
 {
-  static const double _pi_over_3_to_1p5 =
+  static const double pi_over_3_to_1p5 =
       std::pow(dealii::numbers::PI / 3.0, 1.5);
 
   _beam_center = this->_scan_path.value(time);
   double segment_power_modifier = this->_scan_path.get_power_modifier(time);
   _alpha = 2.0 * this->_beam.absorption_efficiency * this->_beam.max_power *
            segment_power_modifier /
-           (this->_beam.radius_squared * this->_beam.depth * _pi_over_3_to_1p5);
+           (this->_beam.radius_squared * this->_beam.depth * pi_over_3_to_1p5);
 }
 
 template <int dim, typename MemorySpaceType>
