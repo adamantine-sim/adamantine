@@ -102,6 +102,7 @@ void ElectronBeamHeatSource<dim, MemorySpaceType>::set_beam_properties(
 {
   _beam.set_from_database(database);
 }
+
 template <int dim, typename MemorySpaceType>
 BeamHeatSourceProperties const &
 ElectronBeamHeatSource<dim, MemorySpaceType>::get_beam_properties() const
