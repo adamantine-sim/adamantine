@@ -73,7 +73,7 @@ public:
   /**
    * Return the beam properties.
    */
-  BeamHeatSourceProperties get_beam_properties() const;
+  BeamHeatSourceProperties const &get_beam_properties() const;
 
 private:
   dealii::Point<3> _beam_center;
@@ -105,7 +105,7 @@ void GoldakHeatSource<dim, MemorySpaceType>::set_beam_properties(
 }
 
 template <int dim, typename MemorySpaceType>
-BeamHeatSourceProperties
+BeamHeatSourceProperties const &
 GoldakHeatSource<dim, MemorySpaceType>::get_beam_properties() const
 {
   return _beam;

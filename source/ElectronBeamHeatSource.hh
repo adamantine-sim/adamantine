@@ -73,7 +73,7 @@ public:
   /**
    * Return the beam properties.
    */
-  BeamHeatSourceProperties get_beam_properties() const;
+  BeamHeatSourceProperties const &get_beam_properties() const;
 
 private:
   dealii::Point<3> _beam_center;
@@ -103,7 +103,7 @@ void ElectronBeamHeatSource<dim, MemorySpaceType>::set_beam_properties(
   _beam.set_from_database(database);
 }
 template <int dim, typename MemorySpaceType>
-BeamHeatSourceProperties
+BeamHeatSourceProperties const &
 ElectronBeamHeatSource<dim, MemorySpaceType>::get_beam_properties() const
 {
   return _beam;
