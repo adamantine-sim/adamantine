@@ -1,0 +1,143 @@
+geometry
+{
+  import_mesh true
+  mesh_format vtk
+  mesh_file HourGlass_AOP.vtk
+  mesh_scale_factor 1
+  reset_material_id true
+  dim 3 ; dimension of the domain
+  material_deposition true
+  material_deposition_method scan_paths
+  deposition_length 3.5e-3
+  deposition_height 0.759e-3  
+  deposition_width 3.5e-3
+  deposition_lead_time 0
+  material_height 0.0015;
+}
+physics
+{
+  thermal true
+  mechanical false
+}
+
+boundary
+{
+  type convective ; adiabatic,radiative ;
+}
+
+refinement 
+{
+  n_refinements 0 ; Number of coarsening/refinement executed (uses Kelly's
+                       ; error estimator)
+  time_steps_between_refinement 200000 ; number of time steps after which
+                                                 ; the refinement process is performed
+}
+
+materials
+{
+  ; switching to new material
+  n_materials 1
+
+  property_format polynomial
+  material_0
+  {
+    initial_temperature 300 ; [K]
+    solid
+    {
+      specific_heat 650; [J/kg K]
+      density 7990; [kg/m^3]
+      thermal_conductivity_x 38.0 ; [W/m k]
+      thermal_conductivity_y 38.0 ; [W/m k]
+      thermal_conductivity_z 38.0 ; [W/m k]
+      emissivity 0.05
+      convection_heat_transfer_coef 0.1 ; [W/m^2 K]
+    }
+
+    liquid
+    {
+      specific_heat 650; [J/kg K]
+      density 7990; [kg/m^3]
+      thermal_conductivity_x 0.38 ; [W/m k]
+      thermal_conductivity_y 0.38 ; [W/m k]
+      thermal_conductivity_z 0.38 ; [W/m k]
+      emissivity 0.05
+      convection_heat_transfer_coef 0.01 ; [W/m^2 K]
+    }
+
+    powder
+    {
+      specific_heat 650; [J/kg K]
+      density 7990; [kg/m^3]
+      thermal_conductivity_x 38.0 ; [W/m k]
+      thermal_conductivity_y 38.0 ; [W/m k]
+      thermal_conductivity_z 38.0 ; [W/m k]
+      emissivity 0.05
+      convection_heat_transfer_coef 0.1 ; [W/m^2 K]
+    }
+
+    solidus 1713; [K]
+    liquidus 1803; [K]
+    latent_heat 272000 ; [J/kg]
+    radiation_temperature_infty 300 ; [K]
+    convection_temperature_infty 300 ; [K] 
+  }
+}
+
+sources
+{
+  n_beams 1
+
+  beam_0
+  {
+    type goldak ; goldak (laser) or electron_beam 
+    depth  3.5e-3 [m] maximum depth reached by the laser - MIGHT NEED TWEAKED
+    diameter 3.5e-3 ; [m]
+    scan_path_file HourGlass_AOP_scan_path.txt
+    scan_path_file_format segment
+    absorption_efficiency 0.7 ; number between 0 and 1 equivalent to
+                              ; energy_conversion_efficiency * control_efficiency
+                              ; for an electron beam
+    max_power 2000.0 ; [W], current * voltage for an electron beam
+  }
+}
+
+time_stepping
+{
+  method forward_euler ; Possibilities: backward_euler, implicit_midpoint,
+                        ; crank_nicolson, sdirk2, forward_euler, rk_third_order,
+                        ; rk_fourth_order, bogacki_shampine, dopri,
+                        ; fehlberg, cash_karp
+  duration 10; [s]
+  time_step 1e-2 ; [s] 
+}
+
+post_processor
+{
+  filename_prefix AdamantineDemo_output
+  time_steps_between_output 10
+  additional_output_refinement 0
+}
+
+discretization
+{
+  thermal 
+  {
+    fe_degree 1
+    quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+  }
+  mechanical 
+  {
+    fe_degree 1
+    quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
+  }
+}
+
+profiling
+{
+  timer false
+}
+
+memory_space host ; Always run on the host
+verbose_output true
+
+
