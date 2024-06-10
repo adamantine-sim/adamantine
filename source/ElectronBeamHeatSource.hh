@@ -65,7 +65,7 @@ public:
   double get_current_height(double const time) const;
 
   /**
-   * (Re)sets the BeamHeatSourceProperties member variable, necessary if the
+   * (Re)set the BeamHeatSourceProperties member variable, necessary if the
    * beam parameters vary in time (e.g. due to data assimilation).
    */
   void set_beam_properties(boost::property_tree::ptree const &database);
