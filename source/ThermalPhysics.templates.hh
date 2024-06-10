@@ -120,8 +120,8 @@ evaluate_thermal_physics_impl(
 
   // Compute the source term.
   // TODO do this on the GPU
-  auto host_heat_sources = heat_sources.copy_to(dealii::MemorySpace::Host{});
-  host_heat_sources.update_time(t);
+  auto heat_sources_host = heat_sources.copy_to(dealii::MemorySpace::Host{});
+  heat_sources_host.update_time(t);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> source(
       y.get_partitioner());
   source = 0.;
@@ -167,7 +167,7 @@ evaluate_thermal_physics_impl(
         double quad_pt_source = 0.;
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
         quad_pt_source +=
-            host_heat_sources.value(q_point, current_source_height);
+            heat_sources_host.value(q_point, current_source_height);
 
         cell_source[i] += inv_rho_cp * quad_pt_source *
                           fe_values.shape_value(i, q) * fe_values.JxW(q);
@@ -466,8 +466,8 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
       cell->set_active_fe_index(1);
   }
 
-  auto host_heat_sources = _heat_sources.copy_to(dealii::MemorySpace::Host{});
-  _current_source_height = host_heat_sources.get_current_height(0.0);
+  auto heat_sources_host = _heat_sources.copy_to(dealii::MemorySpace::Host{});
+  _current_source_height = heat_sources_host.get_current_height(0.0);
 }
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,
@@ -809,9 +809,9 @@ void ThermalPhysics<
 {
   // Update the heat source from heat_source_database to reflect changes during
   // the simulation (i.e. due to data assimilation)
-  auto host_heat_sources = _heat_sources.copy_to(dealii::MemorySpace::Host{});
-  host_heat_sources.set_beam_properties(heat_source_database);
-  _heat_sources = host_heat_sources.copy_to(MemorySpaceType{});
+  auto heat_sources_host = _heat_sources.copy_to(dealii::MemorySpace::Host{});
+  heat_sources_host.set_beam_properties(heat_source_database);
+  _heat_sources = heat_sources_host.copy_to(MemorySpaceType{});
 }
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,

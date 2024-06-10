@@ -607,7 +607,8 @@ void refine_mesh(
   const double refinement_beam_cutoff =
       refinement_database.get<double>("beam_cutoff", 1.0e-15);
 
-  adamantine::HeatSources<dim, dealii::MemorySpace::Host> host_heat_sources = heat_sources.copy_to(dealii::MemorySpace::Host{});
+  adamantine::HeatSources<dim, dealii::MemorySpace::Host> heat_sources_host =
+      heat_sources.copy_to(dealii::MemorySpace::Host{});
 
   for (unsigned int i = 0; i < n_refinements; ++i)
   {
@@ -616,7 +617,7 @@ void refine_mesh(
         dim>::active_cell_iterator>
         cells_to_refine = compute_cells_to_refine(
             triangulation, time, next_refinement_time, time_steps_refinement,
-            host_heat_sources, current_source_height, refinement_beam_cutoff);
+            heat_sources_host, current_source_height, refinement_beam_cutoff);
 
     // PropertyTreeInput refinement.coarsen_after_beam
     const bool coarsen_after_beam =
@@ -944,13 +945,14 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
               mechanical_physics, displacement, material_properties, timers);
   ++n_time_step;
 
-  adamantine::HeatSources<dim, dealii::MemorySpace::Host> host_heat_sources = heat_sources.copy_to(dealii::MemorySpace::Host{});
+  adamantine::HeatSources<dim, dealii::MemorySpace::Host> heat_sources_host =
+      heat_sources.copy_to(dealii::MemorySpace::Host{});
 
   // Create the bounding boxes used for material deposition
   auto [material_deposition_boxes, deposition_times, deposition_cos,
         deposition_sin] =
       adamantine::create_material_deposition_boxes<dim>(geometry_database,
-                                                        host_heat_sources);
+                                                        heat_sources_host);
   // Extract the time-stepping database
   boost::property_tree::ptree time_stepping_database =
       database.get_child("time_stepping");
@@ -1026,11 +1028,13 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       }
       if (scan_path_updated)
       {
-        adamantine::HeatSources<dim, dealii::MemorySpace::Host> host_heat_sources = heat_sources.copy_to(dealii::MemorySpace::Host{});
-        host_heat_sources.update_scan_paths();
-        heat_sources = host_heat_sources.copy_to(MemorySpaceType{});
-  
-    auto const& scan_paths = heat_sources.get_scan_paths();
+        adamantine::HeatSources<dim, dealii::MemorySpace::Host>
+            heat_sources_host =
+                heat_sources.copy_to(dealii::MemorySpace::Host{});
+        heat_sources_host.update_scan_paths();
+        heat_sources = heat_sources_host.copy_to(MemorySpaceType{});
+
+        auto const &scan_paths = heat_sources.get_scan_paths();
         for (unsigned int s = 0; s < scan_path_end.size(); ++s)
         {
           // Update scan_path_end
@@ -1044,8 +1048,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 
         std::tie(material_deposition_boxes, deposition_times, deposition_cos,
                  deposition_sin) =
-            adamantine::create_material_deposition_boxes<dim>(geometry_database,
-                                                              host_heat_sources);
+            adamantine::create_material_deposition_boxes<dim>(
+                geometry_database, heat_sources_host);
       }
 
       auto activation_start =
