@@ -79,7 +79,6 @@ private:
   dealii::Point<3> _beam_center;
   double _alpha = std::numeric_limits<double>::signaling_NaN();
   BeamHeatSourceProperties _beam;
-
   ScanPath<MemorySpaceType> _scan_path;
 };
 
