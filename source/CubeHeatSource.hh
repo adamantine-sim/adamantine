@@ -52,17 +52,6 @@ public:
    */
   double get_current_height(double const time) const;
 
-  /**
-   * (Re)sets the BeamHeatSourceProperties member variable, necessary if the
-   * beam parameters vary in time (e.g. due to data assimilation).
-   */
-  void set_beam_properties(boost::property_tree::ptree const &database);
-
-  /**
-   * Return the beam properties.
-   */
-  BeamHeatSourceProperties get_beam_properties() const;
-
 private:
   bool _source_on = false;
   double _start_time;
@@ -71,21 +60,7 @@ private:
   dealii::Point<dim> _min_point;
   dealii::Point<dim> _max_point;
   double _alpha;
-  BeamHeatSourceProperties _beam;
 };
-
-template <int dim>
-void CubeHeatSource<dim>::set_beam_properties(
-    boost::property_tree::ptree const &database)
-{
-  _beam.set_from_database(database);
-}
-
-template <int dim>
-BeamHeatSourceProperties CubeHeatSource<dim>::get_beam_properties() const
-{
-  return _beam;
-}
 
 } // namespace adamantine
 

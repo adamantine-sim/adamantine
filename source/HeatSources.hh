@@ -372,8 +372,6 @@ void HeatSources<dim, MemorySpaceType>::set_beam_properties(
 
   for (unsigned int i = 0; i < _electron_beam_heat_sources.size(); ++i)
     set_properties(_electron_beam_heat_sources[i], _electron_beam_indices[i]);
-  for (unsigned int i = 0; i < _cube_heat_sources.size(); ++i)
-    set_properties(_cube_heat_sources[i], _cube_indices[i]);
   for (unsigned int i = 0; i < _goldak_heat_sources.size(); ++i)
     set_properties(_goldak_heat_sources[i], _goldak_indices[i]);
 }
