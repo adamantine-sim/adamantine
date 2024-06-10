@@ -9,8 +9,6 @@
 #include <instantiation.hh>
 #include <types.hh>
 
-#include <deal.II/base/memory_space.h>
-
 namespace adamantine
 {
 template <int dim>
