@@ -776,10 +776,11 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     heat_sources = thermal_physics->get_heat_sources();
     // Store the current end time of each heat source and set a flag that the
     // scan path has changed
-    auto const& scan_paths = heat_sources.get_scan_paths();
+    auto const &scan_paths = heat_sources.get_scan_paths();
     for (auto const &scan_path : scan_paths)
     {
-      scan_path_end.emplace_back(scan_path.get_segment_list().back().end_time, true);
+      scan_path_end.emplace_back(scan_path.get_segment_list().back().end_time,
+                                 true);
     }
     post_processor_database.put("thermal_output", true);
   }
@@ -1038,10 +1039,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         for (unsigned int s = 0; s < scan_path_end.size(); ++s)
         {
           // Update scan_path_end
-          double new_end_time = scan_paths[s]
-                                    .get_segment_list()
-                                    .back()
-                                    .end_time;
+          double new_end_time =
+              scan_paths[s].get_segment_list().back().end_time;
           scan_path_end[s].second = scan_path_end[s].first != new_end_time;
           scan_path_end[s].first = new_end_time;
         }
@@ -1767,11 +1766,13 @@ run_ensemble(MPI_Comm const &global_communicator,
 
       for (unsigned int member = 0; member < local_ensemble_size; ++member)
       {
-        refine_mesh(thermal_physics_ensemble[member],
-                    *material_properties_ensemble[member],
-                    solution_augmented_ensemble[member].block(base_state),
-                    heat_sources_ensemble[member].copy_to(dealii::MemorySpace::Host{}), time, next_refinement_time,
-                    time_steps_refinement, refinement_database);
+        refine_mesh(
+            thermal_physics_ensemble[member],
+            *material_properties_ensemble[member],
+            solution_augmented_ensemble[member].block(base_state),
+            heat_sources_ensemble[member].copy_to(dealii::MemorySpace::Host{}),
+            time, next_refinement_time, time_steps_refinement,
+            refinement_database);
         solution_augmented_ensemble[member].collect_sizes();
       }
 
