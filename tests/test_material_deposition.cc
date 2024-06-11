@@ -351,16 +351,25 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   }
 }
 
-BOOST_AUTO_TEST_CASE(deposition_from_scan_path_2d, *utf::tolerance(1e-13))
+std::pair<Kokkos::View<adamantine::ScanPathSegment *, Kokkos::HostSpace>,
+          adamantine::ScanPath<dealii::MemorySpace::Host>>
+create_scan_path(std::string file_name)
 {
   std::vector<adamantine::ScanPathSegment> scan_path_segments =
       adamantine::ScanPath<dealii::MemorySpace::Host>::extract_scan_paths(
-          "scan_path.txt", "segment");
+          file_name, "segment");
   Kokkos::View<adamantine::ScanPathSegment *, Kokkos::HostSpace>
-      scan_paths_segments_view(scan_path_segments.data(),
-                               scan_path_segments.size());
-  adamantine::ScanPath<dealii::MemorySpace::Host> scan_path(
-      scan_paths_segments_view);
+      scan_path_segments_view("scan_path_segments", scan_path_segments.size());
+  Kokkos::deep_copy(
+      scan_path_segments_view,
+      Kokkos::View<adamantine::ScanPathSegment *, Kokkos::HostSpace>{
+          scan_path_segments.data(), scan_path_segments.size()});
+  return {scan_path_segments_view, {scan_path_segments_view}};
+}
+
+BOOST_AUTO_TEST_CASE(deposition_from_scan_path_2d, *utf::tolerance(1e-13))
+{
+  auto [scan_path_segments, scan_path] = create_scan_path("scan_path.txt");
 
   boost::property_tree::ptree database;
   database.put("deposition_length", 0.0005);
@@ -408,14 +417,7 @@ BOOST_AUTO_TEST_CASE(deposition_from_scan_path_2d, *utf::tolerance(1e-13))
 
 BOOST_AUTO_TEST_CASE(deposition_from_scan_path_3d, *utf::tolerance(1e-13))
 {
-  std::vector<adamantine::ScanPathSegment> scan_path_segments =
-      adamantine::ScanPath<dealii::MemorySpace::Host>::extract_scan_paths(
-          "scan_path.txt", "segment");
-  Kokkos::View<adamantine::ScanPathSegment *, Kokkos::HostSpace>
-      scan_paths_segments_view(scan_path_segments.data(),
-                               scan_path_segments.size());
-  adamantine::ScanPath<dealii::MemorySpace::Host> scan_path(
-      scan_paths_segments_view);
+  auto [scan_path_segments, scan_path] = create_scan_path("scan_path.txt");
 
   boost::property_tree::ptree database;
   database.put("deposition_length", 0.0005);
@@ -467,14 +469,7 @@ BOOST_AUTO_TEST_CASE(deposition_from_scan_path_3d, *utf::tolerance(1e-13))
 
 BOOST_AUTO_TEST_CASE(deposition_from_L_scan_path_3d, *utf::tolerance(1e-13))
 {
-  std::vector<adamantine::ScanPathSegment> scan_path_segments =
-      adamantine::ScanPath<dealii::MemorySpace::Host>::extract_scan_paths(
-          "scan_path_L.txt", "segment");
-  Kokkos::View<adamantine::ScanPathSegment *, Kokkos::HostSpace>
-      scan_paths_segments_view(scan_path_segments.data(),
-                               scan_path_segments.size());
-  adamantine::ScanPath<dealii::MemorySpace::Host> scan_path(
-      scan_paths_segments_view);
+  auto [scan_path_segments, scan_path] = create_scan_path("scan_path_L.txt");
 
   boost::property_tree::ptree database;
   database.put("deposition_length", 0.0005);
@@ -560,14 +555,8 @@ BOOST_AUTO_TEST_CASE(deposition_from_L_scan_path_3d, *utf::tolerance(1e-13))
 BOOST_AUTO_TEST_CASE(deposition_from_diagonal_scan_path_3d,
                      *utf::tolerance(1e-10))
 {
-  std::vector<adamantine::ScanPathSegment> scan_path_segments =
-      adamantine::ScanPath<dealii::MemorySpace::Host>::extract_scan_paths(
-          "scan_path_diagonal.txt", "segment");
-  Kokkos::View<adamantine::ScanPathSegment *, Kokkos::HostSpace>
-      scan_paths_segments_view(scan_path_segments.data(),
-                               scan_path_segments.size());
-  adamantine::ScanPath<dealii::MemorySpace::Host> scan_path(
-      scan_paths_segments_view);
+  auto [scan_path_segments, scan_path] =
+      create_scan_path("scan_path_diagonal.txt");
 
   boost::property_tree::ptree database;
   database.put("deposition_length", 0.0005);
