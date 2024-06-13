@@ -11,6 +11,7 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/point.h>
 
+#include <filesystem>
 #include <limits>
 #include <string>
 #include <vector>
@@ -93,6 +94,11 @@ public:
    */
   void read_file();
 
+  /**
+   * Return true if we reach the end of the scan path.
+   */
+  bool is_finished() const;
+
 private:
   /**
    * Method to load a "segment" scan path file
@@ -112,6 +118,10 @@ private:
                                    double &segment_start_time) const;
 
   /**
+   * Flag is true if we have reached the end of _scan_path_file.
+   */
+  bool _scan_path_end = false;
+  /**
    * File name of the scan path
    */
   std::string _scan_path_file;
@@ -119,6 +129,10 @@ private:
    * Format of the scan path file, either segment of event_series.
    */
   std::string _file_format;
+  /**
+   * Time the last time _scan_path_file was updated.
+   */
+  std::filesystem::file_time_type _last_write_time;
   /**
    * The list of information about each segment in the scan path.
    */

@@ -373,8 +373,11 @@ void validate_input_database(boost::property_tree::ptree &database)
                    "'rk_third_order', 'rk_fourth_order', 'backward_euler', "
                    "'implicit_midpoint', 'crank_nicolson', and 'sdirk2'.");
 
-  ASSERT_THROW(database.get<double>("time_stepping.duration") >= 0.0,
-               "Error: Time stepping duration must be non-negative.");
+  if (database.get("time.scan_path_for_duration", false))
+  {
+    ASSERT_THROW(database.get<double>("time_stepping.duration") >= 0.0,
+                 "Error: Time stepping duration must be non-negative.");
+  }
 
   ASSERT_THROW(database.get<double>("time_stepping.time_step") >= 0.0,
                "Error: Time step must be non-negative.");

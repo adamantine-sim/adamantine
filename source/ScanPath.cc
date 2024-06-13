@@ -28,6 +28,9 @@ ScanPath::ScanPath(std::string scan_path_file, std::string file_format)
 
 void ScanPath::read_file()
 {
+  wait_for_file_to_update(_scan_path_file, "Waiting for " + _scan_path_file,
+                          _last_write_time);
+
   if (_file_format == "segment")
   {
     load_segment_scan_path();
@@ -56,6 +59,13 @@ void ScanPath::load_segment_scan_path()
   // segments to read, whichever comes first
   while ((data_index < n_segments) && (getline(file, line)))
   {
+    // If we reach the end of the scan path, we stop reading the file.
+    if (line.find("SCAN_PATH_END") != std::string::npos)
+    {
+      _scan_path_end = true;
+      break;
+    }
+
     std::vector<std::string> split_line;
     boost::split(split_line, line, boost::is_any_of(" "),
                  boost::token_compress_on);
@@ -126,6 +136,13 @@ void ScanPath::load_event_series_scan_path()
   double last_power = 0.0;
   while (getline(file, line))
   {
+    // If we reach the end of the scan path, we stop reading the file.
+    if (line.find("SCAN_PATH_END") != std::string::npos)
+    {
+      _scan_path_end = true;
+      break;
+    }
+
     // For an event series the first segment is a ScanPathSegment point, then
     // the rest are ScanPathSegment lines
     ScanPathSegment segment;
@@ -219,5 +236,7 @@ std::vector<ScanPathSegment> ScanPath::get_segment_list() const
 {
   return _segment_list;
 }
+
+bool ScanPath::is_finished() const { return _scan_path_end; }
 
 } // namespace adamantine
