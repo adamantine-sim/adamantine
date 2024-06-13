@@ -24,7 +24,7 @@ bibliography: paper.bib
 `Adamantine` was developed with additive manufacturing in mind and it is
 particularly well adapted to simulate fused filament fabrication, direct energy 
 deposition, and powder bed fusion. In order to support these different additive manufacturing processes, 
-`adamantine` solves a nonlinear anisotropic heat equation. It can handle materials in
+`adamantine` solves a nonlinear anisotropic heat equation using the finite element method with adaptive mesh refinement. It can handle materials in
 three distinct phases (solid, liquid, and powder) to accurately reflect the
 physical state during different stages of the manufacturing process. To enhance
 simulation accuracy, `adamantine` incorporates data assimilation techniques [@da2016].
@@ -41,17 +41,18 @@ planning the build but also real-time adjustments throughout the process
 to obtained the desired thermomechanical evolution of the part. Currently, 
 setting AM process parameters is an expert-driven, often trial-and-error 
 process. Material changes and geometry complexities can lead to unpredictable 
-adjustments in parameters, making it slow and expensive. We can overcome 
+adjustments in parameters, making a purely empirical approach slow and expensive. We can overcome 
 this by using advanced simulations for both planning and adaptive control.
 
-`Adamantine`, a thermomechanical simulation tool, offers a solution. During the
+`Adamantine`, a thermomechanical simulation tool, offers a solution to process
+parameter planning and adjustment in AM. During the
 planning phase, its capabilities can be leveraged to predict the
 thermomechanical state and optimize process parameters for the desired outcome. 
 For adaptive control, `adamantine` utilizes data from infrared (IR) cameras and 
 thermocouples. This data is integrated using the Ensemble Kalman Filter (EnKF) method,
 allowing the simulation to constantly adapt and reflect the actual build process.
 
-With a continuously refined simulation, `adamantine` can predict the final state 
+With a continuously refined simulation, `adamantine` can predict the final thermomechanical state 
 of the object with greater accuracy. This simulation-enhanced monitoring capability enables a human operator or an adaptive control algorithm to adjust to the build parameters 
 mid-print, if needed, to ensure that printed parts conform to the necessary tolerances. 
 
@@ -92,7 +93,7 @@ members are done from inside `adamantine`.
 `Adamantine` includes several options for time integration methods that it inherits from the deal.II library [@dealII95]. These are: forward Euler, 3rd order explicit Runge-Kutta, 4th order explicit Runge-Kutta, backward Euler, implicit midpoint, Crank-Nicolson, and singly diagonally implicit Runge-Kutta. 
 
 ## Matrix-free finite element formulation
-`Adamantine` uses a variable-order finite element spatial discretization with a matrix-free approach [@kronbichler2012]. This approach calculates the action of an operator directly, rather than explicitly storing the full (sparse) system matrix. This matrix-free approach significantly reduces computational cost, especially for higher-degree finite elements. The matrix-free method also leads to a diagonal mass matrix, which facilitates low-overhead explicit time stepping -- important since explicit methods are performant for additive manufacturing simulations due to the small time steps needed to resolve the heat source motion.
+`Adamantine` uses a variable-order finite element spatial discretization with a matrix-free approach [@kronbichler2012]. This approach calculates the action of an operator directly, rather than explicitly storing the full (sparse) system matrix. This matrix-free approach significantly reduces computational cost, especially for higher-degree finite elements.
 
 ## MPI support
 While mechanical and thermomechanical simulations are limited to serial
