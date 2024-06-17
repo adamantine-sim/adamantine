@@ -1482,10 +1482,8 @@ run_ensemble(MPI_Comm const &global_communicator,
     // PropertyTreeInput checkpoint.time_steps_between_checkpoint
     time_steps_checkpoint =
         checkpoint_database.get<unsigned int>("time_steps_between_checkpoint");
-    // PropertyTreeInput checkpoint.filename_prefix
     checkpoint_filename =
-        checkpoint_database.get<std::string>("filename_prefix") + '_' +
-        std::to_string(global_rank);
+        checkpoint_database.get<std::string>("filename_prefix");
     // PropertyTreeInput checkpoint.overwrite_files
     checkpoint_overwrite = checkpoint_database.get<bool>("overwrite_files");
   }
@@ -1604,6 +1602,27 @@ run_ensemble(MPI_Comm const &global_communicator,
       global_communicator, post_processor_expt_database,
       thermal_physics_ensemble[0]->get_dof_handler());
 
+  // ----- Initialize time and time stepping counters -----
+  unsigned int progress = 0;
+  unsigned int n_time_step = 0;
+  double time = 0.;
+  double activation_time_end = -1.;
+  if (restart == true)
+  {
+    if (global_rank == 0)
+    {
+      std::cout << "Restarting from file" << std::endl;
+    }
+    std::ifstream file{restart_filename + "_time.txt"};
+    boost::archive::text_iarchive ia{file};
+    ia >> time;
+    ia >> n_time_step;
+  }
+
+  // PropertyTreeInput geometry.deposition_time
+  double const activation_time =
+      geometry_database.get<double>("deposition_time", 0.);
+
   // ----- Read the experimental data -----
   std::vector<std::vector<double>> frame_time_stamps;
   std::unique_ptr<adamantine::ExperimentalData<dim>> experimental_data;
@@ -1659,29 +1678,25 @@ run_ensemble(MPI_Comm const &global_communicator,
                   thermal_physics_ensemble[0]->get_dof_handler()));
         }
       }
+
+      // Advance the experimental frame counter upon restart, if necessary
+      if (restart)
+      {
+        bool found_frame = false;
+        while (!found_frame)
+        {
+          if (frame_time_stamps[0][experimental_frame_index + 1] < time)
+          {
+            experimental_frame_index++;
+          }
+          else
+          {
+            found_frame = true;
+          }
+        }
+      }
     }
   }
-
-  // ----- Initialize time and time stepping counters -----
-  unsigned int progress = 0;
-  unsigned int n_time_step = 0;
-  double time = 0.;
-  double activation_time_end = -1.;
-  if (restart == true)
-  {
-    if (global_rank == 0)
-    {
-      std::cout << "Restarting from file" << std::endl;
-    }
-    std::ifstream file{restart_filename + "_time.txt"};
-    boost::archive::text_iarchive ia{file};
-    ia >> time;
-    ia >> n_time_step;
-  }
-
-  // PropertyTreeInput geometry.deposition_time
-  double const activation_time =
-      geometry_database.get<double>("deposition_time", 0.);
 
   // ----- Output the initial solution -----
   std::unique_ptr<adamantine::MechanicalPhysics<dim, p_order, MaterialStates,
