@@ -54,7 +54,11 @@ DataAssimilator::DataAssimilator(MPI_Comm const &global_communicator,
     if (boost::optional<unsigned int> max_num_temp_vectors =
             database.get_optional<unsigned int>(
                 "solver.max_number_of_temp_vectors"))
+#if DEAL_II_VERSION_GTE(9, 6, 0)
+      _additional_data.max_basis_size = *max_num_temp_vectors - 2;
+#else
       _additional_data.max_n_tmp_vectors = *max_num_temp_vectors;
+#endif
 
     // PropertyTreeInput data_assimilation.solver.max_iterations
     if (boost::optional<unsigned int> max_iterations =
