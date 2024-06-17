@@ -1436,6 +1436,7 @@ run_ensemble(MPI_Comm const &global_communicator,
     // PropertyTreeInput checkpoint.time_steps_between_checkpoint
     time_steps_checkpoint =
         checkpoint_database.get<unsigned int>("time_steps_between_checkpoint");
+    // PropertyTreeInput checkpoint.filename_prefix
     checkpoint_filename =
         checkpoint_database.get<std::string>("filename_prefix");
     // PropertyTreeInput checkpoint.overwrite_files
