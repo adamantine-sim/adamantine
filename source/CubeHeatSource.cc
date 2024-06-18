@@ -13,7 +13,6 @@ namespace adamantine
 {
 template <int dim>
 CubeHeatSource<dim>::CubeHeatSource(boost::property_tree::ptree const &database)
-    : HeatSource<dim>()
 {
   _start_time = database.get<double>("start_time");
   _end_time = database.get<double>("end_time");

@@ -8,19 +8,20 @@
 #ifndef GOLDAK_HEAT_SOURCE_HH
 #define GOLDAK_HEAT_SOURCE_HH
 
-#include <HeatSource.hh>
+#include <BeamHeatSourceProperties.hh>
+#include <ScanPath.hh>
 
 #include <limits>
 
 namespace adamantine
 {
 /**
- * A derived class from HeatSource for the Goldak model of a laser heat source.
+ * Goldak model of a laser heat source.
  * The form of the heat source model is taken from the following reference:
  * Coleman et al, Journal of Heat Transfer, (in press, 2020).
  */
-template <int dim>
-class GoldakHeatSource final : public HeatSource<dim>
+template <int dim, typename MemorySpaceType>
+class GoldakHeatSource
 {
 public:
   /**
@@ -33,25 +34,82 @@ public:
    *   - <B>input_file</B>: name of the file that contains the scan path
    *     segments
    */
-  GoldakHeatSource(boost::property_tree::ptree const &database);
+  GoldakHeatSource(BeamHeatSourceProperties const &beam,
+                   ScanPath<MemorySpaceType> const &scan_path);
 
   /**
    * Set the time variable.
    */
-  void update_time(double time) final;
+  void update_time(double time);
 
   /**
    * Returns the value of a Goldak heat source at a specified point and
    * time.
    */
-  double value(dealii::Point<dim> const &point,
-               double const height) const final;
+  double value(dealii::Point<dim> const &point, double const height) const;
+
+  /**
+   * Return the scan path.
+   */
+  ScanPath<MemorySpaceType> const &get_scan_path() const;
+
+  void set_scan_path(ScanPath<MemorySpaceType> const scan_path)
+  {
+    _scan_path = scan_path;
+  }
+
+  /**
+   * Compute the current height of the where the heat source meets the material
+   * (i.e. the current scan path height).
+   */
+  double get_current_height(double const time) const;
+
+  /**
+   * (Re)set the BeamHeatSourceProperties member variable, necessary if the
+   * beam parameters vary in time (e.g. due to data assimilation).
+   */
+  void set_beam_properties(boost::property_tree::ptree const &database);
+
+  /**
+   * Return the beam properties.
+   */
+  BeamHeatSourceProperties const &get_beam_properties() const;
 
 private:
   dealii::Point<3> _beam_center;
   double _alpha = std::numeric_limits<double>::signaling_NaN();
-  double const _pi_over_3_to_1p5 = std::pow(dealii::numbers::PI / 3.0, 1.5);
+  BeamHeatSourceProperties _beam;
+  ScanPath<MemorySpaceType> _scan_path;
 };
+
+template <int dim, typename MemorySpaceType>
+ScanPath<MemorySpaceType> const &
+GoldakHeatSource<dim, MemorySpaceType>::get_scan_path() const
+{
+  return _scan_path;
+}
+
+template <int dim, typename MemorySpaceType>
+double GoldakHeatSource<dim, MemorySpaceType>::get_current_height(
+    double const time) const
+{
+  return _scan_path.value(time)[2];
+}
+
+template <int dim, typename MemorySpaceType>
+void GoldakHeatSource<dim, MemorySpaceType>::set_beam_properties(
+    boost::property_tree::ptree const &database)
+{
+  _beam.set_from_database(database);
+}
+
+template <int dim, typename MemorySpaceType>
+BeamHeatSourceProperties const &
+GoldakHeatSource<dim, MemorySpaceType>::get_beam_properties() const
+{
+  return _beam;
+}
+
 } // namespace adamantine
 
 #endif

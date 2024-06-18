@@ -8,41 +8,45 @@
 #include <ScanPath.hh>
 #include <utils.hh>
 
+#include <deal.II/base/memory_space.h>
+
 #include <boost/algorithm/string.hpp>
 
 #include <fstream>
 
 namespace adamantine
 {
-ScanPath::ScanPath(std::string scan_path_file, std::string file_format)
-    : _scan_path_file(scan_path_file), _file_format(file_format)
+
+template <typename MemorySpaceType>
+std::vector<ScanPathSegment>
+ScanPath<MemorySpaceType>::extract_scan_paths(std::string scan_path_file,
+                                              std::string file_format)
 {
-  ASSERT_THROW((_file_format == "segment") || (_file_format == "event_series"),
+  ASSERT_THROW((file_format == "segment") || (file_format == "event_series"),
                "Error: Format of scan path file not recognized.");
 
-  wait_for_file(_scan_path_file,
-                "Waiting for scan path file: " + _scan_path_file);
+  wait_for_file(scan_path_file,
+                "Waiting for scan path file: " + scan_path_file);
 
-  read_file();
-}
-
-void ScanPath::read_file()
-{
-  if (_file_format == "segment")
+  if (file_format == "segment")
   {
-    load_segment_scan_path();
+    return load_segment_scan_path(scan_path_file);
   }
   else
   {
-    load_event_series_scan_path();
+    return load_event_series_scan_path(scan_path_file);
   }
+
+  return {};
 }
 
-void ScanPath::load_segment_scan_path()
+template <typename MemorySpaceType>
+std::vector<ScanPathSegment>
+ScanPath<MemorySpaceType>::load_segment_scan_path(std::string scan_path_file)
 {
-  _segment_list.clear();
+  std::vector<ScanPathSegment> segment_list;
   std::ifstream file;
-  file.open(_scan_path_file);
+  file.open(scan_path_file);
   std::string line;
   unsigned int data_index = 0;
   // Skip first line
@@ -67,7 +71,7 @@ void ScanPath::load_segment_scan_path()
     {
       // Check to make sure the segment isn't the first, if it is, throw an
       // exception (the first segment must be a point in the spec).
-      ASSERT_THROW(_segment_list.size() > 0,
+      ASSERT_THROW(segment_list.size() > 0,
                    "Error: Scan paths must begin with a 'point' segment.");
     }
     else if (split_line[0] == "1")
@@ -92,10 +96,10 @@ void ScanPath::load_segment_scan_path()
     // Set the velocity and end time
     if (segment_type == ScanPathSegmentType::point)
     {
-      if (_segment_list.size() > 0)
+      if (segment_list.size() > 0)
       {
         segment.end_time =
-            _segment_list.back().end_time + std::stod(split_line[5]);
+            segment_list.back().end_time + std::stod(split_line[5]);
       }
       else
       {
@@ -106,21 +110,25 @@ void ScanPath::load_segment_scan_path()
     {
       double velocity = std::stod(split_line[5]);
       double line_length =
-          segment.end_point.distance(_segment_list.back().end_point);
+          segment.end_point.distance(segment_list.back().end_point);
       segment.end_time =
-          _segment_list.back().end_time + std::abs(line_length / velocity);
+          segment_list.back().end_time + std::abs(line_length / velocity);
     }
-    _segment_list.push_back(segment);
+    segment_list.push_back(segment);
     data_index++;
   }
   file.close();
+  return segment_list;
 }
 
-void ScanPath::load_event_series_scan_path()
+template <typename MemorySpaceType>
+std::vector<ScanPathSegment>
+ScanPath<MemorySpaceType>::load_event_series_scan_path(
+    std::string scan_path_file)
 {
-  _segment_list.clear();
+  std::vector<ScanPathSegment> segment_list;
   std::ifstream file;
-  file.open(_scan_path_file);
+  file.open(scan_path_file);
   std::string line;
 
   double last_power = 0.0;
@@ -146,11 +154,13 @@ void ScanPath::load_event_series_scan_path()
     segment.power_modifier = last_power;
     last_power = std::stod(split_line[4]);
 
-    _segment_list.push_back(segment);
+    segment_list.push_back(segment);
   }
+  return segment_list;
 }
 
-void ScanPath::update_current_segment_info(
+template <typename MemorySpaceType>
+void ScanPath<MemorySpaceType>::update_current_segment_info(
     double time, dealii::Point<3> &segment_start_point,
     double &segment_start_time) const
 {
@@ -173,11 +183,12 @@ void ScanPath::update_current_segment_info(
   }
 }
 
-dealii::Point<3> ScanPath::value(double const &time) const
+template <typename MemorySpaceType>
+dealii::Point<3> ScanPath<MemorySpaceType>::value(double const &time) const
 {
   // If the current time is after the scan path data is over, return a point
   // that is (presumably) out of the domain.
-  if (time > _segment_list.back().end_time)
+  if (time > _segment_list[_segment_list.size() - 1].end_time)
   {
     dealii::Point<3> out_of_domain_point(std::numeric_limits<double>::lowest(),
                                          std::numeric_limits<double>::lowest(),
@@ -200,11 +211,12 @@ dealii::Point<3> ScanPath::value(double const &time) const
   return position;
 }
 
-double ScanPath::get_power_modifier(double const &time) const
+template <typename MemorySpaceType>
+double ScanPath<MemorySpaceType>::get_power_modifier(double const &time) const
 {
   // If the current time is after the scan path data is over, set the power to
   // zero.
-  if (time > _segment_list.back().end_time)
+  if (time > _segment_list[_segment_list.size() - 1].end_time)
     return 0.0;
 
   // Get to the correct segment
@@ -215,9 +227,13 @@ double ScanPath::get_power_modifier(double const &time) const
   return _segment_list[_current_segment].power_modifier;
 }
 
-std::vector<ScanPathSegment> ScanPath::get_segment_list() const
+template <typename MemorySpaceType>
+std::vector<ScanPathSegment> ScanPath<MemorySpaceType>::get_segment_list() const
 {
-  return _segment_list;
+  return {&_segment_list[0], &_segment_list[0] + _segment_list.size()};
 }
 
 } // namespace adamantine
+
+template class adamantine::ScanPath<dealii::MemorySpace::Default>;
+template class adamantine::ScanPath<dealii::MemorySpace::Host>;

@@ -54,6 +54,7 @@ class ScanPathTester;
  * gives the power modifier for the current segment. It reads in the scan path
  * from a text file.
  */
+template <typename MemorySpaceType>
 class ScanPath
 {
   friend class ScanPathTester;
@@ -64,13 +65,16 @@ public:
    */
   ScanPath() = default;
 
-  /**
-   * Construtor.
-   * \param[in] scan_path_file is the name of the text file containing the scan
-   * path
-   * \param[in] file_format is the format of the scan path file
-   */
-  ScanPath(std::string scan_path_file, std::string file_format);
+  KOKKOS_FUNCTION ScanPath(
+      Kokkos::View<ScanPathSegment *, typename MemorySpaceType::kokkos_space,
+                   Kokkos::MemoryTraits<Kokkos::Unmanaged>>
+          scan_path_segments)
+      : _segment_list(scan_path_segments.data(), scan_path_segments.size())
+  {
+  }
+
+  static std::vector<ScanPathSegment>
+  extract_scan_paths(std::string scan_path_file, std::string file_format);
 
   /**
    * Calculate the location of the scan path at a given time for a single
@@ -97,12 +101,14 @@ private:
   /**
    * Method to load a "segment" scan path file
    */
-  void load_segment_scan_path();
+  static std::vector<ScanPathSegment>
+  load_segment_scan_path(std::string scan_path_file);
 
   /**
    * Method to load an "event series" scan path file
    */
-  void load_event_series_scan_path();
+  static std::vector<ScanPathSegment>
+  load_event_series_scan_path(std::string scan_path_file);
 
   /**
    * Method to determine the current segment, its start point, and start time.
@@ -112,17 +118,12 @@ private:
                                    double &segment_start_time) const;
 
   /**
-   * File name of the scan path
-   */
-  std::string _scan_path_file;
-  /**
-   * Format of the scan path file, either segment of event_series.
-   */
-  std::string _file_format;
-  /**
    * The list of information about each segment in the scan path.
    */
-  std::vector<ScanPathSegment> _segment_list;
+  Kokkos::View<ScanPathSegment *, typename MemorySpaceType::kokkos_space,
+               Kokkos::MemoryTraits<Kokkos::Unmanaged>>
+      _segment_list;
+
   /**
    * The index of the current segment in the scan path.
    */
