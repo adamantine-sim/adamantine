@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023, the adamantine authors.
+/* Copyright (c) 2021-2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -14,11 +14,14 @@
 #include <deal.II/fe/mapping_q1_eulerian.h>
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/la_parallel_block_vector.h>
-#include <deal.II/lac/la_vector.h>
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/lac/trilinos_sparsity_pattern.h>
+
+#if !DEAL_II_VERSION_GTE(9, 6, 0)
+#include <deal.II/lac/la_vector.h>
+#endif
 
 #include <map>
 #include <random>

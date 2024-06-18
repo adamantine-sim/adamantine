@@ -22,7 +22,10 @@
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/lac/la_parallel_vector.h>
+
+#if !DEAL_II_VERSION_GTE(9, 6, 0)
 #include <deal.II/lac/la_vector.h>
+#endif
 
 #include <boost/property_tree/ptree.hpp>
 
