@@ -272,10 +272,7 @@ We implement the radial return algorithm for $$J_2$$ theory with a linear combin
     is the incremental strain, $$p$$ is the mean normal stress, $$s$$ is the
     deviatoric stress tensord, and $$\gamma_{n}$$ is the back stress tensor.
 
- 2. Compute 
-$$
-\chi = ||\xi_{n+1}^{tr}||
-$$
+ 2. Compute $$\chi = ||\xi_{n+1}^{tr}||$$
 
  3. - If $$\chi \leq \kappa_{n}$$, set $$\sigma_{n+1} = \sigma_{n+1}^{tr}$$.
     - If $$\chi > \kappa_{n}$$, set 
