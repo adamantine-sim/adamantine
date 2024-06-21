@@ -9,10 +9,14 @@ usemathjax: true
 # Governing Equations
 ## Assumptions
 We make the following assumptions:
-* No movement in the liquid.
-* No evaporation of the material.
-* No change of volume when the material changes phase.
-* There is always a mushy zone (no isothermal change of phase).
+1. No movement in the liquid.
+2. No evaporation of the material.
+3. No change of volume when the material changes phase.
+4. There is always a mushy zone (no isothermal change of phase).
+5. One-way coupling from the temperature evolution to the mechanical evolution. We neglect 
+the effect of deformation on the thermal simulation.
+6. Material properties used in the heat equation can be anisotropic
+7. Material properties used in the solid mechanics are isotropic
 
 ## Heat equation
 ### Weak form
@@ -146,7 +150,7 @@ $$
 -\boldsymbol{n} \cdot  \left(k \nabla T\right) = \varepsilon \sigma \left(T^4 -T_{\infty}^4\right),
 $$
 
-with $$\varepsilon$$ the emissitivity and $\sigma$ the Stefan-Boltzmann constant.
+with $$\varepsilon$$ the emissitivity and $$\sigma$$ the Stefan-Boltzmann constant.
 The value of $$\sigma$$ is (from NIST):
 
 $$
@@ -206,3 +210,87 @@ $$
   \int_{\partial} \alpha h_{\text{conv}} T_{\infty} b_i.
 \end{split}
 $$
+
+## Thermomechanical equations
+### Thermoelasticity
+Because of *assumption 5*, the thermal equation described in the previous
+section is unchanged. To this equation, we need to add the solid mechanics
+equations. Using *assumption 7* and Einstein summation convention, we get the following[^1]:
+
+ - the Cauchy momentum equation:
+
+$$
+\frac{D v_i}{Dt} = \frac{1}{\rho} \frac{\partial \sigma_{ij}}{\partial x_j} + f_i
+$$
+
+ - the strain-displacement equations:
+
+$$
+\varepsilon_{ij} = \frac{1}{2}\left(\frac{\partial u_i}{\partial u_j} + \frac{\partial u_j}{\partial u_i}\right)
+$$ 
+
+ - the constitutive equations:
+
+$$
+\sigma_{ij} = \lambda \varepsilon_{\nu \nu} \delta_{ij} + 2 \mu \varepsilon_{ij} -\beta \delta_{ij}
+\theta,
+$$
+
+with 
+
+$$
+\beta = (3 \lambda + 2 \mu) \alpha
+$$
+
+where $$\boldsymbol{v}$$ is the flow velocity vector, $$\frac{D v_i}{Dt} = \frac{\partial v_i}{\partial t} + v_j \frac{\partial v_i}{\partial x_j}$$ is the material derivative, $$\rho$$ is the material density, $\boldsymbol$ is the volumetric force, $$\sigma$$ is the stress tensor, $$\varepsilon$$ is the infinitesimal strain tensor, $$\boldsymbol{u}$$ is the displacement vector, $$\alpha$$ is the thermal coefficient of linear expansion, $$\lambda$$ is Lamé first parameter, $$\mu$$ is Lamé second parameter and $$\theta = T - T_0$$, $$T$$ is the current temperature, and $$T_0$$ is a reference temperature.
+
+[^1]: A detailed discussion on thermoelasticity is available in Chapter 14 of *Classical and Computational Solid Mechanics* by Y.C. Fung & Pin Tong.
+
+### Elastoplasticity
+We implement the radial return algorithm for $$J_2$$ theory with a linear combination of isotropic and kinematic hardening described in Chapter 3 of *Plasticity Modeling & Computation* by Ronaldo I. Borja. The algorithm works as follow:
+
+ 1. Compute successively
+$$
+\sigma_{n+1}^{tr} = \sigma_{n} + c^e : \Delta \varepsilon,
+$$
+$$
+p = \frac{1}{3} \text{tr}\left(\sigma_{n+1}^{tr}\right),
+$$
+$$
+s_{n+1}^{tr} = \sigma_{n+1}^{tr}-p \boldsymbol{1},
+$$
+$$
+\xi_{n+1}^{tr} = s_{n+1}^{tr} - \gamma_{n}
+$$
+where the subscript $$n$$ indicates the $$n$$ time step, the superscript $$tr$$
+indicates trial, $$c^e$$ is the tensor of elastic moduli, $$\Delta \varepsilon$$
+is the incremental strain, $$p$$ is the mean normal stress, $$s$$ is the
+deviatoric stress tensord, and $$\gamma_{n}$$ is the back stress tensor.
+
+ 2. Compute 
+$$
+\chi = ||\xi_{n+1}^{tr}||
+$$
+
+ 3. - If $$\chi \leq \kappa_{n}$$, set $$\sigma_{n+1} = \sigma_{n+1}^{tr}$$.
+    - If $$\chi > \kappa_{n}$$, set 
+$$
+n_{n+1} = \frac{\xi_{n+1}^{tr}}{\chi},
+$$
+$$
+\Delta \eta = \frac{\chi - \kappa_{n}}{2 \mu + H},
+$$
+$$
+\sigma_{n+1} = \sigma_{n+1}^{tr} - 2 \mu \Delta \eta n_{n+1},
+$$
+$$
+\kappa_{n+1} = \kappa_{n} + a H \Delta \eta,
+$$  
+$$
+\gamma_{n+1} = \gamma_{n} + (1-a) H \Delta\eta n_{n+1}
+$$
+where $$\kappa_{n}$$ is plastic internal variable, $$H$$ is generalized plastic modulus, and $$a$$ is coefficient between 0 (no isotropic hardening) and 1 (no kinematic hardening).
+
+### Thermoelastoplasticity
+The thermoelastoplastic model implemented is the union of the thermoelastic model
+and the elastoplastic model.
