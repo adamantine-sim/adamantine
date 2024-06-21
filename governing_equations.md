@@ -251,26 +251,26 @@ We implement the radial return algorithm for $$J_2$$ theory with a linear combin
 
  1. Compute successively
 
-$$
-\sigma_{n+1}^{tr} = \sigma_{n} + c^e : \Delta \varepsilon,
-$$
-
-$$
-p = \frac{1}{3} \text{tr}\left(\sigma_{n+1}^{tr}\right),
-$$
-
-$$
-s_{n+1}^{tr} = \sigma_{n+1}^{tr}-p \boldsymbol{1},
-$$
-
-$$
-\xi_{n+1}^{tr} = s_{n+1}^{tr} - \gamma_{n}
-$$
-
-where the subscript $$n$$ indicates the $$n$$ time step, the superscript $$tr$$
-indicates trial, $$c^e$$ is the tensor of elastic moduli, $$\Delta \varepsilon$$
-is the incremental strain, $$p$$ is the mean normal stress, $$s$$ is the
-deviatoric stress tensord, and $$\gamma_{n}$$ is the back stress tensor.
+    $$
+    \sigma_{n+1}^{tr} = \sigma_{n} + c^e : \Delta \varepsilon,
+    $$
+    
+    $$
+    p = \frac{1}{3} \text{tr}\left(\sigma_{n+1}^{tr}\right),
+    $$
+    
+    $$
+    s_{n+1}^{tr} = \sigma_{n+1}^{tr}-p \boldsymbol{1},
+    $$
+    
+    $$
+    \xi_{n+1}^{tr} = s_{n+1}^{tr} - \gamma_{n}
+    $$
+    
+    where the subscript $$n$$ indicates the $$n$$ time step, the superscript $$tr$$
+    indicates trial, $$c^e$$ is the tensor of elastic moduli, $$\Delta \varepsilon$$
+    is the incremental strain, $$p$$ is the mean normal stress, $$s$$ is the
+    deviatoric stress tensord, and $$\gamma_{n}$$ is the back stress tensor.
 
  2. Compute 
 $$
@@ -280,27 +280,27 @@ $$
  3. - If $$\chi \leq \kappa_{n}$$, set $$\sigma_{n+1} = \sigma_{n+1}^{tr}$$.
     - If $$\chi > \kappa_{n}$$, set 
 
-$$
-n_{n+1} = \frac{\xi_{n+1}^{tr}}{\chi},
-$$
-
-$$
-\Delta \eta = \frac{\chi - \kappa_{n}}{2 \mu + H},
-$$
-
-$$
-\sigma_{n+1} = \sigma_{n+1}^{tr} - 2 \mu \Delta \eta n_{n+1},
-$$
-
-$$
-\kappa_{n+1} = \kappa_{n} + a H \Delta \eta,
-$$  
-
-$$
-\gamma_{n+1} = \gamma_{n} + (1-a) H \Delta\eta n_{n+1}
-$$
-
-where $$\kappa_{n}$$ is plastic internal variable, $$H$$ is generalized plastic modulus, and $$a$$ is coefficient between 0 (no isotropic hardening) and 1 (no kinematic hardening).
+    $$
+    n_{n+1} = \frac{\xi_{n+1}^{tr}}{\chi},
+    $$
+    
+    $$
+    \Delta \eta = \frac{\chi - \kappa_{n}}{2 \mu + H},
+    $$
+    
+    $$
+    \sigma_{n+1} = \sigma_{n+1}^{tr} - 2 \mu \Delta \eta n_{n+1},
+    $$
+    
+    $$
+    \kappa_{n+1} = \kappa_{n} + a H \Delta \eta,
+    $$  
+    
+    $$
+    \gamma_{n+1} = \gamma_{n} + (1-a) H \Delta\eta n_{n+1}
+    $$
+    
+    where $$\kappa_{n}$$ is plastic internal variable, $$H$$ is generalized plastic modulus, and $$a$$ is coefficient between 0 (no isotropic hardening) and 1 (no kinematic hardening).
 
 ### Thermoelastoplasticity
 The thermoelastoplastic model implemented is the union of the thermoelastic model
