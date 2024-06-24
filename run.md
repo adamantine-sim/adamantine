@@ -117,7 +117,8 @@ The following options are available:
   * **method**: name of the method to use for the time integration: `forward_euler`,
   `rk_third_order`, `rk_fourth_order`, `backward_euler`, `implicit_midpoint`, `crank_nicolson`, or
   `sdirk2` (required)
-  * **duration**: duration of the simulation in seconds (required)
+  * **scan\_path\_for\_duration**: if the flag is true, the duration of the simulation is determined by the duration of the scan path. In this case the scan path file needs to contain SCAN\_PATH\_END to terminate the simulation. If the flag is false, the duration of the simulation is determined by the duration input (default value: false, <span style="color:green">since 1.1<span>)
+  * **duration**: duration of the simulation in seconds (<span style="color:red">required for 1.0,</span> <span style="color:green">since 1.1 only required if scan\_path\_for\_duration is false</span>)
   * **time\_step**: length of the time steps used for the simulation in seconds (required)
   * for implicit method:
     * **max\_iteration**: mamximum number of the iterations of the linear solver
