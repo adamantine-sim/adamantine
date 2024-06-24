@@ -75,7 +75,7 @@ set(Adamantine_SOURCES
 # Because the Adamantine library is just used to simplify testing, we make it
 # static. Thus, once the application is created it can be moved around. The
 # other libraries can still be shared.
-add_library(Adamantine STATIC ${Adamantine_SOURCES})
+add_library(Adamantine STATIC ${Adamantine_SOURCES} ${Adamantine_HEADERS})
 
 DEAL_II_SETUP_TARGET(Adamantine)
 
