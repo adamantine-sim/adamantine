@@ -19,8 +19,8 @@ namespace adamantine
 
 template <typename MemorySpaceType>
 std::vector<ScanPathSegment>
-ScanPath<MemorySpaceType>::extract_scan_paths(std::string scan_path_file,
-                                              std::string file_format)
+ScanPath<MemorySpaceType>::read_file(std::string scan_path_file,
+                                     std::string file_format)
 {
   ASSERT_THROW((file_format == "segment") || (file_format == "event_series"),
                "Error: Format of scan path file not recognized.");

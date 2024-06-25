@@ -73,8 +73,8 @@ public:
   {
   }
 
-  static std::vector<ScanPathSegment>
-  extract_scan_paths(std::string scan_path_file, std::string file_format);
+  static std::vector<ScanPathSegment> read_file(std::string scan_path_file,
+                                                std::string file_format);
 
   /**
    * Calculate the location of the scan path at a given time for a single

@@ -138,7 +138,7 @@ void HeatSources<dim, MemorySpaceType>::internal_update_scan_paths()
   _goldak_scan_path_segments.clear();
   for (unsigned int i = 0; i < _goldak_indices.size(); ++i)
   {
-    scan_path_segments = ScanPath<MemorySpaceType>::extract_scan_paths(
+    scan_path_segments = ScanPath<MemorySpaceType>::read_file(
         _goldak_scan_files[i], _goldak_scan_formats[i]);
     _goldak_scan_path_segments.emplace_back(
         Kokkos::view_alloc(Kokkos::WithoutInitializing,
@@ -152,7 +152,7 @@ void HeatSources<dim, MemorySpaceType>::internal_update_scan_paths()
   _electron_beam_scan_path_segments.clear();
   for (unsigned int i = 0; i < _electron_beam_indices.size(); ++i)
   {
-    scan_path_segments = ScanPath<MemorySpaceType>::extract_scan_paths(
+    scan_path_segments = ScanPath<MemorySpaceType>::read_file(
         _electron_beam_scan_files[i], _electron_beam_scan_formats[i]);
     _electron_beam_scan_path_segments.emplace_back(
         Kokkos::view_alloc(Kokkos::WithoutInitializing,

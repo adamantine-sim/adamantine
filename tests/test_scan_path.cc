@@ -21,12 +21,12 @@ class ScanPathTester
 public:
   std::vector<ScanPathSegment> get_segment_format_list()
   {
-    return ScanPath<dealii::MemorySpace::Host>::extract_scan_paths(
-        "scan_path.txt", "segment");
+    return ScanPath<dealii::MemorySpace::Host>::read_file("scan_path.txt",
+                                                          "segment");
   };
   std::vector<ScanPathSegment> get_event_series_format_list()
   {
-    return ScanPath<dealii::MemorySpace::Host>::extract_scan_paths(
+    return ScanPath<dealii::MemorySpace::Host>::read_file(
         "scan_path_event_series.inp", "event_series");
   };
 };
@@ -76,8 +76,8 @@ BOOST_AUTO_TEST_CASE(scan_path, *utf::tolerance(1e-12))
 BOOST_AUTO_TEST_CASE(scan_path_location, *utf::tolerance(1e-10))
 {
   std::vector<ScanPathSegment> scan_path_segments =
-      ScanPath<dealii::MemorySpace::Host>::extract_scan_paths("scan_path.txt",
-                                                              "segment");
+      ScanPath<dealii::MemorySpace::Host>::read_file("scan_path.txt",
+                                                     "segment");
   Kokkos::View<ScanPathSegment *, Kokkos::HostSpace> scan_paths_segments_view(
       scan_path_segments.data(), scan_path_segments.size());
   ScanPath<dealii::MemorySpace::Host> scan_path(scan_paths_segments_view);

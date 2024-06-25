@@ -34,7 +34,7 @@ create_heat_sources(std::string scan_path_file)
   database.put("scan_path_file", scan_path_file);
   database.put("scan_path_file_format", "segment");
   std::vector<ScanPathSegment> scan_path_segments =
-      ScanPath<dealii::MemorySpace::Host>::extract_scan_paths(
+      ScanPath<dealii::MemorySpace::Host>::read_file(
           database.get<std::string>("scan_path_file"),
           database.get<std::string>("scan_path_file_format"));
   Kokkos::View<ScanPathSegment *, Kokkos::HostSpace> scan_path_segments_view(

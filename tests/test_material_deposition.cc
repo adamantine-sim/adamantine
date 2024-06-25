@@ -356,8 +356,8 @@ std::pair<Kokkos::View<adamantine::ScanPathSegment *, Kokkos::HostSpace>,
 create_scan_path(std::string file_name)
 {
   std::vector<adamantine::ScanPathSegment> scan_path_segments =
-      adamantine::ScanPath<dealii::MemorySpace::Host>::extract_scan_paths(
-          file_name, "segment");
+      adamantine::ScanPath<dealii::MemorySpace::Host>::read_file(file_name,
+                                                                 "segment");
   Kokkos::View<adamantine::ScanPathSegment *, Kokkos::HostSpace>
       scan_path_segments_view("scan_path_segments", scan_path_segments.size());
   Kokkos::deep_copy(
