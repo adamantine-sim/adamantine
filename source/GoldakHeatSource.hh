@@ -20,7 +20,7 @@ namespace adamantine
  * The form of the heat source model is taken from the following reference:
  * Coleman et al, Journal of Heat Transfer, (in press, 2020).
  */
-template <int dim, typename MemorySpaceType>
+template <int dim>
 class GoldakHeatSource
 {
 public:
@@ -35,7 +35,7 @@ public:
    *     segments
    */
   GoldakHeatSource(BeamHeatSourceProperties const &beam,
-                   ScanPath<MemorySpaceType> const &scan_path);
+                   ScanPath const &scan_path);
 
   /**
    * Set the time variable.
@@ -51,12 +51,9 @@ public:
   /**
    * Return the scan path.
    */
-  ScanPath<MemorySpaceType> const &get_scan_path() const;
+  ScanPath const &get_scan_path() const;
 
-  void set_scan_path(ScanPath<MemorySpaceType> const scan_path)
-  {
-    _scan_path = scan_path;
-  }
+  void set_scan_path(ScanPath const scan_path) { _scan_path = scan_path; }
 
   /**
    * Compute the current height of the where the heat source meets the material
@@ -79,33 +76,31 @@ private:
   dealii::Point<3> _beam_center;
   double _alpha = std::numeric_limits<double>::signaling_NaN();
   BeamHeatSourceProperties _beam;
-  ScanPath<MemorySpaceType> _scan_path;
+  ScanPath _scan_path;
 };
 
-template <int dim, typename MemorySpaceType>
-ScanPath<MemorySpaceType> const &
-GoldakHeatSource<dim, MemorySpaceType>::get_scan_path() const
+template <int dim>
+ScanPath const &GoldakHeatSource<dim>::get_scan_path() const
 {
   return _scan_path;
 }
 
-template <int dim, typename MemorySpaceType>
-double GoldakHeatSource<dim, MemorySpaceType>::get_current_height(
-    double const time) const
+template <int dim>
+double GoldakHeatSource<dim>::get_current_height(double const time) const
 {
   return _scan_path.value(time)[2];
 }
 
-template <int dim, typename MemorySpaceType>
-void GoldakHeatSource<dim, MemorySpaceType>::set_beam_properties(
+template <int dim>
+void GoldakHeatSource<dim>::set_beam_properties(
     boost::property_tree::ptree const &database)
 {
   _beam.set_from_database(database);
 }
 
-template <int dim, typename MemorySpaceType>
+template <int dim>
 BeamHeatSourceProperties const &
-GoldakHeatSource<dim, MemorySpaceType>::get_beam_properties() const
+GoldakHeatSource<dim>::get_beam_properties() const
 {
   return _beam;
 }

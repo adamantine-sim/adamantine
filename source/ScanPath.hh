@@ -54,7 +54,6 @@ class ScanPathTester;
  * gives the power modifier for the current segment. It reads in the scan path
  * from a text file.
  */
-template <typename MemorySpaceType>
 class ScanPath
 {
   friend class ScanPathTester;
@@ -65,10 +64,9 @@ public:
    */
   ScanPath() = default;
 
-  KOKKOS_FUNCTION ScanPath(
-      Kokkos::View<ScanPathSegment *, typename MemorySpaceType::kokkos_space,
-                   Kokkos::MemoryTraits<Kokkos::Unmanaged>>
-          scan_path_segments)
+  KOKKOS_FUNCTION ScanPath(Kokkos::View<ScanPathSegment *, Kokkos::HostSpace,
+                                        Kokkos::MemoryTraits<Kokkos::Unmanaged>>
+                               scan_path_segments)
       : _segment_list(scan_path_segments.data(), scan_path_segments.size())
   {
   }
@@ -120,7 +118,7 @@ private:
   /**
    * The list of information about each segment in the scan path.
    */
-  Kokkos::View<ScanPathSegment *, typename MemorySpaceType::kokkos_space,
+  Kokkos::View<ScanPathSegment *, Kokkos::HostSpace,
                Kokkos::MemoryTraits<Kokkos::Unmanaged>>
       _segment_list;
 

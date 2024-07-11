@@ -134,7 +134,7 @@ template <int dim>
 std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
            std::vector<double>, std::vector<double>>
 deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
-                           ScanPath<dealii::MemorySpace::Host> const &scan_path)
+                           ScanPath const &scan_path)
 {
   std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
              std::vector<double>, std::vector<double>>
@@ -401,12 +401,10 @@ merge_deposition_paths(
 
 template std::tuple<std::vector<dealii::BoundingBox<2>>, std::vector<double>,
                     std::vector<double>, std::vector<double>>
-deposition_along_scan_path(
-    boost::property_tree::ptree const &geometry_database,
-    ScanPath<dealii::MemorySpace::Host> const &scan_path);
+deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
+                           ScanPath const &scan_path);
 template std::tuple<std::vector<dealii::BoundingBox<3>>, std::vector<double>,
                     std::vector<double>, std::vector<double>>
-deposition_along_scan_path(
-    boost::property_tree::ptree const &geometry_database,
-    ScanPath<dealii::MemorySpace::Host> const &scan_path);
+deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
+                           ScanPath const &scan_path);
 } // namespace adamantine

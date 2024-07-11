@@ -20,7 +20,7 @@ namespace adamantine
  * The form of the heat source model is taken from the following reference:
  * Raghavan et al, Acta Materilia, 112, 2016, pp 303-314.
  */
-template <int dim, typename MemorySpaceType>
+template <int dim>
 class ElectronBeamHeatSource
 {
 public:
@@ -35,7 +35,7 @@ public:
    *     segments
    */
   ElectronBeamHeatSource(BeamHeatSourceProperties const &beam,
-                         ScanPath<MemorySpaceType> const &scan_path);
+                         ScanPath const &scan_path);
 
   /**
    * Set the time variable.
@@ -51,12 +51,9 @@ public:
   /**
    * Return the scan path.
    */
-  ScanPath<MemorySpaceType> const &get_scan_path() const;
+  ScanPath const &get_scan_path() const;
 
-  void set_scan_path(ScanPath<MemorySpaceType> const scan_path)
-  {
-    _scan_path = scan_path;
-  }
+  void set_scan_path(ScanPath const scan_path) { _scan_path = scan_path; }
 
   /**
    * Compute the current height of the where the heat source meets the material
@@ -79,33 +76,31 @@ private:
   dealii::Point<3> _beam_center;
   double _alpha = std::numeric_limits<double>::signaling_NaN();
   BeamHeatSourceProperties _beam;
-  ScanPath<MemorySpaceType> _scan_path;
+  ScanPath _scan_path;
 };
 
-template <int dim, typename MemorySpaceType>
-ScanPath<MemorySpaceType> const &
-ElectronBeamHeatSource<dim, MemorySpaceType>::get_scan_path() const
+template <int dim>
+ScanPath const &ElectronBeamHeatSource<dim>::get_scan_path() const
 {
   return _scan_path;
 }
 
-template <int dim, typename MemorySpaceType>
-double ElectronBeamHeatSource<dim, MemorySpaceType>::get_current_height(
-    double const time) const
+template <int dim>
+double ElectronBeamHeatSource<dim>::get_current_height(double const time) const
 {
   return _scan_path.value(time)[2];
 }
 
-template <int dim, typename MemorySpaceType>
-void ElectronBeamHeatSource<dim, MemorySpaceType>::set_beam_properties(
+template <int dim>
+void ElectronBeamHeatSource<dim>::set_beam_properties(
     boost::property_tree::ptree const &database)
 {
   _beam.set_from_database(database);
 }
 
-template <int dim, typename MemorySpaceType>
+template <int dim>
 BeamHeatSourceProperties const &
-ElectronBeamHeatSource<dim, MemorySpaceType>::get_beam_properties() const
+ElectronBeamHeatSource<dim>::get_beam_properties() const
 {
   return _beam;
 }

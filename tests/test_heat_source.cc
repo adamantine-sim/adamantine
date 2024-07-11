@@ -21,8 +21,7 @@ namespace adamantine
 
 template <int dim>
 std::tuple<Kokkos::View<ScanPathSegment *, Kokkos::HostSpace>,
-           ElectronBeamHeatSource<dim, dealii::MemorySpace::Host>,
-           GoldakHeatSource<dim, dealii::MemorySpace::Host>>
+           ElectronBeamHeatSource<dim>, GoldakHeatSource<dim>>
 create_heat_sources(std::string scan_path_file)
 {
   boost::property_tree::ptree database;
@@ -34,9 +33,8 @@ create_heat_sources(std::string scan_path_file)
   database.put("scan_path_file", scan_path_file);
   database.put("scan_path_file_format", "segment");
   std::vector<ScanPathSegment> scan_path_segments =
-      ScanPath<dealii::MemorySpace::Host>::read_file(
-          database.get<std::string>("scan_path_file"),
-          database.get<std::string>("scan_path_file_format"));
+      ScanPath::read_file(database.get<std::string>("scan_path_file"),
+                          database.get<std::string>("scan_path_file_format"));
   Kokkos::View<ScanPathSegment *, Kokkos::HostSpace> scan_path_segments_view(
       "scan_path_segments", scan_path_segments.size());
   Kokkos::deep_copy(scan_path_segments_view,
@@ -45,11 +43,8 @@ create_heat_sources(std::string scan_path_file)
   BeamHeatSourceProperties beam(database);
   return std::tuple(
       scan_path_segments_view,
-      ElectronBeamHeatSource<dim, dealii::MemorySpace::Host>{
-          database,
-          ScanPath<dealii::MemorySpace::Host>(scan_path_segments_view)},
-      GoldakHeatSource<dim, dealii::MemorySpace::Host>{
-          beam, ScanPath<dealii::MemorySpace::Host>(scan_path_segments_view)});
+      ElectronBeamHeatSource<dim>{database, ScanPath(scan_path_segments_view)},
+      GoldakHeatSource<dim>{beam, ScanPath(scan_path_segments_view)});
 }
 
 BOOST_AUTO_TEST_CASE(heat_source_value_2d, *utf::tolerance(1e-12))
