@@ -30,10 +30,11 @@ template <int dim, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
 ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                 MemorySpaceType>::
-    ThermalOperator(MPI_Comm const &communicator, BoundaryType boundary_type,
-                    MaterialProperty<dim, p_order, MaterialStates,
-                                     MemorySpaceType> &material_properties,
-                    HeatSources<dim, MemorySpaceType> const &heat_sources)
+    ThermalOperator(
+        MPI_Comm const &communicator, BoundaryType boundary_type,
+        MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
+            &material_properties,
+        HeatSources<dim, dealii::MemorySpace::Host> const &heat_sources)
     : _communicator(communicator), _boundary_type(boundary_type),
       _material_properties(material_properties), _heat_sources(heat_sources),
       _inverse_mass_matrix(

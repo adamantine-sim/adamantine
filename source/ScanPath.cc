@@ -14,34 +14,38 @@
 
 namespace adamantine
 {
-
-std::vector<ScanPathSegment> ScanPath::read_file(std::string scan_path_file,
-                                                 std::string file_format)
+ScanPath::ScanPath(std::string scan_path_file, std::string file_format)
+    : _scan_path_file(scan_path_file), _file_format(file_format)
 {
-  ASSERT_THROW((file_format == "segment") || (file_format == "event_series"),
+  ASSERT_THROW((_file_format == "segment") || (_file_format == "event_series"),
                "Error: Format of scan path file not recognized.");
 
-  wait_for_file(scan_path_file,
-                "Waiting for scan path file: " + scan_path_file);
+  wait_for_file(_scan_path_file,
+                "Waiting for scan path file: " + _scan_path_file);
 
-  if (file_format == "segment")
+  read_file();
+}
+
+void ScanPath::read_file()
+{
+  wait_for_file_to_update(_scan_path_file, "Waiting for " + _scan_path_file,
+                          _last_write_time);
+
+  if (_file_format == "segment")
   {
-    return load_segment_scan_path(scan_path_file);
+    load_segment_scan_path();
   }
   else
   {
-    return load_event_series_scan_path(scan_path_file);
+    load_event_series_scan_path();
   }
-
-  return {};
 }
 
-std::vector<ScanPathSegment>
-ScanPath::load_segment_scan_path(std::string scan_path_file)
+void ScanPath::load_segment_scan_path()
 {
-  std::vector<ScanPathSegment> segment_list;
+  _segment_list.clear();
   std::ifstream file;
-  file.open(scan_path_file);
+  file.open(_scan_path_file);
   std::string line;
   unsigned int data_index = 0;
   // Skip first line
@@ -55,6 +59,13 @@ ScanPath::load_segment_scan_path(std::string scan_path_file)
   // segments to read, whichever comes first
   while ((data_index < n_segments) && (getline(file, line)))
   {
+    // If we reach the end of the scan path, we stop reading the file.
+    if (line.find("SCAN_PATH_END") != std::string::npos)
+    {
+      _scan_path_end = true;
+      break;
+    }
+
     std::vector<std::string> split_line;
     boost::split(split_line, line, boost::is_any_of(" "),
                  boost::token_compress_on);
@@ -66,7 +77,7 @@ ScanPath::load_segment_scan_path(std::string scan_path_file)
     {
       // Check to make sure the segment isn't the first, if it is, throw an
       // exception (the first segment must be a point in the spec).
-      ASSERT_THROW(segment_list.size() > 0,
+      ASSERT_THROW(_segment_list.size() > 0,
                    "Error: Scan paths must begin with a 'point' segment.");
     }
     else if (split_line[0] == "1")
@@ -91,10 +102,10 @@ ScanPath::load_segment_scan_path(std::string scan_path_file)
     // Set the velocity and end time
     if (segment_type == ScanPathSegmentType::point)
     {
-      if (segment_list.size() > 0)
+      if (_segment_list.size() > 0)
       {
         segment.end_time =
-            segment_list.back().end_time + std::stod(split_line[5]);
+            _segment_list.back().end_time + std::stod(split_line[5]);
       }
       else
       {
@@ -105,28 +116,33 @@ ScanPath::load_segment_scan_path(std::string scan_path_file)
     {
       double velocity = std::stod(split_line[5]);
       double line_length =
-          segment.end_point.distance(segment_list.back().end_point);
+          segment.end_point.distance(_segment_list.back().end_point);
       segment.end_time =
-          segment_list.back().end_time + std::abs(line_length / velocity);
+          _segment_list.back().end_time + std::abs(line_length / velocity);
     }
-    segment_list.push_back(segment);
+    _segment_list.push_back(segment);
     data_index++;
   }
   file.close();
-  return segment_list;
 }
 
-std::vector<ScanPathSegment>
-ScanPath::load_event_series_scan_path(std::string scan_path_file)
+void ScanPath::load_event_series_scan_path()
 {
-  std::vector<ScanPathSegment> segment_list;
+  _segment_list.clear();
   std::ifstream file;
-  file.open(scan_path_file);
+  file.open(_scan_path_file);
   std::string line;
 
   double last_power = 0.0;
   while (getline(file, line))
   {
+    // If we reach the end of the scan path, we stop reading the file.
+    if (line.find("SCAN_PATH_END") != std::string::npos)
+    {
+      _scan_path_end = true;
+      break;
+    }
+
     // For an event series the first segment is a ScanPathSegment point, then
     // the rest are ScanPathSegment lines
     ScanPathSegment segment;
@@ -147,9 +163,8 @@ ScanPath::load_event_series_scan_path(std::string scan_path_file)
     segment.power_modifier = last_power;
     last_power = std::stod(split_line[4]);
 
-    segment_list.push_back(segment);
+    _segment_list.push_back(segment);
   }
-  return segment_list;
 }
 
 void ScanPath::update_current_segment_info(
@@ -179,7 +194,7 @@ dealii::Point<3> ScanPath::value(double const &time) const
 {
   // If the current time is after the scan path data is over, return a point
   // that is (presumably) out of the domain.
-  if (time > _segment_list[_segment_list.size() - 1].end_time)
+  if (time > _segment_list.back().end_time)
   {
     dealii::Point<3> out_of_domain_point(std::numeric_limits<double>::lowest(),
                                          std::numeric_limits<double>::lowest(),
@@ -206,7 +221,7 @@ double ScanPath::get_power_modifier(double const &time) const
 {
   // If the current time is after the scan path data is over, set the power to
   // zero.
-  if (time > _segment_list[_segment_list.size() - 1].end_time)
+  if (time > _segment_list.back().end_time)
     return 0.0;
 
   // Get to the correct segment
@@ -219,7 +234,9 @@ double ScanPath::get_power_modifier(double const &time) const
 
 std::vector<ScanPathSegment> ScanPath::get_segment_list() const
 {
-  return {&_segment_list[0], &_segment_list[0] + _segment_list.size()};
+  return _segment_list;
 }
+
+bool ScanPath::is_finished() const { return _scan_path_end; }
 
 } // namespace adamantine

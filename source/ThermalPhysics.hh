@@ -112,7 +112,7 @@ public:
 
   dealii::AffineConstraints<double> &get_affine_constraints() override;
 
-  HeatSources<dim, MemorySpaceType> &get_heat_sources() override;
+  HeatSources<dim, dealii::MemorySpace::Host> &get_heat_sources() override;
 
   unsigned int get_fe_degree() const override;
 
@@ -220,7 +220,7 @@ private:
   /**
    * Vector of heat sources.
    */
-  mutable HeatSources<dim, MemorySpaceType> _heat_sources;
+  mutable HeatSources<dim, dealii::MemorySpace::Host> _heat_sources;
   /**
    * Shared pointer to the underlying ThermalOperator.
    */
@@ -324,7 +324,7 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,
           typename MemorySpaceType, typename QuadratureType>
-inline HeatSources<dim, MemorySpaceType> &
+inline HeatSources<dim, dealii::MemorySpace::Host> &
 ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
                QuadratureType>::get_heat_sources()
 {

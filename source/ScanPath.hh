@@ -11,6 +11,7 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/point.h>
 
+#include <filesystem>
 #include <limits>
 #include <string>
 #include <vector>
@@ -64,15 +65,13 @@ public:
    */
   ScanPath() = default;
 
-  KOKKOS_FUNCTION ScanPath(Kokkos::View<ScanPathSegment *, Kokkos::HostSpace,
-                                        Kokkos::MemoryTraits<Kokkos::Unmanaged>>
-                               scan_path_segments)
-      : _segment_list(scan_path_segments.data(), scan_path_segments.size())
-  {
-  }
-
-  static std::vector<ScanPathSegment> read_file(std::string scan_path_file,
-                                                std::string file_format);
+  /**
+   * Construtor.
+   * \param[in] scan_path_file is the name of the text file containing the scan
+   * path
+   * \param[in] file_format is the format of the scan path file
+   */
+  ScanPath(std::string scan_path_file, std::string file_format);
 
   /**
    * Calculate the location of the scan path at a given time for a single
@@ -95,18 +94,21 @@ public:
    */
   void read_file();
 
+  /**
+   * Return true if we reach the end of the scan path.
+   */
+  bool is_finished() const;
+
 private:
   /**
    * Method to load a "segment" scan path file
    */
-  static std::vector<ScanPathSegment>
-  load_segment_scan_path(std::string scan_path_file);
+  void load_segment_scan_path();
 
   /**
    * Method to load an "event series" scan path file
    */
-  static std::vector<ScanPathSegment>
-  load_event_series_scan_path(std::string scan_path_file);
+  void load_event_series_scan_path();
 
   /**
    * Method to determine the current segment, its start point, and start time.
@@ -116,12 +118,25 @@ private:
                                    double &segment_start_time) const;
 
   /**
+   * Flag is true if we have reached the end of _scan_path_file.
+   */
+  bool _scan_path_end = false;
+  /**
+   * File name of the scan path
+   */
+  std::string _scan_path_file;
+  /**
+   * Format of the scan path file, either segment of event_series.
+   */
+  std::string _file_format;
+  /**
+   * Time the last time _scan_path_file was updated.
+   */
+  std::filesystem::file_time_type _last_write_time;
+  /**
    * The list of information about each segment in the scan path.
    */
-  Kokkos::View<ScanPathSegment *, Kokkos::HostSpace,
-               Kokkos::MemoryTraits<Kokkos::Unmanaged>>
-      _segment_list;
-
+  std::vector<ScanPathSegment> _segment_list;
   /**
    * The index of the current segment in the scan path.
    */

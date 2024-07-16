@@ -19,10 +19,7 @@ namespace utf = boost::unit_test;
 namespace adamantine
 {
 
-template <int dim>
-std::tuple<Kokkos::View<ScanPathSegment *, Kokkos::HostSpace>,
-           ElectronBeamHeatSource<dim>, GoldakHeatSource<dim>>
-create_heat_sources(std::string scan_path_file)
+BOOST_AUTO_TEST_CASE(heat_source_value_2d, *utf::tolerance(1e-12))
 {
   boost::property_tree::ptree database;
 
@@ -30,27 +27,10 @@ create_heat_sources(std::string scan_path_file)
   database.put("absorption_efficiency", 0.1);
   database.put("diameter", 1.0);
   database.put("max_power", 10.);
-  database.put("scan_path_file", scan_path_file);
+  database.put("scan_path_file", "scan_path.txt");
   database.put("scan_path_file_format", "segment");
-  std::vector<ScanPathSegment> scan_path_segments =
-      ScanPath::read_file(database.get<std::string>("scan_path_file"),
-                          database.get<std::string>("scan_path_file_format"));
-  Kokkos::View<ScanPathSegment *, Kokkos::HostSpace> scan_path_segments_view(
-      "scan_path_segments", scan_path_segments.size());
-  Kokkos::deep_copy(scan_path_segments_view,
-                    Kokkos::View<ScanPathSegment *, Kokkos::HostSpace>{
-                        scan_path_segments.data(), scan_path_segments.size()});
-  BeamHeatSourceProperties beam(database);
-  return std::tuple(
-      scan_path_segments_view,
-      ElectronBeamHeatSource<dim>{database, ScanPath(scan_path_segments_view)},
-      GoldakHeatSource<dim>{beam, ScanPath(scan_path_segments_view)});
-}
-
-BOOST_AUTO_TEST_CASE(heat_source_value_2d, *utf::tolerance(1e-12))
-{
-  auto [scan_paths_segments, eb_heat_source, goldak_heat_source] =
-      create_heat_sources<2>("scan_path.txt");
+  GoldakHeatSource<2> goldak_heat_source(database);
+  ElectronBeamHeatSource<2> eb_heat_source(database);
 
   double g_value = 0.0;
   double eb_value = 0.0;
@@ -121,8 +101,17 @@ BOOST_AUTO_TEST_CASE(heat_source_value_2d, *utf::tolerance(1e-12))
 
 BOOST_AUTO_TEST_CASE(heat_source_value_3d, *utf::tolerance(1e-12))
 {
-  auto [scan_paths_segments, eb_heat_source, goldak_heat_source] =
-      create_heat_sources<3>("scan_path.txt");
+  boost::property_tree::ptree database;
+
+  database.put("depth", 0.1);
+  database.put("absorption_efficiency", 0.1);
+  database.put("diameter", 1.0);
+  database.put("max_power", 10.);
+  database.put("scan_path_file", "scan_path.txt");
+  database.put("scan_path_file_format", "segment");
+
+  GoldakHeatSource<3> goldak_heat_source(database);
+  ElectronBeamHeatSource<3> eb_heat_source(database);
 
   double g_value = 0.0;
   double eb_value = 0.0;
@@ -181,8 +170,16 @@ BOOST_AUTO_TEST_CASE(heat_source_value_3d, *utf::tolerance(1e-12))
 
 BOOST_AUTO_TEST_CASE(heat_source_height, *utf::tolerance(1e-12))
 {
-  auto [scan_paths_segments, eb_heat_source, goldak_heat_source] =
-      create_heat_sources<2>("scan_path_layers.txt");
+  boost::property_tree::ptree database;
+
+  database.put("depth", 0.1);
+  database.put("absorption_efficiency", 0.1);
+  database.put("diameter", 1.0);
+  database.put("max_power", 10.);
+  database.put("scan_path_file", "scan_path_layers.txt");
+  database.put("scan_path_file_format", "segment");
+  GoldakHeatSource<2> goldak_heat_source(database);
+  ElectronBeamHeatSource<2> eb_heat_source(database);
 
   double g_height = 0.0;
   double eb_height = 0.0;

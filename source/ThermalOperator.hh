@@ -28,10 +28,11 @@ template <int dim, bool use_table, int p_order, int fe_degree,
 class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
-  ThermalOperator(MPI_Comm const &communicator, BoundaryType boundary_type,
-                  MaterialProperty<dim, p_order, MaterialStates,
-                                   MemorySpaceType> &material_properties,
-                  HeatSources<dim, MemorySpaceType> const &heat_sources);
+  ThermalOperator(
+      MPI_Comm const &communicator, BoundaryType boundary_type,
+      MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
+          &material_properties,
+      HeatSources<dim, dealii::MemorySpace::Host> const &heat_sources);
 
   /**
    * Associate the AffineConstraints<double> and the MatrixFree objects to the
@@ -195,7 +196,7 @@ private:
   /**
    * Vector of heat sources.
    */
-  HeatSources<dim, MemorySpaceType> _heat_sources;
+  HeatSources<dim, dealii::MemorySpace::Host> _heat_sources;
   /**
    * Underlying MatrixFree object.
    */

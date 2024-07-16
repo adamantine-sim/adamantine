@@ -34,8 +34,7 @@ public:
    *   - <B>input_file</B>: name of the file that contains the scan path
    *     segments
    */
-  ElectronBeamHeatSource(BeamHeatSourceProperties const &beam,
-                         ScanPath const &scan_path);
+  ElectronBeamHeatSource(boost::property_tree::ptree const &database);
 
   /**
    * Set the time variable.
@@ -51,7 +50,7 @@ public:
   /**
    * Return the scan path.
    */
-  ScanPath const &get_scan_path() const;
+  ScanPath &get_scan_path();
 
   void set_scan_path(ScanPath const scan_path) { _scan_path = scan_path; }
 
@@ -80,7 +79,7 @@ private:
 };
 
 template <int dim>
-ScanPath const &ElectronBeamHeatSource<dim>::get_scan_path() const
+ScanPath &ElectronBeamHeatSource<dim>::get_scan_path()
 {
   return _scan_path;
 }

@@ -15,9 +15,11 @@ namespace adamantine
 {
 
 template <int dim>
-GoldakHeatSource<dim>::GoldakHeatSource(BeamHeatSourceProperties const &beam,
-                                        ScanPath const &scan_path)
-    : _beam(beam), _scan_path(scan_path)
+GoldakHeatSource<dim>::GoldakHeatSource(
+    boost::property_tree::ptree const &database)
+    : _beam(database),
+      _scan_path(database.get<std::string>("scan_path_file"),
+                 database.get<std::string>("scan_path_file_format"))
 {
 }
 

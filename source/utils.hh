@@ -38,6 +38,36 @@ inline void wait_for_file(std::string const &filename,
   }
 }
 
+/**
+ * Wait for the file to be updated.
+ */
+inline void
+wait_for_file_to_update(std::string const &filename, std::string const &message,
+                        std::filesystem::file_time_type &last_write_time)
+{
+  unsigned int counter = 1;
+  // We check when the file was last written to know if he file was updated.
+  // When the file is being overwritten, the last_write_time() function throws
+  // an error. Since it's an "expected" behavior, we just catch the error keep
+  // working.
+  try
+  {
+    while (std::filesystem::last_write_time(filename) == last_write_time)
+    {
+      // Spin loop waiting for the file to be updated (message printed if
+      // counter overflows)
+      if (counter == 0)
+        std::cout << message << std::endl;
+      ++counter;
+    }
+  }
+  catch (std::filesystem::filesystem_error)
+  {
+    // No-op
+  }
+  last_write_time = std::filesystem::last_write_time(filename);
+}
+
 #define ASSERT(condition, message) assert((condition) && (message))
 
 inline void ASSERT_THROW(bool cond, std::string const &message)

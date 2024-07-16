@@ -172,7 +172,7 @@ public:
   /**
    * Return the heat sources.
    */
-  virtual HeatSources<dim, MemorySpaceType> &get_heat_sources() = 0;
+  virtual HeatSources<dim, dealii::MemorySpace::Host> &get_heat_sources() = 0;
 
   /**
    * Return the degree of the finite element.
