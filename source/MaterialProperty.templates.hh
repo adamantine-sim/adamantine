@@ -635,9 +635,10 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
   // entire domain. This is not a problem since that state is unchanged and does
   // not need to be updated.
   unsigned int cell_i = 0;
-  for (auto const &cell : dealii::filter_iterators(
-           dof_handler.active_cell_iterators(),
-           dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true)))
+  for (auto const &cell :
+       dealii::filter_iterators(dof_handler.active_cell_iterators(),
+                                dealii::IteratorFilters::ActiveFEIndexEqualTo(
+                                    0, /* locally owned */ true)))
   {
     typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
     auto mp_dof_index = get_dof_index(cell_tria);

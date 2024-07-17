@@ -140,9 +140,9 @@ void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
 
   // Loop over the locally owned cells that are not FE_Nothing and assemble the
   // sparse matrix and the right-hand-side
-  for (auto const &cell :
-       _dof_handler->active_cell_iterators() |
-           dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true))
+  for (auto const &cell : _dof_handler->active_cell_iterators() |
+                              dealii::IteratorFilters::ActiveFEIndexEqualTo(
+                                  0, /* locally owned */ true))
   {
     displacement_hp_fe_values.reinit(cell);
     auto const &fe_values = displacement_hp_fe_values.get_present_fe_values();
@@ -232,9 +232,9 @@ void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
     std::vector<dealii::types::global_dof_index> temperature_local_dof_indices(
         _thermal_dof_handler->get_fe_collection().max_dofs_per_cell());
     double const initial_temperature = _reference_temperatures.back();
-    for (auto const &cell :
-         _dof_handler->active_cell_iterators() |
-             dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true))
+    for (auto const &cell : _dof_handler->active_cell_iterators() |
+                                dealii::IteratorFilters::ActiveFEIndexEqualTo(
+                                    0, /* locally owned */ true))
     {
       cell_rhs = 0.;
 
@@ -296,9 +296,9 @@ void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
   // Add gravitational body force
   if (body_forces.size())
   {
-    for (auto const &cell :
-         _dof_handler->active_cell_iterators() |
-             dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true))
+    for (auto const &cell : _dof_handler->active_cell_iterators() |
+                                dealii::IteratorFilters::ActiveFEIndexEqualTo(
+                                    0, /* locally owned */ true))
     {
       cell_rhs = 0.;
 

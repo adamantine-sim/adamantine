@@ -96,9 +96,9 @@ dealii::Vector<double> PostProcessor<dim>::get_stress_norm(
   unsigned int const n_quad_pts =
       stress_tensor.size() > 0 ? stress_tensor[0].size() : 0;
   unsigned int cell_id = 0;
-  for (auto const &cell :
-       _mechanical_dof_handler->active_cell_iterators() |
-           dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true))
+  for (auto const &cell : _mechanical_dof_handler->active_cell_iterators() |
+                              dealii::IteratorFilters::ActiveFEIndexEqualTo(
+                                  0, /* locally owned */ true))
   {
     dealii::SymmetricTensor<2, dim> accumulated_stress;
     for (unsigned int q = 0; q < n_quad_pts; ++q)

@@ -41,9 +41,10 @@ get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler)
       fe.n_dofs_per_cell());
   auto locally_owned_dofs = dof_handler.locally_owned_dofs();
 
-  for (auto const &cell : dealii::filter_iterators(
-           dof_handler.active_cell_iterators(),
-           dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true)))
+  for (auto const &cell :
+       dealii::filter_iterators(dof_handler.active_cell_iterators(),
+                                dealii::IteratorFilters::ActiveFEIndexEqualTo(
+                                    0, /* locally owned */ true)))
   {
     fe_values.reinit(cell);
     cell->get_dof_indices(local_dof_indices);
