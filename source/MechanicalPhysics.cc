@@ -307,9 +307,9 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   std::vector<dealii::SymmetricTensor<2, dim>> strain_tensor(n_q_points);
   const dealii::FEValuesExtractors::Vector displacement_extr(0);
   unsigned int cell_id = 0;
-  for (auto const &cell :
-       _dof_handler.active_cell_iterators() |
-           dealii::IteratorFilters::ActiveFEIndexEqualTo(0, true))
+  for (auto const &cell : _dof_handler.active_cell_iterators() |
+                              dealii::IteratorFilters::ActiveFEIndexEqualTo(
+                                  0, /* locally owned */ true))
   {
     // Formulation based on the combined isotropic-kinematic hardening model for
     // J2 plasticity in Chapter 3 of R. Borja, Plasticity: Modeling and
