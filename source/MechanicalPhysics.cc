@@ -294,8 +294,6 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
           _mechanical_operator->rhs().get_mpi_communicator());
   incremental_displacement_ghosted = incremental_displacement;
   compute_stress(incremental_displacement_ghosted);
-  incremental_displacement_ghosted.compress(dealii::VectorOperation::add);
-  incremental_displacement = incremental_displacement_ghosted;
 
   _old_displacement.swap(displacement);
 
