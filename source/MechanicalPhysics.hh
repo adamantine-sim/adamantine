@@ -32,6 +32,8 @@ public:
                                      MemorySpaceType> &material_properties,
                     std::vector<double> const &initial_temperatures);
 
+  void prepare_transfer();
+
   /**
    * Setup the DoFHandler, the AffineConstraints, and the
    * MechanicalOperator.

@@ -309,11 +309,12 @@ void refine_and_transfer(
     dealii::DoFHandler<dim> &dof_handler,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
+  std::cout << "Calling refine_and_transfer" << std::endl;
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
 #endif
 
-  // TODO transfer mechanical data is present, need to be aware that the data
+  // TODO transfer mechanical data if present, need to be aware that the data
   // does not exist on some cells because it's liquid
 
   dealii::parallel::distributed::Triangulation<dim> &triangulation =
@@ -899,12 +900,14 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
           temperature_host(temperature.get_partitioner());
       temperature_host.import(temperature, dealii::VectorOperation::insert);
+      std::cout << "903 Initial setup mechanical and thermal" << std::endl;
       mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
                                      temperature_host,
                                      thermal_physics->get_has_melted_vector());
     }
     else
     {
+	          std::cout << "910 Initial setup only mechanical" << std::endl;
       // Mechanical only simulation
       mechanical_physics->setup_dofs();
     }
@@ -1129,12 +1132,14 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
               temperature_host(temperature.get_partitioner());
           temperature_host.import(temperature, dealii::VectorOperation::insert);
-          mechanical_physics->setup_dofs(
+                std::cout << "1135 next setup mechanical and thermal" << std::endl;
+	  mechanical_physics->setup_dofs(
               thermal_physics->get_dof_handler(), temperature_host,
               thermal_physics->get_has_melted_vector());
         }
         else
         {
+		                std::cout << "1142 next setup mechanical and thermal" << std::endl;
           mechanical_physics->setup_dofs();
         }
         displacement = mechanical_physics->solve();

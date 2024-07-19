@@ -89,6 +89,7 @@ template <int dim, int p_order, typename MaterialStates,
 void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
     setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
+  std::cout << "Distribute dofs mechanical" << std::endl;
   _dof_handler.distribute_dofs(_fe_collection);
   dealii::IndexSet locally_relevant_dofs;
   dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler,
@@ -120,6 +121,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
         std::vector<bool> const &has_melted,
         std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
+  std::cout << "Calling setup_dofs" << std::endl;
   _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
                                            has_melted);
   // Update the active fe indices, the plastic variables, and the displacement.
@@ -138,10 +140,18 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   tmp_plastic_internal_variable.reserve(n_old_active_cells);
   tmp_stress.reserve(n_old_active_cells);
   tmp_back_stress.reserve(_back_stress.size());
+
   // First we save _old_displacement if it exists
   if (_old_displacement.size())
   {
-    _old_displacement.update_ghost_values();
+     dealii::IndexSet locally_relevant_dofs =
+      dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      old_displacement_ghosted(
+          _dof_handler.locally_owned_dofs(), locally_relevant_dofs,
+          _mechanical_operator->rhs().get_mpi_communicator());
+
+    old_displacement_ghosted = _old_displacement;
 
     std::vector<double> cell_values(n_dofs_per_cell);
     saved_old_displacement.reserve(n_old_active_cells);
@@ -156,7 +166,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
         cell->get_dof_indices(global_dof_indices);
         for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
         {
-          cell_values[i] = _old_displacement[global_dof_indices[i]];
+          cell_values[i] = old_displacement_ghosted[global_dof_indices[i]];
         }
       }
       else

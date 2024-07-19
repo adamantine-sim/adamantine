@@ -521,6 +521,7 @@ template <int dim, int p_order, int fe_degree, typename MaterialStates,
 void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
                     QuadratureType>::setup_dofs()
 {
+	std::cout << "distribute_dofs thermal" << std::endl;
   _dof_handler.distribute_dofs(_fe_collection);
   dealii::IndexSet locally_relevant_dofs;
   dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler,
