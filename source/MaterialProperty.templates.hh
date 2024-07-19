@@ -238,7 +238,7 @@ void MaterialProperty<dim, p_order, MaterialStates,
             {{0, 0}}, {{MaterialStates::n_material_states,
                         static_cast<int>(_dofs_map.size())}}),
         KOKKOS_LAMBDA(int i, int j) {
-          state(i, j) = std::numeric_limits<double>::signaling_NaN();
+          state(i, j) = Kokkos::Experimental::signaling_NaN_v<double>;
         });
   }
 #endif
