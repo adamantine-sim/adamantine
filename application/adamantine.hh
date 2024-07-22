@@ -901,9 +901,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           temperature_host(temperature.get_partitioner());
       temperature_host.import(temperature, dealii::VectorOperation::insert);
       std::cout << "903 Initial setup mechanical and thermal" << std::endl;
-      mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
+      mechanical_physics->prepare_transfer(thermal_physics->get_dof_handler(),
                                      temperature_host,
                                      thermal_physics->get_has_melted_vector());
+      mechanical_physics->setup_dofs();
     }
     else
     {
@@ -1133,9 +1134,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
               temperature_host(temperature.get_partitioner());
           temperature_host.import(temperature, dealii::VectorOperation::insert);
                 std::cout << "1135 next setup mechanical and thermal" << std::endl;
-	  mechanical_physics->setup_dofs(
+	  mechanical_physics->prepare_transfer(
               thermal_physics->get_dof_handler(), temperature_host,
               thermal_physics->get_has_melted_vector());
+	   mechanical_physics->setup_dofs();
         }
         else
         {

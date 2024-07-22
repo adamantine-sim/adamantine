@@ -109,17 +109,43 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
 
   _mechanical_operator->reinit(_dof_handler, _affine_constraints, _q_collection,
                                body_forces);
+
+  // Update _old_displacement if necessary
+  _old_displacement.reinit(_mechanical_operator->rhs().get_partitioner());
+  if (_saved_old_displacement.size())
+  {
+    unsigned int const n_dofs_per_cell = _fe_collection.max_dofs_per_cell();
+    std::vector<dealii::types::global_dof_index> global_dof_indices(
+        n_dofs_per_cell);
+    unsigned int cell_id = 0;
+    for (auto const &cell :
+         dealii::filter_iterators(_dof_handler.active_cell_iterators(),
+                                  dealii::IteratorFilters::LocallyOwnedCell()))
+    {
+      auto fe_index = cell->active_fe_index();
+      if (fe_index == 0)
+      {
+        cell->get_dof_indices(global_dof_indices);
+        for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
+        {
+          _old_displacement[global_dof_indices[i]] =
+              _saved_old_displacement[cell_id][i];
+        }
+      }
+      ++cell_id;
+    }
+    _old_displacement.compress(dealii::VectorOperation::insert);
+  }
 }
 
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
-    setup_dofs(
+    prepare_transfer(
         dealii::DoFHandler<dim> const &thermal_dof_handler,
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
             &temperature,
-        std::vector<bool> const &has_melted,
-        std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+        std::vector<bool> const &has_melted)
 {
   std::cout << "Calling setup_dofs" << std::endl;
   _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
@@ -127,7 +153,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   // Update the active fe indices, the plastic variables, and the displacement.
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
   unsigned int cell_id = 0;
-  std::vector<std::vector<double>> saved_old_displacement;
+  // std::vector<std::vector<double>> saved_old_displacement;
   std::vector<std::vector<double>> tmp_plastic_internal_variable;
   std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> tmp_stress;
   std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> tmp_back_stress;
@@ -144,17 +170,18 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   // First we save _old_displacement if it exists
   if (_old_displacement.size())
   {
-     dealii::IndexSet locally_relevant_dofs =
-      dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      old_displacement_ghosted(
-          _dof_handler.locally_owned_dofs(), locally_relevant_dofs,
-          _mechanical_operator->rhs().get_mpi_communicator());
+    dealii::IndexSet locally_relevant_dofs =
+        dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+        old_displacement_ghosted(
+            _dof_handler.locally_owned_dofs(), locally_relevant_dofs,
+            _mechanical_operator->rhs().get_mpi_communicator());
 
     old_displacement_ghosted = _old_displacement;
 
     std::vector<double> cell_values(n_dofs_per_cell);
-    saved_old_displacement.reserve(n_old_active_cells);
+    _saved_old_displacement.reserve(n_old_active_cells);
+    _saved_old_displacement.clear();
     for (auto const &cell :
          dealii::filter_iterators(_dof_handler.active_cell_iterators(),
                                   dealii::IteratorFilters::LocallyOwnedCell()))
@@ -175,7 +202,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
         // is ignored.
         cell_values.assign(n_dofs_per_cell, 0.);
       }
-      saved_old_displacement.push_back(cell_values);
+      _saved_old_displacement.push_back(cell_values);
     }
   }
 
@@ -232,32 +259,6 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   _plastic_internal_variable.swap(tmp_plastic_internal_variable);
   _stress.swap(tmp_stress);
   _back_stress.swap(tmp_back_stress);
-
-  setup_dofs(body_forces);
-
-  // Update _old_displacement if necessary
-  _old_displacement.reinit(_mechanical_operator->rhs().get_partitioner());
-  if (saved_old_displacement.size())
-  {
-    cell_id = 0;
-    for (auto const &cell :
-         dealii::filter_iterators(_dof_handler.active_cell_iterators(),
-                                  dealii::IteratorFilters::LocallyOwnedCell()))
-    {
-      auto fe_index = cell->active_fe_index();
-      if (fe_index == 0)
-      {
-        cell->get_dof_indices(global_dof_indices);
-        for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
-        {
-          _old_displacement[global_dof_indices[i]] =
-              saved_old_displacement[cell_id][i];
-        }
-      }
-      ++cell_id;
-    }
-    _old_displacement.compress(dealii::VectorOperation::insert);
-  }
 }
 
 template <int dim, int p_order, typename MaterialStates,

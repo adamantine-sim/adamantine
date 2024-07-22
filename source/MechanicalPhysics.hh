@@ -32,8 +32,6 @@ public:
                                      MemorySpaceType> &material_properties,
                     std::vector<double> const &initial_temperatures);
 
-  void prepare_transfer();
-
   /**
    * Setup the DoFHandler, the AffineConstraints, and the
    * MechanicalOperator.
@@ -45,13 +43,11 @@ public:
   /**
    * Same as above when solving a thermo-mechanical problem.
    */
-  void setup_dofs(
+  void prepare_transfer(
       dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &temperature,
-      std::vector<bool> const &has_melted,
-      std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
-          std::vector<std::shared_ptr<BodyForce<dim>>>());
+      std::vector<bool> const &has_melted);
 
   /**
    * Solve the mechanical problem and return the displacement.
@@ -123,6 +119,8 @@ private:
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       _old_displacement;
+
+  std::vector<std::vector<double>> _saved_old_displacement;
 
   /**
    * Plastic internal variable related to the strain

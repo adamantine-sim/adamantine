@@ -61,7 +61,7 @@ wait_for_file_to_update(std::string const &filename, std::string const &message,
       ++counter;
     }
   }
-  catch (std::filesystem::filesystem_error const&)
+  catch (std::filesystem::filesystem_error const &)
   {
     // No-op
   }
