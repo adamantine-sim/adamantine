@@ -20,6 +20,7 @@ export DEAL_II_NUM_THREADS=1
 If you use our Docker image, the variable is already set.
 
 ## Input file
+Adamantine supports Boost INFO format and json. The input file is assumed to use the INFO format unless the file extension is `.json`.
 The following options are available:
 * **boundary** (required):
   * **type**: type of boundary: `adiabatic`, `radiative`, or `convective`. Multiple types
