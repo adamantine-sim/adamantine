@@ -285,7 +285,17 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
   {
     incremental_displacement -= _old_displacement;
   }
-  compute_stress(incremental_displacement);
+
+  dealii::IndexSet locally_relevant_dofs =
+      dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      incremental_displacement_ghosted(
+          _dof_handler.locally_owned_dofs(), locally_relevant_dofs,
+          _mechanical_operator->rhs().get_mpi_communicator());
+  incremental_displacement_ghosted = incremental_displacement;
+  compute_stress(incremental_displacement_ghosted);
+  incremental_displacement_ghosted.compress(dealii::VectorOperation::add);
+  incremental_displacement = incremental_displacement_ghosted;
 
   _old_displacement.swap(displacement);
 
