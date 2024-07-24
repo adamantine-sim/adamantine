@@ -521,7 +521,7 @@ compute_cells_to_refine(
     dealii::parallel::distributed::Triangulation<dim> &triangulation,
     double const time, double const next_refinement_time,
     unsigned int const n_time_steps,
-    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    adamantine::HeatSources<dim, dealii::MemorySpace::Host> &heat_sources,
     double const current_source_height, double const refinement_beam_cutoff)
 {
 
@@ -538,25 +538,22 @@ compute_cells_to_refine(
     double const current_time = time + static_cast<double>(i) /
                                            static_cast<double>(n_time_steps) *
                                            (next_refinement_time - time);
-    for (auto &beam : heat_sources)
+    heat_sources.update_time(current_time);
+    for (auto cell :
+         dealii::filter_iterators(triangulation.active_cell_iterators(),
+                                  dealii::IteratorFilters::LocallyOwnedCell()))
     {
-      beam->update_time(current_time);
-      for (auto cell : dealii::filter_iterators(
-               triangulation.active_cell_iterators(),
-               dealii::IteratorFilters::LocallyOwnedCell()))
+      // Check the value at the center of the cell faces. For most cases this
+      // should be sufficient, but if the beam is small compared to the
+      // coarsest mesh we may need to add other points to check (e.g.
+      // quadrature points, vertices).
+      for (unsigned int f = 0; f < cell->reference_cell().n_faces(); ++f)
       {
-        // Check the value at the center of the cell faces. For most cases this
-        // should be sufficient, but if the beam is small compared to the
-        // coarsest mesh we may need to add other points to check (e.g.
-        // quadrature points, vertices).
-        for (unsigned int f = 0; f < cell->reference_cell().n_faces(); ++f)
+        if (heat_sources.value(cell->face(f)->center(), current_source_height) >
+            refinement_beam_cutoff)
         {
-          if (beam->value(cell->face(f)->center(), current_source_height) >
-              refinement_beam_cutoff)
-          {
-            cells_to_refine.push_back(cell);
-            break;
-          }
+          cells_to_refine.push_back(cell);
+          break;
         }
       }
     }
@@ -573,7 +570,7 @@ void refine_mesh(
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    adamantine::HeatSources<dim, dealii::MemorySpace::Host> &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
@@ -662,7 +659,7 @@ void refine_mesh(
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    adamantine::HeatSources<dim, dealii::MemorySpace::Host> &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
@@ -760,7 +757,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // Create ThermalPhysics if necessary
   std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
       thermal_physics;
-  std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> heat_sources;
+  adamantine::HeatSources<dim, dealii::MemorySpace::Host> heat_sources;
   if (use_thermal_physics)
   {
     // PropertyTreeInput discretization.thermal.fe_degree
@@ -1011,9 +1008,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       {
         // Check if we have reached the end of current scan path.
         bool need_updated_scan_path = false;
-        for (auto &source : heat_sources)
+        auto const &scan_paths = heat_sources.get_scan_paths();
+        for (auto &scan_path : scan_paths)
         {
-          if (time > source->get_scan_path().get_segment_list().back().end_time)
+          if (time > scan_path.get_segment_list().back().end_time)
           {
             need_updated_scan_path = true;
             break;
@@ -1024,17 +1022,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         {
           // Check if we have reached the end of the file. If not, read the
           // updated scan path file
-          bool scan_path_end = true;
-          for (auto &source : heat_sources)
-          {
-            if (!source->get_scan_path().is_finished())
-            {
-              scan_path_end = false;
-              // This functions waits for the scan path file to be updated
-              // before reading the file.
-              source->get_scan_path().read_file();
-            }
-          }
+          bool scan_path_end = heat_sources.update_scan_paths();
 
           // If we have reached the end of scan path file for all the heat
           // sources, we just exit.
@@ -1416,7 +1404,7 @@ run_ensemble(MPI_Comm const &global_communicator,
       adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>>
       thermal_physics_ensemble(local_ensemble_size);
 
-  std::vector<std::vector<std::shared_ptr<adamantine::HeatSource<dim>>>>
+  std::vector<adamantine::HeatSources<dim, MemorySpaceType>>
       heat_sources_ensemble(local_ensemble_size);
 
   std::vector<std::unique_ptr<adamantine::Geometry<dim>>> geometry_ensemble;
@@ -1819,10 +1807,10 @@ run_ensemble(MPI_Comm const &global_communicator,
         // Check if we have reached the end of current scan path.
         bool need_updated_scan_path = false;
         {
-          for (auto &source : heat_sources_ensemble[0])
+          auto const &scan_paths = heat_sources_ensemble[0].get_scan_paths();
+          for (auto &scan_path : scan_paths)
           {
-            if (time >
-                source->get_scan_path().get_segment_list().back().end_time)
+            if (time > scan_path.get_segment_list().back().end_time)
             {
               need_updated_scan_path = true;
               break;
@@ -1841,16 +1829,7 @@ run_ensemble(MPI_Comm const &global_communicator,
           bool scan_path_end = true;
           for (unsigned int member = 0; member < local_ensemble_size; ++member)
           {
-            for (auto &source : heat_sources_ensemble[member])
-            {
-              if (!source->get_scan_path().is_finished())
-              {
-                scan_path_end = false;
-                // This functions waits for the scan path file to be updated
-                // before reading the file.
-                source->get_scan_path().read_file();
-              }
-            }
+            scan_path_end &= heat_sources_ensemble[member].update_scan_paths();
           }
 
           // If we have reached the end of scan path file for all the heat

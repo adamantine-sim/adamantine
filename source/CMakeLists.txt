@@ -7,7 +7,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ExperimentalData.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Geometry.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/GoldakHeatSource.hh
-    ${CMAKE_CURRENT_SOURCE_DIR}/HeatSource.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/HeatSources.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.templates.hh

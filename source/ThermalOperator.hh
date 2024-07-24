@@ -8,7 +8,7 @@
 #ifndef THERMAL_OPERATOR_HH
 #define THERMAL_OPERATOR_HH
 
-#include <HeatSource.hh>
+#include <HeatSources.hh>
 #include <MaterialProperty.hh>
 #include <MaterialStates.hh>
 #include <ThermalOperatorBase.hh>
@@ -32,7 +32,7 @@ public:
       MPI_Comm const &communicator, BoundaryType boundary_type,
       MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
           &material_properties,
-      std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources);
+      HeatSources<dim, dealii::MemorySpace::Host> const &heat_sources);
 
   /**
    * Associate the AffineConstraints<double> and the MatrixFree objects to the
@@ -196,7 +196,7 @@ private:
   /**
    * Vector of heat sources.
    */
-  std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
+  HeatSources<dim, dealii::MemorySpace::Host> _heat_sources;
   /**
    * Underlying MatrixFree object.
    */
@@ -323,8 +323,7 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                                                              double height)
 {
   _current_source_height = height;
-  for (auto &beam : _heat_sources)
-    beam->update_time(t);
+  _heat_sources.update_time(t);
 }
 } // namespace adamantine
 
