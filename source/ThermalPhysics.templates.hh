@@ -716,7 +716,6 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
 
   initialize_dof_vector(std::numeric_limits<double>::infinity(), solution);
   rw_index_set = solution.locally_owned_elements();
-  rw_index_set.add_indices(solution.get_partitioner()->ghost_indices());
   rw_solution.reinit(rw_index_set);
   for (auto val : solution.locally_owned_elements())
     rw_solution[val] = new_material_temperature;
@@ -732,6 +731,8 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
   _has_melted.clear();
   cell_id = 0;
   locally_owned_cell_id = 0;
+  std::vector<dealii::types::global_dof_index> local_dof_indices(
+      n_dofs_per_cell);
   for (auto const &cell : _dof_handler.active_cell_iterators())
   {
     if (cell->is_locally_owned())
@@ -742,7 +743,14 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
         std::copy(transferred_data[cell_id].begin(),
                   transferred_data[cell_id].begin() + n_dofs_per_cell,
                   cell_solution.begin());
-        cell->set_dof_values(cell_solution, rw_solution);
+        cell->get_dof_indices(local_dof_indices);
+        for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
+        {
+          if (rw_index_set.is_element(local_dof_indices[i]))
+          {
+            rw_solution[local_dof_indices[i]] = cell_solution(i);
+          }
+        }
       }
 
       if (cell->active_fe_index() == 0)
@@ -772,29 +780,9 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
                                                          _deposition_sin);
 
   // Communicate the results.
+  solution.zero_out_ghost_values();
   solution.import(rw_solution, dealii::VectorOperation::insert);
-
-  // Set the value to the newly create DoFs. Here we need to be careful with the
-  // hanging nodes. When there is a hanging node, the dofs at the vertices are
-  // "doubled": there is a dof associated to the coarse cell and a dof
-  // associated to the fine cell. The final value is decided by
-  // AffineConstraints. Thus, we need to make sure that the newly activated
-  // cells are at the same level than their neighbors.
-  rw_solution.reinit(solution.locally_owned_elements());
-  rw_solution.import(solution, dealii::VectorOperation::insert);
-  Kokkos::parallel_for("adamantine::set_new_material_temperature",
-                       Kokkos::RangePolicy<Kokkos::DefaultHostExecutionSpace>(
-                           0, rw_solution.locally_owned_size()),
-                       [&](int i)
-                       {
-                         if (rw_solution.local_element(i) ==
-                             std::numeric_limits<double>::infinity())
-                         {
-                           rw_solution.local_element(i) =
-                               new_material_temperature;
-                         }
-                       });
-  solution.import(rw_solution, dealii::VectorOperation::insert);
+  solution.update_ghost_values();
 }
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,

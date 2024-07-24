@@ -164,8 +164,7 @@ int main(int argc, char *argv[])
 
     // Read the input.
     std::string const filename = map["input-file"].as<std::string>();
-    // adamantine::wait_for_file(filename, "Waiting for input file: " +
-    // filename);
+    adamantine::wait_for_file(filename, "Waiting for input file: " + filename);
     boost::property_tree::ptree database;
     if (std::filesystem::path(filename).extension().native() == ".json")
     {

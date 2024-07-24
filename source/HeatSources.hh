@@ -48,10 +48,10 @@ public:
 
   /**
    * Update the scan paths for all heat sources reading again from the
-   * respective files.
+   * respective files. Returns whether any if the scan paths is still active.
    */
   template <typename Dummy = MemorySpaceType>
-  std::enable_if_t<std::is_same_v<Dummy, dealii::MemorySpace::Host>>
+  std::enable_if_t<std::is_same_v<Dummy, dealii::MemorySpace::Host>, bool>
   update_scan_paths();
 
   /**
@@ -79,25 +79,6 @@ public:
   double get_current_height(double time) const;
 
 private:
-  friend class HeatSources<dim, dealii::MemorySpace::Default>;
-  friend class HeatSources<dim, dealii::MemorySpace::Host>;
-
-  /**
-   * Private constructor used by copy_to.
-   */
-  HeatSources(Kokkos::View<ElectronBeamHeatSource<dim> *,
-                           typename MemorySpaceType::kokkos_space>
-                  electron_beam_heat_sources,
-              Kokkos::View<CubeHeatSource<dim> *,
-                           typename MemorySpaceType::kokkos_space>
-                  cube_heat_sources,
-              Kokkos::View<GoldakHeatSource<dim> *,
-                           typename MemorySpaceType::kokkos_space>
-                  goldak_heat_sources,
-              std::vector<int> const &electron_beam_indices,
-              std::vector<int> const &cube_indices,
-              std::vector<int> const &goldak_indices);
-
   Kokkos::View<ElectronBeamHeatSource<dim> *,
                typename MemorySpaceType::kokkos_space>
       _electron_beam_heat_sources;
@@ -112,13 +93,34 @@ private:
 
 template <int dim, typename MemorySpaceType>
 template <typename Dummy>
-std::enable_if_t<std::is_same_v<Dummy, dealii::MemorySpace::Host>>
+std::enable_if_t<std::is_same_v<Dummy, dealii::MemorySpace::Host>, bool>
 HeatSources<dim, MemorySpaceType>::update_scan_paths()
 {
+  bool scan_path_end = true;
+
   for (unsigned int i = 0; i < _goldak_heat_sources.size(); ++i)
-    _goldak_heat_sources(i).get_scan_path().read_file();
+  {
+    if (!_goldak_heat_sources[i].get_scan_path().is_finished())
+    {
+      scan_path_end = false;
+      // This functions waits for the scan path file to be updated
+      // before reading the file.
+      _goldak_heat_sources[i].get_scan_path().read_file();
+    }
+  }
+
   for (unsigned int i = 0; i < _electron_beam_heat_sources.size(); ++i)
-    _electron_beam_heat_sources(i).get_scan_path().read_file();
+  {
+    if (!_electron_beam_heat_sources[i].get_scan_path().is_finished())
+    {
+      scan_path_end = false;
+      // This functions waits for the scan path file to be updated
+      // before reading the file.
+      _electron_beam_heat_sources[i].get_scan_path().read_file();
+    }
+  }
+
+  return scan_path_end;
 }
 
 template <int dim, typename MemorySpaceType>
@@ -184,27 +186,6 @@ HeatSources<dim, MemorySpaceType>::HeatSources(
   Kokkos::deep_copy(_cube_heat_sources,
                     Kokkos::View<CubeHeatSource<dim> *, Kokkos::HostSpace>(
                         cube_heat_sources.data(), cube_heat_sources.size()));
-}
-
-template <int dim, typename MemorySpaceType>
-HeatSources<dim, MemorySpaceType>::HeatSources(
-    Kokkos::View<ElectronBeamHeatSource<dim> *,
-                 typename MemorySpaceType::kokkos_space>
-        electron_beam_heat_sources,
-    Kokkos::View<CubeHeatSource<dim> *, typename MemorySpaceType::kokkos_space>
-        cube_heat_sources,
-    Kokkos::View<GoldakHeatSource<dim> *,
-                 typename MemorySpaceType::kokkos_space>
-        goldak_heat_sources,
-    std::vector<int> const &electron_beam_indices,
-    std::vector<int> const &cube_indices,
-    std::vector<int> const &goldak_indices)
-    : _electron_beam_heat_sources(electron_beam_heat_sources),
-      _cube_heat_sources(cube_heat_sources),
-      _goldak_heat_sources(goldak_heat_sources),
-      _electron_beam_indices(electron_beam_indices),
-      _cube_indices(cube_indices), _goldak_indices(goldak_indices)
-{
 }
 
 template <int dim, typename MemorySpaceType>
@@ -283,15 +264,6 @@ void HeatSources<dim, MemorySpaceType>::set_beam_properties(
   for (unsigned int i = 0; i < _goldak_heat_sources.size(); ++i)
     set_properties(_goldak_heat_sources[i], _goldak_indices[i]);
 }
-/*
-template <int dim, typename MemorySpaceType>
-template <typename TargetMemorySpaceType>
-HeatSources<dim, TargetMemorySpaceType>
-HeatSources<dim, MemorySpaceType>::copy_to(
-    TargetMemorySpaceType target_memory_space) const
-{
-    return {};
-}*/
 
 } // namespace adamantine
 

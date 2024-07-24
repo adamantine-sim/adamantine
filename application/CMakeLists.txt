@@ -1,5 +1,12 @@
 # Create adamantine executable and link against the static library.
-add_executable(adamantine adamantine.cc)
+set(Adamantine_app_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/adamantine.hh
+)
+set(Adamantine_app_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/adamantine.cc
+)
+add_executable(adamantine ${Adamantine_app_SOURCES} ${Adamantine_app_HEADERS})
+
 set_target_properties(adamantine PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON
