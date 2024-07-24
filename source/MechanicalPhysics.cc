@@ -112,7 +112,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
 
   // Update _old_displacement if necessary
   _old_displacement.reinit(_mechanical_operator->rhs().get_partitioner());
-  if (_saved_old_displacement.size())
+  if (false) //_saved_old_displacement.size())
   {
     unsigned int const n_dofs_per_cell = _fe_collection.max_dofs_per_cell();
     std::vector<dealii::types::global_dof_index> global_dof_indices(
@@ -168,7 +168,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   tmp_back_stress.reserve(_back_stress.size());
 
   // First we save _old_displacement if it exists
-  if (_old_displacement.size())
+  if (false) //_old_displacement.size())
   {
     dealii::IndexSet locally_relevant_dofs =
         dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
@@ -289,22 +289,17 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
   // If the stress is under the yield criterion, the deformation is elastic and
   // we are done. Otherwise we need to use the radial return algorithm to
   // compute the plastic deformation.
-  auto incremental_displacement = displacement;
-  // TODO Remove this once we support refinement/material addition
-  if (displacement.get_partitioner()->is_compatible(
-          *(_old_displacement.get_partitioner())))
-  {
-    incremental_displacement -= _old_displacement;
-  }
-
+  // 
   dealii::IndexSet locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      incremental_displacement_ghosted(
+      incremental_displacement(
           _dof_handler.locally_owned_dofs(), locally_relevant_dofs,
           _mechanical_operator->rhs().get_mpi_communicator());
-  incremental_displacement_ghosted = incremental_displacement;
-  compute_stress(incremental_displacement_ghosted);
+  incremental_displacement = displacement;
+  // TODO Remove this once we support refinement/material addition
+  incremental_displacement -= _old_displacement;
+  compute_stress(incremental_displacement);
 
   _old_displacement.swap(displacement);
 
