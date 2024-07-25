@@ -245,7 +245,8 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
           _mechanical_operator->rhs().get_mpi_communicator());
   incremental_displacement = displacement;
   // TODO Remove this once we support refinement/material addition
-  incremental_displacement -= _old_displacement;
+  if(_old_displacement.size() > 0)
+    incremental_displacement -= _old_displacement;
   compute_stress(incremental_displacement);
 
   _old_displacement.swap(displacement);
