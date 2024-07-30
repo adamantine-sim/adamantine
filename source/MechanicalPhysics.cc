@@ -278,13 +278,18 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
   // If the stress is under the yield criterion, the deformation is elastic and
   // we are done. Otherwise we need to use the radial return algorithm to
   // compute the plastic deformation.
-  auto incremental_displacement = displacement;
-  // TODO Remove this once we support refinement/material addition
-  if (displacement.get_partitioner()->is_compatible(
-          *(_old_displacement.get_partitioner())))
+  dealii::IndexSet locally_relevant_dofs =
+      dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      incremental_displacement(
+          _dof_handler.locally_owned_dofs(), locally_relevant_dofs,
+          _mechanical_operator->rhs().get_mpi_communicator());
+  incremental_displacement = displacement;
+  if (_old_displacement.size() > 0)
   {
     incremental_displacement -= _old_displacement;
   }
+  incremental_displacement.update_ghost_values();
   compute_stress(incremental_displacement);
 
   _old_displacement.swap(displacement);
