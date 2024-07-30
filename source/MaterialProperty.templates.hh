@@ -230,16 +230,7 @@ void MaterialProperty<dim, p_order, MaterialStates,
 #ifdef ADAMANTINE_DEBUG
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
   {
-    auto state = _state;
-    Kokkos::parallel_for(
-        "adamantine::set_state_nan",
-        Kokkos::MDRangePolicy<Kokkos::DefaultHostExecutionSpace,
-                              Kokkos::Rank<2>>(
-            {{0, 0}}, {{MaterialStates::n_material_states,
-                        static_cast<int>(_dofs_map.size())}}),
-        KOKKOS_LAMBDA(int i, int j) {
-          state(i, j) = std::numeric_limits<double>::signaling_NaN();
-        });
+    Kokkos::deep_copy(_state, std::numeric_limits<double>::signaling_NaN());
   }
 #endif
 }
