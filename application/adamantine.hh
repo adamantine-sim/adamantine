@@ -309,16 +309,11 @@ void refine_and_transfer(
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::DoFHandler<dim> &dof_handler,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature
-    )
+    dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
-  std::cout << "Calling refine_and_transfer" << std::endl;
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
 #endif
-
-  // TODO transfer mechanical data if present, need to be aware that the data
-  // does not exist on some cells because it's liquid
 
   dealii::parallel::distributed::Triangulation<dim> &triangulation =
       dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
@@ -391,26 +386,26 @@ void refine_and_transfer(
   triangulation.prepare_coarsening_and_refinement();
   // Prepare for refinement of the solution
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      temperature_host;
+      solution_host;
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
   {
     // We need to apply the constraints before the mesh transfer
-    thermal_physics->get_affine_constraints().distribute(temperature);
+    thermal_physics->get_affine_constraints().distribute(solution);
     // We need to update the ghost values before we can do the interpolation on
     // the new mesh.
-    temperature.update_ghost_values();
-    solution_transfer.prepare_for_coarsening_and_refinement(temperature);
+    solution.update_ghost_values();
+    solution_transfer.prepare_for_coarsening_and_refinement(solution);
   }
   else
   {
-    temperature_host.reinit(temperature.get_partitioner());
-    temperature_host.import(temperature, dealii::VectorOperation::insert);
+    solution_host.reinit(solution.get_partitioner());
+    solution_host.import(solution, dealii::VectorOperation::insert);
     // We need to apply the constraints before the mesh transfer
-    thermal_physics->get_affine_constraints().distribute(temperature_host);
+    thermal_physics->get_affine_constraints().distribute(solution_host);
     // We need to update the ghost values before we can do the interpolation on
     // the new mesh.
-    temperature_host.update_ghost_values();
-    solution_transfer.prepare_for_coarsening_and_refinement(temperature_host);
+    solution_host.update_ghost_values();
+    solution_transfer.prepare_for_coarsening_and_refinement(solution_host);
   }
 
   dealii::parallel::distributed::CellDataTransfer<
@@ -422,11 +417,10 @@ void refine_and_transfer(
      {
  // Thermo-mechanical simulation
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-          temperature_host(temperature.get_partitioner());
-      temperature_host.import(temperature, dealii::VectorOperation::insert);
-      std::cout << "903 Initial setup mechanical and thermal" << std::endl;
+          solution_host(solution.get_partitioner());
+      solution_host.import(solution, dealii::VectorOperation::insert);
       mechanical_physics->prepare_transfer(thermal_physics->get_dof_handler(),
-                                     temperature_host, thermal_physics->get_has_melted_vector());
+                                     solution_host, thermal_physics->get_has_melted_vector());
      }
 
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -440,7 +434,7 @@ void refine_and_transfer(
 
   // Update the AffineConstraints and resize the solution
   thermal_physics->setup_dofs();
-  thermal_physics->initialize_dof_vector(0., temperature);
+  thermal_physics->initialize_dof_vector(0., solution);
 
   // Update MaterialProperty DoFHandler and resize the state vectors
   material_properties.reinit_dofs();
@@ -448,13 +442,13 @@ void refine_and_transfer(
   // Interpolate the solution
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
   {
-    solution_transfer.interpolate(temperature);
+    solution_transfer.interpolate(solution);
   }
   else
   {
-    temperature_host.reinit(temperature.get_partitioner());
-    solution_transfer.interpolate(temperature_host);
-    temperature.import(temperature_host, dealii::VectorOperation::insert);
+    solution_host.reinit(solution.get_partitioner());
+    solution_transfer.interpolate(solution_host);
+    solution.import(solution_host, dealii::VectorOperation::insert);
   }
 
   // Unpack the material state and repopulate the material state
@@ -589,7 +583,7 @@ void refine_mesh(
                                                 MemorySpaceType>> &mechanical_physics,
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature,
+    dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
     std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
@@ -664,7 +658,7 @@ void refine_mesh(
 
     // Execute the refinement and transfer the solution onto the new mesh.
     refine_and_transfer(thermal_physics, mechanical_physics, material_properties, dof_handler,
-                        temperature);
+                        solution);
   }
 
   // Recompute the inverse of the mass matrix
@@ -680,7 +674,7 @@ void refine_mesh(
                                                 MemorySpaceType>> &mechanical_physics,
 	adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
-    dealii::LA::distributed::Vector<double, MemorySpaceType> &temperature,
+    dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
     std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
@@ -694,35 +688,35 @@ void refine_mesh(
   case 1:
   {
     refine_mesh<dim, p_order, 1, MaterialStates>(
-        thermal_physics, mechanical_physics, material_properties, temperature, heat_sources, time,
+        thermal_physics, mechanical_physics, material_properties, solution, heat_sources, time,
         next_refinement_time, time_steps_refinement, refinement_database);
     break;
   }
   case 2:
   {
     refine_mesh<dim, p_order, 2, MaterialStates>(
-        thermal_physics, mechanical_physics, material_properties, temperature, heat_sources, time,
+        thermal_physics, mechanical_physics, material_properties, solution, heat_sources, time,
         next_refinement_time, time_steps_refinement, refinement_database);
     break;
   }
   case 3:
   {
     refine_mesh<dim, p_order, 3, MaterialStates>(
-        thermal_physics, mechanical_physics, material_properties, temperature, heat_sources, time,
+        thermal_physics, mechanical_physics, material_properties, solution, heat_sources, time,
         next_refinement_time, time_steps_refinement, refinement_database);
     break;
   }
   case 4:
   {
     refine_mesh<dim, p_order, 4, MaterialStates>(
-        thermal_physics, mechanical_physics, material_properties, temperature, heat_sources, time,
+        thermal_physics, mechanical_physics, material_properties, solution, heat_sources, time,
         next_refinement_time, time_steps_refinement, refinement_database);
     break;
   }
   case 5:
   {
     refine_mesh<dim, p_order, 5, MaterialStates>(
-        thermal_physics, mechanical_physics, material_properties, temperature, heat_sources, time,
+        thermal_physics, mechanical_physics, material_properties, solution, heat_sources, time,
         next_refinement_time, time_steps_refinement, refinement_database);
     break;
   }
