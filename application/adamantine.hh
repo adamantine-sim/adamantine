@@ -418,7 +418,7 @@ void refine_and_transfer(
       cell_data_trans(triangulation);
   cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
 
-    if (false)//use_mechanical_physics && use_thermal_physics)
+    if(thermal_physics && mechanical_physics)
      {
  // Thermo-mechanical simulation
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -426,8 +426,8 @@ void refine_and_transfer(
       temperature_host.import(temperature, dealii::VectorOperation::insert);
       std::cout << "903 Initial setup mechanical and thermal" << std::endl;
       mechanical_physics->prepare_transfer(thermal_physics->get_dof_handler(),
-                                     temperature_host);
-				     }
+                                     temperature_host, thermal_physics->get_has_melted_vector());
+     }
 
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_BEGIN("refine triangulation");
@@ -1139,15 +1139,16 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         if (use_thermal_physics)
         {
           // Update the material state
-          thermal_physics->set_state_to_material_properties();
+          /*thermal_physics->set_state_to_material_properties();
           dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
               temperature_host(temperature.get_partitioner());
           temperature_host.import(temperature, dealii::VectorOperation::insert);
                 std::cout << "1135 next setup mechanical and thermal" << std::endl;
 	  mechanical_physics->prepare_transfer(
               thermal_physics->get_dof_handler(), temperature_host,
-              thermal_physics->get_has_melted_vector());
+              thermal_physics->get_has_melted_vector());*/
 	   mechanical_physics->setup_dofs();
+	   mechanical_physics->complete_transfer();
         }
         else
         {
@@ -1806,9 +1807,10 @@ run_ensemble(MPI_Comm const &global_communicator,
       for (unsigned int member = 0; member < local_ensemble_size; ++member)
       {
 	      // FIXME
+	      std::unique_ptr<adamantine::MechanicalPhysics<dim, p_order, MaterialStates,
+                                                MemorySpaceType>> dummy;
         refine_mesh(thermal_physics_ensemble[member],
-			 std::unique_ptr<adamantine::MechanicalPhysics<dim, p_order, MaterialStates,
-                                                MemorySpaceType>>{},
+			dummy,
                     *material_properties_ensemble[member],
                     solution_augmented_ensemble[member].block(base_state),
                     heat_sources_ensemble[member], time, next_refinement_time,

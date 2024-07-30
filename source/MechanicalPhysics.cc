@@ -31,7 +31,7 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
                       std::vector<double> const &reference_temperatures)
     : _geometry(geometry), _material_properties(material_properties),
       _dof_handler(_geometry.get_triangulation()),
-	_solution_transfer(_dof_handler)
+      _solution_transfer(_dof_handler)
 {
   // Create the FECollection
   _fe_collection.push_back(
@@ -110,16 +110,24 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
 
   _mechanical_operator->reinit(_dof_handler, _affine_constraints, _q_collection,
                                body_forces);
+}
 
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalPhysics<dim, p_order, MaterialStates,
+                       MemorySpaceType>::complete_transfer()
+{
+  dealii::IndexSet locally_relevant_dofs;
+  dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler,
+                                                  locally_relevant_dofs);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      displacement(
-          _dof_handler.locally_owned_dofs(), locally_relevant_dofs,
-          _mechanical_operator->rhs().get_mpi_communicator());
+      displacement(_dof_handler.locally_owned_dofs(), locally_relevant_dofs,
+                   _mechanical_operator->rhs().get_mpi_communicator());
 
   displacement.zero_out_ghost_values();
   _solution_transfer.interpolate(displacement);
-displacement.update_ghost_values();
- std::swap(_old_displacement, displacement);
+  displacement.update_ghost_values();
+  std::swap(_old_displacement, displacement);
 }
 
 template <int dim, int p_order, typename MaterialStates,
@@ -151,7 +159,8 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   tmp_stress.reserve(n_old_active_cells);
   tmp_back_stress.reserve(_back_stress.size());
 
-_solution_transfer.prepare_for_coarsening_and_refinement(_old_displacement);
+  std::cout << "here!" << std::endl;
+  _solution_transfer.prepare_for_coarsening_and_refinement(_old_displacement);
 
   // Now we can update the fe indices and the plastic variables.
   for (auto const &cell :
@@ -245,7 +254,7 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
           _mechanical_operator->rhs().get_mpi_communicator());
   incremental_displacement = displacement;
   // TODO Remove this once we support refinement/material addition
-  if(_old_displacement.size() > 0)
+  if (_old_displacement.size() > 0)
     incremental_displacement -= _old_displacement;
   compute_stress(incremental_displacement);
 

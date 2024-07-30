@@ -13,9 +13,9 @@
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/symmetric_tensor.h>
+#include <deal.II/distributed/solution_transfer.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/hp/fe_collection.h>
-#include <deal.II/distributed/solution_transfer.h>
 
 namespace adamantine
 {
@@ -49,6 +49,8 @@ public:
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &temperature,
       std::vector<bool> const &has_melted);
+
+  void complete_transfer();
 
   /**
    * Solve the mechanical problem and return the displacement.
@@ -138,7 +140,9 @@ private:
    */
   std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> _back_stress;
 
-  dealii::parallel::distributed::SolutionTransfer<dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>> _solution_transfer;
+  dealii::parallel::distributed::SolutionTransfer<
+      dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
+      _solution_transfer;
 };
 
 template <int dim, int p_order, typename MaterialStates,
