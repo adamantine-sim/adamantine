@@ -285,7 +285,6 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
           _dof_handler.locally_owned_dofs(), locally_relevant_dofs,
           _mechanical_operator->rhs().get_mpi_communicator());
   incremental_displacement = displacement;
-  // TODO Remove this once we support refinement/material addition
   if (_old_displacement.size() > 0)
   {
     incremental_displacement -= _old_displacement;
