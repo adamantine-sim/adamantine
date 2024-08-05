@@ -420,8 +420,7 @@ void refine_and_transfer(
         solution_host(solution.get_partitioner());
     solution_host.import(solution, dealii::VectorOperation::insert);
     mechanical_physics->prepare_transfer(
-        thermal_physics->get_dof_handler(), solution_host,
-        thermal_physics->get_has_melted_vector());
+        thermal_physics->get_dof_handler());
   }
 
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -912,16 +911,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::ASSERT_THROW(
         restart == false,
         "Mechanical simulation cannot be restarted from a file");
-    if (use_thermal_physics)
-    {
-      mechanical_physics->setup_dofs();
-    }
-    else
-    {
-      std::cout << "910 Initial setup only mechanical" << std::endl;
-      // Mechanical only simulation
-      mechanical_physics->setup_dofs();
-    }
+    mechanical_physics->setup_dofs();
     displacement = mechanical_physics->solve();
   }
 
@@ -1136,24 +1126,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       // mechanics when outputting
       if (n_time_step % time_steps_output == 0)
       {
+        mechanical_physics->setup_dofs();
         if (use_thermal_physics)
         {
-          // Update the material state
-          /*thermal_physics->set_state_to_material_properties();
-          dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-              temperature_host(temperature.get_partitioner());
-          temperature_host.import(temperature, dealii::VectorOperation::insert);
-                std::cout << "1135 next setup mechanical and thermal" <<
-          std::endl; mechanical_physics->prepare_transfer(
-              thermal_physics->get_dof_handler(), temperature_host,
-              thermal_physics->get_has_melted_vector());*/
-          mechanical_physics->setup_dofs();
           mechanical_physics->complete_transfer();
-        }
-        else
-        {
-          std::cout << "1142 next setup mechanical and thermal" << std::endl;
-          mechanical_physics->setup_dofs();
         }
         displacement = mechanical_physics->solve();
       }
