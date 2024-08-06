@@ -311,6 +311,7 @@ void refine_and_transfer(
     dealii::DoFHandler<dim> &dof_handler,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
+	std::cout << "refine_and_transfer" << std::endl;
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
 #endif
@@ -416,9 +417,6 @@ void refine_and_transfer(
   if (mechanical_physics)
   {
     // Thermo-mechanical simulation
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-        solution_host(solution.get_partitioner());
-    solution_host.import(solution, dealii::VectorOperation::insert);
     mechanical_physics->prepare_transfer(
         thermal_physics->get_dof_handler());
   }
@@ -589,6 +587,7 @@ void refine_mesh(
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
 {
+	std::cout << "refine_mesh" << std::endl;
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
 #endif
@@ -1155,7 +1154,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         {
           mechanical_physics->setup_dofs();
         }
-        mechanical_physics->complete_transfer();
+	if ((n_time_step == 1) || ((n_time_step % time_steps_refinement) == 0))
+          mechanical_physics->complete_transfer();
         displacement = mechanical_physics->solve();
       }
     }

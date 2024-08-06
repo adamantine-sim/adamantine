@@ -149,7 +149,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates,
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
-    prepare_transfer(dealii::DoFHandler<dim> const &thermal_dof_handler)
+    prepare_transfer(std::optional<std::reference_wrapper<const dealii::DoFHandler<dim>>> thermal_dof_handler)
 {
   std::cout << "prepare_transfer" << std::endl;
   // Update the active fe indices, the plastic variables, and the displacement.
@@ -173,6 +173,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   _solution_transfer.prepare_for_coarsening_and_refinement(_old_displacement);
 
   // Now we can update the fe indices and the plastic variables.
+  if(thermal_dof_handler) {
   for (auto const &cell :
        dealii::filter_iterators(_dof_handler.active_cell_iterators(),
                                 dealii::IteratorFilters::LocallyOwnedCell()))
@@ -185,7 +186,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
       // Get the thermal DoFHandler cell iterator
       dealii::DoFCellAccessor<dim, dim, false> thermal_cell(
           &(_dof_handler.get_triangulation()), cell->level(), cell->index(),
-          &thermal_dof_handler);
+          &(thermal_dof_handler->get()));
       auto updated_fe_index = thermal_cell.active_fe_index();
       if (current_fe_index == updated_fe_index)
       {
@@ -221,6 +222,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
     {
       ++cell_id;
     }
+  }
   }
   _plastic_internal_variable.swap(tmp_plastic_internal_variable);
   _stress.swap(tmp_stress);
