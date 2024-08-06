@@ -38,21 +38,21 @@ public:
    * MechanicalOperator.
    */
   void
-  setup_dofs( 
-     std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
+  setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
                  std::vector<std::shared_ptr<BodyForce<dim>>>());
 
-  void
-  setup_dofs( dealii::DoFHandler<dim> const &thermal_dof_handler,
+  void setup_dofs(
+      dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &temperature,
-      std::vector<bool> const &has_melted, std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
-                 std::vector<std::shared_ptr<BodyForce<dim>>>());
+      std::vector<bool> const &has_melted,
+      std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
+          std::vector<std::shared_ptr<BodyForce<dim>>>());
 
   /**
    * Same as above when solving a thermo-mechanical problem.
    */
-  void prepare_transfer(dealii::DoFHandler<dim> const& thermal_dof_handler);
+  void prepare_transfer(dealii::DoFHandler<dim> const &thermal_dof_handler);
 
   void complete_transfer();
 

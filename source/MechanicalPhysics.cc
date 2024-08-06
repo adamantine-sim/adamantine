@@ -88,15 +88,16 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
-    setup_dofs(dealii::DoFHandler<dim> const &thermal_dof_handler,
+    setup_dofs(
+        dealii::DoFHandler<dim> const &thermal_dof_handler,
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
             &temperature,
-        std::vector<bool> const &has_melted
-,std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+        std::vector<bool> const &has_melted,
+        std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
-	  _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
+  _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
                                            has_melted);
-	  setup_dofs(body_forces);
+  setup_dofs(body_forces);
 }
 
 template <int dim, int p_order, typename MaterialStates,
@@ -131,6 +132,7 @@ template <int dim, int p_order, typename MaterialStates,
 void MechanicalPhysics<dim, p_order, MaterialStates,
                        MemorySpaceType>::complete_transfer()
 {
+	std::cout << "complete transfer" << std::endl;
   dealii::IndexSet locally_relevant_dofs;
   dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler,
                                                   locally_relevant_dofs);
@@ -147,9 +149,9 @@ void MechanicalPhysics<dim, p_order, MaterialStates,
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
-    prepare_transfer(dealii::DoFHandler<dim> const& thermal_dof_handler)
+    prepare_transfer(dealii::DoFHandler<dim> const &thermal_dof_handler)
 {
-  std::cout << "Calling setup_dofs" << std::endl;
+  std::cout << "prepare_transfer" << std::endl;
   // Update the active fe indices, the plastic variables, and the displacement.
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
   unsigned int cell_id = 0;

@@ -413,7 +413,7 @@ void refine_and_transfer(
       cell_data_trans(triangulation);
   cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
 
-  if (thermal_physics && mechanical_physics)
+  if (mechanical_physics)
   {
     // Thermo-mechanical simulation
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -911,7 +911,21 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::ASSERT_THROW(
         restart == false,
         "Mechanical simulation cannot be restarted from a file");
-    mechanical_physics->setup_dofs();
+       if (use_thermal_physics)
+    {
+      // Thermo-mechanical simulation
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+          temperature_host(temperature.get_partitioner());
+      temperature_host.import(temperature, dealii::VectorOperation::insert);
+      mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
+                                     temperature_host,
+                                     thermal_physics->get_has_melted_vector());
+    }
+    else
+    {
+      // Mechanical only simulation
+      mechanical_physics->setup_dofs();
+    }
     displacement = mechanical_physics->solve();
   }
 
@@ -1126,11 +1140,22 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       // mechanics when outputting
       if (n_time_step % time_steps_output == 0)
       {
-        mechanical_physics->setup_dofs();
-        if (use_thermal_physics)
-        {
-          mechanical_physics->complete_transfer();
+         if (use_thermal_physics)
+         {
+          // Update the material state
+          thermal_physics->set_state_to_material_properties();
+          dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+              temperature_host(temperature.get_partitioner());
+          temperature_host.import(temperature, dealii::VectorOperation::insert);
+          mechanical_physics->setup_dofs(
+              thermal_physics->get_dof_handler(), temperature_host,
+              thermal_physics->get_has_melted_vector());
         }
+        else
+        {
+          mechanical_physics->setup_dofs();
+        }
+        mechanical_physics->complete_transfer();
         displacement = mechanical_physics->solve();
       }
     }
