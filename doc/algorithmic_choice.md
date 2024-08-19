@@ -36,3 +36,8 @@ material, we replace the `FE_Nothing` associated with a cell with a regular fini
 element, i.e., we activate an element. Using this technique, the addition of 
 material can be done cell-wise. By coupling element activation and AMR, we can
 add arbitrary small amount of material.
+
+## MPI support
+talk about checkpoint restart
+
+## GPU Support
