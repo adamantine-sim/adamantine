@@ -36,6 +36,19 @@ color_scheme: light
 compress_html:
   blanklines: true
 
+# Aux links for the upper right navigation
+aux_links:
+  "adamantine on GitHub":
+     - "https://github.com/adamantine-sim/adamantine"
+# External navigation links
+nav_external_links:
+  - title: adamatine on GitHub
+    url: https://github.com/adamantine-sim/adamantine
+
+# Enable or disable the side/mobile menu globally
+# Nav menu can also be selectively enabled or disabled using page variables or the minimal layout
+nav_enabled: true
+
 # Exclude from processing.
 # The following items will not be processed, by default.
 # Any item listed under the `exclude:` key here will be automatically added to
