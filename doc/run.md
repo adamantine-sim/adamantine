@@ -19,3 +19,6 @@ when using multithreading. To deactivate multithreading use
 export DEAL_II_NUM_THREADS=1
 ```
 If you use our Docker image, the variable is already set.
+
+In the following sections, we detail the different input files using but
+*adamantine*.
