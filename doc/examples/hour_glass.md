@@ -54,5 +54,4 @@ The domain is an hour glass with an hole in the center.
 
 This example is a purely thermal problem. By changing the
 `time_stepping.duration` parameter, you can choose how much of the manufacturing
-process is simulated. To build the entire hour glass, adjust the `duration` to
-40610 seconds.
+process is simulated.
