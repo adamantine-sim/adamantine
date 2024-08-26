@@ -16,7 +16,7 @@ Installing *adamantine* requires:
 * Trilinos: 14.4.0 or later
 * deal.II: 9.5 or later
 
-You need to compile deal.II with MPI, P4EST, and ArborX support. If you want to use Exodus file, you also need Trilinos with SEACAS support.
+You need to compile ArborX with MPI support and deal.II with MPI, P4EST, ArborX, and Trilinos support. If you want to use Exodus file, you also need Trilinos with SEACAS support.
 *adamantine* also optionally supports profiling through [Caliper](https://github.com/llnl/Caliper).
 
 An example on how to install all the dependencies can be found in
