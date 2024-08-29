@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 210 297"
+   version="1.1"
+   id="svg5316"
+   inkscape:version="1.1.2 (0a00cf5339, 2022-02-04)"
+   sodipodi:docname="adamantine_logo.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview5318"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="1.2316035"
+     inkscape:cx="224.0981"
+     inkscape:cy="407.59871"
+     inkscape:window-width="1916"
+     inkscape:window-height="1161"
+     inkscape:window-x="0"
+     inkscape:window-y="18"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs5313">
+    <filter
+       inkscape:label="Film Grain"
+       inkscape:menu="Image Effects"
+       inkscape:menu-tooltip="Adds a small scale graininess"
+       style="color-interpolation-filters:sRGB"
+       id="filter1917"
+       x="-0.0045378649"
+       y="-0.0060271655"
+       width="1.0090598"
+       height="1.0090598">
+      <feTurbulence
+         type="fractalNoise"
+         numOctaves="3"
+         baseFrequency="0.0060000000000000001 1"
+         seed="0"
+         result="result0"
+         id="feTurbulence1907" />
+      <feColorMatrix
+         result="result4"
+         values="0"
+         type="saturate"
+         id="feColorMatrix1909" />
+      <feComposite
+         in="SourceGraphic"
+         in2="result4"
+         operator="arithmetic"
+         k1="0.25"
+         k2="0.49520803"
+         k3="0.5"
+         result="result2"
+         id="feComposite1911"
+         k4="0" />
+      <feBlend
+         result="result5"
+         mode="normal"
+         in="result2"
+         in2="SourceGraphic"
+         id="feBlend1913" />
+      <feComposite
+         in="result5"
+         in2="SourceGraphic"
+         operator="in"
+         result="result3"
+         id="feComposite1915" />
+    </filter>
+    <filter
+       inkscape:label="Film Grain"
+       inkscape:menu="Image Effects"
+       inkscape:menu-tooltip="Adds a small scale graininess"
+       style="color-interpolation-filters:sRGB"
+       id="filter4161"
+       x="-0.0045378637"
+       y="-0.0060271635"
+       width="1.0090598"
+       height="1.0090598">
+      <feTurbulence
+         type="fractalNoise"
+         numOctaves="3"
+         baseFrequency="0.0060000000000000001 1"
+         seed="0"
+         result="result0"
+         id="feTurbulence4151" />
+      <feColorMatrix
+         result="result4"
+         values="0"
+         type="saturate"
+         id="feColorMatrix4153" />
+      <feComposite
+         in="SourceGraphic"
+         in2="result4"
+         operator="arithmetic"
+         k1="0.25"
+         k2="0.49520803"
+         k3="0.5"
+         result="result2"
+         id="feComposite4155"
+         k4="0" />
+      <feBlend
+         result="result5"
+         mode="normal"
+         in="result2"
+         in2="SourceGraphic"
+         id="feBlend4157" />
+      <feComposite
+         in="result5"
+         in2="SourceGraphic"
+         operator="in"
+         result="result3"
+         id="feComposite4159" />
+    </filter>
+    <filter
+       inkscape:label="Film Grain"
+       inkscape:menu="Image Effects"
+       inkscape:menu-tooltip="Adds a small scale graininess"
+       style="color-interpolation-filters:sRGB"
+       id="filter4173"
+       x="-0.0045378637"
+       y="-0.0060271635"
+       width="1.0090598"
+       height="1.0090598">
+      <feTurbulence
+         type="fractalNoise"
+         numOctaves="3"
+         baseFrequency="0.0060000000000000001 1"
+         seed="0"
+         result="result0"
+         id="feTurbulence4163" />
+      <feColorMatrix
+         result="result4"
+         values="0"
+         type="saturate"
+         id="feColorMatrix4165" />
+      <feComposite
+         in="SourceGraphic"
+         in2="result4"
+         operator="arithmetic"
+         k1="0.25"
+         k2="0.49520803"
+         k3="0.5"
+         result="result2"
+         id="feComposite4167"
+         k4="0" />
+      <feBlend
+         result="result5"
+         mode="normal"
+         in="result2"
+         in2="SourceGraphic"
+         id="feBlend4169" />
+      <feComposite
+         in="result5"
+         in2="SourceGraphic"
+         operator="in"
+         result="result3"
+         id="feComposite4171" />
+    </filter>
+    <filter
+       inkscape:label="Film Grain"
+       inkscape:menu="Image Effects"
+       inkscape:menu-tooltip="Adds a small scale graininess"
+       style="color-interpolation-filters:sRGB"
+       id="filter4185"
+       x="-0.0045378637"
+       y="-0.0060271635"
+       width="1.0090598"
+       height="1.0090598">
+      <feTurbulence
+         type="fractalNoise"
+         numOctaves="3"
+         baseFrequency="0.0060000000000000001 1"
+         seed="0"
+         result="result0"
+         id="feTurbulence4175" />
+      <feColorMatrix
+         result="result4"
+         values="0"
+         type="saturate"
+         id="feColorMatrix4177" />
+      <feComposite
+         in="SourceGraphic"
+         in2="result4"
+         operator="arithmetic"
+         k1="0.25"
+         k2="0.49520803"
+         k3="0.5"
+         result="result2"
+         id="feComposite4179"
+         k4="0" />
+      <feBlend
+         result="result5"
+         mode="normal"
+         in="result2"
+         in2="SourceGraphic"
+         id="feBlend4181" />
+      <feComposite
+         in="result5"
+         in2="SourceGraphic"
+         operator="in"
+         result="result3"
+         id="feComposite4183" />
+    </filter>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       id="path31"
+       style="display:inline;mix-blend-mode:normal;fill:#1a1a1a;fill-opacity:1;stroke:#1a1a1a;stroke-width:0.99846;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0;filter:url(#filter1917)"
+       inkscape:transform-center-x="-2.1992885"
+       inkscape:transform-center-y="-0.76174661"
+       d="m -274.17518,518.40314 -191.07388,0.53192 95.71941,-165.41685 z"
+       sodipodi:nodetypes="cccc"
+       transform="matrix(-0.24921915,0,0,-0.19128041,3.531764,250.36054)" />
+    <path
+       id="rect12075"
+       style="display:inline;fill:#4d4d4d;stroke-width:0.286911;filter:url(#filter1917)"
+       d="m 47.853648,119.46287 95.193292,0.0734 -23.59095,31.61941 -47.647508,0.0294 z"
+       sodipodi:nodetypes="ccccc" />
+    <path
+       id="rect14268"
+       style="display:inline;fill:#808080;stroke-width:0.264583;filter:url(#filter1917)"
+       d="m 26.764398,90.419037 137.742762,-0.0239 -21.46022,29.141153 -95.187552,-0.0312 z"
+       sodipodi:nodetypes="ccccc" />
+    <path
+       id="rect14268-3"
+       style="display:inline;fill:#b3b3b3;stroke-width:0.264583;filter:url(#filter1917)"
+       d="m 164.70835,90.341157 -137.742742,0.0239 20.435893,-29.112876 96.211619,0.003 z"
+       sodipodi:nodetypes="ccccc"
+       inkscape:export-filename="/home/bruno/Desktop/adamantine_logo.png"
+       inkscape:export-xdpi="96"
+       inkscape:export-ydpi="96" />
+    <path
+       id="path14274"
+       style="opacity:0.5;mix-blend-mode:lighten;fill:#bfbfbf;fill-opacity:0.75"
+       transform="scale(0.26458333)"
+       d="m 248.6599,341.92097 -146.74264,-0.38374 75.89199,-108.33066 150.12889,-0.5377 z"
+       sodipodi:nodetypes="ccccc" />
+    <path
+       id="path14505"
+       style="opacity:0.5;fill:#0d0d0d;fill-opacity:0.745098;stroke-width:0.264583"
+       d="m 125.39639,90.548366 38.82566,-0.101531 -20.07976,-28.662487 -39.7216,-0.142267 z"
+       sodipodi:nodetypes="ccccc" />
+    <path
+       id="rect14647"
+       style="opacity:0.5;mix-blend-mode:lighten;fill:#0c0c0c;fill-opacity:0.75;stroke-width:0.264583"
+       d="m 86.766965,61.560304 17.653725,0.08178 20.9757,28.906285 -59.605126,-0.08178 z"
+       sodipodi:nodetypes="ccccc" />
+    <path
+       id="path22607"
+       style="display:inline;opacity:0.5;mix-blend-mode:lighten;fill:#656565;fill-opacity:0.745098"
+       inkscape:transform-center-y="-1.1384574e-06"
+       transform="scale(0.26458333)"
+       d="M 248.6599,341.92097 361.41971,690.66873 101.91726,341.53723 Z"
+       sodipodi:nodetypes="cccc" />
+    <path
+       id="path22751"
+       style="display:inline;opacity:0.5;mix-blend-mode:darken;fill:#0d0d0d;fill-opacity:0.745098;stroke-width:0.264583"
+       inkscape:transform-center-y="-2.2097808e-06"
+       d="M 125.39639,90.548369 95.562024,182.82121 164.22205,90.446838 Z"
+       sodipodi:nodetypes="cccc" />
+    <path
+       id="path23200"
+       style="display:inline;opacity:0.5;fill:#494949;fill-opacity:0.745098"
+       inkscape:transform-center-x="-0.52839736"
+       inkscape:transform-center-y="-9.2355854"
+       transform="matrix(0.26458333,0,0,0.26458333,73.960325,96.609533)"
+       d="M 81.884616,325.53033 -30.87519,-23.217427 l 225.27922,0.30909 z"
+       sodipodi:nodetypes="cccc" />
+  </g>
+</svg>
