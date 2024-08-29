@@ -26,3 +26,6 @@ RUN cd /home && git clone https://github.com/adamantine-sim/adamantine && \
       -DADAMANTINE_ENABLE_CALIPER=ON \
     ../ && \
     make && mv bin ../ && cd ../ && rm -r build
+
+# Make adamantine available as executable anywhere in container
+RUN ln -s /home/adamantine/bin/adamantine /bin/adamantine
