@@ -132,7 +132,7 @@ RUN export P4EST_VERSION=2.3.3 && \
 ENV P4EST_DIR=${INSTALL_DIR}/p4est
 
 RUN export HDF5_VERSION=1.12.0 && \
-    export HDF5_URL=http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.12/hdf5-${HDF5_VERSION}/src/hdf5-${HDF5_VERSION}.tar.bz2 && \
+    export HDF5_URL=https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.12/hdf5-${HDF5_VERSION}/src/hdf5-${HDF5_VERSION}.tar.bz2 && \
     export HDF5_MD5=1fa68c4b11b6ef7a9d72ffa55995f898 && \
     export HDF5_ARCHIVE=${ARCHIVE_DIR}/hdf5.tar.bz2 && \
     export HDF5_SOURCE_DIR=${SOURCE_DIR}/hdf5 && \
