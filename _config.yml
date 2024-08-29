@@ -36,6 +36,10 @@ color_scheme: light
 compress_html:
   blanklines: true
 
+
+logo: "https://raw.githubusercontent.com/adamantine-sim/adamantine/master/doc/logo/adamantine_wordmark.png"
+favicon_ico: "https://raw.githubusercontent.com/adamantine-sim/adamantine/master/doc/logo/adamantine_logo.png"
+
 # Aux links for the upper right navigation
 aux_links:
   "adamantine on GitHub":
