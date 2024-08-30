@@ -1,4 +1,4 @@
-![image](doc/logo/adamantine_wordmark.png)
+aa![image](doc/logo/adamantine_wordmark.png)
 
 `adamantine` stands for *AD*ditive (*A*) *MAN*unifac*T*uring s*I*mulator (*NE*).
 It is an open-source sofware to simulate heat transfer for additive manufacturing.
