@@ -20,7 +20,8 @@ You need to compile ArborX with MPI support and deal.II with MPI, P4EST, ArborX,
 *adamantine* also optionally supports profiling through [Caliper](https://github.com/llnl/Caliper).
 
 An example on how to install all the dependencies can be found in
-`ci/Dockerfile`.
+`ci/Dockerfile`. They can also be installed through
+[spack](https://github.com/spack/spack).
 
 To configure *adamantine* use:
 ```CMake
@@ -41,12 +42,23 @@ The list of configuration options is:
 * ADAMANTINE\_ENABLE\_TESTS=ON/OFF
 * BOOST\_DIR=/path/to/boost
 * CMAKE\_BUILD\_TYPE=Debug/Release
-* CALIPER\_DIR=/path/to/caliper (optional)
+* CALIPER\_DIR=/path/to/caliper (only if you enabled CALIPER)
 * DEAL\_II\_DIR=/path/to/dealii
 
 ## Docker
-You can pull Docker image containing *adamantine* using
+You can pull the [Docker](https://en.wikipedia.org/wiki/Docker_(software) image containing the version of *adamantine* on master using:
 ```
 docker pull rombur/adamantine:latest
 ```
-*adamantine* can be found in `/home/adamantine/bin`
+The 1.0 release version is available using:
+```
+docker pull rombur/adamantine:1.0
+```
+To start an interactive container use:
+```
+docker run --rm -it rombur/adamantine:latest bash
+```
+You will find *adamantine* in `/home/adamantine/bin`. More options of `docker
+run` can be found in the Docker [documentation](https://docs.docker.com/reference/cli/docker/container/run/)
+
+The Docker images cannot use GPUs.

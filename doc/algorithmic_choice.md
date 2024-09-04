@@ -38,6 +38,36 @@ material can be done cell-wise. By coupling element activation and AMR, we can
 add arbitrary small amount of material.
 
 ## MPI support
-talk about checkpoint restart
+While mechanical and thermomechanical simulations are limited to serial
+execution, thermal and EnKF (see [Data Assimilation section]({{site.baseurl}}/data-assimilation)) 
+ensemble simulations can use MPI. Thermal simulations can be performed using an 
+arbitrary number of processors. MPI support for mechanical and thermomechanical 
+simulations are a subject of ongoing work.
+
+### Thermal simulation
+The mesh is partitioned using [p4est](https://www.p4est.org/). The partitioning
+takes into account that there is nothing to do on inactive cells. It tries to
+distribute evenly the active cells between all the processors. If at the beginning
+of the simulation very few cells are active, each processor will own a very
+small number of cells. In this case, the communication cost can be important
+compared to the computation cost. Once more cells are activated this ceases to
+be a problem.
+
+### EnKF
+For EnKF ensemble simulations, the partitioning scheme works as follows:
+* If the number of processors (Nproc) is less than or equal to the number of EnKF 
+    ensemble members (N), adamantine distributes the simulations evenly across the
+    processors. All processors except the first will handle the same number of 
+    simulations. The first processor might take on a larger workload if a perfect 
+    split is not possible.
+* *adamantine* can leverage more processors than there are simulations, but
+    only if Nproc is a multiple of N. This ensures that all the simulations
+    are partitioned in the same way.
+
+### Checkpoint/restart
+Thermal simulations and EnKF periodically write to files the current states of
+the simulation and restart from these files later on. The number of processors
+used by the restarted simulation does not have to be the same as the number of
+processors used initially to checkpoint the simulation.
 
 ## GPU Support
