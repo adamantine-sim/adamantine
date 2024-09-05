@@ -39,7 +39,7 @@ add arbitrary small amount of material.
 
 ## MPI support
 While mechanical and thermomechanical simulations are limited to serial
-execution, thermal and EnKF (see [Data Assimilation section]({{site.baseurl}}/data-assimilation)) 
+execution, thermal and EnKF (see [Data Assimilation section]({{site.baseurl}}/doc/data_assimilation)) 
 ensemble simulations can use MPI. Thermal simulations can be performed using an 
 arbitrary number of processors. MPI support for mechanical and thermomechanical 
 simulations are a subject of ongoing work.
