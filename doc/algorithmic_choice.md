@@ -71,3 +71,6 @@ used by the restarted simulation does not have to be the same as the number of
 processors used initially to checkpoint the simulation.
 
 ## GPU Support
+There is partial support for GPU-accelerated calculations through the use of 
+the Kokkos library. Part of the thermal simulation can be performed on the GPU. 
+Performing the entire computation on the GPU is the subject of ongoing work.
