@@ -2013,118 +2013,130 @@ run_ensemble(MPI_Comm const &global_communicator,
                   material_properties_ensemble[0]->get_dof_handler());
         }
 
-        // NOTE: As is, this updates the dof mapping and covariance sparsity
-        // pattern for every data assimilation operation. Strictly, this is
-        // only necessary if the mesh changes (both updates) or the locations
-        // of observations changes (the dof mapping). In practice, changes to
-        // the mesh due to deposition likely cause the updates to be required
-        // for each operation. If this is a bottleneck, it can be fixed in the
-        // future.
-        timers[adamantine::da_dof_mapping].start();
-#ifdef ADAMANTINE_WITH_CALIPER
-        CALI_MARK_BEGIN("da_dof_mapping");
-#endif
-        data_assimilator.update_dof_mapping<dim>(expt_to_dof_mapping);
-#ifdef ADAMANTINE_WITH_CALIPER
-        CALI_MARK_END("da_dof_mapping");
-#endif
-        timers[adamantine::da_dof_mapping].stop();
-
-        timers[adamantine::da_covariance_sparsity].start();
-#ifdef ADAMANTINE_WITH_CALIPER
-        CALI_MARK_BEGIN("da_covariance_sparsity");
-#endif
-        data_assimilator.update_covariance_sparsity_pattern<dim>(
-            thermal_dof_handler,
-            solution_augmented_ensemble[0].block(augmented_state).size());
-#ifdef ADAMANTINE_WITH_CALIPER
-        CALI_MARK_END("da_covariance_sparsity");
-#endif
-        timers[adamantine::da_covariance_sparsity].start();
-
-        unsigned int experimental_data_size = points_values.values.size();
-
-        // Create the R matrix (the observation covariance matrix)
-        // PropertyTreeInput experiment.estimated_uncertainty
-        timers[adamantine::da_obs_covariance].start();
-#ifdef ADAMANTINE_WITH_CALIPER
-        CALI_MARK_BEGIN("da_obs_covariance");
-#endif
-        double variance_entries = experiment_optional_database.get().get(
-            "estimated_uncertainty", 0.0);
-        variance_entries = variance_entries * variance_entries;
-
-        dealii::SparsityPattern pattern(experimental_data_size,
-                                        experimental_data_size, 1);
-        for (unsigned int i = 0; i < experimental_data_size; ++i)
+        // Only continue data assimilation if some of the observations are mapped to DOFs
+        if (expt_to_dof_mapping.first.size() > 0)
         {
-          pattern.add(i, i);
-        }
-        pattern.compress();
+          // NOTE: As is, this updates the dof mapping and covariance sparsity
+          // pattern for every data assimilation operation. Strictly, this is
+          // only necessary if the mesh changes (both updates) or the locations
+          // of observations changes (the dof mapping). In practice, changes to
+          // the mesh due to deposition likely cause the updates to be required
+          // for each operation. If this is a bottleneck, it can be fixed in the
+          // future.
+          timers[adamantine::da_dof_mapping].start();
+  #ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_BEGIN("da_dof_mapping");
+  #endif
+          data_assimilator.update_dof_mapping<dim>(expt_to_dof_mapping);
+  #ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_END("da_dof_mapping");
+  #endif
+          timers[adamantine::da_dof_mapping].stop();
 
-        dealii::SparseMatrix<double> R(pattern);
-        for (unsigned int i = 0; i < experimental_data_size; ++i)
-        {
-          R.add(i, i, variance_entries);
-        }
-#ifdef ADAMANTINE_WITH_CALIPER
-        CALI_MARK_END("da_obs_covariance");
-#endif
-        timers[adamantine::da_obs_covariance].stop();
+          timers[adamantine::da_covariance_sparsity].start();
+  #ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_BEGIN("da_covariance_sparsity");
+  #endif
+          data_assimilator.update_covariance_sparsity_pattern<dim>(
+              thermal_dof_handler,
+              solution_augmented_ensemble[0].block(augmented_state).size());
+  #ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_END("da_covariance_sparsity");
+  #endif
+          timers[adamantine::da_covariance_sparsity].start();
 
-        // Perform data assimilation to update the augmented state ensemble
-        timers[adamantine::da_update_ensemble].start();
-#ifdef ADAMANTINE_WITH_CALIPER
-        CALI_MARK_BEGIN("da_update_ensemble");
-#endif
-        data_assimilator.update_ensemble(solution_augmented_ensemble,
-                                         points_values.values, R);
-#ifdef ADAMANTINE_WITH_CALIPER
-        CALI_MARK_END("da_update_ensemble");
-#endif
-        timers[adamantine::da_update_ensemble].stop();
+          unsigned int experimental_data_size = points_values.values.size();
 
-        // Extract the parameters from the augmented state
-        for (unsigned int member = 0; member < local_ensemble_size; ++member)
-        {
-          for (unsigned int index = 0;
-               index < augmented_state_parameters.size(); ++index)
+          // Create the R matrix (the observation covariance matrix)
+          // PropertyTreeInput experiment.estimated_uncertainty
+          timers[adamantine::da_obs_covariance].start();
+  #ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_BEGIN("da_obs_covariance");
+  #endif
+          double variance_entries = experiment_optional_database.get().get(
+              "estimated_uncertainty", 0.0);
+          variance_entries = variance_entries * variance_entries;
+
+          dealii::SparsityPattern pattern(experimental_data_size,
+                                          experimental_data_size, 1);
+          for (unsigned int i = 0; i < experimental_data_size; ++i)
           {
-            // FIXME: Need to consider how we want to generalize this. It
-            // could get unwieldy if we want to specify every parameter of an
-            // arbitrary number of beams.
-            if (augmented_state_parameters.at(index) ==
-                adamantine::AugmentedStateParameters::beam_0_absorption)
+            pattern.add(i, i);
+          }
+          pattern.compress();
+
+          dealii::SparseMatrix<double> R(pattern);
+          for (unsigned int i = 0; i < experimental_data_size; ++i)
+          {
+            R.add(i, i, variance_entries);
+          }
+  #ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_END("da_obs_covariance");
+  #endif
+          timers[adamantine::da_obs_covariance].stop();
+
+          // Perform data assimilation to update the augmented state ensemble
+          timers[adamantine::da_update_ensemble].start();
+  #ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_BEGIN("da_update_ensemble");
+  #endif
+          data_assimilator.update_ensemble(solution_augmented_ensemble,
+                                          points_values.values, R);
+  #ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_END("da_update_ensemble");
+  #endif
+          timers[adamantine::da_update_ensemble].stop();
+
+          // Extract the parameters from the augmented state
+          for (unsigned int member = 0; member < local_ensemble_size; ++member)
+          {
+            for (unsigned int index = 0;
+                index < augmented_state_parameters.size(); ++index)
             {
-              database_ensemble[member].put(
-                  "sources.beam_0.absorption_efficiency",
-                  solution_augmented_ensemble[member].block(
-                      augmented_state)[index]);
+              // FIXME: Need to consider how we want to generalize this. It
+              // could get unwieldy if we want to specify every parameter of an
+              // arbitrary number of beams.
+              if (augmented_state_parameters.at(index) ==
+                  adamantine::AugmentedStateParameters::beam_0_absorption)
+              {
+                database_ensemble[member].put(
+                    "sources.beam_0.absorption_efficiency",
+                    solution_augmented_ensemble[member].block(
+                        augmented_state)[index]);
+              }
+              else if (augmented_state_parameters.at(index) ==
+                      adamantine::AugmentedStateParameters::beam_0_max_power)
+              {
+                database_ensemble[member].put(
+                    "sources.beam_0.max_power",
+                    solution_augmented_ensemble[member].block(
+                        augmented_state)[index]);
+              }
             }
-            else if (augmented_state_parameters.at(index) ==
-                     adamantine::AugmentedStateParameters::beam_0_max_power)
+          }
+
+          if (global_rank == 0)
+            std::cout << "Done." << std::endl;
+
+          // Print out the augmented parameters
+          if (solution_augmented_ensemble[0].block(1).size() > 0)
+          {
+            for (unsigned int member = 0; member < local_ensemble_size; ++member)
             {
-              database_ensemble[member].put(
-                  "sources.beam_0.max_power",
-                  solution_augmented_ensemble[member].block(
-                      augmented_state)[index]);
+              std::cout << "Rank: " << global_rank
+                        << " | New parameters for member "
+                        << first_local_member + member << ": ";
+              for (auto param : solution_augmented_ensemble[member].block(1))
+                std::cout << param << " ";
+
+              std::cout << std::endl;
             }
           }
         }
-
-        if (global_rank == 0)
-          std::cout << "Done." << std::endl;
-
-        // Print out the augmented parameters
-        for (unsigned int member = 0; member < local_ensemble_size; ++member)
+        else 
         {
-          std::cout << "Rank: " << global_rank
-                    << " | New parameters for member "
-                    << first_local_member + member << ": ";
-          for (auto param : solution_augmented_ensemble[member].block(1))
-            std::cout << param << " ";
-
-          std::cout << std::endl;
+          if (global_rank == 0)
+            std::cout << "WARNING: NO EXPERIMENTAL DATA POINTS MAPPED ONTO THE SIMULATION MESH. SKIPPING DATA ASSIMILATION OPERATION." << std::endl;
         }
       }
 
