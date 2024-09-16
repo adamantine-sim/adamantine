@@ -351,7 +351,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   unsigned int constexpr solid =
       static_cast<unsigned int>(MaterialStates::State::solid);
 
-  if constexpr (std::is_same_v<MaterialStates, SolidLiquid>)
+  if constexpr (std::is_same_v<MaterialStates, Solid>)
   {
     // We just nee to fill state_ratios with 1.
     for (unsigned int n = 0; n < face_state_ratios[solid].size(); ++n)
