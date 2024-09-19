@@ -471,6 +471,7 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
         _thermal_operator, jfnk);
   }
 
+  std::cout << "Setting active fe_indices thermal 0" << std::endl;
   // Set material on part of the domain
   // PropertyTreeInput geometry.material_height
   double const material_height = database.get("geometry.material_height", 1e9);
@@ -521,6 +522,7 @@ template <int dim, int p_order, int fe_degree, typename MaterialStates,
 void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
                     QuadratureType>::setup_dofs()
 {
+  std::cout << "distribute_dofs thermal" << std::endl;
   _dof_handler.distribute_dofs(_fe_collection);
   dealii::IndexSet locally_relevant_dofs;
   dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler,
@@ -705,6 +707,7 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
   }
 
   // Activate elements by updating the fe_index
+  std::cout << "Setting future fe_indices thermal 1" << std::endl;
   for (unsigned int i = activation_start; i < activation_end; ++i)
   {
     for (auto const &cell : elements_to_activate[i])
@@ -1016,6 +1019,9 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
 
   unsigned int cell_id = 0;
   std::vector<std::array<double, n_material_states>> cell_state;
+
+  std::cout << "Setting active fe_indices thermal 1" << std::endl;
+
   for (auto const &cell : _dof_handler.active_cell_iterators())
   {
     if (cell->is_locally_owned())

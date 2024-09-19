@@ -210,6 +210,7 @@ template <int dim, int p_order, typename MaterialStates,
 void MaterialProperty<dim, p_order, MaterialStates,
                       MemorySpaceType>::reinit_dofs()
 {
+  std::cout << "Distribute dofs Material" << std::endl;
   _mp_dof_handler.distribute_dofs(_fe);
 
   // Initialize _dofs_map

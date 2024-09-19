@@ -44,22 +44,10 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
 
   // Solve the mechanical problem only on the part of the domain that has solid
   // material.
-  unsigned int n_local_cells = 0;
-  for (auto const &cell :
-       dealii::filter_iterators(_dof_handler.active_cell_iterators(),
-                                dealii::IteratorFilters::LocallyOwnedCell()))
-  {
-    if (_material_properties.get_state_ratio(
-            cell, MaterialStates::State::solid) > 0.99)
-    {
-      cell->set_active_fe_index(0);
-      ++n_local_cells;
-    }
-    else
-    {
-      cell->set_active_fe_index(1);
-    }
-  }
+
+  std::cout << "Setting active fe_indices mechanical 0" << std::endl;
+
+  unsigned int n_local_cells = set_active_fe_indices();
 
   // Create the mechanical operator
   _mechanical_operator = std::make_unique<
@@ -87,8 +75,24 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
+    setup_dofs(
+        dealii::DoFHandler<dim> const &thermal_dof_handler,
+        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+            &temperature,
+        std::vector<bool> const &has_melted,
+        std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+{
+  _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
+                                           has_melted);
+  setup_dofs(body_forces);
+}
+
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
     setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
+  std::cout << "Distribute dofs mechanical" << std::endl;
   _dof_handler.distribute_dofs(_fe_collection);
   dealii::IndexSet locally_relevant_dofs;
   dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler,
@@ -112,16 +116,73 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
 
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
-    setup_dofs(
-        dealii::DoFHandler<dim> const &thermal_dof_handler,
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &temperature,
-        std::vector<bool> const &has_melted,
-        std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+unsigned int MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
+    set_active_fe_indices(
+        std::optional<std::reference_wrapper<dealii::DoFHandler<dim> const>>
+            thermal_dof_handler)
+
 {
-  _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
-                                           has_melted);
+  unsigned int n_local_cells = 0;
+  for (auto const &cell :
+       dealii::filter_iterators(_dof_handler.active_cell_iterators(),
+                                dealii::IteratorFilters::LocallyOwnedCell()))
+  {
+    auto current_fe_index = cell->future_fe_index();
+    if (_material_properties.get_state_ratio(
+            cell, MaterialStates::State::solid) > 0.99)
+    {
+      // Only enable the cell if it is also enabled for the thermal simulation
+      // Get the thermal DoFHandler cell iterator
+      if (thermal_dof_handler)
+      {
+        dealii::DoFCellAccessor<dim, dim, false> thermal_cell(
+            &(_dof_handler.get_triangulation()), cell->level(), cell->index(),
+            &(thermal_dof_handler->get()));
+        cell->set_active_fe_index(thermal_cell.active_fe_index());
+      }
+      else
+      {
+        cell->set_active_fe_index(0);
+      }
+      if (cell->active_fe_index() == 0)
+        ++n_local_cells;
+    }
+    else
+    {
+      // The cell is liquid. We don't need to save the plastic variables.
+      cell->set_active_fe_index(1);
+    }
+  }
+  return n_local_cells;
+}
+
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalPhysics<dim, p_order, MaterialStates,
+                       MemorySpaceType>::complete_transfer()
+{
+  std::cout << "complete transfer" << std::endl;
+  dealii::IndexSet locally_relevant_dofs;
+  dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler,
+                                                  locally_relevant_dofs);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      displacement(_dof_handler.locally_owned_dofs(), locally_relevant_dofs,
+                   _mechanical_operator->rhs().get_mpi_communicator());
+
+  displacement.zero_out_ghost_values();
+  _solution_transfer.interpolate(displacement);
+  displacement.update_ghost_values();
+  std::swap(_old_displacement, displacement);
+}
+
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
+    prepare_transfer(
+        std::optional<std::reference_wrapper<const dealii::DoFHandler<dim>>>
+            thermal_dof_handler)
+{
+  std::cout << "prepare_transfer" << std::endl;
   // Update the active fe indices, the plastic variables, and the displacement.
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
   unsigned int cell_id = 0;
@@ -278,13 +339,17 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
   // If the stress is under the yield criterion, the deformation is elastic and
   // we are done. Otherwise we need to use the radial return algorithm to
   // compute the plastic deformation.
-  auto incremental_displacement = displacement;
+  //
+  dealii::IndexSet locally_relevant_dofs =
+      dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      incremental_displacement(
+          _dof_handler.locally_owned_dofs(), locally_relevant_dofs,
+          _mechanical_operator->rhs().get_mpi_communicator());
+  incremental_displacement = displacement;
   // TODO Remove this once we support refinement/material addition
-  if (displacement.get_partitioner()->is_compatible(
-          *(_old_displacement.get_partitioner())))
-  {
+  if (_old_displacement.size() > 0)
     incremental_displacement -= _old_displacement;
-  }
   compute_stress(incremental_displacement);
 
   _old_displacement.swap(displacement);
