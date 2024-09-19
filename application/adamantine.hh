@@ -413,13 +413,14 @@ void refine_and_transfer(
       dim, dim, std::vector<std::vector<double>>>
       cell_data_trans(triangulation);
   cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
-
+/*
   if (mechanical_physics)
   {
     // Thermo-mechanical simulation
     mechanical_physics->prepare_transfer(
         thermal_physics->get_dof_handler());
   }
+  */
 
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_BEGIN("refine triangulation");
@@ -519,7 +520,7 @@ void refine_and_transfer(
     }
   }
 #endif
-
+/*
   if (mechanical_physics)
   {
 	        thermal_physics->set_state_to_material_properties();
@@ -531,7 +532,7 @@ void refine_and_transfer(
               thermal_physics->get_has_melted_vector());
     // Thermo-mechanical simulation
     mechanical_physics->complete_transfer();
-  }
+  }*/
 
 }
 
@@ -937,10 +938,12 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
           temperature_host(temperature.get_partitioner());
       temperature_host.import(temperature, dealii::VectorOperation::insert);
-      mechanical_physics->set_active_fe_indices(thermal_physics->get_dof_handler());
+      //mechanical_physics->set_active_fe_indices(thermal_physics->get_dof_handler());
+      mechanical_physics->prepare_transfer(thermal_physics->get_dof_handler());
       mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
                                      temperature_host,
                                      thermal_physics->get_has_melted_vector());
+      mechanical_physics->complete_transfer();
     }
     else
     {
@@ -1157,9 +1160,31 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // Solve the (thermo-)mechanical problem
     if (use_mechanical_physics)
     {
+      if (n_time_step % time_steps_output == 0)
+      {
+        if (use_thermal_physics)
+        {
+          // Update the material state
+          thermal_physics->set_state_to_material_properties();
+          dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+              temperature_host(temperature.get_partitioner());
+          temperature_host.import(temperature, dealii::VectorOperation::insert);
+	  mechanical_physics->prepare_transfer(thermal_physics->get_dof_handler());
+          mechanical_physics->setup_dofs(
+              thermal_physics->get_dof_handler(), temperature_host,
+              thermal_physics->get_has_melted_vector());
+	  mechanical_physics->complete_transfer();
+        }
+        else
+        {
+          mechanical_physics->setup_dofs();
+        }
+        displacement = mechanical_physics->solve();
+      }
+
       // Since there is no history dependence in the model, only calculate
       // mechanics when outputting
-      displacement = mechanical_physics->solve();
+//      displacement = mechanical_physics->solve();
     }
 
     timers[adamantine::evol_time].stop();
