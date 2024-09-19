@@ -60,17 +60,17 @@ The domain is an hour glass with an hole in the center.
 To understand where most of the time is spent, we will use [caliper](http://software.llnl.gov/Caliper).
 First, we run **HourGlass_AOP.info** using a single processor. *Caliper* returns the following results:
 
-|Path                                   | Min time/rank | Max time/rank | Avg time/rank | Time % | 
-|:--------------------------------------|:--------------|:--------------|:--------------|:-------|
-|main                                   |    106.35     |    106.35     |    106.35     | 100.00 | 
-|<pre> run</pre>                        |    106.35     |    106.35     |    106.35     |  99.99 | 
-|<pre>  output_pvtu</pre>               |      0.17     |      0.17     |      0.17     |   0.16 | 
-|<pre>  main_loop</pre>                 |    101.01     |    101.01     |    101.01     |  94.97 | 
-|<pre>   refine_mesh</pre>              |      0.06     |      0.06     |      0.06     |   0.06 | 
-|<pre>   add_material</pre>             |     78.80     |     78.80     |     78.80     |  74.09 | 
-|<pre>    refine triangulation</pre>    |     31.98     |     31.98     |     31.98     |  30.07 |
-|<pre>   evaluate_thermal_physics</pre> |      0.78     |      0.78     |      0.78     |   0.73 | 
-|<pre>   output_pvtu</pre>              |     16.57     |     16.57     |     16.57     |  15.58 | 
+|Path                                                                 | Min time/rank | Max time/rank | Avg time/rank | Time % | 
+|:--------------------------------------------------------------------|:-------------:|:-------------:|:-------------:|:------:|
+|main                                                                 |    106.35     |    106.35     |    106.35     | 100.00 | 
+|&nbsp;&nbsp;run                                                      |    106.35     |    106.35     |    106.35     |  99.99 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;output_pvtu                                  |      0.17     |      0.17     |      0.17     |   0.16 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;main_loop                                    |    101.01     |    101.01     |    101.01     |  94.97 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;refine_mesh                      |      0.06     |      0.06     |      0.06     |   0.06 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;add_material                     |     78.80     |     78.80     |     78.80     |  74.09 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;refine triangulation |     31.98     |     31.98     |     31.98     |  30.07 |
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;evaluate_thermal_physics         |      0.78     |      0.78     |      0.78     |   0.73 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output_pvtu                      |     16.57     |     16.57     |     16.57     |  15.58 | 
 
 We see that the simulation took 105 seconds of which 74% is spent in `add_material`.
 The core of computation is `evaluate_thermal_physics` which took less than 1% of
@@ -92,33 +92,33 @@ Let's modified **HourGlass_AOP.info**:
 
 When using one processor, we get:
 
-|Path                                   | Min time/rank | Max time/rank | Avg time/rank | Time % | 
-|:--------------------------------------|:--------------|:--------------|:--------------|:-------|
-|main                                   |    144.40     |     144.40    |     144.40    | 100.00 | 
-|<pre> run</pre>                        |    144.40     |     144.40    |     144.40    |  99.99 | 
-|<pre>  output_pvtu</pre>               |      0.18     |       0.18    |       0.18    |   0.12 | 
-|<pre>  main_loop</pre>                 |    139.07     |     139.07    |     139.07    |  96.31 | 
-|<pre>   refine_mesh</pre>              |      0.06     |       0.06    |       0.06    |   0.04 | 
-|<pre>   add_material</pre>             |     35.96     |      35.96    |      35.96    |  24.90 | 
-|<pre>    refine triangulation</pre>    |     14.68     |      14.68    |      14.68    |  10.16 |
-|<pre>   evaluate_thermal_physics</pre> |     81.45     |      81.45    |      81.45    |  56.40 | 
-|<pre>   output_pvtu</pre>              |     16.81     |      16.81    |      16.81    |  11.64 |
+|Path                                                                 | Min time/rank | Max time/rank | Avg time/rank | Time % | 
+|:--------------------------------------------------------------------|:-------------:|:-------------:|:-------------:|:------:|
+|main                                                                 |    144.40     |     144.40    |     144.40    | 100.00 | 
+|&nbsp;&nbsp;run                                                      |    144.40     |     144.40    |     144.40    |  99.99 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;output_pvtu                                  |      0.18     |       0.18    |       0.18    |   0.12 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;main_loop                                    |    139.07     |     139.07    |     139.07    |  96.31 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;refine_mesh                      |      0.06     |       0.06    |       0.06    |   0.04 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;add_material                     |     35.96     |      35.96    |      35.96    |  24.90 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;refine triangulation |     14.68     |      14.68    |      14.68    |  10.16 |
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;evaluate_thermal_physics         |     81.45     |      81.45    |      81.45    |  56.40 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output_pvtu                      |     16.81     |      16.81    |      16.81    |  11.64 |
 
 At the end of simulation, we have 3932 degrees of freedom. We now spend the
 majority of the computation time in `evaluate_thermal_physics`. We can compare
 the results when using two processors:
 
-|Path                                   | Min time/rank | Max time/rank | Avg time/rank | Time % | 
-|:--------------------------------------|:--------------|:--------------|:--------------|:-------|
-|main                                   |    104.54     |    104.55     |   104.55      | 100.00 | 
-|<pre> run</pre>                        |    104.54     |    104.55     |   104.55      |  99.99 | 
-|<pre>  output_pvtu</pre>               |      0.09     |      0.10     |     0.10      |   0.09 | 
-|<pre>  main_loop</pre>                 |     99.78     |     99.78     |    99.78      |  95.44 | 
-|<pre>   refine_mesh</pre>              |      0.03     |      0.03     |     0.03      |   0.03 | 
-|<pre>   add_material</pre>             |     33.24     |     33.90     |    33.57      |  32.11 | 
-|<pre>    refine triangulation</pre>    |     13.63     |     13.65     |    13.64      |  13.05 |
-|<pre>   evaluate_thermal_physics</pre> |     46.17     |     59.29     |    52.73      |  50.43 | 
-|<pre>   output_pvtu</pre>              |      5.11     |     15.74     |    10.43      |   9.97 |
+|Path                                                                 | Min time/rank | Max time/rank | Avg time/rank | Time % | 
+|:--------------------------------------------------------------------|:-------------:|:-------------:|:-------------:|:------:|
+|main                                                                 |    104.54     |    104.55     |   104.55      | 100.00 | 
+|&nbsp;&nbsp;run                                                      |    104.54     |    104.55     |   104.55      |  99.99 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;output_pvtu                                  |      0.09     |      0.10     |     0.10      |   0.09 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;main_loop                                    |     99.78     |     99.78     |    99.78      |  95.44 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;refine_mesh                      |      0.03     |      0.03     |     0.03      |   0.03 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;add_material                     |     33.24     |     33.90     |    33.57      |  32.11 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;refine triangulation |     13.63     |     13.65     |    13.64      |  13.05 |
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;evaluate_thermal_physics         |     46.17     |     59.29     |    52.73      |  50.43 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output_pvtu                      |      5.11     |     15.74     |    10.43      |   9.97 |
 
 By using two processors instead of one, we get a speed up of 1.38. Notice that
 the max time/rank for `add_material` and `output_pvtu` is almost the same 
@@ -134,17 +134,17 @@ will change the `duration` to 1500 s.
 
 When using one processor, we get:
 
-|Path                                   | Min time/rank | Max time/rank | Avg time/rank | Time % | 
-|:--------------------------------------|:--------------|:--------------|:--------------|:-------|
-|main                                   |    626.06     |    626.06     |    626.06     | 100.00 | 
-|<pre> run</pre>                        |    626.06     |    626.06     |    626.06     |  99.99 | 
-|<pre>  output_pvtu</pre>               |      0.17     |      0.17     |      0.17     |   0.02 | 
-|<pre>  main_loop</pre>                 |    620.71     |    620.71     |    620.71     |  99.14 | 
-|<pre>   refine_mesh</pre>              |      0.06     |      0.06     |      0.06     |   0.01 | 
-|<pre>   add_material</pre>             |    108.49     |    108.49     |    108.49     |  17.33 | 
-|<pre>    refine triangulation</pre>    |     43.96     |     43.96     |     43.96     |   7.02 |
-|<pre>   evaluate_thermal_physics</pre> |    447.18     |    447.18     |    447.18     |  71.42 | 
-|<pre>   output_pvtu</pre>              |     50.18     |     50.18     |     50.18     |   8.01 |
+|Path                                                                 | Min time/rank | Max time/rank | Avg time/rank | Time % | 
+|:--------------------------------------------------------------------|:-------------:|:-------------:|:-------------:|:------:|
+|main                                                                 |    626.06     |    626.06     |    626.06     | 100.00 | 
+|&nbsp;&nbsp;run                                                      |    626.06     |    626.06     |    626.06     |  99.99 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;output_pvtu                                  |      0.17     |      0.17     |      0.17     |   0.02 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;main_loop                                    |    620.71     |    620.71     |    620.71     |  99.14 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;refine_mesh                      |      0.06     |      0.06     |      0.06     |   0.01 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;add_material                     |    108.49     |    108.49     |    108.49     |  17.33 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;refine triangulation |     43.96     |     43.96     |     43.96     |   7.02 |
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;evaluate_thermal_physics         |    447.18     |    447.18     |    447.18     |  71.42 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output_pvtu                      |     50.18     |     50.18     |     50.18     |   8.01 |
 
 At the end of simulation, we have 9471 degrees of freedom. We spend 71% of the
 time in `evaluate_thermal_physics` while it was only 56% when we 500 s of
@@ -154,17 +154,17 @@ freedom as it does in `evaluate_thermal_physics`. Therefore `add_material` and
 `output_pvtu` become relatively cheaper over the course of the simulation. Now
 let's take a look at the results when using two processors:
 
-|Path                                   | Min time/rank | Max time/rank | Avg time/rank | Time % | 
-|:--------------------------------------|:--------------|:--------------|:--------------|:-------|
-|main                                   |    435.47     |    435.47     |    435.47     | 100.00 | 
-|<pre> run</pre>                        |    435.47     |    435.47     |    435.47     |  99.99 | 
-|<pre>  output_pvtu</pre>               |      0.08     |      0.09     |      0.09     |   0.02 | 
-|<pre>  main_loop</pre>                 |    430.74     |    430.74     |    430.74     |  98.91 | 
-|<pre>   refine_mesh</pre>              |      0.03     |      0.03     |      0.03     |   0.00 | 
-|<pre>   add_material</pre>             |    100.17     |    101.89     |    101.03     |  23.20 | 
-|<pre>    refine triangulation</pre>    |     41.07     |     41.18     |     41.13     |   9.44 |
-|<pre>   evaluate_thermal_physics</pre> |    268.94     |    307.77     |    288.36     |  66.21 | 
-|<pre>   output_pvtu</pre>              |     16.05     |     47.03     |     31.54     |   7.24 |
+|Path                                                                 | Min time/rank | Max time/rank | Avg time/rank | Time % | 
+|:--------------------------------------------------------------------|:-------------:|:-------------:|:-------------:|:------:|
+|main                                                                 |    435.47     |    435.47     |    435.47     | 100.00 | 
+|&nbsp;&nbsp;run                                                      |    435.47     |    435.47     |    435.47     |  99.99 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;output_pvtu                                  |      0.08     |      0.09     |      0.09     |   0.02 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;main_loop                                    |    430.74     |    430.74     |    430.74     |  98.91 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;refine_mesh                      |      0.03     |      0.03     |      0.03     |   0.00 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;add_material                     |    100.17     |    101.89     |    101.03     |  23.20 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;refine triangulation |     41.07     |     41.18     |     41.13     |   9.44 |
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;evaluate_thermal_physics         |    268.94     |    307.77     |    288.36     |  66.21 | 
+|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output_pvtu                      |     16.05     |     47.03     |     31.54     |   7.24 |
 
 For the entire simulation, we have a speedup of 1.43. For `add_material` and
 `output_pvtu`, the speedup is unchanged at 1.06. This is consistent with the
