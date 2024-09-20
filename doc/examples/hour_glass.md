@@ -28,10 +28,8 @@ nav_order: 2
 
 
 # HourGlass
-This example is similar to the
-[Demo316]({{site.baseurl}}/doc/examples/demo_316) example. This is also a purely
-thermal problem. We will use this example to understand which parameters affects
-the performance of *adamantine*.
+We will use this example to understand which parameters affects the performance
+of *adamantine*.
 
 This example is composed of the following files:
  * **HourGlass_AOP.info:** the input file
@@ -58,7 +56,9 @@ The domain is an hour glass with an hole in the center.
 </div> 
 
 To understand where most of the time is spent, we will use [caliper](http://software.llnl.gov/Caliper).
-First, we run **HourGlass_AOP.info** using a single processor. *Caliper* returns the following results:
+First, we run **HourGlass_AOP.info** using a single processor: 
+`mpirun -np 1 ./adamantine -i HourGlass_AOP.info`.
+*Caliper* returns the following results:
 
 |Path                                                                 | Min time/rank | Max time/rank | Avg time/rank | Time % | 
 |:--------------------------------------------------------------------|:-------------:|:-------------:|:-------------:|:------:|
@@ -106,7 +106,7 @@ When using one processor, we get:
 
 At the end of simulation, we have 3932 degrees of freedom. We now spend the
 majority of the computation time in `evaluate_thermal_physics`. We can compare
-the results when using two processors:
+the results when using two processors (`mpirun -np 2 ./adamantine -i HourGlass_AOP.info`):
 
 |Path                                                                 | Min time/rank | Max time/rank | Avg time/rank | Time % | 
 |:--------------------------------------------------------------------|:-------------:|:-------------:|:-------------:|:------:|

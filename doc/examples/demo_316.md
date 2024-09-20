@@ -33,6 +33,8 @@ The example is composed of the following files:
  * **demo_316_short.info:** the input file
  * **demo_316_short_scan_path.txt:** the scan path of the heat source
 
+It can be run using `./adamantine -i demo_316_short.info`.
+
 Below are snapshots of the temperature at different times:
 
 <div class="row">
@@ -77,6 +79,8 @@ The example is composed of the following files:
  * **demo_316_short_amr.info:** the input file
  * **demo_316_short_scan_path_amr.txt:** the scan path of the heat source
 
+It can be run using `./adamantine -i demo_316_short_amr.info`.
+
 The main difference with *Demo316* concerns the refinement input:
 ```
 refinement
@@ -99,6 +103,8 @@ anisotropic. The conductivity in the deposition direction is increased.
 This example is composed of the following files:
  * **demo_316_short_anisotropic.info:** the input file
  * **demo_316_short_scan_path.txt:** the scan path of the heat source
+
+It can be run using `./adamantine -i demo_316_short_anisotropic.info`.
 
 The differences with *Demo316* are:
  * the domain is reduced
