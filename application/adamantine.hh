@@ -413,14 +413,13 @@ void refine_and_transfer(
       dim, dim, std::vector<std::vector<double>>>
       cell_data_trans(triangulation);
   cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
-/*
+
   if (mechanical_physics)
   {
     // Thermo-mechanical simulation
     mechanical_physics->prepare_transfer(
         thermal_physics->get_dof_handler());
   }
-  */
 
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_BEGIN("refine triangulation");
@@ -1169,7 +1168,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
               temperature_host(temperature.get_partitioner());
           temperature_host.import(temperature, dealii::VectorOperation::insert);
-	  mechanical_physics->prepare_transfer(thermal_physics->get_dof_handler());
+	  //mechanical_physics->prepare_transfer(thermal_physics->get_dof_handler());
           mechanical_physics->setup_dofs(
               thermal_physics->get_dof_handler(), temperature_host,
               thermal_physics->get_has_melted_vector());
