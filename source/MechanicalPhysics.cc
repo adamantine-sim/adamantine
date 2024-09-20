@@ -45,26 +45,9 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   // Solve the mechanical problem only on the part of the domain that has solid
   // material.
 
-  unsigned int n_local_cells = 0;
-  for (auto const &cell :
-       dealii::filter_iterators(_dof_handler.active_cell_iterators(),
-                                dealii::IteratorFilters::LocallyOwnedCell()))
-  {
-    if (_material_properties.get_state_ratio(
-            cell, MaterialStates::State::solid) > 0.99)
-    {
-      cell->set_active_fe_index(0);
-      ++n_local_cells;
-    }
-    else
-    {
-      cell->set_active_fe_index(1);
-    }
-  }
-
   std::cout << "Setting active fe_indices mechanical 0" << std::endl;
 
-  // unsigned int n_local_cells = set_active_fe_indices();
+  unsigned int n_local_cells = set_active_fe_indices();
 
   // Create the mechanical operator
   _mechanical_operator = std::make_unique<
