@@ -1160,7 +1160,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // Solve the (thermo-)mechanical problem
     if (use_mechanical_physics)
     {
-      if (n_time_step % time_steps_output == 0)
+      //if (n_time_step % time_steps_output == 0)
       {
         if (use_thermal_physics)
         {
