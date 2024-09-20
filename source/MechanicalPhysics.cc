@@ -279,7 +279,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
       dealii::DoFCellAccessor<dim, dim, false> thermal_cell(
           &triangulation, cell->level(), cell->index(),
           &(thermal_dof_handler->get()));
-      auto updated_fe_index = thermal_cell.active_fe_index();
+      auto updated_fe_index = thermal_cell.future_fe_index();
       if (current_fe_index == updated_fe_index)
       {
         // The cells is unchanged, we just copy the plastic variables as-is.
