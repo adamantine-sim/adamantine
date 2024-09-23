@@ -55,7 +55,7 @@ The domain is an hour glass with an hole in the center.
  </div>
 </div> 
 
-To understand where most of the time is spent, we will use [caliper](http://software.llnl.gov/Caliper).
+To understand where most of the time is spent, we will use [Caliper](http://software.llnl.gov/Caliper).
 First, we run **HourGlass_AOP.info** using a single processor: 
 `mpirun -np 1 ./adamantine -i HourGlass_AOP.info`.
 *Caliper* returns the following results:
