@@ -25,7 +25,7 @@ The following options are available:
 * **geometry** (required):
   * **dim**: the dimension of the problem (2 or 3, required)
   * **material\_height**: below this height the domain contains material. Above this
-  height the domain is empty (default value: 1e9)
+  height the domain is empty. The height is in meters (default value: 1e9)
   * **use\_powder**: the additive manufacturing process use powder: true or false
   (default value: false)
   * if use\_powder is true:
@@ -37,11 +37,11 @@ The following options are available:
     * if material\_deposition\_method is file:
         * **material\_deposition\_file**: material deposition filename
     * if material\_deposition\_method is scan\_paths:
-        * **deposition\_length**: length of material deposition boxes along the scan direction (required)
-        * **deposition\_width**: width of material deposition boxes (in the plane of the material, normal to the scan direction, 3D only) (required)
-        * **deposition\_height**: height of material deposition boxes (out of the plane of the material) (required)
-        * **deposition\_lead\_time**: amount of time before the scan path reaches a point that the material is added (required)
-        * **deposition\_time**: add the material in bigger lumps (optional)
+        * **deposition\_length**: length of material deposition boxes along the scan direction in meters (required)
+        * **deposition\_width**: width of material deposition boxes (in the plane of the material, normal to the scan direction, 3D only) in meters (required)
+        * **deposition\_height**: height of material deposition boxes (out of the plane of the material) in meters (required)
+        * **deposition\_lead\_time**: amount of time before the scan path reaches a point that the material is added in seconds (required)
+        * **deposition\_time**: add the material in bigger lumps in seconds (optional)
   * **import\_mesh**: true or false (required)
   * if import\_mesh is true:
     * **mesh\_file**: The filename for the mesh file (required)
@@ -58,15 +58,15 @@ The following options are available:
     * **width**: the width of the domain in meters (only in 3D)
     * **length\_origin**: the reference location in the length direction (default value: 0)
     * **height\_origin**: the reference location in the height direction (default value: 0)
-    * **width\_origini**: the reference location in the width direction (only in 3D) (default value: 0)
+    * **width\_origin**: the reference location in the width direction (only in 3D) (default value: 0)
     * **length\_divisions**: number of cell layers in length (default value: 10)
     * **height\_divisions**: number of cell layers in the height (default value: 10)
     * **width\_divisions**: number of cell layers in width (only in 3D) (default value: 10)
 * **materials** (required):
   * **n\_materials**: number of materials (required)
   * **property\_format**: format of the material property: table or polynomial (required)
-  * **initial\_temperature**: initial temperature of all the materials (default value: 300)
-  * **new\_material\_temperature**: temperature of all the material that is being added during the process (default value: 300)
+  * **initial\_temperature**: initial temperature of all the materials in kelvin (default value: 300)
+  * **new\_material\_temperature**: temperature of all the material that is being added during the process in kelvin (default value: 300)
   * **material\_X**: property tree for the material with number X
   * **material\_X.Y**: property tree where Y is either liquid, powder, or solid
   (one is required)
