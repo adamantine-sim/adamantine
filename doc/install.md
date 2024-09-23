@@ -16,7 +16,7 @@ Installing *adamantine* requires:
 * Trilinos: 14.4.0 or later
 * deal.II: 9.5 or later
 
-You need to compile ArborX with MPI support and deal.II with MPI, P4EST, ArborX, and Trilinos support. If you want to use Exodus file, you also need Trilinos with SEACAS support.
+You need to compile ArborX with MPI support and deal.II with MPI, p4est, ArborX, and Trilinos support. If you want to use Exodus file, you also need Trilinos with SEACAS support.
 *adamantine* also optionally supports profiling through [Caliper](https://github.com/llnl/Caliper).
 
 An example on how to install all the dependencies can be found in
@@ -58,7 +58,23 @@ To start an interactive container use:
 ```
 docker run --rm -it rombur/adamantine:latest bash
 ```
+or
+```
+docker run --rm -it rombur/adamantine:1.0 bash
+```
+
 You will find *adamantine* in `/home/adamantine/bin`. More options of `docker
-run` can be found in the Docker [documentation](https://docs.docker.com/reference/cli/docker/container/run/)
+run` can be found in the Docker [documentation](https://docs.docker.com/reference/cli/docker/container/run/).
+There are two methods to move file to/from the Docker container:
+1. Mount a volume using the option `-v`. You launch the container using:
+```
+docker run --rm -it -v /path/to/computer/folder:/path/to/image/folder rombur/adamantine:1.0 bash
+```
+Every file in `/path/to/computer/folder` (resp. `/path/to/image/folder`) will 
+be visible in `/path/to/image/folder` (resp. `/path/to/computer/folder`). Note
+that any file created inside the Docker container is created as *root* not as
+a regular user. 
+2. Use `docker cp` to copy the files (see
+   [here](https://docs.docker.com/reference/cli/docker/container/cp/)).
 
 The Docker images cannot use GPUs.
