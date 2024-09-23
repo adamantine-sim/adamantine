@@ -1043,6 +1043,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // We use an epsilon to get the "expected" behavior when the deposition
     // time and the time match should match exactly but don't because of
     // floating point accuracy.
+    bool added_material;
     timers[adamantine::add_material_activate].start();
     if (time > activation_time_end)
     {
@@ -1125,7 +1126,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                                         deposition_sin, has_melted,
                                         activation_start, activation_end,
                                         new_material_temperature, temperature);
-        }
+          added_material = true;
+   	}
       }
 
       if ((rank == 0) && (verbose_output == true) &&
@@ -1161,7 +1163,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     {
       //if (n_time_step % time_steps_output == 0)
       {
-        if (use_thermal_physics)
+        if (use_thermal_physics && added_material)
         {
           // Update the material state
           thermal_physics->set_state_to_material_properties();
