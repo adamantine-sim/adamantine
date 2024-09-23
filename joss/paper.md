@@ -22,9 +22,11 @@ bibliography: paper.bib
 # Summary
 `Adamantine` is a thermomechanical simulation code that is written in C++ and built on top of deal.II [@dealII95], ArborX [@arborx2020], Trilinos [@trilinos-website], and Kokkos [@kokkos2022]. 
 `Adamantine` was developed with additive manufacturing in mind and it is
-particularly well adapted to simulate fused filament fabrication, direct energy 
-deposition, and powder bed fusion. In order to support these different additive manufacturing processes, 
-`adamantine` solves a nonlinear anisotropic heat equation using the finite element method with adaptive mesh refinement. It can handle materials in
+particularly well adapted to simulate fused filament fabrication, directed energy 
+deposition, and powder bed fusion. `Adamantine` employs the finite element
+method with adaptive mesh refinement to solve a nonlinear anisotropic heat equation, enabling
+support for various additive manufacturing processes. It can also perform
+elastoplastic and thermoelastoplastic simulations. It can handle materials in
 three distinct phases (solid, liquid, and powder) to accurately reflect the
 physical state during different stages of the manufacturing process. To enhance
 simulation accuracy, `adamantine` incorporates data assimilation techniques [@da2016].
@@ -38,7 +40,7 @@ Manufacturing "born-qualified" components, i.e., parts ready for critical
 applications straight from the printer, requires a new approach to additive
 manufacturing (AM). This vision demands not only precise simulations for 
 planning the build but also real-time adjustments throughout the process 
-to obtained the desired thermomechanical evolution of the part. Currently, 
+to obtain the desired thermomechanical evolution of the part. Currently, 
 setting AM process parameters is an expert-driven, often trial-and-error 
 process. Material changes and geometry complexities can lead to unpredictable 
 adjustments in parameters, making a purely empirical approach slow and expensive. We can overcome 
@@ -48,7 +50,7 @@ this by using advanced simulations for both planning and adaptive control.
 parameter planning and adjustment in AM. During the
 planning phase, its capabilities can be leveraged to predict the
 thermomechanical state and optimize process parameters for the desired outcome. 
-For adaptive control, `adamantine` utilizes data from infrared (IR) cameras and 
+For adaptive control, `adamantine` utilizes data from IR cameras and 
 thermocouples. This data is integrated using the Ensemble Kalman Filter (EnKF) method,
 allowing the simulation to constantly adapt and reflect the actual build process.
 
@@ -58,7 +60,7 @@ mid-print, if needed, to ensure that printed parts conform to the necessary tole
 
 While other open-source software like AdditiveFOAM [@additivefoam] excels at heat
 and mass transfer simulations in additive manufacturing, and commercial options
-like Abaqus [@abaqus] and Ansys offer comprehensive thermomechanical capabilities,
+like Abaqus [@abaqus] and Ansys[@ansys] offer comprehensive thermomechanical capabilities,
 `adamantine` stands out for its unique ability to incorporate real-world data
 through data assimilation. This feature allows for potentially more accurate
 simulations, leading to better process optimization and final part quality.
@@ -74,16 +76,16 @@ the isotropic and kinematic hardening described in @borja2013. This allows us to
 model both the change in yield stress and the Bauschinger effect.
 
 ## Thermomechanical simulation
-Thermomechanical simulations in `adamantine` are performed with one-way coupling from the temperature evolution to the mechanical evolution. We neglect the effect of deformation on the thermal simulation. An extra term in the mechanical simulation accounts fosr the eigenstrain assosciated with by thermal expansion of the material [@fung2001; @Megahed2016].
+Thermomechanical simulations in `adamantine` are performed with one-way coupling from the temperature evolution to the mechanical evolution. We neglect the effect of deformation on the thermal simulation. An extra term in the mechanical simulation accounts for the eigenstrain associated with by thermal expansion of the material [@fung2001; @Megahed2016].
 
 # Data Assimilation
 Data assimilation "is the approximation of a true state of some physical system
 at a given time by combining time-distributed observations with a dynamic model
 in an optimal way" [@da2016]. `Adamantine` leverages this technique to enhance
-the accuracy of simulations during and after prints with in-situ characterization. It also ties the simulation results to the particular events (e.g. resulting for stocastic processes) for a specific print.
+the accuracy of simulations during and after prints with in-situ characterization. It also ties the simulation results to the particular events (e.g. resulting for stochastic processes) for a specific print.
 
 We have implemented a data assimilation algorithm called the Ensemble Kalman
-Filter (EnKF) [@da2016]. This statistical technique incorporates experimental observations into a simulation to provide the best estimate (in the Bayesian sense) of the state of the system that reflects uncertainties from both data sources. EnKF requires to perform an ensemble of 
+Filter [@da2016]. This statistical technique incorporates experimental observations into a simulation to provide the best estimate (in the Bayesian sense) of the state of the system that reflects uncertainties from both data sources. EnKF requires to perform an ensemble of 
 simulations with slightly different input model parameters and/or initial conditions. The EnKF calculation and the coordination of simulations of ensemble 
 members are done from inside `adamantine`.  
 
@@ -100,7 +102,6 @@ While mechanical and thermomechanical simulations are limited to serial
 execution, thermal and EnKF ensemble simulations can use MPI. Thermal
 simulations can be performed using an arbitrary number of processors. For EnKF
 ensemble simulations, the partitioning scheme works as follows:
-
  * If the number of processors (Nproc) is less than or equal to the number of
  EnKF ensemble members (N), `adamantine` distributes the simulations evenly
  across the processors. All processors except the first will handle the same
@@ -110,12 +111,17 @@ ensemble simulations, the partitioning scheme works as follows:
  only if Nproc is a multiple of N. This ensures that all the simulations are
  partitioned in the same way.
 
- MPI support for mechanical and thermomechanical simulations are a subject of ongoing work.
+MPI support for mechanical and thermomechanical simulations are a subject of ongoing work.
 
 ## GPU support
-`Adamantine` includes partial support for GPU-accelerated calculations through the use of the Kokkos library. Part of 
-the thermal simulation can be performed on the GPU but the mechanical simulation is CPU only.
+`Adamantine` includes partial support for GPU-accelerated calculations through the use of the Kokkos library. 
+The evaluation of the thermal operator can be performed on the GPU. The heat
+source is computed on the CPU. The mechanical simulation is CPU only.
 Performing the entire computation on the GPU is the subject of ongoing work.
+
+# Additional Information
+An in-depth discussion of the governing equations and examples showcasing the
+capabilities of`adamantine` can be found at https://adamantine-sim.github.io/adamantine
 
 # Acknowledgments
 This manuscript has been authored by UT-Battelle, LLC, under contract
