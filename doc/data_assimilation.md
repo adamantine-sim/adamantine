@@ -46,7 +46,7 @@ $$
 
 $$m$$ is the number of ensemble simulations.
 
-The [Bare plate L]({{site.baseurl}}/doc/examples/hour_glass) example
+The [Bare plate L]({{site.baseurl}}/doc/examples/bare_plate_l) example
 demonstrates *adamantine* data assimilation capabilities.
 
 As of version 1.0 of *adamantine* data assimilation is restricted to thermal

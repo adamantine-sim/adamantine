@@ -12,7 +12,7 @@ examples but we will use them to show how data assimilation works in
 # Bare plate L ensemble
 This example shows how to run an ensemble of simulations. Ensemble simulations are 
 used to compute the simulation covariance matrix (see 
-[Data Assimilation]({{site.baseurl}}/doc/data_assimlation)).
+[Data Assimilation]({{site.baseurl}}/doc/data_assimilation)).
 
 The example is composed of the following files:
  * **bare_plate_L_ensemble.info:** the input file
