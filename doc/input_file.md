@@ -65,17 +65,17 @@ The following options are available:
 * **materials** (required):
   * **n\_materials**: number of materials (required)
   * **property\_format**: format of the material property: table or polynomial (required)
-  * **initial\_temperature**: initial temperature of all the materials in kelvin (default value: 300)
-  * **new\_material\_temperature**: temperature of all the material that is being added during the process in kelvin (default value: 300)
+  * **initial\_temperature**: initial temperature of all the materials in kelvins (default value: 300)
+  * **new\_material\_temperature**: temperature of all the material that is being added during the process in kelvins (default value: 300)
   * **material\_X**: property tree for the material with number X
   * **material\_X.Y**: property tree where Y is either liquid, powder, or solid
   (one is required)
   * **material\_X.Y.Z**: Z is either `density` in kg/m^3, `specific_heat` in J/(K\*kg),
   `thermal_conductivity_x`, resp. `y` or `z`, in the direction `x`, resp. `y` or `z` (in 2D only `x` and `z` are used), in `W/(m\*K)`, `emissivity`,
   or `convection_heat_transfer_coef` in `W/(m^2\*K)` (optional)
-  * **material\_X.A**: A is either `solidus` in kelvin, `liquidus` in kelvin, `latent_heat`
-  in `J/kg`, `radiation_temperature_infty` in kelvin, or `convection_temperature_infty`
-  in kelvin (optional)
+  * **material\_X.A**: A is either `solidus` in kelvins, `liquidus` in kelvins, `latent_heat`
+  in `J/kg`, `radiation_temperature_infty` in kelvins, or `convection_temperature_infty`
+  in kelvins (optional)
 * **memory\_space** (optional): `device` (use GPU if Kokkos was compiled with GPU support) or `host` (use CPU) (default value: host)
 * **post\_processor** (required):
   * **filename\_prefix**: prefix of output files (required)

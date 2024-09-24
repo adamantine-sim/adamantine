@@ -32,9 +32,9 @@ We will use this example to understand which parameters affects the performance
 of *adamantine*.
 
 This example is composed of the following files:
- * **HourGlass_AOP.info:** the input file
- * **HourGlass_AOP.vtk:** the mesh
- * **HourGlass_AOP_scan_path.txt:** the scan path of the heat source
+ * [HourGlass_AOP.info](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/HourGlass_AOP.info): the input file
+ * [HourGlass_AOP.vtk](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/HourGlass_AOP.vtk): the mesh
+ * [HourGlass_AOP_scan_path.txt](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/HourGlass_AOP_scan_path.txt): the scan path of the heat source
 
 The domain is an hour glass with an hole in the center.
 
@@ -147,7 +147,7 @@ When using one processor, we get:
 |&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output_pvtu                      |     50.18     |     50.18     |     50.18     |   8.01 |
 
 At the end of simulation, we have 9471 degrees of freedom. We spend 71% of the
-time in `evaluate_thermal_physics` while it was only 56% when we 500 s of
+time in `evaluate_thermal_physics` while it was only 56% for the 500 s 
 simulation. This is because the amount of work that is performed in `add_material` 
 and `output_pvtu` does not increase as quickly with the number of degrees of
 freedom as it does in `evaluate_thermal_physics`. Therefore `add_material` and

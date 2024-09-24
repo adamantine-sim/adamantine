@@ -46,7 +46,7 @@ The list of configuration options is:
 * DEAL\_II\_DIR=/path/to/dealii
 
 ## Docker
-You can pull the [Docker](https://en.wikipedia.org/wiki/Docker_(software) image containing the version of *adamantine* on master using:
+You can pull the [Docker](https://en.wikipedia.org/wiki/Docker_(software)) image containing the version of *adamantine* on master using:
 ```
 docker pull rombur/adamantine:latest
 ```
@@ -63,8 +63,9 @@ or
 docker run --rm -it rombur/adamantine:1.0 bash
 ```
 
-You will find *adamantine* in `/home/adamantine/bin`. More options of `docker
-run` can be found in the Docker [documentation](https://docs.docker.com/reference/cli/docker/container/run/).
+You will find *adamantine* in `/home/adamantine/bin`. More `docker run` options 
+can be found in the Docker [documentation](https://docs.docker.com/reference/cli/docker/container/run/).
+
 There are two methods to move file to/from the Docker container:
 1. Mount a volume using the option `-v`. You launch the container using:
 ```

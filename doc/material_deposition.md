@@ -41,3 +41,6 @@ The first entry of the file is the dimension the problem: 2 or 3.
   * Column 4 to 6: (x,y,z) length of deposition box in m.
   * Column 7: deposition time in s.
   * Column 6: angle of material deposition.
+
+An example of such a file can be found
+[here](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/material_deposition_3d.txt).

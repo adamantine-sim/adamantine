@@ -15,8 +15,8 @@ used to compute the simulation covariance matrix (see
 [Data Assimilation]({{site.baseurl}}/doc/data_assimilation)).
 
 The example is composed of the following files:
- * **bare_plate_L_ensemble.info:** the input file
- * **bare_plate_L_scan_path.txt:** the scan path of the heat source
+ * [bare_plate_L_ensemble.info](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_ensemble.info): the input file
+ * [bare_plate_L_scan_path.txt](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_scan_path.txt): the scan path of the heat source
 
 It can be run using `./adamantine -i bare_plate_L_data.info`.
 
@@ -112,11 +112,12 @@ This example shows how data assimilation can be used to determine simulation
 parameters such as material properties or the power of the heat source.
 
 The example is composed of the following files:
- * **bare_plate_L_da_augmented.info:** the input file
- * **bare_plate_L_scan_path.txt:** the scan path of the heat source
- * **bare_plate_L_da_aug_ref_data_0_0.csv** and **bare_plate_L_da_aug_ref_data_0_0.csv:**
+ * [bare_plate_L_da_augmented.info](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_da_augmented.info): the input file
+ * [bare_plate_L_scan_path.txt](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_scan_path.txt): the scan path of the heat source
+ * [bare_plate_L_da_aug_ref_data_0_0.csv](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_da_aug_ref_data_0_0.csv) and 
+ [bare_plate_L_da_aug_ref_data_0_0.csv](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_da_aug_ref_data_0_0.csv):
  point cloud synthetic data that represent experimental data
- * **bare_plate_L_da_aug_reg_log.txt:** the log file that lists the timestamps for each
+ * [bare_plate_L_da_aug_reg_log.txt](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_da_aug_reg_log.txt): the log file that lists the timestamps for each
 
 The interesting part of the input files are:
 ```

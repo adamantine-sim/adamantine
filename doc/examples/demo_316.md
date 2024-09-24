@@ -30,8 +30,8 @@ nav_order: 1
 This example shows thermal simulation of material deposition on a plate.
 
 The example is composed of the following files:
- * **demo_316_short.info:** the input file
- * **demo_316_short_scan_path.txt:** the scan path of the heat source
+ * [demo_316_short.info](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/demo_316_short.info): the input file
+ * [demo_316_short_scan_path.txt](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/demo_316_short_scan_path.txt): the scan path of the heat source
 
 It can be run using `./adamantine -i demo_316_short.info`.
 
@@ -76,8 +76,8 @@ This example is similar to the previous one but it uses adaptive mesh refinement
 (AMR). 
 
 The example is composed of the following files:
- * **demo_316_short_amr.info:** the input file
- * **demo_316_short_scan_path_amr.txt:** the scan path of the heat source
+ * [demo_316_short_amr.info](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/demo_316_short_amr.info): the input file
+ * [demo_316_short_scan_path_amr.txt](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/demo_316_short_scan_path_amr.txt): the scan path of the heat source
 
 It can be run using `./adamantine -i demo_316_short_amr.info`.
 
@@ -101,8 +101,8 @@ This is similar to *Demo316* but the thermal conductivity of the material is
 anisotropic. The conductivity in the deposition direction is increased.
 
 This example is composed of the following files:
- * **demo_316_short_anisotropic.info:** the input file
- * **demo_316_short_scan_path.txt:** the scan path of the heat source
+ * [demo_316_short_anisotropic.info](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/demo_316_short_anisotropic.info): the input file
+ * [demo_316_short_scan_path.txt](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/demo_316_short_scan_path.txt): the scan path of the heat source
 
 It can be run using `./adamantine -i demo_316_short_anisotropic.info`.
 
