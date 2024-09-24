@@ -13,6 +13,7 @@
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/symmetric_tensor.h>
+#include <deal.II/distributed/solution_transfer.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/hp/fe_collection.h>
 
@@ -60,6 +61,10 @@ public:
           thermal_dof_handler = {});
 
   void complete_transfer();
+
+  void prepare_transfer_mpi();
+
+  void complete_transfer_mpi();
 
   /**
    * Solve the mechanical problem and return the displacement.
@@ -148,6 +153,10 @@ private:
    * Back stress tensor at each (cell, quadrature point).
    */
   std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> _back_stress;
+
+  dealii::parallel::distributed::SolutionTransfer<
+      dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
+      _solution_transfer;
 };
 
 template <int dim, int p_order, typename MaterialStates,

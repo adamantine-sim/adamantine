@@ -413,13 +413,12 @@ void refine_and_transfer(
       dim, dim, std::vector<std::vector<double>>>
       cell_data_trans(triangulation);
   cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
-/*
+
   if (mechanical_physics)
   {
     // Thermo-mechanical simulation
-    mechanical_physics->prepare_transfer(
-        thermal_physics->get_dof_handler());
-  }*/
+    mechanical_physics->prepare_transfer_mpi();
+  }
 
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_BEGIN("refine triangulation");
@@ -519,7 +518,7 @@ void refine_and_transfer(
     }
   }
 #endif
-/*
+
   if (mechanical_physics)
   {
 	        thermal_physics->set_state_to_material_properties();
@@ -529,9 +528,8 @@ void refine_and_transfer(
           mechanical_physics->setup_dofs(
               thermal_physics->get_dof_handler(), temperature_host,
               thermal_physics->get_has_melted_vector());
-    // Thermo-mechanical simulation
-    //mechanical_physics->complete_transfer();
-  }*/
+    mechanical_physics->complete_transfer_mpi();
+  }
 
 }
 

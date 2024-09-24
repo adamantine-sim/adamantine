@@ -30,7 +30,8 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
                                        MemorySpaceType> &material_properties,
                       std::vector<double> const &reference_temperatures)
     : _geometry(geometry), _material_properties(material_properties),
-      _dof_handler(_geometry.get_triangulation())
+      _dof_handler(_geometry.get_triangulation()),
+      _solution_transfer(_dof_handler)
 {
   // Create the FECollection
   _fe_collection.push_back(
@@ -202,6 +203,33 @@ void MechanicalPhysics<dim, p_order, MaterialStates,
 
   displacement.update_ghost_values();
   std::swap(_old_displacement, displacement);
+}
+
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalPhysics<dim, p_order, MaterialStates,
+                       MemorySpaceType>::prepare_transfer_mpi()
+{
+  _solution_transfer.prepare_for_coarsening_and_refinement(_old_displacement);
+}
+
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalPhysics<dim, p_order, MaterialStates,
+                       MemorySpaceType>::complete_transfer_mpi()
+{
+  _solution_transfer.interpolate(_old_displacement);
+  auto n_active_cells = _dof_handler.get_triangulation().n_active_cells();
+  unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
+  auto elastic_limit = 0; // _material_properties.get_mechanical_property(
+                          // cell, StateProperty::elastic_limit);
+
+  _plastic_internal_variable.resize(
+      n_active_cells, std::vector<double>(n_quad_pts, elastic_limit));
+  _stress.resize(n_active_cells,
+                 std::vector<dealii::SymmetricTensor<2, dim>>(n_quad_pts));
+  _back_stress.resize(n_active_cells,
+                      std::vector<dealii::SymmetricTensor<2, dim>>(n_quad_pts));
 }
 
 template <int dim, int p_order, typename MaterialStates,
