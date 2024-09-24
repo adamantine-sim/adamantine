@@ -519,7 +519,7 @@ void refine_and_transfer(
     }
   }
 #endif
-
+/*
   if (mechanical_physics)
   {
 	        thermal_physics->set_state_to_material_properties();
@@ -530,8 +530,8 @@ void refine_and_transfer(
               thermal_physics->get_dof_handler(), temperature_host,
               thermal_physics->get_has_melted_vector());
     // Thermo-mechanical simulation
-    mechanical_physics->complete_transfer();
-  }
+    //mechanical_physics->complete_transfer();
+  }*/
 
 }
 
@@ -1174,7 +1174,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           mechanical_physics->setup_dofs(
               thermal_physics->get_dof_handler(), temperature_host,
               thermal_physics->get_has_melted_vector());
-	 // mechanical_physics->complete_transfer();
+	  mechanical_physics->complete_transfer();
         }
         else
         {
