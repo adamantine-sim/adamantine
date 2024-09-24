@@ -135,9 +135,8 @@ discretization
 profiling
 {
   timer false
+  caliper "runtime-report,calc.inclusive"
 }
 
 memory_space host ; Always run on the host
 verbose_output true
-
-
