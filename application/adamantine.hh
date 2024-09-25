@@ -931,19 +931,17 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
    std::cout << "setup_dofs mechanical begin" << std::endl;   
     if (use_thermal_physics)
     {
-      // Thermo-mechanical simulation
+      // Update the material state
+      thermal_physics->set_state_to_material_properties();
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
           temperature_host(temperature.get_partitioner());
       temperature_host.import(temperature, dealii::VectorOperation::insert);
-      mechanical_physics->prepare_transfer(thermal_physics->get_dof_handler());
-      mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
-                                     temperature_host,
-                                     thermal_physics->get_has_melted_vector());
-      mechanical_physics->complete_transfer();
+      mechanical_physics->setup_dofs(
+          thermal_physics->get_dof_handler(), temperature_host,
+          thermal_physics->get_has_melted_vector());
     }
     else
     {
-      // Mechanical only simulation
       mechanical_physics->setup_dofs();
     }
     displacement = mechanical_physics->solve();
@@ -1167,11 +1165,11 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
               temperature_host(temperature.get_partitioner());
           temperature_host.import(temperature, dealii::VectorOperation::insert);
-	  mechanical_physics->prepare_transfer(thermal_physics->get_dof_handler());
+//	  mechanical_physics->prepare_transfer(thermal_physics->get_dof_handler());
           mechanical_physics->setup_dofs(
               thermal_physics->get_dof_handler(), temperature_host,
               thermal_physics->get_has_melted_vector());
-	  mechanical_physics->complete_transfer();
+//	  mechanical_physics->complete_transfer();
         }
         else
         {

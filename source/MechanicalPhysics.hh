@@ -56,11 +56,11 @@ public:
   /**
    * Same as above when solving a thermo-mechanical problem.
    */
-  void prepare_transfer(
-      std::optional<std::reference_wrapper<const dealii::DoFHandler<dim>>>
-          thermal_dof_handler = {});
+  // void prepare_transfer(
+  //     std::optional<std::reference_wrapper<const dealii::DoFHandler<dim>>>
+  //         thermal_dof_handler = {});
 
-  void complete_transfer();
+  // void complete_transfer();
 
   void prepare_transfer_mpi();
 
