@@ -253,6 +253,8 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
     std::vector<double> cell_values(n_dofs_per_cell);
     saved_old_displacement.reserve(n_old_active_cells);
 
+    _dof_handler.distribute_dofs(_fe_collection);
+
     for (auto const &cell :
          dealii::filter_iterators(_dof_handler.active_cell_iterators(),
                                   dealii::IteratorFilters::LocallyOwnedCell()))
