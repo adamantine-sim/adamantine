@@ -20,8 +20,9 @@ bibliography: paper.bib
 ---
 
 # Summary
-`Adamantine` is a thermomechanical simulation code that is written in C++ and built on top of deal.II [@dealII95], ArborX [@arborx2020], Trilinos [@trilinos-website], and Kokkos [@kokkos2022]. 
-`Adamantine` was developed with additive manufacturing in mind and it is
+`Adamantine` is a thermomechanical simulation code that is written in C++ and built on 
+top of deal.II [@dealII95], p4est[@p4est], ArborX [@arborx2020], Trilinos [@trilinos-website], 
+and Kokkos [@kokkos2022]. `Adamantine` was developed with additive manufacturing in mind and it is
 particularly well adapted to simulate fused filament fabrication, directed energy 
 deposition, and powder bed fusion. `Adamantine` employs the finite element
 method with adaptive mesh refinement to solve a nonlinear anisotropic heat equation, enabling
@@ -118,6 +119,17 @@ MPI support for mechanical and thermomechanical simulations are a subject of ong
 The evaluation of the thermal operator can be performed on the GPU. The heat
 source is computed on the CPU. The mechanical simulation is CPU only.
 Performing the entire computation on the GPU is the subject of ongoing work.
+
+# Mesh
+`Adamantine` uses a purely hexahedral mesh. It has limited internal capabilities to
+generate meshes. For complex geometries, `adamantine` can load meshes created by
+mesh generators. The following formats are supported: `unv` format from the SALOME mesh
+generator (SMESH) [@smesh], `UCD`, `VTK` [@vtk], Abaqus [@abaqus] file format, DB mesh,
+`msh` file from Gmsh [@gmsh], `mphtxt` format from COMSOL [@comsol], Tecplot [@tecplot], 
+assimp [@assimp], and ExodusII [@exodusii]. The generated mesh should be conformal. 
+During the simulation, `adamantine` can adaptively refine the mesh near the heat source 
+using the forest of octrees approach [@dealII95; @p4est], where each element in the initial 
+mesh can be refined as an octree.
 
 # Additional Information
 An in-depth discussion of the governing equations and examples showcasing the
