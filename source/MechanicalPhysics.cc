@@ -79,7 +79,15 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
     setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   std::cout << "Distribute dofs mechanical" << std::endl;
+  //_old_displacement.print(std::cout);
+  //_dof_handler.locally_owned_dofs().print(std::cout);
+  // std::cout << "dofs before setup_dofs " << _dof_handler.n_dofs() <<
+  // std::endl;
   _dof_handler.distribute_dofs(_fe_collection);
+  //       std::cout << "dofs after setup_dofs " << _dof_handler.n_dofs() <<
+  //       std::endl;
+  //_old_displacement.print(std::cout);
+  //_dof_handler.locally_owned_dofs().print(std::cout);
   dealii::IndexSet locally_relevant_dofs;
   dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler,
                                                   locally_relevant_dofs);
@@ -248,12 +256,21 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   // First we save _old_displacement if it exists
   if (_old_displacement.size())
   {
+    std::cout << "Do stuff" << std::endl;
     _old_displacement.update_ghost_values();
 
     std::vector<double> cell_values(n_dofs_per_cell);
     saved_old_displacement.reserve(n_old_active_cells);
 
-    _dof_handler.distribute_dofs(_fe_collection);
+    // _dof_handler.locally_owned_dofs().print(std::cout);
+    //_old_displacement.print(std::cout);
+
+    // std::cout << "dofs before " << _dof_handler.n_dofs() << std::endl;
+    // _dof_handler.distribute_dofs(_fe_collection);
+    //     std::cout << "dofs after " << _dof_handler.n_dofs() << std::endl;
+
+    //	_dof_handler.locally_owned_dofs().print(std::cout);
+    //_old_displacement.print(std::cout);
 
     for (auto const &cell :
          dealii::filter_iterators(_dof_handler.active_cell_iterators(),

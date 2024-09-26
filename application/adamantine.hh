@@ -678,6 +678,7 @@ void refine_mesh(
 
   // Recompute the inverse of the mass matrix
   thermal_physics->compute_inverse_mass_matrix();
+          std::cout << "end_refine_mesh" << std::endl;
 }
 
 template <int dim, int p_order, typename MaterialStates,
@@ -1116,12 +1117,21 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           // For now assume that all deposited material has never been melted
           // (may or may not be reasonable)
           std::vector<bool> has_melted(deposition_cos.size(), false);
+         
+	 if (use_mechanical_physics) 
+	  mechanical_physics->prepare_transfer_mpi();
 
           thermal_physics->add_material(elements_to_activate, deposition_cos,
                                         deposition_sin, has_melted,
                                         activation_start, activation_end,
                                         new_material_temperature, temperature);
-          added_material = true;
+         
+	           if (use_mechanical_physics) {
+	  mechanical_physics->setup_dofs();
+	  mechanical_physics->complete_transfer_mpi();
+		   }
+	 
+	  added_material = true;
    	}
       }
 
