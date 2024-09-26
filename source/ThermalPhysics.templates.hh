@@ -733,10 +733,12 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
       dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
           const_cast<dealii::Triangulation<dim> &>(
               _dof_handler.get_triangulation()));
-  triangulation.prepare_coarsening_and_refinement();
+  //  triangulation.prepare_coarsening_and_refinement();
   dealii::parallel::distributed::CellDataTransfer<
       dim, dim, std::vector<std::vector<double>>>
       cell_data_trans(triangulation);
+  triangulation.prepare_coarsening_and_refinement();
+
   cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
 
 #ifdef ADAMANTINE_WITH_CALIPER
