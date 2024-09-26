@@ -241,6 +241,7 @@ BOOST_AUTO_TEST_CASE(elastostatic)
       material_properties);
   body_forces.push_back(gravity_force);
   mechanical_physics.setup_dofs(body_forces);
+  mechanical_physics.assemble_system(body_forces);
   auto solution = mechanical_physics.solve();
 
   // Reference computation
@@ -312,6 +313,7 @@ BOOST_AUTO_TEST_CASE(fe_nothing)
       material_properties);
   body_forces.push_back(gravity_force);
   mechanical_physics.setup_dofs(body_forces);
+  mechanical_physics.assemble_system(body_forces);
   auto solution = mechanical_physics.solve();
 
   // Reference computation
@@ -586,6 +588,7 @@ BOOST_AUTO_TEST_CASE(elastoplastic)
       material_properties);
   body_forces.push_back(gravity_force);
   mechanical_physics.setup_dofs(body_forces);
+    mechanical_physics.assemble_system(body_forces);
   mechanical_physics.solve();
   [[maybe_unused]] auto stress_tensor = mechanical_physics.get_stress_tensor();
   // TODO check stress tensor

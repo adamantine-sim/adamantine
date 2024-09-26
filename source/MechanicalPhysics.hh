@@ -45,6 +45,10 @@ public:
   setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
                  std::vector<std::shared_ptr<BodyForce<dim>>>());
 
+  void assemble_system(
+      std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
+          std::vector<std::shared_ptr<BodyForce<dim>>>());
+
   void setup_dofs(
       dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const

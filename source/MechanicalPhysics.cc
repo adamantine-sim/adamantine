@@ -103,7 +103,14 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
       _dof_handler, 4, dealii::Functions::ZeroFunction<dim>(dim),
       _affine_constraints);
   _affine_constraints.close();
+}
 
+template <int dim, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
+    assemble_system(
+        std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+{
   _mechanical_operator->reinit(_dof_handler, _affine_constraints, _q_collection,
                                body_forces);
 }
@@ -211,6 +218,7 @@ template <int dim, int p_order, typename MaterialStates,
 void MechanicalPhysics<dim, p_order, MaterialStates,
                        MemorySpaceType>::complete_transfer_mpi()
 {
+  _old_displacement.reinit(_dof_handler.locally_owned_dofs(), MPI_COMM_WORLD);
   _solution_transfer.interpolate(_old_displacement);
   auto n_active_cells = _dof_handler.get_triangulation().n_active_cells();
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
@@ -351,6 +359,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   _back_stress.swap(tmp_back_stress);
 
   setup_dofs(body_forces);
+  assemble_system(body_forces);
 
   // Update _old_displacement if necessary
   _old_displacement.reinit(_mechanical_operator->rhs().get_partitioner());

@@ -1184,6 +1184,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         else
         {
           mechanical_physics->setup_dofs();
+	            mechanical_physics->assemble_system();
         }
         displacement = mechanical_physics->solve();
       }
