@@ -1118,14 +1118,28 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           // (may or may not be reasonable)
           std::vector<bool> has_melted(deposition_cos.size(), false);
          
-	 if (use_mechanical_physics) 
-	  mechanical_physics->prepare_transfer_mpi();
-
-          thermal_physics->add_material(elements_to_activate, deposition_cos,
+          thermal_physics->add_material_start(elements_to_activate, deposition_cos,
                                         deposition_sin, has_melted,
                                         activation_start, activation_end,
                                         new_material_temperature, temperature);
-         
+        
+ if (use_mechanical_physics)
+          mechanical_physics->prepare_transfer_mpi();
+
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("refine triangulation");
+#endif
+  triangulation.execute_coarsening_and_refinement();
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("refine triangulation");
+#endif
+
+    thermal_physics->add_material_end(elements_to_activate, deposition_cos,
+                                        deposition_sin, has_melted,
+                                        activation_start, activation_end,
+                                        new_material_temperature, temperature);
+
+
 	           if (use_mechanical_physics) {
 	  mechanical_physics->setup_dofs();
 	  mechanical_physics->complete_transfer_mpi();

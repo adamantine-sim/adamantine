@@ -49,7 +49,18 @@ public:
 
   void compute_inverse_mass_matrix() override;
 
-  void add_material(
+  void add_material_start(
+      std::vector<std::vector<
+          typename dealii::DoFHandler<dim>::active_cell_iterator>> const
+          &elements_to_activate,
+      std::vector<double> const &new_deposition_cos,
+      std::vector<double> const &new_deposition_sin,
+      std::vector<bool> &new_has_melted, unsigned int const activation_start,
+      unsigned int const activation_end, double const initial_temperature,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
+      override;
+
+   void add_material_end(
       std::vector<std::vector<
           typename dealii::DoFHandler<dim>::active_cell_iterator>> const
           &elements_to_activate,
@@ -233,6 +244,12 @@ private:
    * Shared pointer to the underlying time stepping scheme.
    */
   std::unique_ptr<dealii::TimeStepping::RungeKutta<LA_Vector>> _time_stepping;
+
+  std::unique_ptr<
+dealii::parallel::distributed::CellDataTransfer<
+      dim, dim, std::vector<std::vector<double>>>> _cell_data_trans;
+
+  dealii::Vector<double> _cell_solution;
 };
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,

@@ -609,7 +609,7 @@ template <int dim, int p_order, int fe_degree, typename MaterialStates,
           typename MemorySpaceType, typename QuadratureType>
 void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
                     QuadratureType>::
-    add_material(
+    add_material_start(
         std::vector<std::vector<
             typename dealii::DoFHandler<dim>::active_cell_iterator>> const
             &elements_to_activate,
@@ -640,7 +640,7 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
   unsigned int const data_size_per_cell =
       n_dofs_per_cell + direction_data_size + phase_history_data_size +
       n_material_states;
-  dealii::Vector<double> cell_solution(n_dofs_per_cell);
+  _cell_solution.reinit(n_dofs_per_cell);
   std::vector<double> dummy_cell_data(data_size_per_cell,
                                       std::numeric_limits<double>::infinity());
 
@@ -668,9 +668,9 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
       {
         std::vector<double> cell_data(
             direction_data_size + phase_history_data_size + n_material_states);
-        cell->get_dof_values(rw_solution, cell_solution);
-        cell_data.insert(cell_data.begin(), cell_solution.begin(),
-                         cell_solution.end());
+        cell->get_dof_values(rw_solution, _cell_solution);
+        cell_data.insert(cell_data.begin(), _cell_solution.begin(),
+                         _cell_solution.end());
         cell_data[n_dofs_per_cell] = _deposition_cos[activated_cell_id];
         cell_data[n_dofs_per_cell + 1] = _deposition_sin[activated_cell_id];
 
@@ -734,20 +734,28 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
           const_cast<dealii::Triangulation<dim> &>(
               _dof_handler.get_triangulation()));
   triangulation.prepare_coarsening_and_refinement();
-  dealii::parallel::distributed::CellDataTransfer<
-      dim, dim, std::vector<std::vector<double>>>
-      cell_data_trans(triangulation);
+  _cell_data_trans = std::make_unique<dealii::parallel::distributed::CellDataTransfer<
+      dim, dim, std::vector<std::vector<double>>>>(triangulation);
 
-  cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
+  _cell_data_trans->prepare_for_coarsening_and_refinement(data_to_transfer);
+}
 
-#ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_BEGIN("refine triangulation");
-#endif
-  triangulation.execute_coarsening_and_refinement();
-#ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_END("refine triangulation");
-#endif
 
+template <int dim, int p_order, int fe_degree, typename MaterialStates,
+          typename MemorySpaceType, typename QuadratureType>
+void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
+                    QuadratureType>::
+    add_material_end(
+        std::vector<std::vector<
+            typename dealii::DoFHandler<dim>::active_cell_iterator>> const
+            &elements_to_activate,
+        std::vector<double> const &new_deposition_cos,
+        std::vector<double> const &new_deposition_sin,
+        std::vector<bool> &new_has_melted, unsigned int const activation_start,
+        unsigned int const activation_end,
+        double const new_material_temperature,
+        dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
+{
   setup_dofs();
 
   // Update MaterialProperty DoFHandler and resize the state vectors
@@ -757,22 +765,35 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
   compute_inverse_mass_matrix();
 
   initialize_dof_vector(std::numeric_limits<double>::infinity(), solution);
-  rw_index_set = solution.locally_owned_elements();
-  rw_solution.reinit(rw_index_set);
+  dealii::IndexSet rw_index_set = solution.locally_owned_elements();
+  dealii::LA::ReadWriteVector<double> rw_solution(rw_index_set);
   for (auto val : solution.locally_owned_elements())
     rw_solution[val] = new_material_temperature;
 
+    dealii::parallel::distributed::Triangulation<dim> &triangulation =
+      dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
+          const_cast<dealii::Triangulation<dim> &>(
+              _dof_handler.get_triangulation()));
+
   // Unpack the material state and repopulate the material state
-  std::vector<std::vector<double>> transferred_data(
+   unsigned int constexpr n_material_states = MaterialStates::n_material_states;
+  unsigned int const n_dofs_per_cell = _dof_handler.get_fe().n_dofs_per_cell();
+  unsigned int const direction_data_size = 2;
+  unsigned int const phase_history_data_size = 1;
+  unsigned int const data_size_per_cell =
+      n_dofs_per_cell + direction_data_size + phase_history_data_size +
+      n_material_states;
+   
+    std::vector<std::vector<double>> transferred_data(
       triangulation.n_active_cells(), std::vector<double>(data_size_per_cell));
-  cell_data_trans.unpack(transferred_data);
+  _cell_data_trans->unpack(transferred_data);
   auto state = _material_properties.get_state();
-  state_host = Kokkos::create_mirror_view(state);
+  auto state_host = Kokkos::create_mirror_view(state);
   _deposition_cos.clear();
   _deposition_sin.clear();
   _has_melted.clear();
-  cell_id = 0;
-  locally_owned_cell_id = 0;
+  unsigned int cell_id = 0;
+  unsigned int locally_owned_cell_id = 0;
   std::vector<dealii::types::global_dof_index> local_dof_indices(
       n_dofs_per_cell);
   for (auto const &cell : _dof_handler.active_cell_iterators())
@@ -784,13 +805,13 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
       {
         std::copy(transferred_data[cell_id].begin(),
                   transferred_data[cell_id].begin() + n_dofs_per_cell,
-                  cell_solution.begin());
+                  _cell_solution.begin());
         cell->get_dof_indices(local_dof_indices);
         for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
         {
           if (rw_index_set.is_element(local_dof_indices[i]))
           {
-            rw_solution[local_dof_indices[i]] = cell_solution(i);
+            rw_solution[local_dof_indices[i]] = _cell_solution(i);
           }
         }
       }
