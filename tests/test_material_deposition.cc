@@ -119,8 +119,11 @@ BOOST_AUTO_TEST_CASE(get_elements_to_activate_2d)
     geometry_database.put("length_divisions", 12);
     geometry_database.put("height", 6);
     geometry_database.put("height_divisions", 6);
+    boost::optional<boost::property_tree::ptree const &>
+        units_optional_database;
 
-    adamantine::Geometry<2> geometry(communicator, geometry_database);
+    adamantine::Geometry<2> geometry(communicator, geometry_database,
+                                     units_optional_database);
     dealii::parallel::distributed::Triangulation<2> const &tria =
         geometry.get_triangulation();
 
@@ -181,8 +184,11 @@ BOOST_AUTO_TEST_CASE(get_elements_to_activate_3d)
     geometry_database.put("width_divisions", 6);
     geometry_database.put("height", 6);
     geometry_database.put("height_divisions", 6);
+    boost::optional<boost::property_tree::ptree const &>
+        units_optional_database;
 
-    adamantine::Geometry<3> geometry(communicator, geometry_database);
+    adamantine::Geometry<3> geometry(communicator, geometry_database,
+                                     units_optional_database);
     dealii::parallel::distributed::Triangulation<3> const &tria =
         geometry.get_triangulation();
 
@@ -253,10 +259,12 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   database.put("geometry.material_deposition", true);
   database.put("geometry.material_deposition_file",
                "material_path_test_material_deposition.txt");
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
   // Build Geometry
   boost::property_tree::ptree geometry_database =
       database.get_child("geometry");
-  adamantine::Geometry<dim> geometry(communicator, geometry_database);
+  adamantine::Geometry<dim> geometry(communicator, geometry_database,
+                                     units_optional_database);
 
   // MaterialProperty database
   database.put("materials.property_format", "polynomial");
@@ -353,7 +361,9 @@ BOOST_AUTO_TEST_CASE(material_deposition)
 
 BOOST_AUTO_TEST_CASE(deposition_from_scan_path_2d, *utf::tolerance(1e-13))
 {
-  adamantine::ScanPath scan_path("scan_path.txt", "segment");
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::ScanPath scan_path("scan_path.txt", "segment",
+                                 units_optional_database);
 
   boost::property_tree::ptree database;
   database.put("deposition_length", 0.0005);
@@ -401,7 +411,9 @@ BOOST_AUTO_TEST_CASE(deposition_from_scan_path_2d, *utf::tolerance(1e-13))
 
 BOOST_AUTO_TEST_CASE(deposition_from_scan_path_3d, *utf::tolerance(1e-13))
 {
-  adamantine::ScanPath scan_path("scan_path.txt", "segment");
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::ScanPath scan_path("scan_path.txt", "segment",
+                                 units_optional_database);
 
   boost::property_tree::ptree database;
   database.put("deposition_length", 0.0005);
@@ -453,7 +465,9 @@ BOOST_AUTO_TEST_CASE(deposition_from_scan_path_3d, *utf::tolerance(1e-13))
 
 BOOST_AUTO_TEST_CASE(deposition_from_L_scan_path_3d, *utf::tolerance(1e-13))
 {
-  adamantine::ScanPath scan_path("scan_path_L.txt", "segment");
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::ScanPath scan_path("scan_path_L.txt", "segment",
+                                 units_optional_database);
 
   boost::property_tree::ptree database;
   database.put("deposition_length", 0.0005);
@@ -539,7 +553,9 @@ BOOST_AUTO_TEST_CASE(deposition_from_L_scan_path_3d, *utf::tolerance(1e-13))
 BOOST_AUTO_TEST_CASE(deposition_from_diagonal_scan_path_3d,
                      *utf::tolerance(1e-10))
 {
-  adamantine::ScanPath scan_path("scan_path_diagonal.txt", "segment");
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::ScanPath scan_path("scan_path_diagonal.txt", "segment",
+                                 units_optional_database);
 
   boost::property_tree::ptree database;
   database.put("deposition_length", 0.0005);

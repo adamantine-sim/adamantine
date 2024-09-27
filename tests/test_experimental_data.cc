@@ -34,7 +34,9 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_point_cloud_from_file)
   geometry_database.put("height_divisions", 2);
   geometry_database.put("width", 1);
   geometry_database.put("width_divisions", 2);
-  adamantine::Geometry<3> geometry(communicator, geometry_database);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<3> geometry(communicator, geometry_database,
+                                   units_optional_database);
   dealii::parallel::distributed::Triangulation<3> const &tria =
       geometry.get_triangulation();
 
@@ -102,7 +104,10 @@ BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data_point_cloud)
     database.put("height_divisions", 2);
     database.put("width", 1);
     database.put("width_divisions", 2);
-    adamantine::Geometry<3> geometry(communicator, database);
+    boost::optional<boost::property_tree::ptree const &>
+        units_optional_database;
+    adamantine::Geometry<3> geometry(communicator, database,
+                                     units_optional_database);
     dealii::parallel::distributed::Triangulation<3> const &tria =
         geometry.get_triangulation();
 
@@ -154,7 +159,10 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_ray_tracing_from_file)
     database.put("height_divisions", 2);
     database.put("width", 1);
     database.put("width_divisions", 2);
-    adamantine::Geometry<3> geometry(communicator, database);
+    boost::optional<boost::property_tree::ptree const &>
+        units_optional_database;
+    adamantine::Geometry<3> geometry(communicator, database,
+                                     units_optional_database);
     dealii::parallel::distributed::Triangulation<3> const &tria =
         geometry.get_triangulation();
 
@@ -250,8 +258,11 @@ BOOST_AUTO_TEST_CASE(project_ray_data_on_mesh, *utf::tolerance(1e-12))
     database.put("width", 400.0e-3);
     database.put("width_divisions", 8);
     database.put("material_height", 100.0e-3);
+    boost::optional<boost::property_tree::ptree const &>
+        units_optional_database;
 
-    adamantine::Geometry<3> geometry(communicator, database);
+    adamantine::Geometry<3> geometry(communicator, database,
+                                     units_optional_database);
     dealii::parallel::distributed::Triangulation<3> const &tria =
         geometry.get_triangulation();
 

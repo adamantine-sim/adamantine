@@ -131,7 +131,7 @@ The following options are available:
     * mesh\_format: abaqus, assimp, unv, ucd, dbmesh, gmsh, tecplot, xda, vtk,
     vtu, exodus, or default, i.e., use the file suffix to try to determine the
     mesh format (required)
-    * mesh\_scale\_factor: Apply a uniform scaling factor to the mesh (e.g. if the mesh is defined in mm or inches instead of m), (default value: 1)
+    * mesh\_scale\_factor: Apply a uniform scaling factor to the mesh (e.g. if the mesh is defined in mm or inches instead of m), (default value: 1) **[removed in 1.1, use units.mesh instead]**
     * reset\_material\_id: Clear the material IDs defined in the mesh and set them all to zero so all material properties are given by the `material\_0` input block: true or false (default value: false)
   * if import\_mesh is false:
     * length: the length of the domain in meters (required)
@@ -186,8 +186,8 @@ The following options are available:
   * method: name of the method to use for the time integration: forward\_euler,
   rk\_third\_order, rk\_fourth\_order, backward\_euler, implicit\_midpoint, 
   crank\_nicolson, or sdirk2 (required)
-  * scan\_path\_for\_duration: if the flag is true, the duration of the simulation is determined by the duration of the scan path. In this case the scan path file needs to contain SCAN\_PATH\_END to terminate the simulation. If the flag is false, the duration of the simulation is determined by the duration input (default value: false)
-  * duration: duration of the simulation in seconds (required if scan\_path\_for\_duration is false)
+  * scan\_path\_for\_duration: if the flag is true, the duration of the simulation is determined by the duration of the scan path. In this case the scan path file needs to contain SCAN\_PATH\_END to terminate the simulation. If the flag is false, the duration of the simulation is determined by the duration input (default value: false) **[since 1.1]**
+  * duration: duration of the simulation in seconds (required if scan\_path\_for\_duration is false) **[required for 1.0]**
   * time\_step: length of the time steps used for the simulation in seconds (required)
   * for implicit method:
     * max\_iteration: mamximum number of the iterations of the linear solver
@@ -247,6 +247,17 @@ The following options are available:
     ones. If false, the time steps is added to the filename prefix (required)
 * restart (optional):
   * filename\_prefix: prefix of the restart files (required)
+* units (optional): change the unit of some inputs **[since 1.1]**
+  * mesh: unit used for the mesh. Either millimeter, centimeter, inch, or meter (default value: meter)
+  * heat\_source (optional):
+    * power: unit used for the power of the heat sources. Either milliwatt or
+      watt (default value: watt)
+    * velocity: unit used for the velocity of the heat sources. Either
+      millimeter/second, centimeter/second, or meter/second (default value: meter/second)
+    * dimension: unit used for the dimension of the heat sources. Either
+      millimeter, centimeter, inch, or meter (default value: meter)
+    * scan\_path: unit used for the scan path of the heat sources. Either
+      millimeter, centimeter, inch, or meter (default value: meter)
 * verbose\_output: true or false (default value: false)
 
 ### Scan path

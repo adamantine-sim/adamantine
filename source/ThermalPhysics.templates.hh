@@ -286,6 +286,10 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
   _q_collection.push_back(QuadratureType(fe_degree + 1));
   _q_collection.push_back(QuadratureType(fe_degree + 1));
 
+  // Get the units database
+  boost::optional<boost::property_tree::ptree const &> units_optional_database =
+      database.get_child_optional("units");
+
   // Create the heat sources
   boost::property_tree::ptree const &source_database =
       database.get_child("sources");
@@ -300,16 +304,18 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
     std::string type = beam_database.get<std::string>("type");
     if (type == "goldak")
     {
-      _heat_sources[i] = std::make_shared<GoldakHeatSource<dim>>(beam_database);
+      _heat_sources[i] = std::make_shared<GoldakHeatSource<dim>>(
+          beam_database, units_optional_database);
     }
     else if (type == "electron_beam")
     {
-      _heat_sources[i] =
-          std::make_shared<ElectronBeamHeatSource<dim>>(beam_database);
+      _heat_sources[i] = std::make_shared<ElectronBeamHeatSource<dim>>(
+          beam_database, units_optional_database);
     }
     else if (type == "cube")
     {
-      _heat_sources[i] = std::make_shared<CubeHeatSource<dim>>(beam_database);
+      _heat_sources[i] = std::make_shared<CubeHeatSource<dim>>(
+          beam_database, units_optional_database);
     }
     else
     {

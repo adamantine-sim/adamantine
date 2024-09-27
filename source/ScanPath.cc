@@ -6,6 +6,7 @@
  */
 
 #include <ScanPath.hh>
+#include <types.hh>
 #include <utils.hh>
 
 #include <boost/algorithm/string.hpp>
@@ -14,9 +15,25 @@
 
 namespace adamantine
 {
-ScanPath::ScanPath(std::string scan_path_file, std::string file_format)
+ScanPath::ScanPath(std::string const &scan_path_file,
+                   std::string const &file_format,
+                   boost::optional<boost::property_tree::ptree const &> const
+                       &units_optional_database)
     : _scan_path_file(scan_path_file), _file_format(file_format)
 {
+  // Get the scaling factor of the different units, if provided. If the property
+  // tree is not given, we assume that all the scaling factors are equal to one.
+  if (units_optional_database)
+  {
+    auto database = units_optional_database.get();
+    // PropertyTreeInput units.heat_source.scan_path
+    std::string unit = database.get("heat_source.scan_path", "meter");
+    _distance_scaling = g_unit_scaling_factor[unit];
+    // PropertyTreeInput units.heat_source.velocity
+    unit = database.get("heat_source.velocity", "meter/second");
+    _velocity_scaling = g_unit_scaling_factor[unit];
+  }
+
   ASSERT_THROW((_file_format == "segment") || (_file_format == "event_series"),
                "Error: Format of scan path file not recognized.");
 
@@ -92,9 +109,9 @@ void ScanPath::load_segment_scan_path()
     }
 
     // Set the segment end position
-    segment.end_point(0) = std::stod(split_line[1]);
-    segment.end_point(1) = std::stod(split_line[2]);
-    segment.end_point(2) = std::stod(split_line[3]);
+    segment.end_point(0) = std::stod(split_line[1]) * _distance_scaling;
+    segment.end_point(1) = std::stod(split_line[2]) * _distance_scaling;
+    segment.end_point(2) = std::stod(split_line[3]) * _distance_scaling;
 
     // Set the power modifier
     segment.power_modifier = std::stod(split_line[4]);
@@ -114,7 +131,7 @@ void ScanPath::load_segment_scan_path()
     }
     else
     {
-      double velocity = std::stod(split_line[5]);
+      double velocity = std::stod(split_line[5]) * _velocity_scaling;
       double line_length =
           segment.end_point.distance(_segment_list.back().end_point);
       segment.end_time =
@@ -155,9 +172,9 @@ void ScanPath::load_event_series_scan_path()
     segment.end_time = std::stod(split_line[0]);
 
     // Set the segment end position
-    segment.end_point(0) = std::stod(split_line[1]);
-    segment.end_point(1) = std::stod(split_line[2]);
-    segment.end_point(2) = std::stod(split_line[3]);
+    segment.end_point(0) = std::stod(split_line[1]) * _distance_scaling;
+    segment.end_point(1) = std::stod(split_line[2]) * _distance_scaling;
+    segment.end_point(2) = std::stod(split_line[3]) * _distance_scaling;
 
     // Set the power modifier
     segment.power_modifier = last_power;

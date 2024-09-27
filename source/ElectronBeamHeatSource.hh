@@ -25,15 +25,21 @@ class ElectronBeamHeatSource final : public HeatSource<dim>
 public:
   /**
    * Constructor.
-   * \param[in] database requires the following entries:
-   *   - <B>absorption_efficiency</B>: double in \f$[0,1]\f$
-   *   - <B>depth</B>: double in \f$[0,\infty)\f$
-   *   - <B>diameter</B>: double in \f$[0,\infty)\f$
-   *   - <B>max_power</B>: double in \f$[0, \infty)\f$
-   *   - <B>input_file</B>: name of the file that contains the scan path
-   *     segments
+   *  \param[in] beam_database requires the following entries:
+   *    - <B>absorption_efficiency</B>: double in \f$[0,1]\f$
+   *    - <B>depth</B>: double in \f$[0,\infty)\f$
+   *    - <B>diameter</B>: double in \f$[0,\infty)\f$
+   *    - <B>max_power</B>: double in \f$[0, \infty)\f$
+   *    - <B>input_file</B>: name of the file that contains the scan path
+   *      segments
+   *  \param[in] units_optional_database may have the following entries:
+   *    - <B>heat_source.dimension</B>
+   *    - <B>heat_source.power</B>
    */
-  ElectronBeamHeatSource(boost::property_tree::ptree const &database);
+  ElectronBeamHeatSource(
+      boost::property_tree::ptree const &beam_database,
+      boost::optional<boost::property_tree::ptree const &> const
+          &units_optional_database);
 
   /**
    * Set the time variable.

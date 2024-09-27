@@ -1,4 +1,4 @@
-/* Copyright (c) 2021, the adamantine authors.
+/* Copyright (c) 2021 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -478,6 +478,70 @@ void validate_input_database(boost::property_tree::ptree &database)
     ASSERT_THROW(false,
                  "Error: Unknown localization cutoff function. Valid options "
                  "are 'gaspari_cohn', 'step_function', and 'none'.");
+  }
+
+  // Tree: units
+  boost::optional<std::string> mesh_unit =
+      database.get_optional<std::string>("units.mesh");
+  if (mesh_unit && (!(boost::iequals(mesh_unit.get(), "millimeter") ||
+                      boost::iequals(mesh_unit.get(), "centimeter") ||
+                      boost::iequals(mesh_unit.get(), "inch") ||
+                      boost::iequals(mesh_unit.get(), "meter"))))
+  {
+    ASSERT_THROW(false,
+                 "Error: Unknown unit associated with the mesh. Valid "
+                 "options are `millimeter`, `centimeter`, `inch`, and `meter`");
+  }
+
+  boost::optional<std::string> heat_source_power_unit =
+      database.get_optional<std::string>("units.heat_source.power");
+  if (heat_source_power_unit &&
+      (!(boost::iequals(heat_source_power_unit.get(), "milliwatt") ||
+         boost::iequals(heat_source_power_unit.get(), "watt"))))
+  {
+    ASSERT_THROW(false,
+                 "Error: Unknown unit associated with the power of the "
+                 "heat source. Valid options are `milliwatt`, and `watt`");
+  }
+
+  boost::optional<std::string> heat_source_velocity_unit =
+      database.get_optional<std::string>("units.heat_source.velocity");
+  if (heat_source_velocity_unit &&
+      (!(boost::iequals(heat_source_velocity_unit.get(), "millimeter/second") ||
+         boost::iequals(heat_source_velocity_unit.get(), "centimeter/second") ||
+         boost::iequals(heat_source_velocity_unit.get(), "meter/second"))))
+  {
+    ASSERT_THROW(false,
+                 "Error: Unknown unit associated with the velocity of the heat "
+                 "source. Valid options are `millimeter/second`, "
+                 "`centimeter/second`, and `meter/second`");
+  }
+
+  boost::optional<std::string> heat_source_dimension_unit =
+      database.get_optional<std::string>("units.heat_source.dimension");
+  if (heat_source_dimension_unit &&
+      (!(boost::iequals(heat_source_dimension_unit.get(), "millimeter") ||
+         boost::iequals(heat_source_dimension_unit.get(), "centimeter") ||
+         boost::iequals(heat_source_dimension_unit.get(), "inch") ||
+         boost::iequals(heat_source_dimension_unit.get(), "meter"))))
+  {
+    ASSERT_THROW(
+        false,
+        "Error: Unknown unit associated with the dimension of the heat source. "
+        "Valid options are `millimeter`, `centimeter`, `inch`, and `meter`");
+  }
+
+  boost::optional<std::string> heat_source_scan_path_unit =
+      database.get_optional<std::string>("units.heat_source.scan_path");
+  if (heat_source_scan_path_unit &&
+      (!(boost::iequals(heat_source_scan_path_unit.get(), "millimeter") ||
+         boost::iequals(heat_source_scan_path_unit.get(), "centimeter") ||
+         boost::iequals(heat_source_scan_path_unit.get(), "inch") ||
+         boost::iequals(heat_source_scan_path_unit.get(), "meter"))))
+  {
+    ASSERT_THROW(false,
+                 "Error: Unknown unit associated with the scan path. Valid "
+                 "options are `millimeter`, `centimeter`, `inch`, and `meter`");
   }
 }
 } // namespace adamantine
