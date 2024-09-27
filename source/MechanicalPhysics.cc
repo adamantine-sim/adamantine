@@ -76,7 +76,8 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
-    setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+    setup_dofs(
+        std::vector<std::shared_ptr<BodyForce<dim>>> const & /*body_forces*/)
 {
   std::cout << "Distribute dofs mechanical" << std::endl;
   //_old_displacement.print(std::cout);
@@ -210,17 +211,19 @@ template <int dim, int p_order, typename MaterialStates,
 void MechanicalPhysics<dim, p_order, MaterialStates,
                        MemorySpaceType>::prepare_transfer_mpi()
 {
-  const dealii::IndexSet &locally_owned_dofs =
-      _dof_handler.locally_owned_dofs();
-  const dealii::IndexSet locally_relevant_dofs =
-      dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+  _solution_transfer.prepare_for_coarsening_and_refinement(_old_displacement);
+  /*
+    const dealii::IndexSet &locally_owned_dofs =
+        _dof_handler.locally_owned_dofs();
+    const dealii::IndexSet locally_relevant_dofs =
+        dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
 
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      relevant_displacement(locally_owned_dofs, locally_relevant_dofs,
-                            MPI_COMM_WORLD);
-  relevant_displacement = _old_displacement;
-  _solution_transfer.prepare_for_coarsening_and_refinement(
-      relevant_displacement);
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+        relevant_displacement(locally_owned_dofs, locally_relevant_dofs,
+                              MPI_COMM_WORLD);
+    relevant_displacement = _old_displacement;
+    _solution_transfer.prepare_for_coarsening_and_refinement(
+        relevant_displacement);*/
 }
 
 template <int dim, int p_order, typename MaterialStates,
@@ -320,6 +323,9 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
                                 dealii::IteratorFilters::LocallyOwnedCell()))
   {
     auto current_fe_index = cell->active_fe_index();
+    dealii::DoFCellAccessor<dim, dim, false> thermal_cell(
+        &(_dof_handler.get_triangulation()), cell->level(), cell->index(),
+        &thermal_dof_handler);
     if (_material_properties.get_state_ratio(
             cell, MaterialStates::State::solid) > 0.99)
     {
@@ -363,6 +369,8 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
     {
       ++cell_id;
     }
+    if (cell->active_fe_index() != thermal_cell.active_fe_index())
+      std::abort();
   }
   _plastic_internal_variable.swap(tmp_plastic_internal_variable);
   _stress.swap(tmp_stress);
