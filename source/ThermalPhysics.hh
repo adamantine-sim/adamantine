@@ -16,6 +16,7 @@
 
 #include <deal.II/base/time_stepping.h>
 #include <deal.II/base/time_stepping.templates.h>
+#include <deal.II/distributed/cell_data_transfer.templates.h>
 #include <deal.II/distributed/cell_weights.h>
 #include <deal.II/hp/fe_collection.h>
 
@@ -60,7 +61,7 @@ public:
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
       override;
 
-   void add_material_end(
+  void add_material_end(
       std::vector<std::vector<
           typename dealii::DoFHandler<dim>::active_cell_iterator>> const
           &elements_to_activate,
@@ -245,11 +246,13 @@ private:
    */
   std::unique_ptr<dealii::TimeStepping::RungeKutta<LA_Vector>> _time_stepping;
 
-  std::unique_ptr<
-dealii::parallel::distributed::CellDataTransfer<
-      dim, dim, std::vector<std::vector<double>>>> _cell_data_trans;
+  std::unique_ptr<dealii::parallel::distributed::CellDataTransfer<
+      dim, dim, std::vector<std::vector<double>>>>
+      _cell_data_trans;
 
   dealii::Vector<double> _cell_solution;
+
+  std::vector<std::vector<double>> _data_to_transfer;
 };
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,

@@ -632,7 +632,7 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
   _thermal_operator->clear();
   // The data on each cell is stored in the following order: solution, direction
   // of deposition (cosine and sine), prior melting indictor, and state ratio.
-  std::vector<std::vector<double>> data_to_transfer;
+  _data_to_transfer.clear();
   unsigned int const n_dofs_per_cell = _dof_handler.get_fe().n_dofs_per_cell();
   unsigned int const direction_data_size = 2;
   unsigned int const phase_history_data_size = 1;
@@ -683,7 +683,7 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
           cell_data[n_dofs_per_cell + direction_data_size +
                     phase_history_data_size + i] =
               state_host(i, locally_owned_cell_id);
-        data_to_transfer.push_back(cell_data);
+        _data_to_transfer.push_back(cell_data);
 
         ++activated_cell_id;
       }
@@ -694,13 +694,13 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
           cell_data[n_dofs_per_cell + direction_data_size +
                     phase_history_data_size + i] =
               state_host(i, locally_owned_cell_id);
-        data_to_transfer.push_back(cell_data);
+        _data_to_transfer.push_back(cell_data);
       }
       ++locally_owned_cell_id;
     }
     else
     {
-      data_to_transfer.push_back(dummy_cell_data);
+      _data_to_transfer.push_back(dummy_cell_data);
     }
     cell_to_id[cell] = cell_id;
     ++cell_id;
@@ -715,12 +715,12 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
       if (cell->active_fe_index() != 0)
       {
         cell->set_future_fe_index(0);
-        data_to_transfer[cell_to_id[cell]][n_dofs_per_cell] =
+        _data_to_transfer[cell_to_id[cell]][n_dofs_per_cell] =
             new_deposition_cos[i];
-        data_to_transfer[cell_to_id[cell]][n_dofs_per_cell + 1] =
+        _data_to_transfer[cell_to_id[cell]][n_dofs_per_cell + 1] =
             new_deposition_sin[i];
 
-        if (data_to_transfer[cell_to_id[cell]]
+        if (_data_to_transfer[cell_to_id[cell]]
                             [n_dofs_per_cell + direction_data_size] > 0.5)
           new_has_melted[i] = true;
         else
@@ -734,12 +734,12 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
           const_cast<dealii::Triangulation<dim> &>(
               _dof_handler.get_triangulation()));
   triangulation.prepare_coarsening_and_refinement();
-  _cell_data_trans = std::make_unique<dealii::parallel::distributed::CellDataTransfer<
-      dim, dim, std::vector<std::vector<double>>>>(triangulation);
+  _cell_data_trans =
+      std::make_unique<dealii::parallel::distributed::CellDataTransfer<
+          dim, dim, std::vector<std::vector<double>>>>(triangulation);
 
-  _cell_data_trans->prepare_for_coarsening_and_refinement(data_to_transfer);
+  _cell_data_trans->prepare_for_coarsening_and_refinement(_data_to_transfer);
 }
-
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,
           typename MemorySpaceType, typename QuadratureType>
@@ -770,21 +770,21 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
   for (auto val : solution.locally_owned_elements())
     rw_solution[val] = new_material_temperature;
 
-    dealii::parallel::distributed::Triangulation<dim> &triangulation =
+  dealii::parallel::distributed::Triangulation<dim> &triangulation =
       dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
           const_cast<dealii::Triangulation<dim> &>(
               _dof_handler.get_triangulation()));
 
   // Unpack the material state and repopulate the material state
-   unsigned int constexpr n_material_states = MaterialStates::n_material_states;
+  unsigned int constexpr n_material_states = MaterialStates::n_material_states;
   unsigned int const n_dofs_per_cell = _dof_handler.get_fe().n_dofs_per_cell();
   unsigned int const direction_data_size = 2;
   unsigned int const phase_history_data_size = 1;
   unsigned int const data_size_per_cell =
       n_dofs_per_cell + direction_data_size + phase_history_data_size +
       n_material_states;
-   
-    std::vector<std::vector<double>> transferred_data(
+
+  std::vector<std::vector<double>> transferred_data(
       triangulation.n_active_cells(), std::vector<double>(data_size_per_cell));
   _cell_data_trans->unpack(transferred_data);
   auto state = _material_properties.get_state();

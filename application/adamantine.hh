@@ -1129,7 +1129,11 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_BEGIN("refine triangulation");
 #endif
-  triangulation.execute_coarsening_and_refinement();
+   dealii::parallel::distributed::Triangulation<dim> &triangulation =
+      dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
+          const_cast<dealii::Triangulation<dim> &>(
+              thermal_physics->get_dof_handler().get_triangulation()));
+   triangulation.execute_coarsening_and_refinement();
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_END("refine triangulation");
 #endif
@@ -1964,7 +1968,27 @@ run_ensemble(MPI_Comm const &global_communicator,
           // melted (may or may not be reasonable)
           std::vector<bool> has_melted(deposition_cos.size(), false);
 
-          thermal_physics_ensemble[member]->add_material(
+          thermal_physics_ensemble[member]->add_material_start(
+              elements_to_activate, deposition_cos, deposition_sin, has_melted,
+              activation_start, activation_end,
+              new_material_temperature[member],
+              solution_augmented_ensemble[member].block(base_state));
+	  
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("refine triangulation");
+#endif
+    dealii::DoFHandler<dim> &dof_handler = thermal_physics_ensemble[member]->get_dof_handler();
+    dealii::parallel::distributed::Triangulation<dim> &triangulation =
+      dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
+          const_cast<dealii::Triangulation<dim> &>(
+              dof_handler.get_triangulation()));
+
+  triangulation.execute_coarsening_and_refinement();
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("refine triangulation");
+#endif
+	  
+	  thermal_physics_ensemble[member]->add_material_end(
               elements_to_activate, deposition_cos, deposition_sin, has_melted,
               activation_start, activation_end,
               new_material_temperature[member],
