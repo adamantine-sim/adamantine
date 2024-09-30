@@ -229,7 +229,9 @@ template <int dim, int p_order, typename MaterialStates,
 void MechanicalPhysics<dim, p_order, MaterialStates,
                        MemorySpaceType>::complete_transfer_mpi()
 {
-  _old_displacement.reinit(_dof_handler.locally_owned_dofs(), MPI_COMM_WORLD);
+	const dealii::IndexSet locally_relevant_dofs =
+        dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+  _old_displacement.reinit(_dof_handler.locally_owned_dofs(), locally_relevant_dofs, MPI_COMM_WORLD);
   _solution_transfer.interpolate(_old_displacement);
   auto n_active_cells = _dof_handler.get_triangulation().n_active_cells();
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
