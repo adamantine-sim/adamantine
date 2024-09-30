@@ -161,6 +161,9 @@ private:
   dealii::parallel::distributed::SolutionTransfer<
       dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
       _solution_transfer;
+
+dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+        _relevant_displacement;
 };
 
 template <int dim, int p_order, typename MaterialStates,
