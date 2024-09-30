@@ -211,8 +211,8 @@ template <int dim, int p_order, typename MaterialStates,
 void MechanicalPhysics<dim, p_order, MaterialStates,
                        MemorySpaceType>::prepare_transfer_mpi()
 {
-  // _solution_transfer.prepare_for_coarsening_and_refinement(_old_displacement);
-
+  _solution_transfer.prepare_for_coarsening_and_refinement(_old_displacement);
+/*
   const dealii::IndexSet &locally_owned_dofs =
       _dof_handler.locally_owned_dofs();
   const dealii::IndexSet locally_relevant_dofs =
@@ -223,7 +223,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates,
                             MPI_COMM_WORLD);
   relevant_displacement = _old_displacement;
   _solution_transfer.prepare_for_coarsening_and_refinement(
-      relevant_displacement);
+      relevant_displacement);*/
 }
 
 template <int dim, int p_order, typename MaterialStates,
