@@ -721,7 +721,7 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
             new_deposition_sin[i];
 
         if (_data_to_transfer[cell_to_id[cell]]
-                            [n_dofs_per_cell + direction_data_size] > 0.5)
+                             [n_dofs_per_cell + direction_data_size] > 0.5)
           new_has_melted[i] = true;
         else
           new_has_melted[i] = false;
