@@ -31,7 +31,10 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
                       std::vector<double> const &reference_temperatures)
     : _geometry(geometry), _material_properties(material_properties),
       _dof_handler(_geometry.get_triangulation()),
-      _solution_transfer(_dof_handler)
+      _solution_transfer(_dof_handler),
+      _cell_data_transfer(
+          dynamic_cast<const dealii::parallel::distributed::Triangulation<dim>
+                           &>(_dof_handler.get_triangulation()))
 {
   // Create the FECollection
   _fe_collection.push_back(
@@ -223,6 +226,51 @@ void MechanicalPhysics<dim, p_order, MaterialStates,
   _relevant_displacement.update_ghost_values();
   _solution_transfer.prepare_for_coarsening_and_refinement(
       _relevant_displacement);
+
+  /*  std::vector<std::vector<double>>*/ _data_to_transfer.clear();
+  unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
+  unsigned int const n_doubles_per_quad_plastic = 1;
+  unsigned int const n_doubles_per_quad_stress =
+      dealii::SymmetricTensor<2, dim>::n_independent_components;
+
+  unsigned int const n_doubles_per_quad =
+      n_doubles_per_quad_plastic + n_doubles_per_quad_stress * 2;
+  std::vector<double> dummy_cell_data(n_quad_pts * n_doubles_per_quad,
+                                      std::numeric_limits<double>::infinity());
+
+  unsigned int cell_id = 0;
+  for (auto const &cell : _dof_handler.active_cell_iterators())
+  {
+    if (cell->is_locally_owned())
+    {
+      std::vector<double> cell_data(n_quad_pts * n_doubles_per_quad);
+      unsigned int const stress_offset =
+          n_quad_pts * n_doubles_per_quad_plastic;
+      unsigned int const back_stress_offset =
+          n_quad_pts * (n_doubles_per_quad_plastic + n_doubles_per_quad_stress);
+
+      std::copy(_plastic_internal_variable[cell_id].begin(),
+                _plastic_internal_variable[cell_id].end(), cell_data.begin());
+
+      for (unsigned int quad = 0; quad < n_quad_pts; ++quad)
+      {
+        for (unsigned int i = 0; i < n_doubles_per_quad_stress; ++i)
+        {
+          cell_data[stress_offset + quad * n_doubles_per_quad_stress + i] =
+              _stress[cell_id][quad].access_raw_entry(i);
+          cell_data[back_stress_offset + quad * n_doubles_per_quad_stress + i] =
+              _back_stress[cell_id][quad].access_raw_entry(i);
+        }
+      }
+      _data_to_transfer.push_back(std::move(cell_data));
+    }
+    else
+    {
+      _data_to_transfer.push_back(dummy_cell_data);
+    }
+    ++cell_id;
+  }
+  _cell_data_transfer.prepare_for_coarsening_and_refinement(_data_to_transfer);
 }
 
 template <int dim, int p_order, typename MaterialStates,

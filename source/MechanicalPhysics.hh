@@ -13,6 +13,7 @@
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/symmetric_tensor.h>
+#include <deal.II/distributed/cell_data_transfer.templates.h>
 #include <deal.II/distributed/solution_transfer.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/hp/fe_collection.h>
@@ -161,6 +162,12 @@ private:
   dealii::parallel::distributed::SolutionTransfer<
       dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
       _solution_transfer;
+
+  dealii::parallel::distributed::CellDataTransfer<
+      dim, dim, std::vector<std::vector<double>>>
+      _cell_data_transfer;
+
+  std::vector<std::vector<double>> _data_to_transfer;
 
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       _relevant_displacement;
