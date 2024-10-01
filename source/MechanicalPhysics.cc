@@ -290,15 +290,52 @@ void MechanicalPhysics<dim, p_order, MaterialStates,
 
   auto n_active_cells = _dof_handler.get_triangulation().n_active_cells();
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
-  auto elastic_limit = 0; // _material_properties.get_mechanical_property(
-                          // cell, StateProperty::elastic_limit);
 
-  _plastic_internal_variable.resize(
-      n_active_cells, std::vector<double>(n_quad_pts, elastic_limit));
+  _plastic_internal_variable.resize(n_active_cells,
+                                    std::vector<double>(n_quad_pts));
   _stress.resize(n_active_cells,
                  std::vector<dealii::SymmetricTensor<2, dim>>(n_quad_pts));
   _back_stress.resize(n_active_cells,
                       std::vector<dealii::SymmetricTensor<2, dim>>(n_quad_pts));
+
+  unsigned int const n_doubles_per_quad_plastic = 1;
+  unsigned int const n_doubles_per_quad_stress =
+      dealii::SymmetricTensor<2, dim>::n_independent_components;
+
+  unsigned int const n_doubles_per_quad =
+      n_doubles_per_quad_plastic + n_doubles_per_quad_stress * 2;
+  std::vector<std::vector<double>> data_to_unpack(
+      n_active_cells, std::vector<double>(n_doubles_per_quad * n_quad_pts));
+  _cell_data_transfer.unpack(data_to_unpack);
+
+  unsigned int cell_id = 0;
+  for (auto const &cell : _dof_handler.active_cell_iterators())
+  {
+    if (cell->is_locally_owned())
+    {
+      unsigned int const stress_offset =
+          n_quad_pts * n_doubles_per_quad_plastic;
+      unsigned int const back_stress_offset =
+          n_quad_pts * (n_doubles_per_quad_plastic + n_doubles_per_quad_stress);
+
+      std::copy(data_to_unpack[cell_id].begin(), data_to_unpack[cell_id].end(),
+                _plastic_internal_variable[cell_id].begin());
+
+      for (unsigned int quad = 0; quad < n_quad_pts; ++quad)
+      {
+        for (unsigned int i = 0; i < n_doubles_per_quad_stress; ++i)
+        {
+          _stress[cell_id][quad].access_raw_entry(i) =
+              data_to_unpack[cell_id][stress_offset +
+                                      quad * n_doubles_per_quad_stress + i];
+          _back_stress[cell_id][quad].access_raw_entry(i) =
+              data_to_unpack[cell_id][back_stress_offset +
+                                      quad * n_doubles_per_quad_stress + i];
+        }
+      }
+    }
+    ++cell_id;
+  }
 }
 
 template <int dim, int p_order, typename MaterialStates,
