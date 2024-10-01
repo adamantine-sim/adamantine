@@ -61,7 +61,7 @@ mid-print, if needed, to ensure that printed parts conform to the necessary tole
 
 While other open-source software like AdditiveFOAM [@additivefoam] excels at heat
 and mass transfer simulations in additive manufacturing, and commercial options
-like Abaqus [@abaqus] and Ansys[@ansys] offer comprehensive thermomechanical capabilities,
+like Abaqus [@abaqus] and Ansys [@ansys] offer comprehensive thermomechanical capabilities,
 `adamantine` stands out for its unique ability to incorporate real-world data
 through data assimilation. This feature allows for potentially more accurate
 simulations, leading to better process optimization and final part quality.
@@ -103,6 +103,7 @@ While mechanical and thermomechanical simulations are limited to serial
 execution, thermal and EnKF ensemble simulations can use MPI. Thermal
 simulations can be performed using an arbitrary number of processors. For EnKF
 ensemble simulations, the partitioning scheme works as follows:
+
  * If the number of processors (Nproc) is less than or equal to the number of
  EnKF ensemble members (N), `adamantine` distributes the simulations evenly
  across the processors. All processors except the first will handle the same
