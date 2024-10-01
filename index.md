@@ -7,8 +7,6 @@ usemathjax: true
 ---
 
 # adamantine
-
-*adamantine* stands for **AD**ditive (**A**) **MAN**unifac**T**uring s**I**mulator (**NE**). 
 *adamantine* is a thermomechanical code for additive manufacturing. It is based on
 [deal.II](https://www.dealii.org), [ArborX](https://github.com/arborx/ArborX), 
 [Trilinos](https://trilinos.github.io), and [Kokkos](https://kokkos.org).
