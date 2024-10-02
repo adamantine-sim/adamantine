@@ -318,13 +318,14 @@ void MechanicalPhysics<dim, p_order, MaterialStates,
       unsigned int const back_stress_offset =
           n_quad_pts * (n_doubles_per_quad_plastic + n_doubles_per_quad_stress);
 
-      std::copy(data_to_unpack[cell_id].begin(), data_to_unpack[cell_id].end(),
+      std::copy(data_to_unpack[cell_id].begin(), data_to_unpack[cell_id].begin()+stress_offset,
                 _plastic_internal_variable[cell_id].begin());
 
       for (unsigned int quad = 0; quad < n_quad_pts; ++quad)
       {
         for (unsigned int i = 0; i < n_doubles_per_quad_stress; ++i)
         {
+		std::cout <<  _stress[cell_id].size() << std::endl;
           _stress[cell_id][quad].access_raw_entry(i) =
               data_to_unpack[cell_id][stress_offset +
                                       quad * n_doubles_per_quad_stress + i];
