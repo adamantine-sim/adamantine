@@ -95,7 +95,7 @@ evaluate_thermal_physics_impl(
         &thermal_operator,
     dealii::hp::FECollection<dim> const &fe_collection, double const t,
     dealii::DoFHandler<dim> const &dof_handler,
-    std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources,
+    HeatSources<dim, dealii::MemorySpace::Host> &heat_sources,
     double current_source_height, BoundaryType boundary_type,
     MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
@@ -120,8 +120,7 @@ evaluate_thermal_physics_impl(
 
   // Compute the source term.
   // TODO do this on the GPU
-  for (auto &beam : heat_sources)
-    beam->update_time(t);
+  heat_sources.update_time(t);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> source(
       y.get_partitioner());
   source = 0.;
@@ -166,8 +165,7 @@ evaluate_thermal_physics_impl(
         double const inv_rho_cp = thermal_operator_dev->get_inv_rho_cp(cell, q);
         double quad_pt_source = 0.;
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
-        for (auto &beam : heat_sources)
-          quad_pt_source += beam->value(q_point, current_source_height);
+        quad_pt_source += heat_sources.value(q_point, current_source_height);
 
         cell_source[i] += inv_rho_cp * quad_pt_source *
                           fe_values.shape_value(i, q) * fe_values.JxW(q);
@@ -289,35 +287,7 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
   // Create the heat sources
   boost::property_tree::ptree const &source_database =
       database.get_child("sources");
-  // PropertyTreeInput sources.n_beams
-  unsigned int const n_beams = source_database.get<unsigned int>("n_beams");
-  _heat_sources.resize(n_beams);
-  for (unsigned int i = 0; i < n_beams; ++i)
-  {
-    // PropertyTreeInput sources.beam_X.type
-    boost::property_tree::ptree const &beam_database =
-        source_database.get_child("beam_" + std::to_string(i));
-    std::string type = beam_database.get<std::string>("type");
-    if (type == "goldak")
-    {
-      _heat_sources[i] = std::make_shared<GoldakHeatSource<dim>>(beam_database);
-    }
-    else if (type == "electron_beam")
-    {
-      _heat_sources[i] =
-          std::make_shared<ElectronBeamHeatSource<dim>>(beam_database);
-    }
-    else if (type == "cube")
-    {
-      _heat_sources[i] = std::make_shared<CubeHeatSource<dim>>(beam_database);
-    }
-    else
-    {
-      ASSERT_THROW(false, "Error: Beam type '" +
-                              beam_database.get<std::string>("type") +
-                              "' not recognized.");
-    }
-  }
+  _heat_sources = HeatSources<dim, dealii::MemorySpace::Host>(source_database);
 
   // Create the boundary condition type
   // PropertyTreeInput boundary.type
@@ -494,15 +464,7 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
       cell->set_active_fe_index(1);
   }
 
-  // Set the initial height of the heat source. Right now this is just the
-  // maximum heat source height, which can lead to unexpected behavior for
-  // different sources with different heights.
-  double temp_height = std::numeric_limits<double>::lowest();
-  for (auto const &source : _heat_sources)
-  {
-    temp_height = std::max(temp_height, source->get_current_height(0.0));
-  }
-  _current_source_height = temp_height;
+  _current_source_height = _heat_sources.get_current_height(0.0);
 }
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,
@@ -832,21 +794,7 @@ void ThermalPhysics<
 {
   // Update the heat source from heat_source_database to reflect changes during
   // the simulation (i.e. due to data assimilation)
-  unsigned int source_index = 0;
-  for (auto const &source : _heat_sources)
-  {
-    // PropertyTreeInput sources.beam_X
-    boost::property_tree::ptree const &beam_database =
-        heat_source_database.get_child("beam_" + std::to_string(source_index));
-
-    // PropertyTreeInput sources.beam_X.type
-    std::string type = beam_database.get<std::string>("type");
-
-    if (type == "goldak" || type == "electron_beam")
-      source->set_beam_properties(beam_database);
-
-    source_index++;
-  }
+  _heat_sources.set_beam_properties(heat_source_database);
 }
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,
@@ -858,15 +806,7 @@ double ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
         std::vector<Timer> &timers)
 {
-  // Update the height of the heat source. Right now this is just the
-  // maximum heat source height, which can lead to unexpected behavior for
-  // different sources with different heights.
-  double temp_height = std::numeric_limits<double>::lowest();
-  for (auto const &source : _heat_sources)
-  {
-    temp_height = std::max(temp_height, source->get_current_height(t));
-  }
-  _current_source_height = temp_height;
+  _current_source_height = _heat_sources.get_current_height(t);
 
   auto eval = [&](double const t, LA_Vector const &y)
   { return evaluate_thermal_physics(t, y, timers); };

@@ -279,17 +279,17 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
 
   // Create the heat sources
   boost::property_tree::ptree beam_database;
-  beam_database.put("depth", 0.1);
-  beam_database.put("absorption_efficiency", 0.1);
-  beam_database.put("diameter", 1.0);
-  beam_database.put("max_power", 0.);
-  beam_database.put("scan_path_file", "scan_path.txt");
-  beam_database.put("scan_path_file_format", "segment");
-  std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
-  heat_sources.resize(1);
-  heat_sources[0] =
-      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
-  heat_sources[0]->update_time(0.);
+  beam_database.put("n_beams", 1);
+  beam_database.put("beam_0.type", "goldak");
+  beam_database.put("beam_0.depth", 0.1);
+  beam_database.put("beam_0.absorption_efficiency", 0.1);
+  beam_database.put("beam_0.diameter", 1.0);
+  beam_database.put("beam_0.max_power", 0.);
+  beam_database.put("beam_0.scan_path_file", "scan_path.txt");
+  beam_database.put("beam_0.scan_path_file_format", "segment");
+  adamantine::HeatSources<2, dealii::MemorySpace::Host> heat_sources(
+      beam_database);
+  heat_sources.update_time(0.);
 
   // Initialize the ThermalOperator
   adamantine::ThermalOperatorDevice<2, false, 4, 2,

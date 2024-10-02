@@ -34,7 +34,7 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
         MPI_Comm const &communicator, BoundaryType boundary_type,
         MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
             &material_properties,
-        std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources)
+        HeatSources<dim, dealii::MemorySpace::Host> const &heat_sources)
     : _communicator(communicator), _boundary_type(boundary_type),
       _material_properties(material_properties), _heat_sources(heat_sources),
       _inverse_mass_matrix(
@@ -625,8 +625,8 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
         for (unsigned int d = 0; d < dim; ++d)
           q_point_loc(d) = q_point(d)[i];
 
-        for (auto &beam : _heat_sources)
-          quad_pt_source[i] += beam->value(q_point_loc, _current_source_height);
+        quad_pt_source[i] +=
+            _heat_sources.value(q_point_loc, _current_source_height);
       }
       quad_pt_source *= inv_rho_cp;
 

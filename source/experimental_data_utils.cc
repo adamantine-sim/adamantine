@@ -96,9 +96,10 @@ get_expt_to_dof_mapping(PointsValues<dim> const &points_values,
     for (int j = offset[i]; j < offset[i + 1]; ++j)
     {
       obs_indices[j] = i;
-      global_indices[j] = indices_ranks[j].second == my_rank
-                              ? dof_indices[indices_ranks[j].first]
-                              : -1;
+      global_indices[j] =
+          indices_ranks[j].second == my_rank
+              ? static_cast<int>(dof_indices[indices_ranks[j].first])
+              : -1;
     }
   }
 

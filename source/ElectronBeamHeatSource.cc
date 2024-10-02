@@ -9,24 +9,29 @@
 #include <instantiation.hh>
 #include <types.hh>
 
+#include <deal.II/base/memory_space.h>
+
 namespace adamantine
 {
 
 template <int dim>
 ElectronBeamHeatSource<dim>::ElectronBeamHeatSource(
     boost::property_tree::ptree const &database)
-    : HeatSource<dim>(database)
+    : _beam(database),
+      _scan_path(database.get<std::string>("scan_path_file"),
+                 database.get<std::string>("scan_path_file_format"))
 {
 }
 
 template <int dim>
 void ElectronBeamHeatSource<dim>::update_time(double time)
 {
+  static const double log_01 = std::log(0.1);
   _beam_center = this->_scan_path.value(time);
   double segment_power_modifier = this->_scan_path.get_power_modifier(time);
   _alpha =
       -this->_beam.absorption_efficiency * this->_beam.max_power *
-      segment_power_modifier * _log_01 /
+      segment_power_modifier * log_01 /
       (dealii::numbers::PI * this->_beam.radius_squared * this->_beam.depth);
 }
 
@@ -52,9 +57,11 @@ double ElectronBeamHeatSource<dim>::value(dealii::Point<dim> const &point,
           std::pow(point[axis<dim>::y] - _beam_center[axis<dim>::y], 2);
     }
 
+    static const double log_01 = std::log(0.1);
+
     // Electron beam heat source equation
     double heat_source =
-        _alpha * std::exp(_log_01 * xpy_squared / this->_beam.radius_squared) *
+        _alpha * std::exp(log_01 * xpy_squared / this->_beam.radius_squared) *
         distribution_z;
 
     return heat_source;

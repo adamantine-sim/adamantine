@@ -19,9 +19,6 @@ namespace adamantine
 // Forward declarations
 class Timer;
 
-template <int dim>
-class HeatSource;
-
 /**
  * This class defines the interface for ThermalPhysics used in run(). The
  * objective of this class is to simplify code in run() by reducing the number
@@ -175,7 +172,7 @@ public:
   /**
    * Return the heat sources.
    */
-  virtual std::vector<std::shared_ptr<HeatSource<dim>>> &get_heat_sources() = 0;
+  virtual HeatSources<dim, dealii::MemorySpace::Host> &get_heat_sources() = 0;
 
   /**
    * Return the degree of the finite element.

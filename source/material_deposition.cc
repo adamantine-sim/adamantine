@@ -6,6 +6,7 @@
  */
 
 #include <material_deposition.hh>
+#include <types.hh>
 #include <utils.hh>
 
 #include <deal.II/arborx/bvh.h>
@@ -24,7 +25,7 @@ std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
            std::vector<double>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    std::vector<std::shared_ptr<HeatSource<dim>>> &heat_sources)
+    HeatSources<dim, dealii::MemorySpace::Host> &heat_sources)
 {
   // PropertyTreeInput geometry.material_deposition
   bool material_deposition =
@@ -46,10 +47,10 @@ create_material_deposition_boxes(
         std::tuple<std::vector<dealii::BoundingBox<dim>>, std::vector<double>,
                    std::vector<double>, std::vector<double>>>
         deposition_paths;
-    for (auto const &source : heat_sources)
+    for (auto const &scan_path : heat_sources.get_scan_paths())
     {
-      deposition_paths.emplace_back(deposition_along_scan_path<dim>(
-          geometry_database, source->get_scan_path()));
+      deposition_paths.emplace_back(
+          deposition_along_scan_path<dim>(geometry_database, scan_path));
     }
 
     return merge_deposition_paths<dim>(deposition_paths);
@@ -358,12 +359,12 @@ template std::tuple<std::vector<dealii::BoundingBox<2>>, std::vector<double>,
                     std::vector<double>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    std::vector<std::shared_ptr<HeatSource<2>>> &heat_sources);
+    HeatSources<2, dealii::MemorySpace::Host> &heat_sources);
 template std::tuple<std::vector<dealii::BoundingBox<3>>, std::vector<double>,
                     std::vector<double>, std::vector<double>>
 create_material_deposition_boxes(
     boost::property_tree::ptree const &geometry_database,
-    std::vector<std::shared_ptr<HeatSource<3>>> &heat_sources);
+    HeatSources<3, dealii::MemorySpace::Host> &heat_sources);
 
 template std::tuple<std::vector<dealii::BoundingBox<2>>, std::vector<double>,
                     std::vector<double>, std::vector<double>>

@@ -15,8 +15,6 @@ list(APPEND
      test_integration_thermoelastic
      test_material_property
      test_material_property_device
-     test_mechanical_operator
-     test_mechanical_physics
      test_newton_solver
      test_post_processor
      test_scan_path
@@ -39,7 +37,9 @@ list(APPEND
      test_integration_3d_amr_device
      test_integration_da_augmented
      test_material_deposition
-     test_thermal_physics
+     test_mechanical_operator
+     test_mechanical_physics     
+test_thermal_physics
      test_ensemble_management
     )
 
