@@ -311,7 +311,7 @@ void refine_and_transfer(
     dealii::DoFHandler<dim> &dof_handler,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
-	std::cout << "refine_and_transfer" << std::endl;
+  std::cout << "refine_and_transfer" << std::endl;
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
 #endif
@@ -521,16 +521,15 @@ void refine_and_transfer(
 
   if (mechanical_physics)
   {
-	        thermal_physics->set_state_to_material_properties();
-          dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-              temperature_host(solution.get_partitioner());
-          temperature_host.import(solution, dealii::VectorOperation::insert);
-          mechanical_physics->setup_dofs(
-              thermal_physics->get_dof_handler(), temperature_host,
-              thermal_physics->get_has_melted_vector());
+    thermal_physics->set_state_to_material_properties();
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+        temperature_host(solution.get_partitioner());
+    temperature_host.import(solution, dealii::VectorOperation::insert);
+    mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
+                                   temperature_host,
+                                   thermal_physics->get_has_melted_vector());
     mechanical_physics->complete_transfer_mpi();
   }
-
 }
 
 template <int dim>
@@ -599,7 +598,7 @@ void refine_mesh(
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
 {
-	std::cout << "refine_mesh" << std::endl;
+  std::cout << "refine_mesh" << std::endl;
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
 #endif
@@ -633,7 +632,7 @@ void refine_mesh(
       refinement_database.get<double>("beam_cutoff", 1.0e-15);
 
   std::cout << "n_refinements: " << n_refinements << std::endl;
-   
+
   for (unsigned int i = 0; i < n_refinements; ++i)
   {
     // Compute the cells to be refined.
@@ -678,7 +677,7 @@ void refine_mesh(
 
   // Recompute the inverse of the mass matrix
   thermal_physics->compute_inverse_mass_matrix();
-          std::cout << "end_refine_mesh" << std::endl;
+  std::cout << "end_refine_mesh" << std::endl;
 }
 
 template <int dim, int p_order, typename MaterialStates,
@@ -907,7 +906,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   {
     if (restart == false)
     {
-	       std::cout << "setup_dofs thermal" << std::endl;
+      std::cout << "setup_dofs thermal" << std::endl;
       thermal_physics->setup();
       thermal_physics->initialize_dof_vector(initial_temperature, temperature);
     }
@@ -929,7 +928,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::ASSERT_THROW(
         restart == false,
         "Mechanical simulation cannot be restarted from a file");
-   std::cout << "setup_dofs mechanical begin" << std::endl;   
+    std::cout << "setup_dofs mechanical begin" << std::endl;
     if (use_thermal_physics)
     {
       // Update the material state
@@ -937,9 +936,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
           temperature_host(temperature.get_partitioner());
       temperature_host.import(temperature, dealii::VectorOperation::insert);
-      mechanical_physics->setup_dofs(
-          thermal_physics->get_dof_handler(), temperature_host,
-          thermal_physics->get_has_melted_vector());
+      mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
+                                     temperature_host,
+                                     thermal_physics->get_has_melted_vector());
     }
     else
     {
@@ -1117,40 +1116,40 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           // For now assume that all deposited material has never been melted
           // (may or may not be reasonable)
           std::vector<bool> has_melted(deposition_cos.size(), false);
-         
-          thermal_physics->add_material_start(elements_to_activate, deposition_cos,
-                                        deposition_sin, has_melted,
-                                        activation_start, activation_end,
-                                        new_material_temperature, temperature);
-        
- if (use_mechanical_physics)
-          mechanical_physics->prepare_transfer_mpi();
+
+          thermal_physics->add_material_start(
+              elements_to_activate, deposition_cos, deposition_sin, has_melted,
+              activation_start, activation_end, new_material_temperature,
+              temperature);
+
+          if (use_mechanical_physics)
+            mechanical_physics->prepare_transfer_mpi();
 
 #ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_BEGIN("refine triangulation");
+          CALI_MARK_BEGIN("refine triangulation");
 #endif
-   dealii::parallel::distributed::Triangulation<dim> &triangulation =
-      dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
-          const_cast<dealii::Triangulation<dim> &>(
-              thermal_physics->get_dof_handler().get_triangulation()));
-   triangulation.execute_coarsening_and_refinement();
+          dealii::parallel::distributed::Triangulation<dim> &triangulation =
+              dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
+                  const_cast<dealii::Triangulation<dim> &>(
+                      thermal_physics->get_dof_handler().get_triangulation()));
+          triangulation.execute_coarsening_and_refinement();
 #ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_END("refine triangulation");
+          CALI_MARK_END("refine triangulation");
 #endif
 
-    thermal_physics->add_material_end(elements_to_activate, deposition_cos,
-                                        deposition_sin, has_melted,
-                                        activation_start, activation_end,
-                                        new_material_temperature, temperature);
+          thermal_physics->add_material_end(
+              elements_to_activate, deposition_cos, deposition_sin, has_melted,
+              activation_start, activation_end, new_material_temperature,
+              temperature);
 
+          if (use_mechanical_physics)
+          {
+            mechanical_physics->setup_dofs();
+            mechanical_physics->complete_transfer_mpi();
+          }
 
-	           if (use_mechanical_physics) {
-	  mechanical_physics->setup_dofs();
-	  mechanical_physics->complete_transfer_mpi();
-		   }
-	 
-	  added_material = true;
-   	}
+          added_material = true;
+        }
       }
 
       if ((rank == 0) && (verbose_output == true) &&
@@ -1184,7 +1183,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // Solve the (thermo-)mechanical problem
     if (use_mechanical_physics)
     {
-      //if (n_time_step % time_steps_output == 0)
+      // if (n_time_step % time_steps_output == 0)
       {
         if (use_thermal_physics && added_material)
         {
@@ -1193,23 +1192,23 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
               temperature_host(temperature.get_partitioner());
           temperature_host.import(temperature, dealii::VectorOperation::insert);
-//	  mechanical_physics->prepare_transfer(thermal_physics->get_dof_handler());
+          //	  mechanical_physics->prepare_transfer(thermal_physics->get_dof_handler());
           mechanical_physics->setup_dofs(
               thermal_physics->get_dof_handler(), temperature_host,
               thermal_physics->get_has_melted_vector());
-//	  mechanical_physics->complete_transfer();
+          //	  mechanical_physics->complete_transfer();
         }
         else
         {
           mechanical_physics->setup_dofs();
-	            mechanical_physics->assemble_system();
+          mechanical_physics->assemble_system();
         }
         displacement = mechanical_physics->solve();
       }
 
       // Since there is no history dependence in the model, only calculate
       // mechanics when outputting
-//      displacement = mechanical_physics->solve();
+      //      displacement = mechanical_physics->solve();
     }
 
     timers[adamantine::evol_time].stop();
@@ -1973,22 +1972,23 @@ run_ensemble(MPI_Comm const &global_communicator,
               activation_start, activation_end,
               new_material_temperature[member],
               solution_augmented_ensemble[member].block(base_state));
-	  
-#ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_BEGIN("refine triangulation");
-#endif
-    dealii::DoFHandler<dim> &dof_handler = thermal_physics_ensemble[member]->get_dof_handler();
-    dealii::parallel::distributed::Triangulation<dim> &triangulation =
-      dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
-          const_cast<dealii::Triangulation<dim> &>(
-              dof_handler.get_triangulation()));
 
-  triangulation.execute_coarsening_and_refinement();
 #ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_END("refine triangulation");
+          CALI_MARK_BEGIN("refine triangulation");
 #endif
-	  
-	  thermal_physics_ensemble[member]->add_material_end(
+          dealii::DoFHandler<dim> &dof_handler =
+              thermal_physics_ensemble[member]->get_dof_handler();
+          dealii::parallel::distributed::Triangulation<dim> &triangulation =
+              dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
+                  const_cast<dealii::Triangulation<dim> &>(
+                      dof_handler.get_triangulation()));
+
+          triangulation.execute_coarsening_and_refinement();
+#ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_END("refine triangulation");
+#endif
+
+          thermal_physics_ensemble[member]->add_material_end(
               elements_to_activate, deposition_cos, deposition_sin, has_melted,
               activation_start, activation_end,
               new_material_temperature[member],
@@ -2108,7 +2108,8 @@ run_ensemble(MPI_Comm const &global_communicator,
                   material_properties_ensemble[0]->get_dof_handler());
         }
 
-        // Only continue data assimilation if some of the observations are mapped to DOFs
+        // Only continue data assimilation if some of the observations are
+        // mapped to DOFs
         if (expt_to_dof_mapping.first.size() > 0)
         {
           // NOTE: As is, this updates the dof mapping and covariance sparsity
@@ -2119,25 +2120,25 @@ run_ensemble(MPI_Comm const &global_communicator,
           // for each operation. If this is a bottleneck, it can be fixed in the
           // future.
           timers[adamantine::da_dof_mapping].start();
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_BEGIN("da_dof_mapping");
-  #endif
+#endif
           data_assimilator.update_dof_mapping<dim>(expt_to_dof_mapping);
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_END("da_dof_mapping");
-  #endif
+#endif
           timers[adamantine::da_dof_mapping].stop();
 
           timers[adamantine::da_covariance_sparsity].start();
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_BEGIN("da_covariance_sparsity");
-  #endif
+#endif
           data_assimilator.update_covariance_sparsity_pattern<dim>(
               thermal_dof_handler,
               solution_augmented_ensemble[0].block(augmented_state).size());
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_END("da_covariance_sparsity");
-  #endif
+#endif
           timers[adamantine::da_covariance_sparsity].start();
 
           unsigned int experimental_data_size = points_values.values.size();
@@ -2145,9 +2146,9 @@ run_ensemble(MPI_Comm const &global_communicator,
           // Create the R matrix (the observation covariance matrix)
           // PropertyTreeInput experiment.estimated_uncertainty
           timers[adamantine::da_obs_covariance].start();
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_BEGIN("da_obs_covariance");
-  #endif
+#endif
           double variance_entries = experiment_optional_database.get().get(
               "estimated_uncertainty", 0.0);
           variance_entries = variance_entries * variance_entries;
@@ -2165,28 +2166,28 @@ run_ensemble(MPI_Comm const &global_communicator,
           {
             R.add(i, i, variance_entries);
           }
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_END("da_obs_covariance");
-  #endif
+#endif
           timers[adamantine::da_obs_covariance].stop();
 
           // Perform data assimilation to update the augmented state ensemble
           timers[adamantine::da_update_ensemble].start();
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_BEGIN("da_update_ensemble");
-  #endif
+#endif
           data_assimilator.update_ensemble(solution_augmented_ensemble,
-                                          points_values.values, R);
-  #ifdef ADAMANTINE_WITH_CALIPER
+                                           points_values.values, R);
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_END("da_update_ensemble");
-  #endif
+#endif
           timers[adamantine::da_update_ensemble].stop();
 
           // Extract the parameters from the augmented state
           for (unsigned int member = 0; member < local_ensemble_size; ++member)
           {
             for (unsigned int index = 0;
-                index < augmented_state_parameters.size(); ++index)
+                 index < augmented_state_parameters.size(); ++index)
             {
               // FIXME: Need to consider how we want to generalize this. It
               // could get unwieldy if we want to specify every parameter of an
@@ -2200,7 +2201,7 @@ run_ensemble(MPI_Comm const &global_communicator,
                         augmented_state)[index]);
               }
               else if (augmented_state_parameters.at(index) ==
-                      adamantine::AugmentedStateParameters::beam_0_max_power)
+                       adamantine::AugmentedStateParameters::beam_0_max_power)
               {
                 database_ensemble[member].put(
                     "sources.beam_0.max_power",
@@ -2216,7 +2217,8 @@ run_ensemble(MPI_Comm const &global_communicator,
           // Print out the augmented parameters
           if (solution_augmented_ensemble[0].block(1).size() > 0)
           {
-            for (unsigned int member = 0; member < local_ensemble_size; ++member)
+            for (unsigned int member = 0; member < local_ensemble_size;
+                 ++member)
             {
               std::cout << "Rank: " << global_rank
                         << " | New parameters for member "
@@ -2228,10 +2230,13 @@ run_ensemble(MPI_Comm const &global_communicator,
             }
           }
         }
-        else 
+        else
         {
           if (global_rank == 0)
-            std::cout << "WARNING: NO EXPERIMENTAL DATA POINTS MAPPED ONTO THE SIMULATION MESH. SKIPPING DATA ASSIMILATION OPERATION." << std::endl;
+            std::cout
+                << "WARNING: NO EXPERIMENTAL DATA POINTS MAPPED ONTO THE "
+                   "SIMULATION MESH. SKIPPING DATA ASSIMILATION OPERATION."
+                << std::endl;
         }
       }
 
