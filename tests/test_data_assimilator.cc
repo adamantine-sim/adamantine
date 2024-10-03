@@ -57,7 +57,10 @@ public:
     database.put("length_divisions", 1);
     database.put("height", 1);
     database.put("height_divisions", 1);
-    adamantine::Geometry<2> geometry(communicator, database);
+    boost::optional<boost::property_tree::ptree const &>
+        units_optional_database;
+    adamantine::Geometry<2> geometry(communicator, database,
+                                     units_optional_database);
     dealii::parallel::distributed::Triangulation<2> const &tria =
         geometry.get_triangulation();
 
@@ -207,7 +210,10 @@ public:
     database.put("length_divisions", 2);
     database.put("height", 1);
     database.put("height_divisions", 2);
-    adamantine::Geometry<2> geometry(communicator, database);
+    boost::optional<boost::property_tree::ptree const &>
+        units_optional_database;
+    adamantine::Geometry<2> geometry(communicator, database,
+                                     units_optional_database);
     dealii::parallel::distributed::Triangulation<2> const &tria =
         geometry.get_triangulation();
 
@@ -264,7 +270,10 @@ public:
     database.put("length_divisions", 2);
     database.put("height", 1);
     database.put("height_divisions", 2);
-    adamantine::Geometry<2> geometry(communicator, database);
+    boost::optional<boost::property_tree::ptree const &>
+        units_optional_database;
+    adamantine::Geometry<2> geometry(communicator, database,
+                                     units_optional_database);
     dealii::parallel::distributed::Triangulation<2> const &tria =
         geometry.get_triangulation();
 
@@ -319,7 +328,10 @@ public:
     database.put("length_divisions", 2);
     database.put("height", 1);
     database.put("height_divisions", 2);
-    adamantine::Geometry<2> geometry(communicator, database);
+    boost::optional<boost::property_tree::ptree const &>
+        units_optional_database;
+    adamantine::Geometry<2> geometry(communicator, database,
+                                     units_optional_database);
     dealii::parallel::distributed::Triangulation<2> const &tria =
         geometry.get_triangulation();
 
@@ -365,7 +377,10 @@ public:
     database.put("length_divisions", 1);
     database.put("height", 1);
     database.put("height_divisions", 1);
-    adamantine::Geometry<2> geometry(communicator, database);
+    boost::optional<boost::property_tree::ptree const &>
+        units_optional_database;
+    adamantine::Geometry<2> geometry(communicator, database,
+                                     units_optional_database);
     dealii::parallel::distributed::Triangulation<2> const &tria =
         geometry.get_triangulation();
 
@@ -648,7 +663,10 @@ public:
     database.put("length_divisions", 1);
     database.put("height", 1);
     database.put("height_divisions", 1);
-    adamantine::Geometry<2> geometry(communicator, database);
+    boost::optional<boost::property_tree::ptree const &>
+        units_optional_database;
+    adamantine::Geometry<2> geometry(communicator, database,
+                                     units_optional_database);
     dealii::parallel::distributed::Triangulation<2> const &tria =
         geometry.get_triangulation();
 
@@ -765,7 +783,10 @@ public:
     database.put("length_divisions", 1);
     database.put("height", 1);
     database.put("height_divisions", 1);
-    adamantine::Geometry<2> geometry(communicator, database);
+    boost::optional<boost::property_tree::ptree const &>
+        units_optional_database;
+    adamantine::Geometry<2> geometry(communicator, database,
+                                     units_optional_database);
     dealii::parallel::distributed::Triangulation<2> const &tria =
         geometry.get_triangulation();
 

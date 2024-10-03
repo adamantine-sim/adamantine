@@ -744,11 +744,15 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
 #endif
+  // Get optional units property tree
+  boost::optional<boost::property_tree::ptree const &> units_optional_database =
+      database.get_child_optional("units");
 
   // Create the Geometry
   boost::property_tree::ptree geometry_database =
       database.get_child("geometry");
-  adamantine::Geometry<dim> geometry(communicator, geometry_database);
+  adamantine::Geometry<dim> geometry(communicator, geometry_database,
+                                     units_optional_database);
 
   // Create the MaterialProperty
   boost::property_tree::ptree material_database =
@@ -1354,6 +1358,8 @@ run_ensemble(MPI_Comm const &global_communicator,
       database.get_child("materials");
 
   // Optional subtrees
+  boost::optional<boost::property_tree::ptree const &> units_optional_database =
+      database.get_child_optional("units");
   boost::optional<const boost::property_tree::ptree &>
       experiment_optional_database = database.get_child_optional("experiment");
   boost::optional<const boost::property_tree::ptree &>
@@ -1595,7 +1601,7 @@ run_ensemble(MPI_Comm const &global_communicator,
     solution_augmented_ensemble[member].collect_sizes();
 
     geometry_ensemble.push_back(std::make_unique<adamantine::Geometry<dim>>(
-        local_communicator, geometry_database));
+        local_communicator, geometry_database, units_optional_database));
 
     material_properties_ensemble.push_back(
         std::make_unique<adamantine::MaterialProperty<

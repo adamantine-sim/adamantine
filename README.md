@@ -1,7 +1,15 @@
-![image](doc/logo/adamantine_wordmark.png)
+![image](doc/logo/adamantine_wordmark_with_bg.png)
 
-`adamantine` stands for *AD*ditive (*A*) *MAN*unifac*T*uring s*I*mulator (*NE*).
-It is an open-source sofware to simulate heat transfer for additive manufacturing.
+`adamantine` is a thermomechanical code for additive manufacturing. It is based
+on [deal.II](https://www.dealii.org),
+[ArborX](https://github.com/arborx/ArborX),
+[Trilinos](https://www.trilinos.github.io), and [Kokkos](https://kokkos.org).
+`adamantine` can simulate the thermomechanical evolution an object undergoes
+during the manufacturing process. It can handle materials in three distinct
+phases (solid, liquid, and powder) to accurately reflect the physical state
+during manufacturing. Experimental data can be used to improve the simulation
+through the use of [Ensemble Kalman
+filter](https://en.wikipedia.org/wiki/Ensemble_Kalman_filter).
 
 ## Installation
 Installing `adamantine` requires:
@@ -10,11 +18,10 @@ Installing `adamantine` requires:
 * CMake: 3.15 or later
 * Boost: 1.70.0 or later
 * ArborX: 1.4.1 or later
-* Trilinos: 14.4.0 or later
-* deal.II: 9.5 or later
-
-You need to compile deal.II with MPI, P4EST, and ArborX. If you want to use Exodus file, you also need Trilinos with SEACAS support.
-`adamantine` also optionally supports profiling through [Caliper](https://github.com/llnl/Caliper).
+* Trilinos: 14.4.0 or later. If you want to *adamantine* to read an Exodus mesh,
+  you need to enable SEACAS support.
+* deal.II: 9.5 or later. You need to compile deal.II with MPI, p4est, and ArborX support.
+* Caliper: 2.10 or later. Optional dependency to profile `adamantine`.
 
 An example on how to install all the dependencies can be found in
 `ci/Dockerfile`.
@@ -47,6 +54,19 @@ using
 ```bash
 docker pull rombur/adamantine:latest
 ```
+The 1.0 release version is available using
+```bash
+docker pull rombur/adamantine:1.0
+```
+To start an interactive container use
+```
+docker run --rm -it rombur/adamantine:1.0 bash
+```
+You will find `adamantine` in `/home/adamantine/bin`. You can mount a folder
+into a Docker image using
+```
+docker run --rm -it -v /path/to/compute/folder:/path/to/image/folder rombur/adamantine:1.0 bash
+```
 
 ## Run
 After compiling `adamantine`, you can run a simulation using
@@ -64,8 +84,11 @@ export DEAL_II_NUM_THREADS=1
 If you use our Docker image, the variable is already set.
 
 ### Input file
-Adamantine supports Boost INFO format and json. The input file is assumed to use
-the INFO format unless the file extension is `.json`.
+`adamantine` supports Boost INFO format and json. The input file is assumed to use
+the INFO format unless the file extension is `.json`. An example of an input
+file can be found
+[here](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/HourGlass_AOP.info).
+
 The following options are available:
 * boundary (required):
   * type: type of boundary: adiabatic, radiative, or convective. Multiple types
@@ -85,7 +108,7 @@ The following options are available:
 * geometry (required):
   * dim: the dimension of the problem (2 or 3, required)
   * material\_height: below this height the domain contains material. Above this
-  height the domain is empty (default value: 1e9)
+  height the domain is empty. The height is in meters (default value: 1e9)
   * use\_powder: the additive manufacturing process use powder: true or false
   (default value: false)
   * if use\_powder is true:
@@ -97,18 +120,18 @@ The following options are available:
     * if material\_deposition\_method is file:
         * material\_deposition\_file: material deposition filename
     * if material\_deposition\_method is scan\_paths:
-        * deposition\_length: length of material deposition boxes along the scan direction
-        * deposition\_width: width of material deposition boxes (in the plane of the material, normal to the scan direction, 3D only)
-        * deposition\_height: height of material deposition boxes (out of the plane of the material)
-        * deposition\_lead\_time: amount of time before the scan path reaches a point that the material is added
-        * deposition\_time: using this option, the material is added in bigger lumps (optional)
+        * deposition\_length: length of material deposition boxes along the scan direction in meters
+        * deposition\_width: width of material deposition boxes in meters (in the plane of the material, normal to the scan direction, 3D only)
+        * deposition\_height: height of material deposition boxes in meters (out of the plane of the material)
+        * deposition\_lead\_time: amount of time before the scan path reaches a point that the material is added in seconds
+        * deposition\_time: using this option, the material is added in bigger lumps in seconds (optional)
   * import\_mesh: true or false (required)
   * if import\_mesh is true:
     * mesh\_file: The filename for the mesh file (required)
     * mesh\_format: abaqus, assimp, unv, ucd, dbmesh, gmsh, tecplot, xda, vtk,
     vtu, exodus, or default, i.e., use the file suffix to try to determine the
     mesh format (required)
-    * mesh\_scale\_factor: Apply a uniform scaling factor to the mesh (e.g. if the mesh is defined in mm or inches instead of m), (default value: 1)
+    * mesh\_scale\_factor: Apply a uniform scaling factor to the mesh (e.g. if the mesh is defined in mm or inches instead of m), (default value: 1) **[removed in 1.1, use units.mesh instead]**
     * reset\_material\_id: Clear the material IDs defined in the mesh and set them all to zero so all material properties are given by the `material\_0` input block: true or false (default value: false)
   * if import\_mesh is false:
     * length: the length of the domain in meters (required)
@@ -123,17 +146,17 @@ The following options are available:
 * materials (required):
   * n\_materials: number of materials (required)
   * property\_format: format of the material property: table or polynomial (required)
-  * initial\_temperature: initial temperature of all the materials (default value: 300)
-  * new\_material\_temperature: temperature of all the material that is being added during the process (default value: 300)
+  * initial\_temperature: initial temperature of all the materials in kelvins (default value: 300)
+  * new\_material\_temperature: temperature of all the material that is being added during the process in kelvins (default value: 300)
   * material\_X: property tree for the material with number X
   * material\_X.Y: property tree where Y is either liquid, powder, or solid
   (one is required)
   * material\_X.Y.Z: Z is either density in kg/m^3, specific\_heat in J/(K\*kg),
   thermal\_conductivity\_x, resp. y or z, in the direction x, resp. y or z (in 2D only x and z are used), in W/(m\*K), emissivity,
   or convection\_heat\_transfer\_coef in W/(m^2\*K) (optional)
-  * material\_X.A: A is either solidus in kelvin, liquidus in kelvin, latent\_heat
-  in J/kg, radiation\_temperature\_infty in kelvin, or convection\_temperature\_infty
-  in kelvin (optional)
+  * material\_X.A: A is either solidus in kelvins, liquidus in kelvins, latent\_heat
+  in J/kg, radiation\_temperature\_infty in kelvins, or convection\_temperature\_infty
+  in kelvins (optional)
 * memory\_space (optional): device (use GPU if Kokkos compiled with GPU support) or host (use CPU) (default value: host)
 * post\_processor (required):
   * filename\_prefix: prefix of output files (required)
@@ -163,8 +186,8 @@ The following options are available:
   * method: name of the method to use for the time integration: forward\_euler,
   rk\_third\_order, rk\_fourth\_order, backward\_euler, implicit\_midpoint, 
   crank\_nicolson, or sdirk2 (required)
-  * scan\_path\_for\_duration: if the flag is true, the duration of the simulation is determined by the duration of the scan path. In this case the scan path file needs to contain SCAN\_PATH\_END to terminate the simulation. If the flag is false, the duration of the simulation is determined by the duration input (default value: false)
-  * duration: duration of the simulation in seconds (required if scan\_path\_for\_duration is false)
+  * scan\_path\_for\_duration: if the flag is true, the duration of the simulation is determined by the duration of the scan path. In this case the scan path file needs to contain SCAN\_PATH\_END to terminate the simulation. If the flag is false, the duration of the simulation is determined by the duration input (default value: false) **[since 1.1]**
+  * duration: duration of the simulation in seconds (required if scan\_path\_for\_duration is false) **[required for 1.0]**
   * time\_step: length of the time steps used for the simulation in seconds (required)
   * for implicit method:
     * max\_iteration: mamximum number of the iterations of the linear solver
@@ -224,9 +247,18 @@ The following options are available:
     ones. If false, the time steps is added to the filename prefix (required)
 * restart (optional):
   * filename\_prefix: prefix of the restart files (required)
+* units (optional): change the unit of some inputs **[since 1.1]**
+  * mesh: unit used for the mesh. Either millimeter, centimeter, inch, or meter (default value: meter)
+  * heat\_source (optional):
+    * power: unit used for the power of the heat sources. Either milliwatt or
+      watt (default value: watt)
+    * velocity: unit used for the velocity of the heat sources. Either
+      millimeter/second, centimeter/second, or meter/second (default value: meter/second)
+    * dimension: unit used for the dimension of the heat sources. Either
+      millimeter, centimeter, inch, or meter (default value: meter)
+    * scan\_path: unit used for the scan path of the heat sources. Either
+      millimeter, centimeter, inch, or meter (default value: meter)
 * verbose\_output: true or false (default value: false)
-
-
 
 ### Scan path
 `adamantine` supports two kinds of scan path input: the `segment` format and the
@@ -244,7 +276,10 @@ this is the velocity in m/s.
 The first entry must be a spot. If it was a line, there would be no way
 to know where the line starts (since the coordinates are the ending coordinates).
 By convention, we avoid using a zero second dwell time for the first spot
-and instead choose some small positive number.
+and instead choose some small positive number. 
+
+A scan file example can be found
+[here](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/scan_path_L.txt).
 #### Event format
 For an event series the first segment is a point, then the rest are lines.
 The column descriptions are:
@@ -254,11 +289,14 @@ position of the line.
 * Column 5: the coefficient for the nominal power. Usually this is either
 0 or 1, but sometimes intermediate values are used when turning a corner.
 
+A scan file example can be found
+[here](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/scan_path_event_series.inp).
+
 ### Material deposition
 `adamantine` supports two ways to deposit material: based on the scan path and based on a separate material deposition file.
 
 #### Scan-path-based deposition
-If the material deposition is based on the scan path, then material is added according to the `deposition\_length`, `deposition\_width`, `deposition\_height`, `deposition\_lead\_time`, and `deposition\_time` input parameters in the `geometry` input block. Cells are activated if they are crossed by a rectangular prism (rectangle in 2D) traveling along the scan path. In 3D the rectangular prism is centered with the (x,y) values of the scan path and the top of the rectangular prism is at the z value of the scan path (i.e. the scan path height gives the new height of the material after deposition). Near the end of segments, the length of the rectangular prism is truncated so as to not deposit material past the edge of the segment. Material can be deposited with a lead time ahead of the heat source (controlled by `deposition\_lead\_time`). Depositing material requires modifying the simulation mesh, which can be computationally intensive. To reduce the cost, material can be added in "lumps", with the time between lumps set by `deposition\_time`.  
+If the material deposition is based on the scan path, then material is added according to the `deposition_length`, `deposition_width`, `deposition_height`, `deposition_lead_time`, and `deposition_time` input parameters in the `geometry` input block. Cells are activated if they are crossed by a rectangular prism (rectangle in 2D) traveling along the scan path. In 3D the rectangular prism is centered with the (x,y) values of the scan path and the top of the rectangular prism is at the z value of the scan path (i.e. the scan path height gives the new height of the material after deposition). Near the end of segments, the length of the rectangular prism is truncated so as to not deposit material past the edge of the segment. Material can be deposited with a lead time ahead of the heat source (controlled by `deposition_lead_time`). Depositing material requires modifying the simulation mesh, which can be computationally intensive. To reduce the cost, material can be added in "lumps", with the time between lumps set by `deposition_time`.  
 
 #### File-based deposition
 The material deposition can also be set by boxes defined in a separate file. The format of this file is as follows.
@@ -274,6 +312,13 @@ The first entry of the file is the dimension the problem: 2 or 3.
   * Column 4 to 6: (x,y,z) length of deposition box in m.
   * Column 7: deposition time in s.
   * Column 6: angle of material deposition.
+ 
+An example of material deposition file can be found
+[here](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/material_deposition_3d.txt).
+
+## Examples
+Examples that showcase `adamantine` capabilities can be found
+[here](https://adamantine-sim.github.io/adamantine/doc/examples.html).
 
 ## License
 `adamantine` is distributed under the 3-Clause BSD License.

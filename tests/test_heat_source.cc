@@ -29,8 +29,9 @@ BOOST_AUTO_TEST_CASE(heat_source_value_2d, *utf::tolerance(1e-12))
   database.put("max_power", 10.);
   database.put("scan_path_file", "scan_path.txt");
   database.put("scan_path_file_format", "segment");
-  GoldakHeatSource<2> goldak_heat_source(database);
-  ElectronBeamHeatSource<2> eb_heat_source(database);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  GoldakHeatSource<2> goldak_heat_source(database, units_optional_database);
+  ElectronBeamHeatSource<2> eb_heat_source(database, units_optional_database);
 
   double g_value = 0.0;
   double eb_value = 0.0;
@@ -110,8 +111,9 @@ BOOST_AUTO_TEST_CASE(heat_source_value_3d, *utf::tolerance(1e-12))
   database.put("scan_path_file", "scan_path.txt");
   database.put("scan_path_file_format", "segment");
 
-  GoldakHeatSource<3> goldak_heat_source(database);
-  ElectronBeamHeatSource<3> eb_heat_source(database);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  GoldakHeatSource<3> goldak_heat_source(database, units_optional_database);
+  ElectronBeamHeatSource<3> eb_heat_source(database, units_optional_database);
 
   double g_value = 0.0;
   double eb_value = 0.0;
@@ -178,8 +180,9 @@ BOOST_AUTO_TEST_CASE(heat_source_height, *utf::tolerance(1e-12))
   database.put("max_power", 10.);
   database.put("scan_path_file", "scan_path_layers.txt");
   database.put("scan_path_file_format", "segment");
-  GoldakHeatSource<2> goldak_heat_source(database);
-  ElectronBeamHeatSource<2> eb_heat_source(database);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  GoldakHeatSource<2> goldak_heat_source(database, units_optional_database);
+  ElectronBeamHeatSource<2> eb_heat_source(database, units_optional_database);
 
   double g_height = 0.0;
   double eb_height = 0.0;

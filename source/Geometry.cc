@@ -22,8 +22,10 @@
 namespace adamantine
 {
 template <int dim>
-Geometry<dim>::Geometry(MPI_Comm const &communicator,
-                        boost::property_tree::ptree const &database)
+Geometry<dim>::Geometry(
+    MPI_Comm const &communicator, boost::property_tree::ptree const &database,
+    boost::optional<boost::property_tree::ptree const &> const
+        &units_optional_database)
     : _triangulation(communicator)
 {
   // PropertyTreeInput geometry.import_mesh
@@ -92,8 +94,12 @@ Geometry<dim>::Geometry(MPI_Comm const &communicator,
     _triangulation.copy_triangulation(serial_triangulation);
 
     // Apply user-specified scaling to the mesh
-    // PropertyTreeInput geometry.mesh_scale_factor
-    auto mesh_scaling = database.get("mesh_scale_factor", 1.0);
+    // PropertyTreeInput units.mesh
+    std::string const mesh_unit =
+        units_optional_database
+            ? units_optional_database.get().get("mesh", "meter")
+            : "meter";
+    double mesh_scaling = g_unit_scaling_factor[mesh_unit];
     dealii::GridTools::scale(mesh_scaling, _triangulation);
 
     // Set the mesh material id to 0 if specified in the input

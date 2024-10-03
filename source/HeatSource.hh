@@ -41,20 +41,26 @@ public:
 
   /**
    * Constructor.
-   * \param[in] database requires the following entries:
+   * \param[in] beam_database requires the following entries:
    *   - <B>absorption_efficiency</B>: double in \f$[0,1]\f$
    *   - <B>depth</B>: double in \f$[0,\infty)\f$
    *   - <B>diameter</B>: double in \f$[0,\infty)\f$
    *   - <B>max_power</B>: double in \f$[0, \infty)\f$
    *   - <B>input_file</B>: name of the file that contains the scan path
    *     segments
+   * \param[in] units_optional_database may contain the following entries:
+   *   - <B>heat_source.dimension</B>
+   *   - <B>heat_source.power</B>
    */
-  HeatSource(boost::property_tree::ptree const &database)
-      : _beam(database),
+  HeatSource(boost::property_tree::ptree const &beam_database,
+             boost::optional<boost::property_tree::ptree const &> const
+                 &units_optional_database)
+      : _beam(beam_database, units_optional_database),
         // PropertyTreeInput sources.beam_X.scan_path_file
         // PropertyTreeInput sources.beam_X.scan_path_format
-        _scan_path(database.get<std::string>("scan_path_file"),
-                   database.get<std::string>("scan_path_file_format"))
+        _scan_path(beam_database.get<std::string>("scan_path_file"),
+                   beam_database.get<std::string>("scan_path_file_format"),
+                   units_optional_database)
   {
   }
 

@@ -87,8 +87,10 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   geometry_database.put("length_divisions", 4);
   geometry_database.put("height", 6e-3);
   geometry_database.put("height_divisions", 5);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
   // Build Geometry
-  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  adamantine::Geometry<2> geometry(communicator, geometry_database,
+                                   units_optional_database);
   // MaterialProperty database
   boost::property_tree::ptree material_property_database;
   material_property_database.put("property_format", "polynomial");
@@ -162,8 +164,10 @@ void thermal_2d_manufactured_solution()
   geometry_database.put("length_divisions", 4);
   geometry_database.put("height", 6e3);
   geometry_database.put("height_divisions", 5);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
   // Build Geometry
-  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  adamantine::Geometry<2> geometry(communicator, geometry_database,
+                                   units_optional_database);
 
   // MaterialProperty database
   boost::property_tree::ptree material_property_database;
@@ -248,7 +252,9 @@ void initial_temperature()
 
   // Build Geometry
   auto geometry_database = basic_geometry_database();
-  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<2> geometry(communicator, geometry_database,
+                                   units_optional_database);
 
   // Build MaterialProperty
   auto material_property_database = basic_material_properies_database();
@@ -283,8 +289,10 @@ void energy_conservation()
   geometry_database.put("length_divisions", 10);
   geometry_database.put("height", 10);
   geometry_database.put("height_divisions", 10);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
   // Build Geometry
-  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  adamantine::Geometry<2> geometry(communicator, geometry_database,
+                                   units_optional_database);
   boost::property_tree::ptree material_property_database;
   // MaterialProperty database
   material_property_database.put("property_format", "polynomial");
@@ -386,8 +394,10 @@ void radiation_bcs()
   geometry_database.put("length_divisions", 5);
   geometry_database.put("height", 5);
   geometry_database.put("height_divisions", 5);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
   // Build Geometry
-  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  adamantine::Geometry<2> geometry(communicator, geometry_database,
+                                   units_optional_database);
   // MaterialProperty database
   boost::property_tree::ptree material_property_database;
   material_property_database.put("property_format", "polynomial");
@@ -498,8 +508,10 @@ void convection_bcs()
   geometry_database.put("length_divisions", 5);
   geometry_database.put("height", 5);
   geometry_database.put("height_divisions", 5);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
   // Build Geometry
-  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  adamantine::Geometry<2> geometry(communicator, geometry_database,
+                                   units_optional_database);
   boost::property_tree::ptree material_property_database;
   // MaterialProperty database
   material_property_database.put("property_format", "polynomial");
@@ -598,7 +610,9 @@ void reference_temperature()
 
   // Build Geometry
   auto geometry_database = basic_geometry_database();
-  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<2> geometry(communicator, geometry_database,
+                                   units_optional_database);
 
   // Build MaterialProperty
   auto material_property_database = basic_material_properies_database();

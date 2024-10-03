@@ -421,9 +421,11 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
           _dof_handler.locally_owned_dofs(), locally_relevant_dofs,
           _mechanical_operator->rhs().get_mpi_communicator());
   incremental_displacement = displacement;
-  // TODO Remove this once we support refinement/material addition
   if (_old_displacement.size() > 0)
+  {
     incremental_displacement -= _old_displacement;
+  }
+  incremental_displacement.update_ghost_values();
   compute_stress(incremental_displacement);
 
   _old_displacement.swap(displacement);
@@ -446,7 +448,6 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   std::vector<dealii::SymmetricTensor<2, dim>> strain_tensor(n_q_points);
   const dealii::FEValuesExtractors::Vector displacement_extr(0);
   unsigned int cell_id = 0;
-  displacement.update_ghost_values();
   for (auto const &cell : _dof_handler.active_cell_iterators() |
                               dealii::IteratorFilters::ActiveFEIndexEqualTo(
                                   0, /* locally owned */ true))

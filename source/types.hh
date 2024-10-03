@@ -12,6 +12,7 @@
 
 #include <array>
 #include <string>
+#include <unordered_map>
 
 namespace dealii
 {
@@ -27,6 +28,14 @@ namespace LA = LinearAlgebra;
 
 namespace adamantine
 {
+
+static std::unordered_map<std::string, double> g_unit_scaling_factor{
+    {"millimeter", 1e-3},        {"centimeter", 1e-2},
+    {"inch", 2.54e-2},           {"meter", 1.},
+    {"milliwatt", 1e-3},         {"watt", 1.},
+    {"millimeter/second", 1e-3}, {"centimer/second", 1e-2},
+    {"meter/second", 1.}};
+
 /**
  * Enum on the possible material properties that depend on the state of the
  * material.

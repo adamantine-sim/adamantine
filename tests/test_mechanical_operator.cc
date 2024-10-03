@@ -63,7 +63,9 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
   geometry_database.put("height_divisions", 3);
   geometry_database.put("width", 6);
   geometry_database.put("width_divisions", 3);
-  adamantine::Geometry<dim> geometry(communicator, geometry_database);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<dim> geometry(communicator, geometry_database,
+                                     units_optional_database);
   auto const &triangulation = geometry.get_triangulation();
   for (auto cell : triangulation.cell_iterators())
   {
@@ -249,7 +251,9 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
   geometry_database.put("height_divisions", 3);
   geometry_database.put("width", 6);
   geometry_database.put("width_divisions", 3);
-  adamantine::Geometry<dim> geometry(communicator, geometry_database);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<dim> geometry(communicator, geometry_database,
+                                     units_optional_database);
   auto const &triangulation = geometry.get_triangulation();
   for (auto cell : triangulation.cell_iterators())
   {
