@@ -617,7 +617,6 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
         std::vector<double> const &new_deposition_sin,
         std::vector<bool> &new_has_melted, unsigned int const activation_start,
         unsigned int const activation_end,
-        double const new_material_temperature,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -746,13 +745,6 @@ template <int dim, int p_order, int fe_degree, typename MaterialStates,
 void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
                     QuadratureType>::
     add_material_end(
-        std::vector<std::vector<
-            typename dealii::DoFHandler<dim>::active_cell_iterator>> const
-            &elements_to_activate,
-        std::vector<double> const &new_deposition_cos,
-        std::vector<double> const &new_deposition_sin,
-        std::vector<bool> &new_has_melted, unsigned int const activation_start,
-        unsigned int const activation_end,
         double const new_material_temperature,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {

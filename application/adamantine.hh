@@ -1100,7 +1100,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 
           thermal_physics->add_material_start(
               elements_to_activate, deposition_cos, deposition_sin, has_melted,
-              activation_start, activation_end, new_material_temperature,
+              activation_start, activation_end,
               temperature);
 
           if (use_mechanical_physics) {
@@ -1120,8 +1120,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 #endif
 
           thermal_physics->add_material_end(
-              elements_to_activate, deposition_cos, deposition_sin, has_melted,
-              activation_start, activation_end, new_material_temperature,
+              new_material_temperature,
               temperature);
 
           if (use_mechanical_physics)
@@ -1944,7 +1943,6 @@ run_ensemble(MPI_Comm const &global_communicator,
           thermal_physics_ensemble[member]->add_material_start(
               elements_to_activate, deposition_cos, deposition_sin, has_melted,
               activation_start, activation_end,
-              new_material_temperature[member],
               solution_augmented_ensemble[member].block(base_state));
 
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -1963,8 +1961,6 @@ run_ensemble(MPI_Comm const &global_communicator,
 #endif
 
           thermal_physics_ensemble[member]->add_material_end(
-              elements_to_activate, deposition_cos, deposition_sin, has_melted,
-              activation_start, activation_end,
               new_material_temperature[member],
               solution_augmented_ensemble[member].block(base_state));
 
