@@ -34,10 +34,6 @@ public:
                                      MemorySpaceType> &material_properties,
                     std::vector<double> const &initial_temperatures);
 
-  unsigned int set_active_fe_indices(
-      std::optional<std::reference_wrapper<dealii::DoFHandler<dim> const>>
-          thermal_dof_handler = {});
-
   /**
    * Setup the DoFHandler, the AffineConstraints, and the
    * MechanicalOperator.
@@ -46,10 +42,9 @@ public:
   setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
                  std::vector<std::shared_ptr<BodyForce<dim>>>());
 
-  void assemble_system(
-      std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
-          std::vector<std::shared_ptr<BodyForce<dim>>>());
-
+  /**
+   * Same as above when solving a thermo-mechanical problem.
+   */
   void setup_dofs(
       dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
@@ -59,16 +54,15 @@ public:
           std::vector<std::shared_ptr<BodyForce<dim>>>());
 
   /**
-   * Same as above when solving a thermo-mechanical problem.
+   * Prepare displacement and stresses to be communicated when activating cells
+   * or refining the mesh.
    */
-  // void prepare_transfer(
-  //     std::optional<std::reference_wrapper<const dealii::DoFHandler<dim>>>
-  //         thermal_dof_handler = {});
-
-  // void complete_transfer();
-
   void prepare_transfer_mpi();
 
+  /**
+   * Complete transfer of displacment and stress data after activating cells or
+   * refining the mesh.
+   */
   void complete_transfer_mpi();
 
   /**

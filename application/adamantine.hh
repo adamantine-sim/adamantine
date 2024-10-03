@@ -311,7 +311,6 @@ void refine_and_transfer(
     dealii::DoFHandler<dim> &dof_handler,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
-  std::cout << "refine_and_transfer" << std::endl;
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
 #endif
@@ -598,7 +597,6 @@ void refine_mesh(
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
 {
-  std::cout << "refine_mesh" << std::endl;
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
 #endif
@@ -630,8 +628,6 @@ void refine_mesh(
   // PropertyTreeInput refinement.beam_cutoff
   const double refinement_beam_cutoff =
       refinement_database.get<double>("beam_cutoff", 1.0e-15);
-
-  std::cout << "n_refinements: " << n_refinements << std::endl;
 
   for (unsigned int i = 0; i < n_refinements; ++i)
   {
@@ -668,8 +664,6 @@ void refine_mesh(
         cell->set_refine_flag();
     }
 
-    std::cout << "call refine_and_transfer" << std::endl;
-
     // Execute the refinement and transfer the solution onto the new mesh.
     refine_and_transfer(thermal_physics, mechanical_physics,
                         material_properties, dof_handler, solution);
@@ -677,7 +671,6 @@ void refine_mesh(
 
   // Recompute the inverse of the mass matrix
   thermal_physics->compute_inverse_mass_matrix();
-  std::cout << "end_refine_mesh" << std::endl;
 }
 
 template <int dim, int p_order, typename MaterialStates,
@@ -830,7 +823,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   }
   material_reference_temps.push_back(initial_temperature);
 
-  std::cout << "create mechanicalphysics" << std::endl;
   // Create MechanicalPhysics
   std::unique_ptr<adamantine::MechanicalPhysics<dim, p_order, MaterialStates,
                                                 MemorySpaceType>>
@@ -906,7 +898,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   {
     if (restart == false)
     {
-      std::cout << "setup_dofs thermal" << std::endl;
       thermal_physics->setup();
       thermal_physics->initialize_dof_vector(initial_temperature, temperature);
     }
@@ -928,7 +919,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     adamantine::ASSERT_THROW(
         restart == false,
         "Mechanical simulation cannot be restarted from a file");
-    std::cout << "setup_dofs mechanical begin" << std::endl;
     if (use_thermal_physics)
     {
       // Update the material state
@@ -1201,7 +1191,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         else
         {
           mechanical_physics->setup_dofs();
-          mechanical_physics->assemble_system();
         }
         displacement = mechanical_physics->solve();
       }
