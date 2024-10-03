@@ -415,7 +415,6 @@ void refine_and_transfer(
 
   if (mechanical_physics)
   {
-    // Thermo-mechanical simulation
     mechanical_physics->prepare_transfer_mpi();
   }
 
@@ -520,13 +519,6 @@ void refine_and_transfer(
 
   if (mechanical_physics)
   {
-    thermal_physics->set_state_to_material_properties();
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-        temperature_host(solution.get_partitioner());
-    temperature_host.import(solution, dealii::VectorOperation::insert);
-    mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
-                                   temperature_host,
-                                   thermal_physics->get_has_melted_vector());
     mechanical_physics->complete_transfer_mpi();
   }
 }
@@ -921,8 +913,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         "Mechanical simulation cannot be restarted from a file");
     if (use_thermal_physics)
     {
-      // Update the material state
-      thermal_physics->set_state_to_material_properties();
+      // Thermo-mechanical simulation
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
           temperature_host(temperature.get_partitioner());
       temperature_host.import(temperature, dealii::VectorOperation::insert);
@@ -932,6 +923,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     }
     else
     {
+      // Mechanical only simulation
       mechanical_physics->setup_dofs();
     }
     displacement = mechanical_physics->solve();
@@ -1028,7 +1020,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // We use an epsilon to get the "expected" behavior when the deposition
     // time and the time match should match exactly but don't because of
     // floating point accuracy.
-    bool added_material;
     timers[adamantine::add_material_activate].start();
     if (time > activation_time_end)
     {
@@ -1112,8 +1103,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
               activation_start, activation_end, new_material_temperature,
               temperature);
 
-          if (use_mechanical_physics)
+          if (use_mechanical_physics) {
             mechanical_physics->prepare_transfer_mpi();
+	  }
 
 #ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_BEGIN("refine triangulation");
@@ -1134,11 +1126,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 
           if (use_mechanical_physics)
           {
-            mechanical_physics->setup_dofs();
             mechanical_physics->complete_transfer_mpi();
           }
-
-          added_material = true;
         }
       }
 
@@ -1173,20 +1162,20 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // Solve the (thermo-)mechanical problem
     if (use_mechanical_physics)
     {
-      // if (n_time_step % time_steps_output == 0)
+      // Since there is no history dependence in the model, only calculate
+      // mechanics when outputting
+      if (n_time_step % time_steps_output == 0)
       {
-        if (use_thermal_physics && added_material)
+        if (use_thermal_physics)
         {
           // Update the material state
           thermal_physics->set_state_to_material_properties();
           dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
               temperature_host(temperature.get_partitioner());
           temperature_host.import(temperature, dealii::VectorOperation::insert);
-          //	  mechanical_physics->prepare_transfer(thermal_physics->get_dof_handler());
           mechanical_physics->setup_dofs(
               thermal_physics->get_dof_handler(), temperature_host,
               thermal_physics->get_has_melted_vector());
-          //	  mechanical_physics->complete_transfer();
         }
         else
         {
@@ -1194,10 +1183,6 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         }
         displacement = mechanical_physics->solve();
       }
-
-      // Since there is no history dependence in the model, only calculate
-      // mechanics when outputting
-      //      displacement = mechanical_physics->solve();
     }
 
     timers[adamantine::evol_time].stop();
