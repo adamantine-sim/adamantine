@@ -49,7 +49,7 @@ The following options are available:
     `vtu`, `exodus`, or `default`, i.e., use the file suffix to try to determine the
     mesh format (required)
     * **mesh\_scale\_factor**: Apply a uniform scaling factor to the mesh (e.g. if the mesh is defined
-    in mm or inches instead of m) (default value: 1)
+    in mm or inches instead of m) (default value: 1, <span style="color:red">removed in 1.0, use `units.mesh` instead</span>)
     * **reset\_material\_id**: Clear the material IDs defined in the mesh and set them all to zero so 
       all material properties are given by the `material_0` input block: true or false (default value: false)
   * if import\_mesh is false:
@@ -166,4 +166,15 @@ The following options are available:
   * **overwrite\_files**: if true the checkpoint files are overwritten by newer ones. If false, the time steps is added to the filename prefix (required)
 * **restart** (optional):
   * **filename\_prefix**: prefix of the restart files (required)
+* **units** (optional): change the unit of some inputs (<span style="color:green">since 1.1</span>)
+  * **mesh**: unit used for the mesh. Either millimeter, centimeter, inch, or meter (default value: meter)
+  * **heat\_source** (optional):
+    * **power**: unit used for the power of the heat sources. Either milliwatt or
+      watt (default value: watt)
+    * **velocity**: unit used for the velocity of the heat sources. Either
+      millimeter/second, centimeter/second, or meter/second (default value: meter/second)
+    * **dimension**: unit used for the dimension of the heat sources. Either
+      millimeter, centimeter, inch, or meter (default value: meter)
+    * **scan\_path**: unit used for the scan path of the heat sources. Either
+      millimeter, centimeter, inch, or meter (default value: meter)
 * **verbose\_output** (optional): true or false (default value: false)
