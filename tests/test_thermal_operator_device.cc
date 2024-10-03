@@ -42,7 +42,9 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev, *utf::tolerance(1e-10))
   geometry_database.put("length_divisions", 4);
   geometry_database.put("height", 6);
   geometry_database.put("height_divisions", 5);
-  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<2> geometry(communicator, geometry_database,
+                                   units_optional_database);
   // Create the DoFHandler
   dealii::hp::FECollection<2> fe_collection;
   fe_collection.push_back(dealii::FE_Q<2>(2));
@@ -134,7 +136,9 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   geometry_database.put("length_divisions", 4);
   geometry_database.put("height", 6);
   geometry_database.put("height_divisions", 5);
-  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<2> geometry(communicator, geometry_database,
+                                   units_optional_database);
   // Create the DoFHandler
   dealii::hp::FECollection<2> fe_collection;
   fe_collection.push_back(dealii::FE_Q<2>(2));
@@ -239,7 +243,9 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   geometry_database.put("length_divisions", 10);
   geometry_database.put("height", 1e-2);
   geometry_database.put("height_divisions", 5);
-  adamantine::Geometry<2> geometry(communicator, geometry_database);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<2> geometry(communicator, geometry_database,
+                                   units_optional_database);
   // Create the DoFHandler
   dealii::hp::FECollection<2> fe_collection;
   fe_collection.push_back(dealii::FE_Q<2>(2));
@@ -287,8 +293,8 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   beam_database.put("scan_path_file_format", "segment");
   std::vector<std::shared_ptr<adamantine::HeatSource<2>>> heat_sources;
   heat_sources.resize(1);
-  heat_sources[0] =
-      std::make_shared<adamantine::GoldakHeatSource<2>>(beam_database);
+  heat_sources[0] = std::make_shared<adamantine::GoldakHeatSource<2>>(
+      beam_database, units_optional_database);
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
@@ -371,7 +377,9 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
   geometry_database.put("height_divisions", 2);
   geometry_database.put("width", 6);
   geometry_database.put("width_divisions", 2);
-  adamantine::Geometry<3> geometry(communicator, geometry_database);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<3> geometry(communicator, geometry_database,
+                                   units_optional_database);
   // Create the DoFHandler
   dealii::hp::FECollection<3> fe_collection;
   fe_collection.push_back(dealii::FE_Q<3>(2));

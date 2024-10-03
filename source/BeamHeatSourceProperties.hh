@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021, the adamantine authors.
+/* Copyright (c) 2016 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -8,6 +8,8 @@
 #ifndef BEAM_HEAT_SOURCE_PROPERTIES_HH
 #define BEAM_HEAT_SOURCE_PROPERTIES_HH
 
+#include <types.hh>
+
 #include <boost/property_tree/ptree.hpp>
 
 #include <cmath>
@@ -15,37 +17,55 @@
 namespace adamantine
 {
 /**
- * This structure stores all the physical properties necessary to define an
+ * This class stores all the physical properties necessary to define an
  * beam heat source.
  */
-struct BeamHeatSourceProperties
+class BeamHeatSourceProperties
 {
 public:
   BeamHeatSourceProperties() = default;
 
   /**
    * Constructor.
-   * \param[in] database requires the following entries:
+   * \param[in] beam_database requires the following entries:
    *   - <B>absorption_efficiency</B>: double in \f$[0,1]\f$
    *   - <B>depth</B>: double in \f$[0,\infty)\f$
    *   - <B>diameter</B>: double in \f$[0,\infty)\f$
    *   - <B>max_power</B>: double in \f$[0, \infty)\f$
+   * \param[in] units_optional_database can have the following entries:
+   *   - <B>heat_source.dimension</B>
+   *   - <B>heat_source.power</B>
    */
-  BeamHeatSourceProperties(boost::property_tree::ptree const &database)
+  BeamHeatSourceProperties(
+      boost::property_tree::ptree const &beam_database,
+      boost::optional<boost::property_tree::ptree const &> const
+          &units_optional_database)
   {
-    set_from_database(database);
+    if (units_optional_database)
+    {
+      auto unit_database = units_optional_database.get();
+      // PropertyTreeInput units.heat_source.dimension
+      std::string unit = unit_database.get("heat_source.dimension", "meter");
+      _dimension_scaling = g_unit_scaling_factor[unit];
+      // PropertyTreeInput units.heat_source.power
+      unit = unit_database.get("heat_source.power", "watt");
+      _power_scaling = g_unit_scaling_factor[unit];
+    }
+
+    set_from_database(beam_database);
   }
 
   void set_from_database(boost::property_tree::ptree const &database)
   {
     // PropertyTreeInput sources.beam_X.depth
-    depth = database.get<double>("depth");
+    depth = database.get<double>("depth") * _dimension_scaling;
     // PropertyTreeInput sources.beam_X.absorption_efficiency
     absorption_efficiency = database.get<double>("absorption_efficiency");
     // PropertyTreeInput sources.beam_X.diameter
-    radius_squared = std::pow(database.get<double>("diameter") / 2.0, 2);
+    radius_squared = std::pow(
+        database.get<double>("diameter") * _dimension_scaling / 2.0, 2);
     // PropertyTreeInput sources.beam_X.max_power
-    max_power = database.get<double>("max_power");
+    max_power = database.get<double>("max_power") * _power_scaling;
   }
 
   /**
@@ -66,6 +86,16 @@ public:
    * Maximum power of the beam.
    */
   double max_power = 0.;
+
+private:
+  /**
+   * Scaling factor for the dimension of the heat source.
+   */
+  double _dimension_scaling = 1.;
+  /**
+   * Scaling factor for the power of the heat source.
+   */
+  double _power_scaling = 1.;
 };
 } // namespace adamantine
 

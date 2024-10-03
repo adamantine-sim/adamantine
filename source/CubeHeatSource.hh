@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 - 2021, the adamantine authors.
+/* Copyright (c) 2020 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -22,7 +22,7 @@ class CubeHeatSource final : public HeatSource<dim>
 public:
   /**
    * Constructor.
-   *  \param[in] database requires the following entries:
+   *  \param[in] source_database requires the following entries:
    *   - <B>start_time</B>: double (when the source is turned on)
    *   - <B>end_time</B>: double (when the source is turned off)
    *   - <B>value</B>: double (value of the soruce)
@@ -32,8 +32,13 @@ public:
    *   - <B>max_y</B>: double (maximum y coordinate of the cube)
    *   - <B>min_z</B>: double (3D only, minimum z coordinate of the cube)
    *   - <B>max_z</B>: double (3D only, maximum z coordinate of the cube)
+   *  \param[in] units_optional_database may have the following entries:
+   *   - <B>heat_source.dimension</B>
+   *   - <B>heat_source.power</B>
    */
-  CubeHeatSource(boost::property_tree::ptree const &database);
+  CubeHeatSource(boost::property_tree::ptree const &source_database,
+                 boost::optional<boost::property_tree::ptree const &> const
+                     &units_optional_database);
 
   /**
    * Set the time variable.

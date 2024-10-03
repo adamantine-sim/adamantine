@@ -69,8 +69,10 @@ BOOST_AUTO_TEST_CASE(geometry_2D)
   database.put("material_height", 6.);
   database.put("use_powder", true);
   database.put("powder_layer", 1.2);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
 
-  adamantine::Geometry<2> geometry(communicator, database);
+  adamantine::Geometry<2> geometry(communicator, database,
+                                   units_optional_database);
   dealii::parallel::distributed::Triangulation<2> const &tria =
       geometry.get_triangulation();
 
@@ -94,8 +96,10 @@ BOOST_AUTO_TEST_CASE(geometry_3D)
   database.put("material_height", 4);
   database.put("use_powder", true);
   database.put("powder_layer", 2);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
 
-  adamantine::Geometry<3> geometry(communicator, database);
+  adamantine::Geometry<3> geometry(communicator, database,
+                                   units_optional_database);
   dealii::parallel::distributed::Triangulation<3> const &tria =
       geometry.get_triangulation();
 
@@ -123,8 +127,10 @@ BOOST_AUTO_TEST_CASE(geometry_shifted_origin, *utf::tolerance(1e-12))
   database.put("length_origin", 2.);
   database.put("height_origin", -1.);
   database.put("width_origin", 3.);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
 
-  adamantine::Geometry<3> geometry(communicator, database);
+  adamantine::Geometry<3> geometry(communicator, database,
+                                   units_optional_database);
   dealii::parallel::distributed::Triangulation<3> const &tria =
       geometry.get_triangulation();
 
@@ -148,8 +154,10 @@ BOOST_AUTO_TEST_CASE(gmsh)
   database.put("material_height", 1.);
   database.put("use_powder", true);
   database.put("powder_layer", 0.05);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
 
-  adamantine::Geometry<3> geometry(communicator, database);
+  adamantine::Geometry<3> geometry(communicator, database,
+                                   units_optional_database);
   dealii::parallel::distributed::Triangulation<3> const &tria =
       geometry.get_triangulation();
 

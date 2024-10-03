@@ -25,7 +25,9 @@ public:
    * Constructor.
    */
   Geometry(MPI_Comm const &communicator,
-           boost::property_tree::ptree const &database);
+           boost::property_tree::ptree const &database,
+           boost::optional<boost::property_tree::ptree const &> const
+               &units_optional_database);
 
   /**
    * Return the underlying Triangulation.

@@ -209,8 +209,10 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   geometry_database.put("height_divisions", 3);
   geometry_database.put("width", 6);
   geometry_database.put("width_divisions", 3);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
   // Build Geometry
-  adamantine::Geometry<3> geometry(communicator, geometry_database);
+  adamantine::Geometry<3> geometry(communicator, geometry_database,
+                                   units_optional_database);
   auto const &triangulation = geometry.get_triangulation();
   for (auto cell : triangulation.cell_iterators())
   {
@@ -272,8 +274,10 @@ BOOST_AUTO_TEST_CASE(fe_nothing)
   geometry_database.put("height_divisions", 4);
   geometry_database.put("width", 6);
   geometry_database.put("width_divisions", 3);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
   // Build Geometry
-  adamantine::Geometry<3> geometry(communicator, geometry_database);
+  adamantine::Geometry<3> geometry(communicator, geometry_database,
+                                   units_optional_database);
   auto const &triangulation = geometry.get_triangulation();
   for (auto cell : triangulation.cell_iterators())
   {
@@ -381,7 +385,9 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
   geometry_database.put("height_divisions", 16);
   geometry_database.put("width", 4.0e-5); // m
   geometry_database.put("width_divisions", 16);
-  adamantine::Geometry<dim> geometry(communicator, geometry_database);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<dim> geometry(communicator, geometry_database,
+                                     units_optional_database);
   auto &triangulation = geometry.get_triangulation();
 
   const dealii::Point<dim> center = {2.0e-5, 2.0e-5, 2.0e-5};
@@ -549,8 +555,10 @@ BOOST_AUTO_TEST_CASE(elastoplastic)
   geometry_database.put("height_divisions", 3);
   geometry_database.put("width", 6);
   geometry_database.put("width_divisions", 3);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
   // Build Geometry
-  adamantine::Geometry<3> geometry(communicator, geometry_database);
+  adamantine::Geometry<3> geometry(communicator, geometry_database,
+                                   units_optional_database);
   auto const &triangulation = geometry.get_triangulation();
   for (auto cell : triangulation.cell_iterators())
   {

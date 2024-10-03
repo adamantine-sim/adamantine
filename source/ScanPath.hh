@@ -11,6 +11,8 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/point.h>
 
+#include <boost/property_tree/ptree.hpp>
+
 #include <filesystem>
 #include <limits>
 #include <string>
@@ -61,7 +63,7 @@ class ScanPath
 
 public:
   /**
-   * Default construtor. This creates an empty scan path with no segment.
+   * Default constructor. This creates an empty scan path with no segment.
    */
   ScanPath() = default;
 
@@ -70,8 +72,11 @@ public:
    * \param[in] scan_path_file is the name of the text file containing the scan
    * path
    * \param[in] file_format is the format of the scan path file
+   * \param[in] optional units property tree
    */
-  ScanPath(std::string scan_path_file, std::string file_format);
+  ScanPath(std::string const &scan_path_file, std::string const &file_format,
+           boost::optional<boost::property_tree::ptree const &> const
+               &units_optional_database);
 
   /**
    * Calculate the location of the scan path at a given time for a single
@@ -121,6 +126,14 @@ private:
    * Flag is true if we have reached the end of _scan_path_file.
    */
   bool _scan_path_end = false;
+  /**
+   * Scaling factor for the distance.
+   */
+  double _distance_scaling = 1.;
+  /**
+   * Scaling factor for the velocity.
+   */
+  double _velocity_scaling = 1.;
   /**
    * File name of the scan path
    */

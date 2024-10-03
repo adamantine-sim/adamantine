@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 - 2022, the adamantine authors.
+/* Copyright (c) 2020 - 2024, the adamantine authors.
  *
  * This file is subject to the Modified BSD License and may not be distributed
  * without copyright and license information. Please refer to the file LICENSE
@@ -14,8 +14,10 @@ namespace adamantine
 
 template <int dim>
 GoldakHeatSource<dim>::GoldakHeatSource(
-    boost::property_tree::ptree const &database)
-    : HeatSource<dim>(database)
+    boost::property_tree::ptree const &beam_database,
+    boost::optional<boost::property_tree::ptree const &> const
+        &units_optional_database)
+    : HeatSource<dim>(beam_database, units_optional_database)
 {
 }
 
