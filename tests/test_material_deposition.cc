@@ -333,18 +333,11 @@ BOOST_AUTO_TEST_CASE(material_deposition)
           elements_to_activate, deposition_cos, deposition_sin, has_melted,
           activation_start, activation_end, solution);
 
-#ifdef ADAMANTINE_WITH_CALIPER
-      CALI_MARK_BEGIN("refine triangulation");
-#endif
-      dealii::DoFHandler<dim> &dof_handler = thermal_physics.get_dof_handler();
       dealii::parallel::distributed::Triangulation<dim> &triangulation =
           dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
               const_cast<dealii::Triangulation<dim> &>(
                   dof_handler.get_triangulation()));
       triangulation.execute_coarsening_and_refinement();
-#ifdef ADAMANTINE_WITH_CALIPER
-      CALI_MARK_END("refine triangulation");
-#endif
 
       thermal_physics.add_material_end(initial_temperature, solution);
     }
