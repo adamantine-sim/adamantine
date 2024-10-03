@@ -1100,12 +1100,12 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
 
           thermal_physics->add_material_start(
               elements_to_activate, deposition_cos, deposition_sin, has_melted,
-              activation_start, activation_end,
-              temperature);
+              activation_start, activation_end, temperature);
 
-          if (use_mechanical_physics) {
+          if (use_mechanical_physics)
+          {
             mechanical_physics->prepare_transfer_mpi();
-	  }
+          }
 
 #ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_BEGIN("refine triangulation");
@@ -1119,9 +1119,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           CALI_MARK_END("refine triangulation");
 #endif
 
-          thermal_physics->add_material_end(
-              new_material_temperature,
-              temperature);
+          thermal_physics->add_material_end(new_material_temperature,
+                                            temperature);
 
           if (use_mechanical_physics)
           {

@@ -18,7 +18,7 @@
 #include "main.cc"
 
 namespace utf = boost::unit_test;
-/*
+
 BOOST_AUTO_TEST_CASE(integration_thermoelastic, *utf::tolerance(1.0e-5))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
@@ -45,7 +45,7 @@ BOOST_AUTO_TEST_CASE(integration_thermoelastic, *utf::tolerance(1.0e-5))
   // std::cout << "dis l2:" << displacement.l2_norm() << std::endl;
 
   BOOST_TEST(displacement.l2_norm() == 0.21537566016824577);
-}*/
+}
 
 BOOST_AUTO_TEST_CASE(integration_thermoelastic_add_material,
                      *utf::tolerance(1.0e-5))
