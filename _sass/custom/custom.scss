@@ -1,0 +1,14 @@
+.side-bar {
+  @include mq(lg) {
+    width: $nav-width;
+    min-width: $nav-width;
+  }
+}
+
+.main{
+  @include mq(lg) {
+        margin-left: calc( 265px + 50px);
+        margin-right: 50px;
+        max-width: none;
+  }
+}
