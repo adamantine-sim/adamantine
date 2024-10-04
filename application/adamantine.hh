@@ -2019,7 +2019,8 @@ run_ensemble(MPI_Comm const &global_communicator,
                   material_properties_ensemble[0]->get_dof_handler());
         }
 
-        // Only continue data assimilation if some of the observations are mapped to DOFs
+        // Only continue data assimilation if some of the observations are
+        // mapped to DOFs
         if (expt_to_dof_mapping.first.size() > 0)
         {
           // NOTE: As is, this updates the dof mapping and covariance sparsity
@@ -2030,25 +2031,25 @@ run_ensemble(MPI_Comm const &global_communicator,
           // for each operation. If this is a bottleneck, it can be fixed in the
           // future.
           timers[adamantine::da_dof_mapping].start();
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_BEGIN("da_dof_mapping");
-  #endif
+#endif
           data_assimilator.update_dof_mapping<dim>(expt_to_dof_mapping);
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_END("da_dof_mapping");
-  #endif
+#endif
           timers[adamantine::da_dof_mapping].stop();
 
           timers[adamantine::da_covariance_sparsity].start();
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_BEGIN("da_covariance_sparsity");
-  #endif
+#endif
           data_assimilator.update_covariance_sparsity_pattern<dim>(
               thermal_dof_handler,
               solution_augmented_ensemble[0].block(augmented_state).size());
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_END("da_covariance_sparsity");
-  #endif
+#endif
           timers[adamantine::da_covariance_sparsity].start();
 
           unsigned int experimental_data_size = points_values.values.size();
@@ -2056,9 +2057,9 @@ run_ensemble(MPI_Comm const &global_communicator,
           // Create the R matrix (the observation covariance matrix)
           // PropertyTreeInput experiment.estimated_uncertainty
           timers[adamantine::da_obs_covariance].start();
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_BEGIN("da_obs_covariance");
-  #endif
+#endif
           double variance_entries = experiment_optional_database.get().get(
               "estimated_uncertainty", 0.0);
           variance_entries = variance_entries * variance_entries;
@@ -2076,28 +2077,28 @@ run_ensemble(MPI_Comm const &global_communicator,
           {
             R.add(i, i, variance_entries);
           }
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_END("da_obs_covariance");
-  #endif
+#endif
           timers[adamantine::da_obs_covariance].stop();
 
           // Perform data assimilation to update the augmented state ensemble
           timers[adamantine::da_update_ensemble].start();
-  #ifdef ADAMANTINE_WITH_CALIPER
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_BEGIN("da_update_ensemble");
-  #endif
+#endif
           data_assimilator.update_ensemble(solution_augmented_ensemble,
-                                          points_values.values, R);
-  #ifdef ADAMANTINE_WITH_CALIPER
+                                           points_values.values, R);
+#ifdef ADAMANTINE_WITH_CALIPER
           CALI_MARK_END("da_update_ensemble");
-  #endif
+#endif
           timers[adamantine::da_update_ensemble].stop();
 
           // Extract the parameters from the augmented state
           for (unsigned int member = 0; member < local_ensemble_size; ++member)
           {
             for (unsigned int index = 0;
-                index < augmented_state_parameters.size(); ++index)
+                 index < augmented_state_parameters.size(); ++index)
             {
               // FIXME: Need to consider how we want to generalize this. It
               // could get unwieldy if we want to specify every parameter of an
@@ -2111,7 +2112,7 @@ run_ensemble(MPI_Comm const &global_communicator,
                         augmented_state)[index]);
               }
               else if (augmented_state_parameters.at(index) ==
-                      adamantine::AugmentedStateParameters::beam_0_max_power)
+                       adamantine::AugmentedStateParameters::beam_0_max_power)
               {
                 database_ensemble[member].put(
                     "sources.beam_0.max_power",
@@ -2127,7 +2128,8 @@ run_ensemble(MPI_Comm const &global_communicator,
           // Print out the augmented parameters
           if (solution_augmented_ensemble[0].block(1).size() > 0)
           {
-            for (unsigned int member = 0; member < local_ensemble_size; ++member)
+            for (unsigned int member = 0; member < local_ensemble_size;
+                 ++member)
             {
               std::cout << "Rank: " << global_rank
                         << " | New parameters for member "
@@ -2139,10 +2141,13 @@ run_ensemble(MPI_Comm const &global_communicator,
             }
           }
         }
-        else 
+        else
         {
           if (global_rank == 0)
-            std::cout << "WARNING: NO EXPERIMENTAL DATA POINTS MAPPED ONTO THE SIMULATION MESH. SKIPPING DATA ASSIMILATION OPERATION." << std::endl;
+            std::cout
+                << "WARNING: NO EXPERIMENTAL DATA POINTS MAPPED ONTO THE "
+                   "SIMULATION MESH. SKIPPING DATA ASSIMILATION OPERATION."
+                << std::endl;
         }
       }
 
