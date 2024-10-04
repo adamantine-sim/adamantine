@@ -7,7 +7,7 @@
 
 .main{
   @include mq(lg) {
-        margin-left: calc( 265px + 50px);
+        margin-left: 315px;
         margin-right: 50px;
         max-width: none;
   }
