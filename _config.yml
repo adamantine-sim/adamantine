@@ -31,7 +31,7 @@ plugins:
   - jekyll-feed
 
 # Only dark or light
-color_scheme: light
+color_scheme: wider
 
 compress_html:
   blanklines: true
