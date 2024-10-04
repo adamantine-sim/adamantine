@@ -1,3 +1,7 @@
+.site-nav, .site-header, .site-footer {
+    width: 100%;
+  }
+
 .side-bar {
   @include mq(lg) {
     width: $nav-width;
@@ -7,7 +11,7 @@
 
 .main{
   @include mq(lg) {
-        margin-left: 315px;
+        margin-left: calc( 265px + 50px);
         margin-right: 50px;
         max-width: none;
   }
