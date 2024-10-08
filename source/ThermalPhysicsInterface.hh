@@ -55,14 +55,22 @@ public:
    * Activate more elements of the mesh and interpolate the solution to the new
    * domain.
    */
-  virtual void add_material(
+  virtual void add_material_start(
       std::vector<std::vector<
           typename dealii::DoFHandler<dim>::active_cell_iterator>> const
           &elements_to_activate,
       std::vector<double> const &new_deposition_cos,
       std::vector<double> const &new_deposition_sin,
       std::vector<bool> &new_has_melted, unsigned int const activation_start,
-      unsigned int const activation_end, double const initial_temperature,
+      unsigned int const activation_end,
+      dealii::LA::distributed::Vector<double, MemorySpaceType> &solution) = 0;
+
+  /**
+   * Finalize adding material by completing the transfer of solutions after the
+   * discretization has been adapted to the activated cells.
+   */
+  virtual void add_material_end(
+      double const new_material_temperature,
       dealii::LA::distributed::Vector<double, MemorySpaceType> &solution) = 0;
 
   /**

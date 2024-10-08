@@ -304,6 +304,8 @@ template <int dim, int p_order, typename MaterialStates,
 void refine_and_transfer(
     std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
         &thermal_physics,
+    std::unique_ptr<adamantine::MechanicalPhysics<
+        dim, p_order, MaterialStates, MemorySpaceType>> &mechanical_physics,
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::DoFHandler<dim> &dof_handler,
@@ -312,9 +314,6 @@ void refine_and_transfer(
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_FUNCTION;
 #endif
-
-  // TODO transfer mechanical data is present, need to be aware that the data
-  // does not exist on some cells because it's liquid
 
   dealii::parallel::distributed::Triangulation<dim> &triangulation =
       dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
@@ -414,6 +413,11 @@ void refine_and_transfer(
       cell_data_trans(triangulation);
   cell_data_trans.prepare_for_coarsening_and_refinement(data_to_transfer);
 
+  if (mechanical_physics)
+  {
+    mechanical_physics->prepare_transfer_mpi();
+  }
+
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_BEGIN("refine triangulation");
 #endif
@@ -512,6 +516,11 @@ void refine_and_transfer(
     }
   }
 #endif
+
+  if (mechanical_physics)
+  {
+    mechanical_physics->complete_transfer_mpi();
+  }
 }
 
 template <int dim>
@@ -570,6 +579,8 @@ template <int dim, int p_order, int fe_degree, typename MaterialStates,
 void refine_mesh(
     std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
         &thermal_physics,
+    std::unique_ptr<adamantine::MechanicalPhysics<
+        dim, p_order, MaterialStates, MemorySpaceType>> &mechanical_physics,
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
@@ -646,8 +657,8 @@ void refine_mesh(
     }
 
     // Execute the refinement and transfer the solution onto the new mesh.
-    refine_and_transfer(thermal_physics, material_properties, dof_handler,
-                        solution);
+    refine_and_transfer(thermal_physics, mechanical_physics,
+                        material_properties, dof_handler, solution);
   }
 
   // Recompute the inverse of the mass matrix
@@ -659,6 +670,8 @@ template <int dim, int p_order, typename MaterialStates,
 void refine_mesh(
     std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
         &thermal_physics,
+    std::unique_ptr<adamantine::MechanicalPhysics<
+        dim, p_order, MaterialStates, MemorySpaceType>> &mechanical_physics,
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
@@ -675,36 +688,41 @@ void refine_mesh(
   case 1:
   {
     refine_mesh<dim, p_order, 1, MaterialStates>(
-        thermal_physics, material_properties, solution, heat_sources, time,
-        next_refinement_time, time_steps_refinement, refinement_database);
+        thermal_physics, mechanical_physics, material_properties, solution,
+        heat_sources, time, next_refinement_time, time_steps_refinement,
+        refinement_database);
     break;
   }
   case 2:
   {
     refine_mesh<dim, p_order, 2, MaterialStates>(
-        thermal_physics, material_properties, solution, heat_sources, time,
-        next_refinement_time, time_steps_refinement, refinement_database);
+        thermal_physics, mechanical_physics, material_properties, solution,
+        heat_sources, time, next_refinement_time, time_steps_refinement,
+        refinement_database);
     break;
   }
   case 3:
   {
     refine_mesh<dim, p_order, 3, MaterialStates>(
-        thermal_physics, material_properties, solution, heat_sources, time,
-        next_refinement_time, time_steps_refinement, refinement_database);
+        thermal_physics, mechanical_physics, material_properties, solution,
+        heat_sources, time, next_refinement_time, time_steps_refinement,
+        refinement_database);
     break;
   }
   case 4:
   {
     refine_mesh<dim, p_order, 4, MaterialStates>(
-        thermal_physics, material_properties, solution, heat_sources, time,
-        next_refinement_time, time_steps_refinement, refinement_database);
+        thermal_physics, mechanical_physics, material_properties, solution,
+        heat_sources, time, next_refinement_time, time_steps_refinement,
+        refinement_database);
     break;
   }
   case 5:
   {
     refine_mesh<dim, p_order, 5, MaterialStates>(
-        thermal_physics, material_properties, solution, heat_sources, time,
-        next_refinement_time, time_steps_refinement, refinement_database);
+        thermal_physics, mechanical_physics, material_properties, solution,
+        heat_sources, time, next_refinement_time, time_steps_refinement,
+        refinement_database);
     break;
   }
   default:
@@ -990,8 +1008,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     {
       timers[adamantine::refine].start();
       double next_refinement_time = time + time_steps_refinement * time_step;
-      refine_mesh(thermal_physics, material_properties, temperature,
-                  heat_sources, time, next_refinement_time,
+      refine_mesh(thermal_physics, mechanical_physics, material_properties,
+                  temperature, heat_sources, time, next_refinement_time,
                   time_steps_refinement, refinement_database);
       timers[adamantine::refine].stop();
       if ((rank == 0) && (verbose_output == true))
@@ -1084,10 +1102,34 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           // (may or may not be reasonable)
           std::vector<bool> has_melted(deposition_cos.size(), false);
 
-          thermal_physics->add_material(elements_to_activate, deposition_cos,
-                                        deposition_sin, has_melted,
-                                        activation_start, activation_end,
-                                        new_material_temperature, temperature);
+          thermal_physics->add_material_start(
+              elements_to_activate, deposition_cos, deposition_sin, has_melted,
+              activation_start, activation_end, temperature);
+
+          if (use_mechanical_physics)
+          {
+            mechanical_physics->prepare_transfer_mpi();
+          }
+
+#ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_BEGIN("refine triangulation");
+#endif
+          dealii::parallel::distributed::Triangulation<dim> &triangulation =
+              dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
+                  const_cast<dealii::Triangulation<dim> &>(
+                      thermal_physics->get_dof_handler().get_triangulation()));
+          triangulation.execute_coarsening_and_refinement();
+#ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_END("refine triangulation");
+#endif
+
+          thermal_physics->add_material_end(new_material_temperature,
+                                            temperature);
+
+          if (use_mechanical_physics)
+          {
+            mechanical_physics->complete_transfer_mpi();
+          }
         }
       }
 
@@ -1794,7 +1836,11 @@ run_ensemble(MPI_Comm const &global_communicator,
 
       for (unsigned int member = 0; member < local_ensemble_size; ++member)
       {
-        refine_mesh(thermal_physics_ensemble[member],
+        // FIXME
+        std::unique_ptr<adamantine::MechanicalPhysics<
+            dim, p_order, MaterialStates, MemorySpaceType>>
+            dummy;
+        refine_mesh(thermal_physics_ensemble[member], dummy,
                     *material_properties_ensemble[member],
                     solution_augmented_ensemble[member].block(base_state),
                     heat_sources_ensemble[member], time, next_refinement_time,
@@ -1899,9 +1945,27 @@ run_ensemble(MPI_Comm const &global_communicator,
           // melted (may or may not be reasonable)
           std::vector<bool> has_melted(deposition_cos.size(), false);
 
-          thermal_physics_ensemble[member]->add_material(
+          thermal_physics_ensemble[member]->add_material_start(
               elements_to_activate, deposition_cos, deposition_sin, has_melted,
               activation_start, activation_end,
+              solution_augmented_ensemble[member].block(base_state));
+
+#ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_BEGIN("refine triangulation");
+#endif
+          dealii::DoFHandler<dim> &dof_handler =
+              thermal_physics_ensemble[member]->get_dof_handler();
+          dealii::parallel::distributed::Triangulation<dim> &triangulation =
+              dynamic_cast<dealii::parallel::distributed::Triangulation<dim> &>(
+                  const_cast<dealii::Triangulation<dim> &>(
+                      dof_handler.get_triangulation()));
+
+          triangulation.execute_coarsening_and_refinement();
+#ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_END("refine triangulation");
+#endif
+
+          thermal_physics_ensemble[member]->add_material_end(
               new_material_temperature[member],
               solution_augmented_ensemble[member].block(base_state));
 
