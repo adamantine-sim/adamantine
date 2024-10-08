@@ -229,6 +229,8 @@ void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
       }
     }
 
+    _temperature.update_ghost_values();
+
     std::vector<dealii::types::global_dof_index> temperature_local_dof_indices(
         _thermal_dof_handler->get_fe_collection().max_dofs_per_cell());
     double const initial_temperature = _reference_temperatures.back();
