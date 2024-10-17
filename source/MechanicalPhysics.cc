@@ -132,7 +132,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates,
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
 
   _relevant_displacement.reinit(locally_owned_dofs, locally_relevant_dofs,
-                                MPI_COMM_WORLD);
+                                _dof_handler.get_communicator());
   _relevant_displacement = _old_displacement;
   _relevant_displacement.update_ghost_values();
   _solution_transfer.prepare_for_coarsening_and_refinement(
@@ -194,7 +194,8 @@ void MechanicalPhysics<dim, p_order, MaterialStates,
   const dealii::IndexSet locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
   _old_displacement.reinit(_dof_handler.locally_owned_dofs(),
-                           locally_relevant_dofs, MPI_COMM_WORLD);
+                           locally_relevant_dofs,
+                           _dof_handler.get_communicator());
   _solution_transfer.interpolate(_old_displacement);
 
   auto n_active_cells = _dof_handler.get_triangulation().n_active_cells();
@@ -376,7 +377,7 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
   const dealii::IndexSet locally_owned_dofs = _dof_handler.locally_owned_dofs();
   _old_displacement.reinit(locally_owned_dofs, locally_relevant_dofs,
-                           MPI_COMM_WORLD);
+                           _dof_handler.get_communicator());
 
   if (saved_old_displacement.size())
   {
