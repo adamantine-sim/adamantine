@@ -21,7 +21,7 @@ bibliography: paper.bib
 
 # Summary
 `Adamantine` is a thermomechanical simulation code that is written in C++ and built on 
-top of deal.II [@dealII95], p4est[@p4est], ArborX [@arborx2020], Trilinos [@trilinos-website], 
+top of deal.II [@dealII95], p4est [@p4est], ArborX [@arborx2020], Trilinos [@trilinos-website], 
 and Kokkos [@kokkos2022]. `Adamantine` was developed with additive manufacturing in mind and it is
 particularly well adapted to simulate fused filament fabrication, directed energy 
 deposition, and powder bed fusion. `Adamantine` employs the finite element
