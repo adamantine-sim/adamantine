@@ -136,8 +136,6 @@ private:
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       _old_displacement;
 
-  std::vector<std::vector<double>> _saved_old_displacement;
-
   /**
    * Plastic internal variable related to the strain
    */
@@ -162,9 +160,6 @@ private:
       _cell_data_transfer;
 
   std::vector<std::vector<double>> _data_to_transfer;
-
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      _relevant_displacement;
 };
 
 template <int dim, int p_order, typename MaterialStates,

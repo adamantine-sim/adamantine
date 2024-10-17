@@ -131,12 +131,8 @@ void MechanicalPhysics<dim, p_order, MaterialStates,
   const dealii::IndexSet locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
 
-  _relevant_displacement.reinit(locally_owned_dofs, locally_relevant_dofs,
-                                _dof_handler.get_communicator());
-  _relevant_displacement = _old_displacement;
-  _relevant_displacement.update_ghost_values();
-  _solution_transfer.prepare_for_coarsening_and_refinement(
-      _relevant_displacement);
+  _old_displacement.update_ghost_values();
+  _solution_transfer.prepare_for_coarsening_and_refinement(_old_displacement);
 
   _data_to_transfer.clear();
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
