@@ -239,12 +239,23 @@ private:
    */
   std::unique_ptr<dealii::TimeStepping::RungeKutta<LA_Vector>> _time_stepping;
 
+  /**
+   * Cell data transfer object used for updating _solution, _has_melted,
+   * _deposition_cos, _deposition_sin, and state of _material_properties when
+   * the triangulation is updated when adding material
+   */
   std::unique_ptr<dealii::parallel::distributed::CellDataTransfer<
       dim, dim, std::vector<std::vector<double>>>>
       _cell_data_trans;
 
+  /**
+   * Temporary data used in _cell_data_trans for _solution
+   */
   dealii::Vector<double> _cell_solution;
 
+  /**
+   * Temporary data used in _cell_data_trans for transfer
+   */
   std::vector<std::vector<double>> _data_to_transfer;
 };
 

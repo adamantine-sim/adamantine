@@ -151,14 +151,26 @@ private:
    */
   std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> _back_stress;
 
+  /**
+   * Solution transfer object used for updating _old_displacement when the
+   * triangulation is updated when adding material
+   */
   dealii::parallel::distributed::SolutionTransfer<
       dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
       _solution_transfer;
 
+  /**
+   * Cell data transfer object used for updating _plastic_internal_variable,
+   * _stress, and _back_stress when the triangulation is updated when adding
+   * material
+   */
   dealii::parallel::distributed::CellDataTransfer<
       dim, dim, std::vector<std::vector<double>>>
       _cell_data_transfer;
 
+  /**
+   * Temporary storaged used by _cell_data_transfer
+   */
   std::vector<std::vector<double>> _data_to_transfer;
 };
 
