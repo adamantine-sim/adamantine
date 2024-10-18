@@ -13,6 +13,8 @@
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/symmetric_tensor.h>
+#include <deal.II/distributed/cell_data_transfer.templates.h>
+#include <deal.II/distributed/solution_transfer.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/hp/fe_collection.h>
 
@@ -50,6 +52,18 @@ public:
       std::vector<bool> const &has_melted,
       std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
           std::vector<std::shared_ptr<BodyForce<dim>>>());
+
+  /**
+   * Prepare displacement and stresses to be communicated when activating cells
+   * or refining the mesh.
+   */
+  void prepare_transfer_mpi();
+
+  /**
+   * Complete transfer of displacment and stress data after activating cells or
+   * refining the mesh.
+   */
+  void complete_transfer_mpi();
 
   /**
    * Solve the mechanical problem and return the displacement.
@@ -136,6 +150,28 @@ private:
    * Back stress tensor at each (cell, quadrature point).
    */
   std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> _back_stress;
+
+  /**
+   * Solution transfer object used for updating _old_displacement when the
+   * triangulation is updated when adding material
+   */
+  dealii::parallel::distributed::SolutionTransfer<
+      dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
+      _solution_transfer;
+
+  /**
+   * Cell data transfer object used for updating _plastic_internal_variable,
+   * _stress, and _back_stress when the triangulation is updated when adding
+   * material
+   */
+  dealii::parallel::distributed::CellDataTransfer<
+      dim, dim, std::vector<std::vector<double>>>
+      _cell_data_transfer;
+
+  /**
+   * Temporary storaged used by _cell_data_transfer
+   */
+  std::vector<std::vector<double>> _data_to_transfer;
 };
 
 template <int dim, int p_order, typename MaterialStates,

@@ -12,7 +12,6 @@ list(APPEND
      test_heat_source
      test_implicit_operator
      test_integration_3d_device
-     test_integration_thermoelastic
      test_material_property
      test_material_property_device
      test_mechanical_operator
@@ -38,6 +37,7 @@ list(APPEND
      test_integration_3d_amr
      test_integration_3d_amr_device
      test_integration_da_augmented
+     test_integration_thermoelastic
      test_material_deposition
      test_thermal_physics
      test_ensemble_management
