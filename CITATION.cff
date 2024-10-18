@@ -1,5 +1,8 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
+repository-code: "https://github.com/admantine-sim/adamantine"
+url: "https://adamantine-sim.github.io/adamantine"
+license: "BSD-3-Clause"
 authors:
 - family-names: "Turcksin"
   given-names: "Bruno"
@@ -7,6 +10,9 @@ authors:
 - family-names: "DeWitt"
   given-names: "Stephen"
   orcid: "https://orcid.org/0000-0002-9550-293X"
-title: "adamantine"
-doi: 10.11578/dc.20211129.1
-url: "https://github.com/adamantine-sim/adamantine"
+title: "Adamantine 1.0: A Thermomechanical Simulator for Additive Manufacturing"
+doi: 10.21105/joss.07017
+journal: "Journal of Open Source Software"
+volume: "9"
+number: "102" 
+year: "2024"
