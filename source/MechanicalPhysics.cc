@@ -126,11 +126,6 @@ template <int dim, int p_order, typename MaterialStates,
 void MechanicalPhysics<dim, p_order, MaterialStates,
                        MemorySpaceType>::prepare_transfer_mpi()
 {
-  const dealii::IndexSet &locally_owned_dofs =
-      _dof_handler.locally_owned_dofs();
-  const dealii::IndexSet locally_relevant_dofs =
-      dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
-
   _old_displacement.update_ghost_values();
   _solution_transfer.prepare_for_coarsening_and_refinement(_old_displacement);
 
