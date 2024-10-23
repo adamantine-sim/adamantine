@@ -153,6 +153,8 @@ void ScanPath::load_event_series_scan_path()
   double last_power = 0.0;
   while (getline(file, line))
   {
+    if (line == "") continue;
+    
     // If we reach the end of the scan path, we stop reading the file.
     if (line.find("SCAN_PATH_END") != std::string::npos)
     {
