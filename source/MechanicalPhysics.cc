@@ -347,7 +347,16 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
       {
         // The cell is liquid. We don't need to save the plastic variables.
         cell->set_active_fe_index(1);
+        tmp_plastic_internal_variable.push_back(std::vector<double>(
+            n_quad_pts, std::numeric_limits<double>::signaling_NaN()));
+        tmp_stress.push_back(
+            std::vector<dealii::SymmetricTensor<2, dim>>(n_quad_pts));
+        tmp_back_stress.push_back(
+            std::vector<dealii::SymmetricTensor<2, dim>>(n_quad_pts));
       }
+    }
+    else
+    {
       tmp_plastic_internal_variable.push_back(std::vector<double>(
           n_quad_pts, std::numeric_limits<double>::signaling_NaN()));
       tmp_stress.push_back(
