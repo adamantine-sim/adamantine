@@ -123,8 +123,7 @@ void DataAssimilator::update_ensemble(
     // Get the perturbed innovation, ( y+u - Hx )
     // This is determined using the unaugmented state because the parameters
     // are not observable
-    if (_global_rank == 0)
-      std::cout << "Getting the perturbed innovation..." << std::endl;
+    std::cout << "Getting the perturbed innovation..." << std::endl;
 
 #ifdef ADAMANTINE_WITH_CALIPER
     CALI_MARK_BEGIN("da_get_pert_inno");
@@ -151,8 +150,7 @@ void DataAssimilator::update_ensemble(
 #endif
 
     // Apply the Kalman gain to update the augmented state ensemble
-    if (_global_rank == 0)
-      std::cout << "Applying the Kalman gain..." << std::endl;
+    std::cout << "Applying the Kalman gain..." << std::endl;
 
 #ifdef ADAMANTINE_WITH_CALIPER
     CALI_MARK_BEGIN("da_apply_K");
@@ -168,8 +166,7 @@ void DataAssimilator::update_ensemble(
 #endif
 
     // Update the ensemble, x = x + K ( y+u - Hx )
-    if (_global_rank == 0)
-      std::cout << "Updating the ensemble members..." << std::endl;
+    std::cout << "Updating the ensemble members..." << std::endl;
 
 #ifdef ADAMANTINE_WITH_CALIPER
     CALI_MARK_BEGIN("da_update_members");
@@ -575,8 +572,8 @@ void DataAssimilator::update_covariance_sparsity_pattern(
             {
               unsigned int row =
                   locally_owned_dofs_per_rank[rank].nth_index_in_set(i);
-              unsigned int other_rank = indices_ranks[j].second;
-              unsigned int other_i = indices_ranks[j].first;
+              unsigned int other_rank = indices_ranks_per_rank[rank][j].second;
+              unsigned int other_i = indices_ranks_per_rank[rank][j].first;
               unsigned int column =
                   locally_owned_dofs_per_rank[other_rank].nth_index_in_set(
                       other_i);
