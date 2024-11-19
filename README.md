@@ -68,6 +68,9 @@ into a Docker image using
 docker run --rm -it -v /path/to/compute/folder:/path/to/image/folder rombur/adamantine:1.0 bash
 ```
 
+## NIX
+The instructions to install `adamantine` using NIX can be found [here](https://github.com/adamantine-sim/adamantine/blob/master/NIX.md).
+
 ## Run
 After compiling `adamantine`, you can run a simulation using
 ```bash
