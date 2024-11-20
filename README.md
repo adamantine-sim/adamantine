@@ -69,6 +69,7 @@ docker run --rm -it -v /path/to/compute/folder:/path/to/image/folder rombur/adam
 ```
 
 ## Run
+
 After compiling `adamantine`, you can run a simulation using
 ```bash
 mpirun -n 2 ./adamantine --input-file=input.info
