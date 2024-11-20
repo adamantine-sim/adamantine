@@ -6,7 +6,7 @@ without cloning from this repository use,
 
     $ nix develop github:adamantine-sim/adamantine
 	
-to install the latest version on main. To install the lastest release use,
+to install the latest version on master. To install the lastest release use,
 
     $ nix develop github:adamantine-sim/adamantine#release
     
