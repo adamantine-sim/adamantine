@@ -47,19 +47,19 @@ The list of configuration options is:
 
 ## Docker
 You can pull the [Docker](https://en.wikipedia.org/wiki/Docker_(software)) image containing the version of *adamantine* on master using:
-```
+``` bash
 docker pull rombur/adamantine:latest
 ```
 The 1.0 release version is available using:
-```
+``` bash
 docker pull rombur/adamantine:1.0
 ```
 To start an interactive container use:
-```
+``` bash
 docker run --rm -it rombur/adamantine:latest bash
 ```
 or
-```
+``` bash
 docker run --rm -it rombur/adamantine:1.0 bash
 ```
 
@@ -68,7 +68,7 @@ can be found in the Docker [documentation](https://docs.docker.com/reference/cli
 
 There are two methods to move file to/from the Docker container:
 1. Mount a volume using the option `-v`. You launch the container using:
-```
+``` bash
 docker run --rm -it -v /path/to/computer/folder:/path/to/image/folder rombur/adamantine:1.0 bash
 ```
 Every file in `/path/to/computer/folder` (resp. `/path/to/image/folder`) will 
@@ -79,3 +79,15 @@ a regular user.
    [here](https://docs.docker.com/reference/cli/docker/container/cp/)).
 
 The Docker images cannot use GPUs.
+
+## NIX
+You can use [NIX](https://nixos.org) to install the development version and the
+latest release of *adamantine*. You need to enable [Flakes](https://nixos.wiki/wiki/Flakes). 
+To install the vesion on master, use:
+``` bash
+nix develop github:adamantine-sim/adamantine
+```
+The 1.0 release version is available using:
+``` bash
+nix develop github:adamantine-sim/adamantine#release
+```
