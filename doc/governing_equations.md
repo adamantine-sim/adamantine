@@ -114,22 +114,29 @@ $$
 \nabla T\right) + Q\right).
 $$
 
-We have succesively with $$\alpha = \frac{1}{\rho C_{p}}$$:
+We have successively with $$\alpha = \frac{1}{\rho C_{p}}$$:
 
 $$
-\int b_i \frac{\partial T_i b_j}{\partial t} = \int b_i \alpha \left(\nabla \cdot \left(k
+\int b_i \frac{\partial T_j b_j}{\partial t} = \int b_i \alpha \left(\nabla \cdot \left(k
 \nabla T_j b_j\right) + Q\right),
 $$
 
 $$
-\int b_i b_j \frac{d T_j}{dt} = \int \alpha T_j b_i \nabla \cdot \left(k \nabla b_j\right) +
+\int b_i b_j \frac{d T_j}{dt} = \int T_j \alpha b_i \nabla \cdot \left(k \nabla b_j\right) +
 \int \alpha b_i Q,
 $$
 
 $$
-\left(\int b_i b_j\right) \frac{d T_j}{dt} = - \int \alpha T_j \nabla b_i \cdot \left(k \nabla b_j\right) +
+\left(\int b_i b_j\right) \frac{d T_j}{dt} = - \int T_j \nabla \left(\alpha b_i\right) \cdot \left(k \nabla b_j\right) +
+\int_{\partial} \alpha T_j b_i \boldsymbol{n}\cdot \left(k \nabla b_j\right) + \int \alpha b_i Q,
+$$
+
+$$
+\left(\int b_i b_j\right) \frac{d T_j}{dt} = - \int T_j \alpha \nabla b_i \cdot \left(k \nabla b_j\right) +
 \int_{\partial} \alpha T_j b_i \boldsymbol{n}\cdot \left(k \nabla b_j\right) + \int \alpha b_i Q.
 $$
+
+The last step assumes that $$\alpha$$ is independent of the temperature.
 
 ### Boundary Condition
 We are now interested in the boundary term $$\int_{\partial} \alpha T_j b_i
