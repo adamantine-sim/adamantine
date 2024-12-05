@@ -185,7 +185,6 @@
           "-DDEAL_II_DIR=${deal_II}"
           "-DCMAKE_BUILD_TYPE=Release"
           "-DCMAKE_CXX_FLAGS=-ffast-math"
-          "-DCMAKE_CXX_FLAGS=-g"
           "-DADAMANTINE_ENABLE_ADIAK=ON"
           "-DADAMANTINE_ENABLE_CALIPER=ON"
           "-DBOOST_DIR=${boost183}"
@@ -206,20 +205,51 @@
         version = "latest";
         src = pkgs.lib.cleanSource ./.;
       });
-        
+
+      adamantine-debug = adamantine-latest.overrideAttrs ( with pkgs; previousAttrs : rec {
+        version = "debug";
+        separateDebugInfo = true;
+        cmakeFlags = [
+          "-DDEAL_II_DIR=${deal_II}"
+          "-DCMAKE_BUILD_TYPE=Debug"
+          "-DCMAKE_CXX_FLAGS=-O0"
+          "-DCMAKE_CXX_FLAGS_DEBUG=-g3"
+          "-DADAMANTINE_ENABLE_ADIAK=ON"
+          "-DADAMANTINE_ENABLE_CALIPER=ON"
+          "-DBOOST_DIR=${boost183}"
+        ];
+      });
+      
+      myDebugInfoDirs = pkgs.symlinkJoin {
+        name = "myDebugInfoDirs";
+        paths = with pkgs; [
+          adamantine-debug.debug
+        ];
+      };
+      
     in rec {
       defaultApp = flake-utils.lib.mkApp {
         drv = defaultPackage;
       };
       defaultPackage = adamantine-latest;
+
       devShells.default = pkgs.mkShell {
         buildInputs = [
           adamantine-latest
         ];
       };
+
       devShells.release = pkgs.mkShell {
         buildInputs = [
           adamantine-release
+        ];
+      };
+
+      devShells.debug = pkgs.mkShell {
+        NIX_DEBUG_INFO_DIRS = "${pkgs.lib.getLib myDebugInfoDirs}/lib/debug";
+        buildInputs = [
+          adamantine-debug
+          pkgs.gdb
         ];
       };
     }
