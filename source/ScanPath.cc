@@ -1,8 +1,5 @@
-/* Copyright (c) 2016 - 2024, the adamantine authors.
- *
- * This file is subject to the Modified BSD License and may not be distributed
- * without copyright and license information. Please refer to the file LICENSE
- * for the text and further information on this license.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+ * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
 #include <ScanPath.hh>
@@ -153,8 +150,9 @@ void ScanPath::load_event_series_scan_path()
   double last_power = 0.0;
   while (getline(file, line))
   {
-    if (line == "") continue;
-    
+    if (line == "")
+      continue;
+
     // If we reach the end of the scan path, we stop reading the file.
     if (line.find("SCAN_PATH_END") != std::string::npos)
     {
