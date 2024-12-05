@@ -138,7 +138,7 @@ public:
 
   /**
    * Compute a material property at a quadrature point for a mix of states.
-   * @Note This function is templated on @tparam because it is in a hot loop.
+   * @note This function is templated on @tparam because it is in a hot loop.
    */
   template <bool use_table>
   dealii::VectorizedArray<double> compute_material_property(
@@ -151,7 +151,7 @@ public:
 
   /**
    * Compute a material property at a quadrature point for a mix of states.
-   * @Note This function is templated on @tparam because it is in a hot loop.
+   * @note This function is templated on @tparam because it is in a hot loop.
    */
   template <bool use_table>
   KOKKOS_FUNCTION double

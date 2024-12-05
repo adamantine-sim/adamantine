@@ -111,7 +111,7 @@ public:
 private:
   /**
    * Update the ratios of the material state.
-   * @Note The input variables are not used when the only valid state is solid.
+   * @note The input variables are not used when the only valid state is solid.
    */
   void update_state_ratios(
       [[maybe_unused]] unsigned int cell, [[maybe_unused]] unsigned int q,
@@ -121,7 +121,7 @@ private:
 
   /**
    * Update the ratios of the material state at the face quadrature points.
-   * @Note The input variables are not used when the only valid state is solid.
+   * @note The input variables are not used when the only valid state is solid.
    */
   void update_face_state_ratios(
       [[maybe_unused]] unsigned int face, [[maybe_unused]] unsigned int q,
