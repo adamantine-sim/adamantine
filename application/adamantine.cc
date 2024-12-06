@@ -78,7 +78,7 @@ get_p_order_and_n_material_states(boost::property_tree::ptree &database)
           // not exist, we have a nullptr.
           if (property)
           {
-            n_material_states = std::max(state, n_material_states);
+            n_material_states = std::max(state + 1, n_material_states);
             if (!use_table)
             {
               // Remove blank spaces
