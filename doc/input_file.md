@@ -145,7 +145,6 @@ the file itself should be csv. (required)
 * **last\_frame**: number associated to the last frame (required)
 * **first\_camera\_id**: number associated to the first camera (required)
 * **last\_camera\_id**: number associated to the last camera (required)
-* **data\_columns**: columns associated with x, y, T (in 2D) and x, y, z, T (in 3D) (required)
 * **log\_filename**: the (full) filename of the log file that lists the timestamps for each frame from each camera. Note that the timestamps are not assumed to match the simulation time frame. The `first_frame_temporal_offset` parameter controls the simulation time corresponding to the first camera frame (required)
 * **first\_frame\_temporal\_offset**: a uniform shift to the timestamps from all cameras to match the simulation time (default value: 0.0)
 * **estimated\_uncertainty**: the estimate of the uncertainty in the experimental data points as given by a standard deviation 
