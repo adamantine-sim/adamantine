@@ -69,7 +69,7 @@ public:
    * \param[in] scan_path_file is the name of the text file containing the scan
    * path
    * \param[in] file_format is the format of the scan path file
-   * \param[in] optional units property tree
+   * \param[in] units_optional_database is the units property tree
    */
   ScanPath(std::string const &scan_path_file, std::string const &file_format,
            boost::optional<boost::property_tree::ptree const &> const

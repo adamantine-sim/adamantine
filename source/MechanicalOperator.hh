@@ -86,7 +86,7 @@ public:
 private:
   /**
    * Assemble the matrix and the right-hand-side.
-   * @Note The 2D case does not represent any physical model but it is
+   * @note The 2D case does not represent any physical model but it is
    * convenient for testing.
    */
   void assemble_system(
