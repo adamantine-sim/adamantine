@@ -19,7 +19,7 @@ CubeHeatSource<dim>::CubeHeatSource(
   double power_scaling = 1.;
   if (units_optional_database)
   {
-    auto database = units_optional_database.get();
+    auto const &database = units_optional_database.get();
     // PropertyTreeInput units.scan_path_distance
     std::string unit = database.get("heat_source.dimension", "meter");
     dimension_scaling = g_unit_scaling_factor[unit];

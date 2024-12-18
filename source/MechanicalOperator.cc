@@ -29,7 +29,7 @@ MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
     MechanicalOperator(MPI_Comm const &communicator,
                        MaterialProperty<dim, p_order, MaterialStates,
                                         MemorySpaceType> &material_properties,
-                       std::vector<double> const reference_temperatures)
+                       std::vector<double> const &reference_temperatures)
     : _communicator(communicator),
       _reference_temperatures(reference_temperatures),
       _material_properties(material_properties)

@@ -441,7 +441,7 @@ DataAssimilator::apply_kalman_gain(
   // members in parallel
   std::transform(
       perturbed_innovation.begin(), perturbed_innovation.end(), output.begin(),
-      [&](dealii::Vector<double> entry)
+      [&](dealii::Vector<double> const &entry)
       {
         dealii::SolverGMRES<dealii::Vector<double>> HPH_plus_R_inv_solver(
             solver_control, additional_data);
@@ -474,9 +474,9 @@ DataAssimilator::apply_kalman_gain(
 dealii::SparseMatrix<double>
 DataAssimilator::calc_H(dealii::SparsityPattern &pattern) const
 {
-  int num_expt_dof_map_entries = _expt_to_dof_mapping.first.size();
+  unsigned int num_expt_dof_map_entries = _expt_to_dof_mapping.first.size();
 
-  for (auto i = 0; i < num_expt_dof_map_entries; ++i)
+  for (unsigned int i = 0; i < num_expt_dof_map_entries; ++i)
   {
     auto sim_index = _expt_to_dof_mapping.second[i];
     auto expt_index = _expt_to_dof_mapping.first[i];
@@ -487,7 +487,7 @@ DataAssimilator::calc_H(dealii::SparsityPattern &pattern) const
 
   dealii::SparseMatrix<double> H(pattern);
 
-  for (auto i = 0; i < num_expt_dof_map_entries; ++i)
+  for (unsigned int i = 0; i < num_expt_dof_map_entries; ++i)
   {
     auto sim_index = _expt_to_dof_mapping.second[i];
     auto expt_index = _expt_to_dof_mapping.first[i];

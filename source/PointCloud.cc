@@ -59,7 +59,7 @@ unsigned int PointCloud<dim>::read_next_frame()
       double value = 0.;
       while (last_pos < line_length + 1)
       {
-        pos = line.find_first_of(",", last_pos);
+        pos = line.find_first_of(',', last_pos);
         // If no comma was found that we read until the end of the file
         if (pos == std::string::npos)
         {
