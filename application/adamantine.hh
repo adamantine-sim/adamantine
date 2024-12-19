@@ -1085,6 +1085,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       {
         if (use_thermal_physics)
         {
+#ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_BEGIN("add material");
+#endif
           // Compute the elements to activate.
           // TODO Right now, we compute the list of cells that get activated for
           // the entire material deposition. We should restrict the list to the
@@ -1127,6 +1130,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           {
             mechanical_physics->complete_transfer_mpi();
           }
+
+#ifdef ADAMANTINE_WITH_CALIPER
+          CALI_MARK_END("add material");
+#endif
         }
       }
 
@@ -1928,6 +1935,10 @@ run_ensemble(MPI_Comm const &global_communicator,
                            activation_time_end) -
           deposition_times.begin();
       if (activation_start < activation_end)
+      {
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_BEGIN("add material");
+#endif
         for (unsigned int member = 0; member < local_ensemble_size; ++member)
         {
           // Compute the elements to activate.
@@ -1968,6 +1979,10 @@ run_ensemble(MPI_Comm const &global_communicator,
 
           solution_augmented_ensemble[member].collect_sizes();
         }
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_END("add material");
+#endif
+      }
 
       if ((global_rank == 0) && (verbose_output == true) &&
           (activation_end - activation_start > 0))
