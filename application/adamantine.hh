@@ -1423,34 +1423,40 @@ run_ensemble(MPI_Comm const &global_communicator,
   const double initial_temperature_stddev =
       ensemble_database.get("initial_temperature_stddev", 0.0);
 
+  unsigned int n_rejected_draws = first_local_member;
   std::vector<double> initial_temperature =
       adamantine::get_normal_random_vector(
-          local_ensemble_size, first_local_member, initial_temperature_mean,
+          local_ensemble_size, n_rejected_draws, initial_temperature_mean,
           initial_temperature_stddev);
 
   // PropertyTreeInput ensemble.new_material_temperature_stddev
   const double new_material_temperature_stddev =
       ensemble_database.get("new_material_temperature_stddev", 0.0);
 
+  // Update the number of rejected draws to make sure that the variables are not
+  // correlated.
+  n_rejected_draws += global_ensemble_size;
   std::vector<double> new_material_temperature =
       adamantine::get_normal_random_vector(
-          local_ensemble_size, first_local_member,
-          new_material_temperature_mean, new_material_temperature_stddev);
+          local_ensemble_size, n_rejected_draws, new_material_temperature_mean,
+          new_material_temperature_stddev);
 
   // PropertyTreeInput ensemble.beam_0_max_power_stddev
   const double beam_0_max_power_stddev =
       ensemble_database.get("beam_0_max_power_stddev", 0.0);
 
+  n_rejected_draws += global_ensemble_size;
   std::vector<double> beam_0_max_power = adamantine::get_normal_random_vector(
-      local_ensemble_size, first_local_member, beam_0_max_power_mean,
+      local_ensemble_size, n_rejected_draws, beam_0_max_power_mean,
       beam_0_max_power_stddev);
 
   // PropertyTreeInput ensemble.beam_0_absorption_stddev
   const double beam_0_absorption_stddev =
       ensemble_database.get("beam_0_absorption_stddev", 0.0);
 
+  n_rejected_draws += global_ensemble_size;
   std::vector<double> beam_0_absorption = adamantine::get_normal_random_vector(
-      local_ensemble_size, first_local_member, beam_0_absorption_mean,
+      local_ensemble_size, n_rejected_draws, beam_0_absorption_mean,
       beam_0_absorption_stddev);
 
   // Create a new property tree database for each ensemble member
