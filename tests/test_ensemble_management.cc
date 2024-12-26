@@ -20,11 +20,11 @@ BOOST_AUTO_TEST_CASE(fill_and_sync_random_vector, *utf::tolerance(10.))
 {
 
   // Create the random vector
-  double mean = -1.2;
+  double mean = 12.2;
   double stddev = 0.25;
   unsigned int ensemble_size = 5000;
-  std::vector<double> vec =
-      adamantine::get_normal_random_vector(ensemble_size, 0, mean, stddev);
+  std::vector<double> vec = adamantine::get_normal_random_vector(
+      ensemble_size, 0, mean, stddev, false);
 
   // Check vector size
   BOOST_TEST(vec.size() == ensemble_size);

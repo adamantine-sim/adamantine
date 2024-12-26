@@ -1427,7 +1427,7 @@ run_ensemble(MPI_Comm const &global_communicator,
   std::vector<double> initial_temperature =
       adamantine::get_normal_random_vector(
           local_ensemble_size, n_rejected_draws, initial_temperature_mean,
-          initial_temperature_stddev);
+          initial_temperature_stddev, verbose_output);
 
   // PropertyTreeInput ensemble.new_material_temperature_stddev
   const double new_material_temperature_stddev =
@@ -1439,7 +1439,7 @@ run_ensemble(MPI_Comm const &global_communicator,
   std::vector<double> new_material_temperature =
       adamantine::get_normal_random_vector(
           local_ensemble_size, n_rejected_draws, new_material_temperature_mean,
-          new_material_temperature_stddev);
+          new_material_temperature_stddev, verbose_output);
 
   // PropertyTreeInput ensemble.beam_0_max_power_stddev
   const double beam_0_max_power_stddev =
@@ -1448,7 +1448,7 @@ run_ensemble(MPI_Comm const &global_communicator,
   n_rejected_draws += global_ensemble_size;
   std::vector<double> beam_0_max_power = adamantine::get_normal_random_vector(
       local_ensemble_size, n_rejected_draws, beam_0_max_power_mean,
-      beam_0_max_power_stddev);
+      beam_0_max_power_stddev, verbose_output);
 
   // PropertyTreeInput ensemble.beam_0_absorption_stddev
   const double beam_0_absorption_stddev =
@@ -1457,7 +1457,6 @@ run_ensemble(MPI_Comm const &global_communicator,
   n_rejected_draws += global_ensemble_size;
   std::vector<double> beam_0_absorption = adamantine::get_normal_random_vector(
       local_ensemble_size, n_rejected_draws, beam_0_absorption_mean,
-      beam_0_absorption_stddev);
 
   // Create a new property tree database for each ensemble member
   std::vector<boost::property_tree::ptree> database_ensemble(
