@@ -150,13 +150,29 @@ int main(int argc, char *argv[])
     // Declare a map that will contains the values read. Parse the command
     // line and finally populate the map.
     boost_po::variables_map map;
-    boost_po::store(boost_po::parse_command_line(argc, argv, description), map);
+    auto parsed_line = boost_po::command_line_parser(argc, argv)
+                           .options(description)
+                           .allow_unregistered()
+                           .run();
+    boost_po::store(parsed_line, map);
     boost_po::notify(map);
-    // Output the help message is asked for
+    // Output the help message if asked for
     if (map.count("help") == 1)
     {
       std::cout << description << std::endl;
-      return 1;
+      return 0;
+    }
+
+    // Exit gracefully when --kokkos-help is passed
+    std::vector<std::string> unrecognized_options =
+        boost_po::collect_unrecognized(parsed_line.options,
+                                       boost_po::include_positional);
+    for (auto const &options : unrecognized_options)
+    {
+      if (options == "--kokkos-help")
+      {
+        return 0;
+      }
     }
 
     // Read the input.
