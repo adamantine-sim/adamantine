@@ -38,7 +38,7 @@ public:
   MechanicalOperator(MPI_Comm const &communicator,
                      MaterialProperty<dim, p_order, MaterialStates,
                                       MemorySpaceType> &material_properties,
-                     std::vector<double> reference_temperatures);
+                     std::vector<double> const &reference_temperatures);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,

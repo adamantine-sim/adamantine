@@ -22,7 +22,7 @@ ScanPath::ScanPath(std::string const &scan_path_file,
   // tree is not given, we assume that all the scaling factors are equal to one.
   if (units_optional_database)
   {
-    auto database = units_optional_database.get();
+    auto const &database = units_optional_database.get();
     // PropertyTreeInput units.heat_source.scan_path
     std::string unit = database.get("heat_source.scan_path", "meter");
     _distance_scaling = g_unit_scaling_factor[unit];
