@@ -1457,6 +1457,25 @@ run_ensemble(MPI_Comm const &global_communicator,
   n_rejected_draws += global_ensemble_size;
   std::vector<double> beam_0_absorption = adamantine::get_normal_random_vector(
       local_ensemble_size, n_rejected_draws, beam_0_absorption_mean,
+      beam_0_absorption_stddev, verbose_output);
+
+  // Write the ensemble variables in files to simplify data analysis.
+  if (dealii::Utilities::MPI::this_mpi_process(local_communicator) == 0)
+  {
+    for (unsigned int member = 0; member < local_ensemble_size; ++member)
+    {
+
+      std::string member_data_filename =
+          post_processor_database.get<std::string>("filename_prefix") + "_m" +
+          std::to_string(first_local_member + member) + "_data.txt";
+      std::ofstream file(member_data_filename);
+      file << "Initial temperature: " << initial_temperature[member] << "\n";
+      file << "New material temperature: " << new_material_temperature[member]
+           << "\n";
+      file << "Beam_0 max power: " << beam_0_max_power[member] << "\n";
+      file << "Beam_0 absorption: " << beam_0_absorption[member] << "\n";
+    }
+  }
 
   // Create a new property tree database for each ensemble member
   std::vector<boost::property_tree::ptree> database_ensemble(
