@@ -53,6 +53,8 @@ public:
    */
   double get_current_height(double const time) const final;
 
+  dealii::BoundingBox<dim> get_bounding_box() const final;
+
 private:
   bool _source_on = false;
   double _start_time;

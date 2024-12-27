@@ -35,7 +35,7 @@ CubeHeatSource<dim>::CubeHeatSource(
   _max_point[0] = source_database.get<double>("max_x") * dimension_scaling;
   _min_point[1] = source_database.get<double>("min_y") * dimension_scaling;
   _max_point[1] = source_database.get<double>("max_y") * dimension_scaling;
-  if (dim == 3)
+  if constexpr (dim == 3)
   {
     _min_point[2] = source_database.get<double>("min_z") * dimension_scaling;
     _max_point[2] = source_database.get<double>("max_z") * dimension_scaling;
@@ -75,6 +75,20 @@ template <int dim>
 double CubeHeatSource<dim>::get_current_height(double const /*time*/) const
 {
   return _max_point[axis<dim>::z];
+}
+
+template <int dim>
+dealii::BoundingBox<dim> CubeHeatSource<dim>::get_bounding_box() const
+{
+  if constexpr (dim == 2)
+  {
+    return {{{_min_point[0], _min_point[1]}, {_max_point[0], _max_point[1]}}};
+  }
+  else
+  {
+    return {{{_min_point[0], _min_point[1], _min_point[2]},
+             {_max_point[0], _max_point[1], _max_point[2]}}};
+  }
 }
 
 } // namespace adamantine

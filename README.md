@@ -168,7 +168,6 @@ The following options are available:
   * additional\_output\_refinement: additional levels of refinement for the output (default: 0)
 * refinement (required):
   * n\_refinements: number of times the cells on the paths of the beams are refined (default value: 2)
-  * beam\_cutoff: the cutoff value of the heat source terms above which beam-based refinement occurs (default value: 1e-15)
   * coarsen\_after\_beam: whether to coarsen cells where the beam has already passed (default value: false)
   * time\_steps\_between\_refinement: number of time steps after which the
   refinement process is performed (default value: 2)

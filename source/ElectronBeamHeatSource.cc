@@ -45,7 +45,7 @@ double ElectronBeamHeatSource<dim>::value(dealii::Point<dim> const &point,
 
     double xpy_squared =
         std::pow(point[axis<dim>::x] - _beam_center[axis<dim>::x], 2);
-    if (dim == 3)
+    if constexpr (dim == 3)
     {
       xpy_squared +=
           std::pow(point[axis<dim>::y] - _beam_center[axis<dim>::y], 2);
@@ -57,6 +57,27 @@ double ElectronBeamHeatSource<dim>::value(dealii::Point<dim> const &point,
         distribution_z;
 
     return heat_source;
+  }
+}
+
+template <int dim>
+dealii::BoundingBox<dim> ElectronBeamHeatSource<dim>::get_bounding_box() const
+{
+  if constexpr (dim == 2)
+  {
+    return {{{_beam_center[axis<dim>::x] - this->_beam.radius,
+              _beam_center[axis<dim>::z] - this->_beam.depth},
+             {_beam_center[axis<dim>::x] + this->_beam.radius,
+              _beam_center[axis<dim>::z]}}};
+  }
+  else
+  {
+    return {{{_beam_center[axis<dim>::x] - this->_beam.radius,
+              _beam_center[axis<dim>::y] - this->_beam.radius,
+              _beam_center[axis<dim>::z] - this->_beam.depth},
+             {_beam_center[axis<dim>::x] + this->_beam.radius,
+              _beam_center[axis<dim>::y] + this->_beam.radius,
+              _beam_center[axis<dim>::z]}}};
   }
 }
 } // namespace adamantine
