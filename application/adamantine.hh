@@ -1426,9 +1426,8 @@ run_ensemble(MPI_Comm const &global_communicator,
   // duplicating everything.
 
   // PropertyTreeInput ensemble.initial_temperature_stddev
-  const double initial_temperature_stddev =
+  double const initial_temperature_stddev =
       ensemble_database.get("initial_temperature_stddev", 0.0);
-
   unsigned int n_rejected_draws = first_local_member;
   std::vector<double> initial_temperature =
       adamantine::get_normal_random_vector(
@@ -1436,9 +1435,8 @@ run_ensemble(MPI_Comm const &global_communicator,
           initial_temperature_stddev, verbose_output);
 
   // PropertyTreeInput ensemble.new_material_temperature_stddev
-  const double new_material_temperature_stddev =
+  double const new_material_temperature_stddev =
       ensemble_database.get("new_material_temperature_stddev", 0.0);
-
   // Update the number of rejected draws to make sure that the variables are not
   // correlated.
   n_rejected_draws += global_ensemble_size;
@@ -1448,18 +1446,16 @@ run_ensemble(MPI_Comm const &global_communicator,
           new_material_temperature_stddev, verbose_output);
 
   // PropertyTreeInput ensemble.beam_0_max_power_stddev
-  const double beam_0_max_power_stddev =
+  double const beam_0_max_power_stddev =
       ensemble_database.get("beam_0_max_power_stddev", 0.0);
-
   n_rejected_draws += global_ensemble_size;
   std::vector<double> beam_0_max_power = adamantine::get_normal_random_vector(
       local_ensemble_size, n_rejected_draws, beam_0_max_power_mean,
       beam_0_max_power_stddev, verbose_output);
 
   // PropertyTreeInput ensemble.beam_0_absorption_stddev
-  const double beam_0_absorption_stddev =
+  double const beam_0_absorption_stddev =
       ensemble_database.get("beam_0_absorption_stddev", 0.0);
-
   n_rejected_draws += global_ensemble_size;
   std::vector<double> beam_0_absorption = adamantine::get_normal_random_vector(
       local_ensemble_size, n_rejected_draws, beam_0_absorption_mean,
