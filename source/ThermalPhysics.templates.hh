@@ -620,10 +620,6 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
         unsigned int const activation_end,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution)
 {
-#ifdef ADAMANTINE_WITH_CALIPER
-  CALI_CXX_MARK_FUNCTION;
-#endif
-
   // Update the material state from the ThermalOperator to MaterialProperty
   // because, for now, we need to use state from MaterialProperty to perform the
   // transfer to the refined mesh.
