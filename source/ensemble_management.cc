@@ -9,7 +9,8 @@ namespace adamantine
 {
 std::vector<double> get_normal_random_vector(unsigned int length,
                                              unsigned int n_rejected_draws,
-                                             double mean, double stddev)
+                                             double mean, double stddev,
+                                             bool verbose)
 {
   ASSERT(stddev >= 0., "Internal Error");
 
@@ -23,7 +24,20 @@ std::vector<double> get_normal_random_vector(unsigned int length,
   std::vector<double> output_vector(length);
   for (unsigned int i = 0; i < length; ++i)
   {
-    output_vector[i] = normal_dist_generator(pseudorandom_number_generator);
+    // We reject negative values because physical quantities we care about are
+    // all positive and we cannot guarantee that the normal distribution will
+    // always be positive.
+    do
+    {
+      output_vector[i] = normal_dist_generator(pseudorandom_number_generator);
+
+      if (verbose && output_vector[i] < 0.)
+      {
+        std::cout << "Random value rejected because it was negative: "
+                  << output_vector[i] << std::endl;
+      }
+
+    } while (output_vector[i] < 0.);
   }
 
   return output_vector;
