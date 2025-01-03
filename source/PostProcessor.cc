@@ -79,8 +79,12 @@ PostProcessor<dim>::PostProcessor(
 template <int dim>
 void PostProcessor<dim>::write_pvd() const
 {
-  std::ofstream output(_filename_prefix + ".pvd");
-  dealii::DataOutBase::write_pvd_record(output, _times_filenames);
+  unsigned int rank = dealii::Utilities::MPI::this_mpi_process(_communicator);
+  if (rank == 0)
+  {
+    std::ofstream output(_filename_prefix + ".pvd");
+    dealii::DataOutBase::write_pvd_record(output, _times_filenames);
+  }
 }
 
 template <int dim>
