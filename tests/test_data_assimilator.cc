@@ -30,7 +30,7 @@ public:
     BOOST_TEST(da0._solver_control.tolerance() - 1.0e-10 == 0.,
                tt::tolerance(tol));
     BOOST_TEST(da0._solver_control.max_steps() == 100u);
-    BOOST_TEST(da0._additional_data.max_n_tmp_vectors == 30u);
+    BOOST_TEST(da0._additional_data.max_basis_size == 30u);
 
     // Now explicitly setting them
     database.put("solver.convergence_tolerance", 1.0e-6);
@@ -40,7 +40,7 @@ public:
     BOOST_TEST(da1._solver_control.tolerance() - 1.0e-6 == 0.,
                tt::tolerance(tol));
     BOOST_TEST(da1._solver_control.max_steps() == 25u);
-    BOOST_TEST(da1._additional_data.max_n_tmp_vectors == 4u);
+    BOOST_TEST(da1._additional_data.max_basis_size == 4u);
   };
 
   void test_calc_kalman_gain()

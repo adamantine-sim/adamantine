@@ -1,4 +1,4 @@
-ARG BASE=nvidia/cuda:12.3.0-devel-ubuntu22.04
+ARG BASE=nvidia/cuda:12.6.2-devel-ubuntu24.04
 FROM $BASE
 
 ARG N_PROCS=8
@@ -39,8 +39,8 @@ RUN mkdir -p ${PREFIX} && \
     mkdir build
 
 # Install CMake
-RUN export CMAKE_VERSION=3.27.8 && \
-    export  CMAKE_SHA256=dfedc30abe69dcabe326a4de632210bb52004185bd2c0b096c21924f4510681f && \
+RUN export CMAKE_VERSION=3.30.5 && \
+    export CMAKE_SHA256=f747d9b23e1a252a8beafb4ed2bc2ddf78cff7f04a8e4de19f4ff88e9b51dc9d && \
     export CMAKE_URL=https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz && \
     export CMAKE_ARCHIVE=${ARCHIVE_DIR}/cmake.tar.gz && \
     export CMAKE_BUILD_DIR=${BUILD_DIR}/cmake && \
@@ -54,9 +54,9 @@ RUN export CMAKE_VERSION=3.27.8 && \
 ENV PATH=${INSTALL_DIR}/cmake/bin:$PATH
 
 # Install OpenMPI
-RUN export OPENMPI_VERSION=5.0.0 && \
+RUN export OPENMPI_VERSION=5.0.5 && \
     export OPENMPI_VERSION_SHORT=5.0 && \
-    export OPENMPI_SHA256=9d845ca94bc1aeb445f83d98d238cd08f6ec7ad0f73b0f79ec1668dbfdacd613 && \
+    export OPENMPI_SHA256=6588d57c0a4bd299a24103f4e196051b29e8b55fbda49e11d5b3d32030a32776 && \
     export OPENMPI_URL=https://www.open-mpi.org/software/ompi/v${OPENMPI_VERSION_SHORT}/downloads/openmpi-${OPENMPI_VERSION}.tar.bz2 && \
     export OPENMPI_ARCHIVE=${ARCHIVE_DIR}/openmpi.tar.bz2 && \
     export OPENMPI_SOURCE_DIR=${SOURCE_DIR}/openmpi && \
@@ -87,10 +87,10 @@ ENV OMPI_CXX=c++
 ENV PATH=${INSTALL_DIR}/openmpi/bin:$PATH
 
 # Install Boost
-RUN export BOOST_VERSION=1.83.0 && \
-    export BOOST_VERSION_U=1_83_0 && \
-    export BOOST_URL=https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_U}.tar.bz2 && \
-    export BOOST_SHA256=6478edfe2f3305127cffe8caf73ea0176c53769f4bf1585be237eb30798c3b8e && \
+RUN export BOOST_VERSION=1.86.0 && \
+    export BOOST_VERSION_U=1_86_0 && \
+    export BOOST_URL=https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_U}.tar.bz2 && \
+    export BOOST_SHA256=1bed88e40401b2cb7a1f76d4bab499e352fa4d0c5f31c0dbae64e24d34d7513b && \
     export BOOST_ARCHIVE=${ARCHIVE_DIR}/boost_${BOOST_VERSION_U}.tar.bz2 && \
     export BOOST_SOURCE_DIR=${SOURCE_DIR}/boost && \
     export BOOST_BUILD_DIR=${BUILD_DIR}/boost && \
@@ -220,6 +220,7 @@ RUN export TRILINOS_HASH=975307431d60d0859ebaa27c9169cbb1d4287513 && \
         -DTrilinos_ENABLE_SEACAS=ON \
         -DTrilinos_ENABLE_EXPLICIT_INSTANTIATION=ON \
         -DKokkos_ENABLE_CUDA=$CUDA \
+        -DKokkos_ENABLE_CUDA_CONSTEXPR=ON \
         -DKokkos_ARCH_AMPERE80=ON \
         -DBLAS_LIBRARY_NAMES="openblas" \
         -DBLAS_LIBRARY_DIRS=${OPENBLAS_DIR}/lib \
@@ -261,9 +262,9 @@ RUN export ADIAK_VERSION=0.4.0 && \
     rm -rf ${ADIAK_SOURCE_DIR}
 ENV ADIAK_DIR=${INSTALL_DIR}/adiak
 
-# Install Caliper 2.10.0
-RUN export CALIPER_HASH=9b5b5efe9096e3f2b306fcca91ae739ae5d00716 && \
-    export CALIPER_URL=https://github.com/LLNL/caliper/archive/${CALIPER_HASH}.tar.gz && \
+# Install Caliper 2.11.0
+RUN export CALIPER_VERSION=2.11.0 && \
+    export CALIPER_URL=https://github.com/LLNL/Caliper/archive/refs/tags/v${CALIPER_VERSION}.tar.gz && \
     export CALIPER_ARCHIVE=${ARCHIVE_DIR}/caliper.tar.gz && \
     export CALIPER_SOURCE_DIR=${SOURCE_DIR}/caliper && \
     export CALIPER_BUILD_DIR=${BUILD_DIR}/caliper && \
@@ -315,9 +316,9 @@ RUN export ARBORX_HASH=e026f8237dbd0aaf2ddf2e3bf0e492071db854a2 && \
     rm -rf ${ARBORX_SOURCE_DIR}
 ENV ARBORX_DIR=${INSTALL_DIR}/arborx
 
-# Install deal.II 9.5.1
-RUN export DEAL_II_HASH=9e847302b21355f355c87890477f4dd485da26b1 && \
-    export DEAL_II_URL=https://github.com/dealii/dealii/archive/${DEAL_II_HASH}.tar.gz && \
+# Install deal.II 9.6.2
+RUN export DEAL_II_VERSION=9.6.2 && \
+    export DEAL_II_URL=https://github.com/dealii/dealii/releases/download/v${DEAL_II_VERSION}/dealii-${DEAL_II_VERSION}.tar.gz && \
     export DEAL_II_ARCHIVE=${ARCHIVE_DIR}/dealii.tar.gz && \
     export DEAL_II_SOURCE_DIR=${SOURCE_DIR}/dealii && \
     export DEAL_II_BUILD_DIR=${BUILD_DIR}/dealii && \
@@ -330,6 +331,7 @@ RUN export DEAL_II_HASH=9e847302b21355f355c87890477f4dd485da26b1 && \
         -DCMAKE_CXX_COMPILER=${TRILINOS_DIR}/bin/nvcc_wrapper \
         -DCMAKE_CXX_STANDARD=17 \
         -DCMAKE_CXX_EXTENSIONS=OFF \
+        -DDEAL_II_EARLY_DEPRECATIONS=ON \
         -DDEAL_II_WITH_TBB=OFF \
         -DDEAL_II_WITH_64BIT_INDICES=ON \
         -DDEAL_II_WITH_COMPLEX_VALUES=OFF \
