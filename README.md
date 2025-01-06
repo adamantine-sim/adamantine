@@ -20,7 +20,7 @@ Installing `adamantine` requires:
 * ArborX: 1.4.1 or later
 * Trilinos: 14.4.0 or later. If you want to *adamantine* to read an Exodus mesh,
   you need to enable SEACAS support.
-* deal.II: 9.5 or later. You need to compile deal.II with MPI, p4est, and ArborX support.
+* deal.II: 9.5 for the 1.0 release and 9.6 for the development version. You need to compile deal.II with MPI, p4est, and ArborX support.
 * Caliper: 2.10 or later. Optional dependency to profile `adamantine`.
 
 An example on how to install all the dependencies can be found in
