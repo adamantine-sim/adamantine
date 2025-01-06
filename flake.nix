@@ -3,7 +3,7 @@
 {
   inputs = {
     nixpkgs = {
-      url = "github:nixos/nixpkgs/nixos-24.05";
+      url = "github:nixos/nixpkgs/nixos-24.11";
     };
     flake-utils = {
       url = "github:numtide/flake-utils";
@@ -13,7 +13,6 @@
     let
       pkgs = import nixpkgs {
         inherit system;
-        config.cudaSupport = true;
         config.allowUnfree = true;
       };
 
@@ -83,7 +82,6 @@
           cmake
           openmpi
           trilinos_override
-          cudatoolkit
         ];
 
         cmakeFlags = [
@@ -94,8 +92,8 @@
         ];
       });
 
-      deal_II = (with pkgs; stdenv.mkDerivation {
-        pname = "deal_II";
+      deal_II_952 = (with pkgs; stdenv.mkDerivation {
+        pname = "deal_II_952";
         version = "9.5.2";
         src = fetchgit {
           url = "https://github.com/dealii/dealii";
@@ -108,7 +106,46 @@
           cmake
           openmpi
           trilinos_override
-          cudatoolkit
+          arborx
+          p4est
+          boost183
+        ];
+
+        cmakeFlags = [
+          "-DCMAKE_BUILD_TYPE=DebugRelease"
+          "-DCMAKE_CXX_STANDARD=17"
+          "-DCMAKE_CXX_EXTENSIONS=OFF"
+          "-DDEAL_II_WITH_TBB=OFF"
+          "-DDEAL_II_WITH_64BIT_INDICES=ON"
+          "-DDEAL_II_WITH_COMPLEX_VALUES=OFF"
+          "-DDEAL_II_WITH_MPI=ON"
+          "-DDEAL_II_WITH_P4EST=ON"
+          "-DP4EST_DIR=${p4est}"
+          "-DDEAL_II_WITH_ARBORX=ON"
+          "-DARBORX_DIR=${arborx}"
+          "-DDEAL_II_WITH_TRILINOS=ON"
+          "-DTRILINOS_DIR=${trilinos_override}"
+          "-DDEAL_II_TRILINOS_WITH_SEACAS=OFF"
+          "-DDEAL_II_COMPONENT_EXAMPLES=OFF"
+          "-DDEAL_II_WITH_ADOLC=OFF"
+          "-DDEAL_II_ALLOW_BUNDLED=OFF"
+         ];
+      });
+
+      deal_II_962 = (with pkgs; stdenv.mkDerivation {
+        pname = "deal_II_962";
+        version = "9.6.2";
+        src = fetchgit {
+          url = "https://github.com/dealii/dealii";
+          rev = "v9.6.2";
+          sha256 = "sha256-YVOQbvzWWSl9rmYd6LBx4w2S8wuxhVF8T2dKdOphta4=";
+          fetchSubmodules = true;
+        };
+
+        buildInputs = [
+          cmake
+          openmpi
+          trilinos_override
           arborx
           p4est
           boost183
@@ -166,7 +203,7 @@
         };
 
         buildInputs = [
-          deal_II
+          deal_II_952
           arborx
           adiak
           caliper
@@ -182,7 +219,7 @@
         ];
 
         cmakeFlags = [
-          "-DDEAL_II_DIR=${deal_II}"
+          "-DDEAL_II_DIR=${deal_II_952}"
           "-DCMAKE_BUILD_TYPE=Release"
           "-DCMAKE_CXX_FLAGS=-ffast-math"
           "-DADAMANTINE_ENABLE_ADIAK=ON"
@@ -201,16 +238,40 @@
         '';
       });
       
-      adamantine-latest = adamantine-release.overrideAttrs ( previousAttrs : rec {
+      adamantine-latest = adamantine-release.overrideAttrs ( with pkgs; previousAttrs : rec {
         version = "latest";
         src = pkgs.lib.cleanSource ./.;
+
+        buildInputs = [
+          deal_II_962
+          arborx
+          adiak
+          caliper
+          cmake
+          p4est
+          trilinos_override
+          boost183
+        ] ++ propagatedBuildInputs;
+        
+        propagatedBuildInputs = [
+          openmpi
+        ];
+
+        cmakeFlags = [
+          "-DDEAL_II_DIR=${deal_II_962}"
+          "-DCMAKE_BUILD_TYPE=Release"
+          "-DCMAKE_CXX_FLAGS=-ffast-math"
+          "-DADAMANTINE_ENABLE_ADIAK=ON"
+          "-DADAMANTINE_ENABLE_CALIPER=ON"
+          "-DBOOST_DIR=${boost183}"
+        ];
       });
 
       adamantine-debug = adamantine-latest.overrideAttrs ( with pkgs; previousAttrs : rec {
         version = "debug";
         separateDebugInfo = true;
         cmakeFlags = [
-          "-DDEAL_II_DIR=${deal_II}"
+          "-DDEAL_II_DIR=${deal_II_962}"
           "-DCMAKE_BUILD_TYPE=Debug"
           "-DCMAKE_CXX_FLAGS=-O0"
           "-DCMAKE_CXX_FLAGS_DEBUG=-g3"
