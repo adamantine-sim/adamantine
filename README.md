@@ -224,10 +224,7 @@ The following options are available:
 * ensemble (optional):
   * ensemble\_simulation: whether to perform an ensemble of simulations (default value: false)
   * ensemble\_size: the number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
-  * initial\_temperature\_stddev: the standard deviation for the initial temperature of the material (default value: 0.0)
-  * new\_material\_temperature\_stddev: the standard deviation for the temperature of material added during the process (default value: 0.0)
-  * beam\_0\_max\_power\_stddev: the standard deviation for the max power for beam 0 (if it exists) (default value: 0.0)
-  * beam\_0\_absorption\_efficiency\_stddev: the standard deviation for the absorption efficiency for beam 0 (if it exists) (default value: 0.0)
+  * variable\_stddev: standard deviation associated to `variable`. `variable` is an other variable of the input file, for instance `sources.beam_0.max_power`. The input file accepts multiple `variable_stddev` at once  (required if `ensemble_simulation`is true). Note that this does not work for temperature dependent variables.
 * data\_assimilation (optional):
   * assimilate\_data: whether to perform data assimilation (default value: false)
   * localization\_cutoff\_function: the function used to decrease the sample covariance as the relevant points become farther away: gaspari\_cohn, step\_function, none (default: none)

@@ -2,8 +2,17 @@ ensemble
 {
   ensemble_simulation true
   ensemble_size 3
-  initial_temperature_stddev 5.0
-  beam_0_absorption_stddev 0.05
+  materials
+  {
+    initial_temperature_stddev 5.0
+  }
+  sources
+  {
+    beam_0
+    {
+      absorption_efficiency_stddev 0.05
+    }
+  }
 }
 experiment
 {
@@ -73,9 +82,10 @@ materials
   n_materials 1
 
   property_format polynomial
+  initial_temperature 285
+
   material_0
   {
-    initial_temperature 285
     solid
     {
       density 7904; [kg/m^3] For now all the states needs to have the same

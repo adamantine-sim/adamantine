@@ -8,9 +8,12 @@
 #include <ensemble_management.hh>
 #include <utils.hh>
 
+#include <fstream>
 #include <random>
 
 namespace adamantine
+{
+namespace
 {
 std::vector<double> get_normal_random_vector(unsigned int length,
                                              unsigned int n_rejected_draws,
@@ -47,6 +50,7 @@ std::vector<double> get_normal_random_vector(unsigned int length,
 
   return output_vector;
 }
+} // namespace
 
 template <int dim>
 std::vector<std::shared_ptr<HeatSource<dim>>> get_bounding_heat_sources(
@@ -157,6 +161,105 @@ std::vector<std::shared_ptr<HeatSource<dim>>> get_bounding_heat_sources(
   }
 
   return bounding_heat_sources;
+}
+
+void traverse(boost::property_tree::ptree const &ensemble_ptree,
+              std::vector<boost::property_tree::ptree> &database_ensemble,
+              std::vector<std::string> &keys, unsigned int &n_rejected_draws,
+              unsigned int local_ensemble_size,
+              unsigned int global_ensemble_size, std::string const &path = "")
+{
+  for (auto const &[key, child] : ensemble_ptree)
+  {
+    std::string full_path = path.empty() ? key : path + "." + key;
+
+    // If the child is empty, we have a full path
+    if (child.empty())
+    {
+      // Skip ensemble_simulation and ensemble_size
+      if ((full_path == "ensemble_simulation") ||
+          (full_path == "ensemble_size"))
+      {
+        continue;
+      }
+
+      double stddev = database_ensemble[0].get<double>("ensemble." + full_path);
+      // The key in database_ensemble is full_path without the _stddev.
+      full_path.erase(full_path.length() - 7);
+      double mean = database_ensemble[0].get<double>(full_path);
+
+      std::vector<double> values = get_normal_random_vector(
+          local_ensemble_size, n_rejected_draws, mean, stddev,
+          database_ensemble[0].get("verbose_output", false));
+      n_rejected_draws += global_ensemble_size;
+
+      // Store full_path for when we write the value in a file
+      keys.push_back(full_path);
+
+      // Update the database_ensemble
+      for (unsigned int member = 0; member < local_ensemble_size; ++member)
+      {
+        database_ensemble[member].put(full_path, values[member]);
+      }
+    }
+    else
+    {
+      traverse(child, database_ensemble, keys, n_rejected_draws,
+               local_ensemble_size, global_ensemble_size, full_path);
+    }
+  }
+}
+
+std::vector<boost::property_tree::ptree> create_database_ensemble(
+    boost::property_tree::ptree const &database, MPI_Comm local_communicator,
+    unsigned int first_local_member, unsigned int local_ensemble_size,
+    unsigned int global_ensemble_size)
+{
+  std::vector<boost::property_tree::ptree> database_ensemble(
+      local_ensemble_size, database);
+
+  // The structure inside ensemble needs to match the rest of the database
+  // Do a try catch to get a nice error message other it's going to be
+  // strange once we erase the _stddev
+  std::vector<std::string> keys;
+  try
+  {
+    unsigned int n_rejected_draws = first_local_member;
+    traverse(database.get_child("ensemble"), database_ensemble, keys,
+             n_rejected_draws, local_ensemble_size, global_ensemble_size);
+  }
+  catch (boost::property_tree::ptree_bad_path &exception)
+  {
+    std::cerr << std::endl;
+    std::cerr << "Aborting in ensemble management." << std::endl;
+    std::cerr << "Error: " << exception.what() << std::endl << std::endl;
+    std::cerr << "There is a problem with the input file." << std::endl;
+    std::cerr << "Make sure that the keys in ensemble match" << std::endl;
+    std::cerr << "the keys in the rest of the input file." << std::endl;
+    std::cerr << "Note the keys must have been set explicitly" << std::endl;
+    std::cerr << "even if they normally have a default value." << std::endl;
+    std::cerr << std::endl;
+    std::abort();
+  }
+
+  // Write the ensemble variables in files to simplify data analysis.
+  if (dealii::Utilities::MPI::this_mpi_process(local_communicator) == 0)
+  {
+    for (unsigned int member = 0; member < local_ensemble_size; ++member)
+    {
+
+      std::string member_data_filename =
+          database.get<std::string>("post_processor.filename_prefix") + "_m" +
+          std::to_string(first_local_member + member) + "_data.txt";
+      std::ofstream file(member_data_filename);
+      for (auto const &k : keys)
+      {
+        file << k << ": " << database_ensemble[member].get<double>(k) << "\n";
+      }
+    }
+  }
+
+  return database_ensemble;
 }
 } // namespace adamantine
 
