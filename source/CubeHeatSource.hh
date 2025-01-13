@@ -53,7 +53,8 @@ public:
    */
   double get_current_height(double const time) const final;
 
-  dealii::BoundingBox<dim> get_bounding_box() const final;
+  dealii::BoundingBox<dim>
+  get_bounding_box(double const scaling_factor) const final;
 
 private:
   bool _source_on = false;

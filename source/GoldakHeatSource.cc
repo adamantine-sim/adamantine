@@ -57,22 +57,23 @@ double GoldakHeatSource<dim>::value(dealii::Point<dim> const &point,
 }
 
 template <int dim>
-dealii::BoundingBox<dim> GoldakHeatSource<dim>::get_bounding_box() const
+dealii::BoundingBox<dim>
+GoldakHeatSource<dim>::get_bounding_box(double const scaling_factor) const
 {
   if constexpr (dim == 2)
   {
-    return {{{_beam_center[axis<dim>::x] - this->_beam.radius,
-              _beam_center[axis<dim>::z] - this->_beam.depth},
-             {_beam_center[axis<dim>::x] + this->_beam.radius,
+    return {{{_beam_center[axis<dim>::x] - scaling_factor * this->_beam.radius,
+              _beam_center[axis<dim>::z] - scaling_factor * this->_beam.depth},
+             {_beam_center[axis<dim>::x] + scaling_factor * this->_beam.radius,
               _beam_center[axis<dim>::z]}}};
   }
   else
   {
-    return {{{_beam_center[axis<dim>::x] - this->_beam.radius,
-              _beam_center[axis<dim>::y] - this->_beam.radius,
-              _beam_center[axis<dim>::z] - this->_beam.depth},
-             {_beam_center[axis<dim>::x] + this->_beam.radius,
-              _beam_center[axis<dim>::y] + this->_beam.radius,
+    return {{{_beam_center[axis<dim>::x] - scaling_factor * this->_beam.radius,
+              _beam_center[axis<dim>::y] - scaling_factor * this->_beam.radius,
+              _beam_center[axis<dim>::z] - scaling_factor * this->_beam.depth},
+             {_beam_center[axis<dim>::x] + scaling_factor * this->_beam.radius,
+              _beam_center[axis<dim>::y] + scaling_factor * this->_beam.radius,
               _beam_center[axis<dim>::z]}}};
   }
 }

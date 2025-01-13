@@ -50,7 +50,8 @@ public:
   double value(dealii::Point<dim> const &point,
                double const height) const final;
 
-  dealii::BoundingBox<dim> get_bounding_box() const final;
+  dealii::BoundingBox<dim>
+  get_bounding_box(double const scaling_factor) const final;
 
 private:
   dealii::Point<3> _beam_center;

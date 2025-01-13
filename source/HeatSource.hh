@@ -96,9 +96,10 @@ public:
   virtual void set_beam_properties(boost::property_tree::ptree const &database);
 
   /**
-   * Return a bounding box of the heat source.
+   * Return a scaled bounding box of the heat source.
    */
-  virtual dealii::BoundingBox<dim> get_bounding_box() const = 0;
+  virtual dealii::BoundingBox<dim>
+  get_bounding_box(double const scaling_factor) const = 0;
 
 protected:
   /**
