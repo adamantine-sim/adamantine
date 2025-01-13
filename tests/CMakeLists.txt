@@ -106,3 +106,5 @@ adamantine_COPY_INPUT_FILE(integration_da_add_material_expt_ray_0_0.csv tests/da
 adamantine_COPY_INPUT_FILE(HourGlass_AOP.info tests/data)
 adamantine_COPY_INPUT_FILE(HourGlass_AOP.vtk tests/data)
 adamantine_COPY_INPUT_FILE(HourGlass_AOP_scan_path.txt tests/data)
+adamantine_COPY_INPUT_FILE(material_property_table.info tests/data)
+adamantine_COPY_INPUT_FILE(material_property_polynomial.info tests/data)

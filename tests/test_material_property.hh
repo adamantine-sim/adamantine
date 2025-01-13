@@ -11,6 +11,7 @@
 #include <deal.II/grid/tria.h>
 #include <deal.II/lac/la_parallel_vector.h>
 
+#include <boost/property_tree/info_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 namespace tt = boost::test_tools;
@@ -264,13 +265,12 @@ void material_property_table()
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
+  boost::property_tree::ptree database;
+  boost::property_tree::read_info("material_property_table.info", database);
+
   // Create the Geometry
-  boost::property_tree::ptree geometry_database;
-  geometry_database.put("import_mesh", false);
-  geometry_database.put("length", 12);
-  geometry_database.put("length_divisions", 4);
-  geometry_database.put("height", 6);
-  geometry_database.put("height_divisions", 5);
+  boost::property_tree::ptree geometry_database =
+      database.get_child("geometry");
   boost::optional<boost::property_tree::ptree const &> units_optional_database;
   adamantine::Geometry<2> geometry(communicator, geometry_database,
                                    units_optional_database);
@@ -295,25 +295,11 @@ void material_property_table()
   }
 
   // Create the MaterialProperty
-  boost::property_tree::ptree database;
-  database.put("property_format", "table");
-  database.put("n_materials", 2);
-  database.put("material_0.solid.density", "0., 1.");
-  database.put("material_0.solid.thermal_conductivity_x", "0., 10.; 10., 100.");
-  database.put("material_0.solid.thermal_conductivity_z", "0., 10.; 10., 100.");
-  database.put("material_1.solid.density", "0., 1.; 20., 2.; 30., 3.");
-  database.put("material_1.solid.thermal_conductivity_x",
-               "0., 10.; 10., 100.; 20., 200.");
-  database.put("material_1.solid.thermal_conductivity_z",
-               "0., 10.; 10., 100.; 20., 200.");
-  database.put("material_1.powder.density", "0., 1.; 15., 2.; 30., 3.");
-  database.put("material_1.powder.thermal_conductivity_x",
-               "0., 10.; 10., 100.; 18., 200.");
-  database.put("material_1.powder.thermal_conductivity_z",
-               "0., 10.; 10., 100.; 18., 200.");
+  boost::property_tree::ptree material_database =
+      database.get_child("materials");
   adamantine::MaterialProperty<2, 0, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
-      mat_prop(communicator, triangulation, database);
+      mat_prop(communicator, triangulation, material_database);
   // Evaluate the material property at the given temperature
   dealii::FE_Q<2> fe(4);
   dealii::DoFHandler<2> dof_handler(triangulation);
@@ -382,13 +368,13 @@ void material_property_polynomials()
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
+  boost::property_tree::ptree database;
+  boost::property_tree::read_info("material_property_polynomial.info",
+                                  database);
+
   // Create the Geometry
-  boost::property_tree::ptree geometry_database;
-  geometry_database.put("import_mesh", false);
-  geometry_database.put("length", 12);
-  geometry_database.put("length_divisions", 4);
-  geometry_database.put("height", 6);
-  geometry_database.put("height_divisions", 5);
+  boost::property_tree::ptree geometry_database =
+      database.get_child("geometry");
   boost::optional<boost::property_tree::ptree const &> units_optional_database;
   adamantine::Geometry<2> geometry(communicator, geometry_database,
                                    units_optional_database);
@@ -413,23 +399,11 @@ void material_property_polynomials()
   }
 
   // Create the MaterialProperty
-  boost::property_tree::ptree database;
-  database.put("property_format", "polynomial");
-  database.put("n_materials", 2);
-  database.put("material_0.solid.density", "0., 1.");
-  database.put("material_0.solid.thermal_conductivity_x", "0., 1., 2.");
-  database.put("material_0.solid.thermal_conductivity_z", "0., 1., 2.");
-  database.put("material_1.solid.density", " 1., 2., 3.");
-  database.put("material_1.solid.thermal_conductivity_x",
-               "1.,  100., 20., 200.");
-  database.put("material_1.solid.thermal_conductivity_z",
-               "1.,  100., 20., 200.");
-  database.put("material_1.powder.density", "15., 2., 3.");
-  database.put("material_1.powder.thermal_conductivity_x", " 10., 18., 200.");
-  database.put("material_1.powder.thermal_conductivity_z", " 10., 18., 200.");
+  boost::property_tree::ptree material_database =
+      database.get_child("materials");
   adamantine::MaterialProperty<2, 4, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
-      mat_prop(communicator, triangulation, database);
+      mat_prop(communicator, triangulation, material_database);
   // Evaluate the material property at the given temperature
   dealii::FE_Q<2> fe(4);
   dealii::DoFHandler<2> dof_handler(triangulation);

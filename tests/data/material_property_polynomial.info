@@ -1,0 +1,39 @@
+geometry
+{
+  import_mesh false
+  length 12
+  length_divisions 4
+  height 6
+  height_divisions 5
+}
+
+materials
+{
+  property_format polynomial
+  n_materials 2
+
+  material_0
+  {
+    solid
+    {
+      density 0.,1.
+      thermal_conductivity_x 0.,1.,2.
+      thermal_conductivity_z 0.,1.,2.
+    }
+  }
+  material_1
+  {
+    solid
+    {
+      density 1.,2.,3.
+      thermal_conductivity_x 1.,100.,20.,200.
+      thermal_conductivity_z 1.,100.,20.,200.
+    }
+    powder
+    {
+      density 15.,2.,3.
+      thermal_conductivity_x 10.,18.,200.
+      thermal_conductivity_z 10.,18.,200.
+    }
+  }
+}

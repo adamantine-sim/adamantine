@@ -868,7 +868,7 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
             {
               std::vector<std::string> parsed_property;
               boost::split(parsed_property, property_string,
-                           [](char c) { return c == ';'; });
+                           [](char c) { return c == '|'; });
               unsigned int const parsed_property_size = parsed_property.size();
               ASSERT_THROW(parsed_property_size <= table_size,
                            "Too many coefficients, increase the table size");
