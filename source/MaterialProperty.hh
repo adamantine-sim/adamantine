@@ -43,7 +43,7 @@ public:
    * Size of the table, i.e. number of temperature/property pairs, used to
    * describe the material properties.
    */
-  static unsigned int constexpr table_size = 4;
+  static unsigned int constexpr table_size = 12;
 
   /**
    * Constructor.
