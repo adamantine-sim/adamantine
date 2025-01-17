@@ -309,14 +309,6 @@ void validate_input_database(boost::property_tree::ptree &database)
   ASSERT_THROW(database.count("refinement") != 0,
                "Error: A refinement section of the input file must exist.");
 
-  boost::optional<double> beam_cutoff_optional =
-      database.get_optional<double>("beam_cutoff");
-  if (beam_cutoff_optional)
-  {
-    ASSERT_THROW(beam_cutoff_optional.get() >= 0.0,
-                 "Error: The refinement beam cutoff must be non-negative.");
-  }
-
   // Tree: sources
   unsigned int n_beams = database.get<unsigned int>("sources.n_beams");
   for (unsigned int beam_index = 0; beam_index < n_beams; ++beam_index)

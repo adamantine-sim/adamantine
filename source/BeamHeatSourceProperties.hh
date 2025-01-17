@@ -59,8 +59,8 @@ public:
     // PropertyTreeInput sources.beam_X.absorption_efficiency
     absorption_efficiency = database.get<double>("absorption_efficiency");
     // PropertyTreeInput sources.beam_X.diameter
-    radius_squared = std::pow(
-        database.get<double>("diameter") * _dimension_scaling / 2.0, 2);
+    radius = database.get<double>("diameter") * _dimension_scaling / 2.0;
+    radius_squared = std::pow(radius, 2);
     // PropertyTreeInput sources.beam_X.max_power
     max_power = database.get<double>("max_power") * _power_scaling;
   }
@@ -74,7 +74,10 @@ public:
    * Energy conversion efficiency on the surface.
    */
   double absorption_efficiency = 0.;
-
+  /**
+   * Beam radius.
+   */
+  double radius = 0.;
   /**
    * Square of the beam radius.
    */

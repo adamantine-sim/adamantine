@@ -22,6 +22,7 @@
 #include <types.hh>
 #include <utils.hh>
 
+#include <deal.II/arborx/bvh.h>
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/mpi.h>
 #include <deal.II/base/symmetric_tensor.h>
@@ -527,45 +528,61 @@ compute_cells_to_refine(
     dealii::parallel::distributed::Triangulation<dim> &triangulation,
     double const time, double const next_refinement_time,
     unsigned int const n_time_steps,
-    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
-    double const current_source_height, double const refinement_beam_cutoff)
+    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> const
+        &heat_sources)
 {
-
   // Compute the position of the beams between time and next_refinement_time and
-  // refine the mesh where the source is greater than refinement_beam_cutoff.
-  // This cut-off is due to the fact that the source is gaussian and thus never
-  // strictly zero. If the beams intersect, some cells will appear twice in the
-  // vector. This is not a problem.
-  std::vector<typename dealii::parallel::distributed::Triangulation<
-      dim>::active_cell_iterator>
-      cells_to_refine;
+  // create a list of cells that will intersect the beam.
+
+  // Build the bounding boxes associated with the locally owned cells
+  std::vector<dealii::BoundingBox<dim>> cell_bounding_boxes;
+  for (auto const &cell : triangulation.active_cell_iterators() |
+                              dealii::IteratorFilters::LocallyOwnedCell())
+  {
+    cell_bounding_boxes.push_back(cell->bounding_box());
+  }
+  dealii::ArborXWrappers::BVH bvh(cell_bounding_boxes);
+
+  double const bounding_box_scaling = 2.0;
+  std::vector<dealii::BoundingBox<dim>> heat_source_bounding_boxes;
   for (unsigned int i = 0; i < n_time_steps; ++i)
   {
     double const current_time = time + static_cast<double>(i) /
                                            static_cast<double>(n_time_steps) *
                                            (next_refinement_time - time);
+
+    // Build the bounding boxes associated with the heat sources
     for (auto &beam : heat_sources)
     {
       beam->update_time(current_time);
-      for (auto cell : dealii::filter_iterators(
-               triangulation.active_cell_iterators(),
-               dealii::IteratorFilters::LocallyOwnedCell()))
-      {
-        // Check the value at the center of the cell faces. For most cases this
-        // should be sufficient, but if the beam is small compared to the
-        // coarsest mesh we may need to add other points to check (e.g.
-        // quadrature points, vertices).
-        for (unsigned int f = 0; f < cell->reference_cell().n_faces(); ++f)
-        {
-          if (beam->value(cell->face(f)->center(), current_source_height) >
-              refinement_beam_cutoff)
-          {
-            cells_to_refine.push_back(cell);
-            break;
-          }
-        }
-      }
+      heat_source_bounding_boxes.push_back(
+          beam->get_bounding_box(bounding_box_scaling));
     }
+  }
+
+  // Perform the search with ArborX. Since we are only interested in locally
+  // owned cells, we use BVH.
+  dealii::ArborXWrappers::BoundingBoxIntersectPredicate bb_intersect(
+      heat_source_bounding_boxes);
+  auto [indices, offset] = bvh.query(bb_intersect);
+
+  // Put the indices into a set to get rid of the duplicates and to make it
+  // easier to check if the indices are found.
+  std::unordered_set<int> indices_to_refine;
+  indices_to_refine.insert(indices.begin(), indices.end());
+
+  std::vector<typename dealii::parallel::distributed::Triangulation<
+      dim>::active_cell_iterator>
+      cells_to_refine;
+  int cell_index = 0;
+  for (auto const &cell : triangulation.active_cell_iterators() |
+                              dealii::IteratorFilters::LocallyOwnedCell())
+  {
+    if (indices_to_refine.count(cell_index))
+    {
+      cells_to_refine.push_back(cell);
+    }
+    ++cell_index;
   }
 
   return cells_to_refine;
@@ -581,7 +598,8 @@ void refine_mesh(
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> const
+        &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
@@ -595,37 +613,16 @@ void refine_mesh(
           const_cast<dealii::Triangulation<dim> &>(
               dof_handler.get_triangulation()));
 
-  // Refine the mesh along the trajectory of the sources.
-  double current_source_height =
-      dynamic_cast<
-          adamantine::ThermalPhysics<dim, p_order, fe_degree, MaterialStates,
-                                     MemorySpaceType, dealii::QGauss<1>> *>(
-          thermal_physics.get())
-          ? dynamic_cast<adamantine::ThermalPhysics<
-                dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
-                dealii::QGauss<1>> *>(thermal_physics.get())
-                ->get_current_source_height()
-          : dynamic_cast<adamantine::ThermalPhysics<
-                dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
-                dealii::QGaussLobatto<1>> *>(thermal_physics.get())
-                ->get_current_source_height();
-
   // PropertyTreeInput refinement.n_refinements
   unsigned int const n_refinements =
       refinement_database.get("n_refinements", 2);
 
-  // PropertyTreeInput refinement.beam_cutoff
-  const double refinement_beam_cutoff =
-      refinement_database.get<double>("beam_cutoff", 1.0e-15);
-
   for (unsigned int i = 0; i < n_refinements; ++i)
   {
     // Compute the cells to be refined.
-    std::vector<typename dealii::parallel::distributed::Triangulation<
-        dim>::active_cell_iterator>
-        cells_to_refine = compute_cells_to_refine(
-            triangulation, time, next_refinement_time, time_steps_refinement,
-            heat_sources, current_source_height, refinement_beam_cutoff);
+    auto cells_to_refine =
+        compute_cells_to_refine(triangulation, time, next_refinement_time,
+                                time_steps_refinement, heat_sources);
 
     // PropertyTreeInput refinement.coarsen_after_beam
     const bool coarsen_after_beam =
@@ -672,7 +669,8 @@ void refine_mesh(
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
-    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> &heat_sources,
+    std::vector<std::shared_ptr<adamantine::HeatSource<dim>>> const
+        &heat_sources,
     double const time, double const next_refinement_time,
     unsigned int const time_steps_refinement,
     boost::property_tree::ptree const &refinement_database)
@@ -1820,6 +1818,7 @@ run_ensemble(MPI_Comm const &global_communicator,
   // For now assume that all ensemble members share the same geometry (they
   // have independent adamantine::Geometry objects, but all are constructed
   // from identical parameters), base new additions on the 0th ensemble member
+  // since all the sources use the same scan path.
   auto [material_deposition_boxes, deposition_times, deposition_cos,
         deposition_sin] =
       adamantine::create_material_deposition_boxes<dim>(
@@ -1837,6 +1836,14 @@ run_ensemble(MPI_Comm const &global_communicator,
             material_deposition_boxes);
   }
   timers[adamantine::add_material_search].stop();
+
+  // ----- Compute bounding heat sources -----
+  // When using AMR, we refine the cells that the heat sources intersect. Since
+  // each ensemble members can have slightly different sources, we create a new
+  // set of heat sources that encompasses the member sources. We use these new
+  // sources when refining the mesh.
+  auto bounding_heat_sources = adamantine::get_bounding_heat_sources<dim>(
+      database_ensemble, global_communicator);
 
   // ----- Main time stepping loop -----
   if (global_rank == 0)
@@ -1871,7 +1878,7 @@ run_ensemble(MPI_Comm const &global_communicator,
         refine_mesh(thermal_physics_ensemble[member], dummy,
                     *material_properties_ensemble[member],
                     solution_augmented_ensemble[member].block(base_state),
-                    heat_sources_ensemble[member], time, next_refinement_time,
+                    bounding_heat_sources, time, next_refinement_time,
                     time_steps_refinement, refinement_database);
         solution_augmented_ensemble[member].collect_sizes();
       }

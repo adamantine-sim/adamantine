@@ -9,6 +9,7 @@
 #include <ScanPath.hh>
 #include <types.hh>
 
+#include <deal.II/base/bounding_box.h>
 #include <deal.II/base/point.h>
 
 namespace adamantine
@@ -93,6 +94,12 @@ public:
    * beam parameters vary in time (e.g. due to data assimilation).
    */
   virtual void set_beam_properties(boost::property_tree::ptree const &database);
+
+  /**
+   * Return a scaled bounding box of the heat source.
+   */
+  virtual dealii::BoundingBox<dim>
+  get_bounding_box(double const scaling_factor) const = 0;
 
 protected:
   /**
