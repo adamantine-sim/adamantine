@@ -148,7 +148,7 @@ The following options are available:
     * width\_divisions: number of cell layers in width (only in 3D) (default value: 10)
 * materials (required):
   * n\_materials: number of materials (required)
-  * property\_format: format of the material property: table or polynomial (required)
+  * property\_format: format of the material property: `table` or `polynomial`. For `table`, the format of the matieral properties is as follows: `temperature_1,value_1|temperature_2,value_2|...` with `temperature_1 < temperature_2`. For `polynomial`, the format is as follows: `coeff_0,coeff_1,coeff_2` where `coeff_0` is the coefficient of `T^0`, `coeff_1` is the coefficient of `T^1`, etc  (required)
   * initial\_temperature: initial temperature of all the materials in kelvins (default value: 300)
   * new\_material\_temperature: temperature of all the material that is being added during the process in kelvins (default value: 300)
   * material\_X: property tree for the material with number X
