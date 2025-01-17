@@ -93,7 +93,7 @@
       });
 
       deal_II_952 = (with pkgs; stdenv.mkDerivation {
-        pname = "deal_II_952";
+        pname = "deal_II";
         version = "9.5.2";
         src = fetchgit {
           url = "https://github.com/dealii/dealii";
@@ -132,46 +132,14 @@
          ];
       });
 
-      deal_II_962 = (with pkgs; stdenv.mkDerivation {
-        pname = "deal_II_962";
+      deal_II_962 = deal_II_952.overrideAttrs ( with pkgs; previousAttrs : rec {
         version = "9.6.2";
-        src = fetchgit {
-          url = "https://github.com/dealii/dealii";
+        src = previousAttrs.src.override {
           rev = "v9.6.2";
           sha256 = "sha256-YVOQbvzWWSl9rmYd6LBx4w2S8wuxhVF8T2dKdOphta4=";
-          fetchSubmodules = true;
         };
-
-        buildInputs = [
-          cmake
-          openmpi
-          trilinos_override
-          arborx
-          p4est
-          boost183
-        ];
-
-        cmakeFlags = [
-          "-DCMAKE_BUILD_TYPE=DebugRelease"
-          "-DCMAKE_CXX_STANDARD=17"
-          "-DCMAKE_CXX_EXTENSIONS=OFF"
-          "-DDEAL_II_WITH_TBB=OFF"
-          "-DDEAL_II_WITH_64BIT_INDICES=ON"
-          "-DDEAL_II_WITH_COMPLEX_VALUES=OFF"
-          "-DDEAL_II_WITH_MPI=ON"
-          "-DDEAL_II_WITH_P4EST=ON"
-          "-DP4EST_DIR=${p4est}"
-          "-DDEAL_II_WITH_ARBORX=ON"
-          "-DARBORX_DIR=${arborx}"
-          "-DDEAL_II_WITH_TRILINOS=ON"
-          "-DTRILINOS_DIR=${trilinos_override}"
-          "-DDEAL_II_TRILINOS_WITH_SEACAS=OFF"
-          "-DDEAL_II_COMPONENT_EXAMPLES=OFF"
-          "-DDEAL_II_WITH_ADOLC=OFF"
-          "-DDEAL_II_ALLOW_BUNDLED=OFF"
-         ];
       });
-
+      
       trilinos_extra_args = ''
         -DTrilinos_ENABLE_ML=ON
         -DBoost_INCLUDE_DIRS=${pkgs.boost183}/include
@@ -192,7 +160,7 @@
         }
       );
 
-      adamantine-release = (with pkgs; stdenv.mkDerivation rec {
+      adamantine-base = (with pkgs; stdenv.mkDerivation rec {
         pname = "adamantine";
         version = "1.0";
 
@@ -203,7 +171,6 @@
         };
 
         buildInputs = [
-          deal_II_952
           arborx
           adiak
           caliper
@@ -219,9 +186,6 @@
         ];
 
         cmakeFlags = [
-          "-DDEAL_II_DIR=${deal_II_952}"
-          "-DCMAKE_BUILD_TYPE=Release"
-          "-DCMAKE_CXX_FLAGS=-ffast-math"
           "-DADAMANTINE_ENABLE_ADIAK=ON"
           "-DADAMANTINE_ENABLE_CALIPER=ON"
           "-DBOOST_DIR=${boost183}"
@@ -237,47 +201,37 @@
           ctest -R integration_2d
         '';
       });
+
+      adamantine-release = adamantine-base.overrideAttrs ( with pkgs; previousAttrs : rec {
+        buildInputs = previousAttrs.buildInputs ++ [ deal_II_952 ];
+        cmakeFlags = previousAttrs.cmakeFlags ++ [
+          "-DDEAL_II_DIR=${deal_II_952}"
+          "-DCMAKE_BUILD_TYPE=Release"
+          "-DCMAKE_CXX_FLAGS=-ffast-math"
+        ];
+      });
       
-      adamantine-latest = adamantine-release.overrideAttrs ( with pkgs; previousAttrs : rec {
+      adamantine-latest = adamantine-base.overrideAttrs ( with pkgs; previousAttrs : rec {
         version = "latest";
         src = pkgs.lib.cleanSource ./.;
-
-        buildInputs = [
-          deal_II_962
-          arborx
-          adiak
-          caliper
-          cmake
-          p4est
-          trilinos_override
-          boost183
-        ] ++ propagatedBuildInputs;
-        
-        propagatedBuildInputs = [
-          openmpi
-        ];
-
-        cmakeFlags = [
+        buildInputs = previousAttrs.buildInputs ++ [ deal_II_962 ];
+        cmakeFlags = previousAttrs.cmakeFlags ++ [
           "-DDEAL_II_DIR=${deal_II_962}"
           "-DCMAKE_BUILD_TYPE=Release"
           "-DCMAKE_CXX_FLAGS=-ffast-math"
-          "-DADAMANTINE_ENABLE_ADIAK=ON"
-          "-DADAMANTINE_ENABLE_CALIPER=ON"
-          "-DBOOST_DIR=${boost183}"
         ];
       });
 
-      adamantine-debug = adamantine-latest.overrideAttrs ( with pkgs; previousAttrs : rec {
+      adamantine-debug = adamantine-base.overrideAttrs ( with pkgs; previousAttrs : rec {
         version = "debug";
         separateDebugInfo = true;
-        cmakeFlags = [
+        src = pkgs.lib.cleanSource ./.;
+        buildInputs = previousAttrs.buildInputs ++ [ deal_II_962 ];
+        cmakeFlags = previousAttrs.cmakeFlags ++ [
           "-DDEAL_II_DIR=${deal_II_962}"
           "-DCMAKE_BUILD_TYPE=Debug"
           "-DCMAKE_CXX_FLAGS=-O0"
           "-DCMAKE_CXX_FLAGS_DEBUG=-g3"
-          "-DADAMANTINE_ENABLE_ADIAK=ON"
-          "-DADAMANTINE_ENABLE_CALIPER=ON"
-          "-DBOOST_DIR=${boost183}"
         ];
       });
       
