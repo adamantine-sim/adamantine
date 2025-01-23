@@ -53,7 +53,7 @@ false (default value: false)
   `vtu`, `exodus`, or `default`, i.e., use the file suffix to try to determine the
   mesh format (required)
   * **mesh\_scale\_factor**: Apply a uniform scaling factor to the mesh (e.g. if the mesh is defined
-  in mm or inches instead of m) (default value: 1, <span style="color:red">removed in 1.0, use `units.mesh` instead</span>)
+  in mm or inches instead of m) (default value: 1, <span style="color:red">removed in 1.1, use `units.mesh` instead</span>)
   * **reset\_material\_id**: Clear the material IDs defined in the mesh and set them all to zero so 
     all material properties are given by the `material_0` input block: true or false (default value: false)
 * if import\_mesh is false:
@@ -69,7 +69,7 @@ false (default value: false)
 
 ## materials (required):
 * **n\_materials**: number of materials (required)
-* **property\_format**: format of the material property: table or polynomial (required)
+* **property\_format**: format of the material property: `table` or `polynomial`. For `table`, the format of the matieral properties is as follows: `temperature_1,value_1|temperature_2,value_2|...` with `temperature_1 < temperature_2`. For `polynomial`, the format is as follows: `coeff_0,coeff_1,coeff_2` where `coeff_0` is the coefficient of `T^0`, `coeff_1` is the coefficient of `T^1`, etc (required)
 * **initial\_temperature**: initial temperature of all the materials in kelvins (default value: 300)
 * **new\_material\_temperature**: temperature of all the material that is being added during the process in kelvins (default value: 300)
 * **material\_X**: property tree for the material with number X
@@ -93,7 +93,7 @@ fields being written to the output files (default value: 1)
 ## refinement (required):
 * **n\_refinements**: number of times the cells on the paths of the beams
 are refined (default value: 2)
-* **beam\_cutoff**: the cutoff value of the heat source terms above which beam-based refinement occurs (default value: 1e-15)
+* **beam\_cutoff**: the cutoff value of the heat source terms above which beam-based refinement occurs (default value: 1e-15, <span style="color:red">removed in 1.1)
 * **coarsen\_after\_beam**: whether to coarsen cells where the beam has already passed (default value: false)
 * **time\_steps\_between\_refinement**: number of time steps after which the
   refinement process is performed (default value: 2)
