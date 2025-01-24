@@ -14,7 +14,7 @@ Installing *adamantine* requires:
 * Boost: 1.70.0 or later
 * ArborX: 1.4.1 or later
 * Trilinos: 14.4.0 or later
-* deal.II: 9.5 or later
+* deal.II: 9.5 for the 1.0 release and 9.6 for the development code on master
 
 You need to compile ArborX with MPI support and deal.II with MPI, p4est, ArborX, and Trilinos support. If you want to use Exodus file, you also need Trilinos with SEACAS support.
 *adamantine* also optionally supports profiling through [Caliper](https://github.com/llnl/Caliper).
