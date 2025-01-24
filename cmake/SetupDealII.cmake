@@ -1,5 +1,5 @@
 #### deal.II #################################################################
-find_package(deal.II 9.5 REQUIRED PATHS ${DEAL_II_DIR})
+find_package(deal.II 9.6 REQUIRED PATHS ${DEAL_II_DIR})
 
 deal_ii_initialize_cached_variables()
 

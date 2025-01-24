@@ -19,7 +19,6 @@
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/lac/la_parallel_vector.h>
-#include <deal.II/lac/la_vector.h>
 
 #include <boost/property_tree/ptree.hpp>
 

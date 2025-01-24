@@ -3,7 +3,7 @@
 {
   inputs = {
     nixpkgs = {
-      url = "github:nixos/nixpkgs/nixos-24.05";
+      url = "github:nixos/nixpkgs/nixos-24.11";
     };
     flake-utils = {
       url = "github:numtide/flake-utils";
@@ -13,7 +13,6 @@
     let
       pkgs = import nixpkgs {
         inherit system;
-        config.cudaSupport = true;
         config.allowUnfree = true;
       };
 
@@ -83,7 +82,6 @@
           cmake
           openmpi
           trilinos_override
-          cudatoolkit
         ];
 
         cmakeFlags = [
@@ -94,7 +92,7 @@
         ];
       });
 
-      deal_II = (with pkgs; stdenv.mkDerivation {
+      deal_II_952 = (with pkgs; stdenv.mkDerivation {
         pname = "deal_II";
         version = "9.5.2";
         src = fetchgit {
@@ -108,7 +106,6 @@
           cmake
           openmpi
           trilinos_override
-          cudatoolkit
           arborx
           p4est
           boost183
@@ -135,6 +132,14 @@
          ];
       });
 
+      deal_II_962 = deal_II_952.overrideAttrs ( with pkgs; previousAttrs : rec {
+        version = "9.6.2";
+        src = previousAttrs.src.override {
+          rev = "v9.6.2";
+          sha256 = "sha256-YVOQbvzWWSl9rmYd6LBx4w2S8wuxhVF8T2dKdOphta4=";
+        };
+      });
+      
       trilinos_extra_args = ''
         -DTrilinos_ENABLE_ML=ON
         -DBoost_INCLUDE_DIRS=${pkgs.boost183}/include
@@ -155,7 +160,7 @@
         }
       );
 
-      adamantine-release = (with pkgs; stdenv.mkDerivation rec {
+      adamantine-base = (with pkgs; stdenv.mkDerivation rec {
         pname = "adamantine";
         version = "1.0";
 
@@ -166,7 +171,6 @@
         };
 
         buildInputs = [
-          deal_II
           arborx
           adiak
           caliper
@@ -182,9 +186,6 @@
         ];
 
         cmakeFlags = [
-          "-DDEAL_II_DIR=${deal_II}"
-          "-DCMAKE_BUILD_TYPE=Release"
-          "-DCMAKE_CXX_FLAGS=-ffast-math"
           "-DADAMANTINE_ENABLE_ADIAK=ON"
           "-DADAMANTINE_ENABLE_CALIPER=ON"
           "-DBOOST_DIR=${boost183}"
@@ -200,23 +201,37 @@
           ctest -R integration_2d
         '';
       });
+
+      adamantine-release = adamantine-base.overrideAttrs ( with pkgs; previousAttrs : rec {
+        buildInputs = previousAttrs.buildInputs ++ [ deal_II_952 ];
+        cmakeFlags = previousAttrs.cmakeFlags ++ [
+          "-DDEAL_II_DIR=${deal_II_952}"
+          "-DCMAKE_BUILD_TYPE=Release"
+          "-DCMAKE_CXX_FLAGS=-ffast-math"
+        ];
+      });
       
-      adamantine-latest = adamantine-release.overrideAttrs ( previousAttrs : rec {
+      adamantine-latest = adamantine-base.overrideAttrs ( with pkgs; previousAttrs : rec {
         version = "latest";
         src = pkgs.lib.cleanSource ./.;
+        buildInputs = previousAttrs.buildInputs ++ [ deal_II_962 ];
+        cmakeFlags = previousAttrs.cmakeFlags ++ [
+          "-DDEAL_II_DIR=${deal_II_962}"
+          "-DCMAKE_BUILD_TYPE=Release"
+          "-DCMAKE_CXX_FLAGS=-ffast-math"
+        ];
       });
 
-      adamantine-debug = adamantine-latest.overrideAttrs ( with pkgs; previousAttrs : rec {
+      adamantine-debug = adamantine-base.overrideAttrs ( with pkgs; previousAttrs : rec {
         version = "debug";
         separateDebugInfo = true;
-        cmakeFlags = [
-          "-DDEAL_II_DIR=${deal_II}"
+        src = pkgs.lib.cleanSource ./.;
+        buildInputs = previousAttrs.buildInputs ++ [ deal_II_962 ];
+        cmakeFlags = previousAttrs.cmakeFlags ++ [
+          "-DDEAL_II_DIR=${deal_II_962}"
           "-DCMAKE_BUILD_TYPE=Debug"
           "-DCMAKE_CXX_FLAGS=-O0"
           "-DCMAKE_CXX_FLAGS_DEBUG=-g3"
-          "-DADAMANTINE_ENABLE_ADIAK=ON"
-          "-DADAMANTINE_ENABLE_CALIPER=ON"
-          "-DBOOST_DIR=${boost183}"
         ];
       });
       

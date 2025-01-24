@@ -22,7 +22,7 @@ class MassMatrixOperatorQuad
 {
 public:
   KOKKOS_FUNCTION void
-  operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval,
+  operator()(dealii::Portable::FEEvaluation<dim, fe_degree> *fe_eval,
              int const q_point) const
   {
     fe_eval->submit_value(1., q_point);
@@ -33,12 +33,11 @@ template <int dim, int fe_degree>
 class LocalMassMatrixOperator
 {
 public:
-  KOKKOS_FUNCTION void
-  operator()(unsigned int const cell,
-             typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
-                 *gpu_data,
-             dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
-             double const *src, double *dst) const;
+  KOKKOS_FUNCTION void operator()(
+      unsigned int const cell,
+      typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
+      dealii::Portable::SharedData<dim, double> *shared_data, double const *src,
+      double *dst) const;
 
   static const unsigned int n_dofs_1d = fe_degree + 1;
   static const unsigned int n_local_dofs =
@@ -50,15 +49,14 @@ public:
 template <int dim, int fe_degree>
 KOKKOS_FUNCTION void LocalMassMatrixOperator<dim, fe_degree>::operator()(
     unsigned int const /*cell*/,
-    typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
-        *gpu_data,
-    dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
+    typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
+    dealii::Portable::SharedData<dim, double> *shared_data,
     double const * /*src*/, double *dst) const
 {
-  dealii::CUDAWrappers::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
+  dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
       fe_eval(gpu_data, shared_data);
   fe_eval.apply_for_each_quad_point(MassMatrixOperatorQuad<dim, fe_degree>());
-  fe_eval.integrate(true, false);
+  fe_eval.integrate(dealii::EvaluationFlags::values);
   fe_eval.distribute_local_to_global(dst);
 }
 
@@ -71,8 +69,7 @@ public:
 
   KOKKOS_FUNCTION ThermalOperatorQuad(
       unsigned int cell,
-      typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
-          *gpu_data,
+      typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
       Kokkos::View<double *, kokkos_default> cos,
       Kokkos::View<double *, kokkos_default> sin,
       Kokkos::View<double *, kokkos_default> powder_ratio,
@@ -91,7 +88,7 @@ public:
   }
 
   KOKKOS_FUNCTION void
-  operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval,
+  operator()(dealii::Portable::FEEvaluation<dim, fe_degree> *fe_eval,
              int const q_point) const;
 
 private:
@@ -113,7 +110,7 @@ private:
       dealii::Utilities::pow(fe_degree + 1, dim);
   static unsigned int constexpr _n_material_states =
       MaterialStates::n_material_states;
-  typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const *_gpu_data;
+  typename dealii::Portable::MatrixFree<dim, double>::Data const *_gpu_data;
   Kokkos::View<double *, kokkos_default> _cos;
   Kokkos::View<double *, kokkos_default> _sin;
   Kokkos::View<double *, kokkos_default> _powder_ratio;
@@ -302,7 +299,7 @@ template <int dim, bool use_table, int p_order, int fe_degree,
           typename MaterialStates>
 KOKKOS_FUNCTION void
 ThermalOperatorQuad<dim, use_table, p_order, fe_degree, MaterialStates>::
-operator()(dealii::CUDAWrappers::FEEvaluation<dim, fe_degree> *fe_eval,
+operator()(dealii::Portable::FEEvaluation<dim, fe_degree> *fe_eval,
            int const q_point) const
 {
   double temperature = fe_eval->get_value(q_point);
@@ -393,12 +390,11 @@ public:
   {
   }
 
-  KOKKOS_FUNCTION void
-  operator()(unsigned int const cell,
-             typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
-                 *gpu_data,
-             dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
-             double const *src, double *dst) const;
+  KOKKOS_FUNCTION void operator()(
+      unsigned int const cell,
+      typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
+      dealii::Portable::SharedData<dim, double> *shared_data, double const *src,
+      double *dst) const;
 
   static const unsigned int n_dofs_1d = fe_degree + 1;
   static const unsigned int n_local_dofs =
@@ -424,16 +420,17 @@ template <int dim, bool use_table, int p_order, int fe_degree,
           typename MaterialStates>
 KOKKOS_FUNCTION void
 LocalThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates>::
-operator()(unsigned int const cell,
-           typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data const
-               *gpu_data,
-           dealii::CUDAWrappers::SharedData<dim, double> *shared_data,
-           double const *src, double *dst) const
+operator()(
+    unsigned int const cell,
+    typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
+    dealii::Portable::SharedData<dim, double> *shared_data, double const *src,
+    double *dst) const
 {
-  dealii::CUDAWrappers::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
+  dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
       fe_eval(gpu_data, shared_data);
   fe_eval.read_dof_values(src);
-  fe_eval.evaluate(/*values*/ true, /*gradients*/ true);
+  fe_eval.evaluate(dealii::EvaluationFlags::values |
+                   dealii::EvaluationFlags::gradients);
 
   fe_eval.apply_for_each_quad_point(
       ThermalOperatorQuad<dim, use_table, p_order, fe_degree, MaterialStates>(
@@ -441,7 +438,7 @@ operator()(unsigned int const cell,
           _material_id, _inv_rho_cp, _properties, _state_property_tables,
           _state_property_polynomials));
 
-  fe_eval.integrate(/*values*/ false, /*gradients*/ true);
+  fe_eval.integrate(dealii::EvaluationFlags::gradients);
   fe_eval.distribute_local_to_global(dst);
 }
 } // namespace
@@ -497,12 +494,11 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
   unsigned int const n_colors = graph.size();
   for (unsigned int color = 0; color < n_colors; ++color)
   {
-    typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data gpu_data =
+    typename dealii::Portable::MatrixFree<dim, double>::Data gpu_data =
         _matrix_free.get_data(color);
     unsigned int const n_cells = gpu_data.n_cells;
-    auto gpu_data_host =
-        dealii::CUDAWrappers::copy_mf_data_to_host<dim, double>(
-            gpu_data, _matrix_free_data.mapping_update_flags);
+    auto gpu_data_host = dealii::Portable::copy_mf_data_to_host<dim, double>(
+        gpu_data, _matrix_free_data.mapping_update_flags);
     for (unsigned int cell_id = 0; cell_id < n_cells; ++cell_id)
     {
       auto cell = graph[color][cell_id];
@@ -528,10 +524,9 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
 {
   // Compute the inverse of the mass matrix
   dealii::QGaussLobatto<1> mass_matrix_quad(fe_degree + 1);
-  dealii::CUDAWrappers::MatrixFree<dim, double> mass_matrix_free;
+  dealii::Portable::MatrixFree<dim, double> mass_matrix_free;
 
-  typename dealii::CUDAWrappers::MatrixFree<dim, double>::AdditionalData
-      mf_data;
+  typename dealii::Portable::MatrixFree<dim, double>::AdditionalData mf_data;
   // Due to a bug in deal.II 9.5 we need to update the quadrature points and the
   // gradients
 #if (DEAL_II_VERSION_MAJOR == 9) && (DEAL_II_VERSION_MINOR == 5)
@@ -835,12 +830,11 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
   unsigned int const n_colors = graph.size();
   for (unsigned int color = 0; color < n_colors; ++color)
   {
-    typename dealii::CUDAWrappers::MatrixFree<dim, double>::Data gpu_data =
+    typename dealii::Portable::MatrixFree<dim, double>::Data gpu_data =
         _matrix_free.get_data(color);
     unsigned int const n_cells = gpu_data.n_cells;
-    auto gpu_data_host =
-        dealii::CUDAWrappers::copy_mf_data_to_host<dim, double>(
-            gpu_data, _matrix_free_data.mapping_update_flags);
+    auto gpu_data_host = dealii::Portable::copy_mf_data_to_host<dim, double>(
+        gpu_data, _matrix_free_data.mapping_update_flags);
     for (unsigned int cell_id = 0; cell_id < n_cells; ++cell_id)
     {
       auto cell = graph[color][cell_id];
