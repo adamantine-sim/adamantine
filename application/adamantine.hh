@@ -1010,8 +1010,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       if ((rank == 0) && (verbose_output == true))
       {
         std::cout << "n_time_step: " << n_time_step << " time: " << time
-                  << " n_dofs: " << thermal_physics->get_dof_handler().n_dofs()
-                  << std::endl;
+                  << " n_dofs after mesh refinement: "
+                  << thermal_physics->get_dof_handler().n_dofs() << std::endl;
       }
     }
 
@@ -1138,7 +1138,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       if ((rank == 0) && (verbose_output == true) &&
           (activation_end - activation_start > 0) && use_thermal_physics)
       {
-        std::cout << "n_dofs after cell activation: "
+        std::cout << "n_time_step: " << n_time_step << " time: " << time
+                  << " n_dofs after cell activation: "
                   << thermal_physics->get_dof_handler().n_dofs() << std::endl;
       }
     }
