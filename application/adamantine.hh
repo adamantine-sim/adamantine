@@ -1355,8 +1355,6 @@ run_ensemble(MPI_Comm const &global_communicator,
       database.get_child("post_processor");
   boost::property_tree::ptree refinement_database =
       database.get_child("refinement");
-  boost::property_tree::ptree ensemble_database =
-      database.get_child("ensemble");
   boost::property_tree::ptree material_database =
       database.get_child("materials");
 
@@ -1384,33 +1382,10 @@ run_ensemble(MPI_Comm const &global_communicator,
                  quadrature_type.begin(),
                  [](unsigned char c) { return std::tolower(c); });
 
-  // ------ Get means of ensemble parameters -----
-  // PropertyTreeInput materials.initial_temperature
-  double const initial_temperature_mean =
-      database.get("materials.initial_temperature", 300.);
-  // Get the nominal (mean) values of the ensemble parameters
-  // PropertyTreeInput materials.new_material_temperature
-  double const new_material_temperature_mean =
-      database.get("materials.new_material_temperature", 300.);
-
-  // PropertyTreeInput sources.n_beams
-  unsigned int const n_beams = database.get<unsigned int>("sources.n_beams");
-  double beam_0_max_power_mean = 0.0;
-  double beam_0_absorption_mean = 0.0;
-  if (n_beams > 0)
-  {
-    // PropertyTreeInput sources.beam_0.max_power
-    beam_0_max_power_mean = database.get<double>("sources.beam_0.max_power");
-
-    // PropertyTreeInput sources.beam_0.absorption_efficiency
-    beam_0_absorption_mean =
-        database.get<double>("sources.beam_0.absorption_efficiency");
-  }
-
   // ------ Split MPI communicator -----
   // PropertyTreeInput ensemble.ensemble_size
   unsigned int const global_ensemble_size =
-      ensemble_database.get("ensemble_size", 5);
+      database.get("ensemble.ensemble_size", 5);
   // Distribute the processors among the ensemble members
   MPI_Comm local_communicator;
   unsigned int local_ensemble_size = std::numeric_limits<unsigned int>::max();
@@ -1425,67 +1400,11 @@ run_ensemble(MPI_Comm const &global_communicator,
   // between ensemble members. For now, we'll do the simpler approach of
   // duplicating everything.
 
-  // PropertyTreeInput ensemble.initial_temperature_stddev
-  const double initial_temperature_stddev =
-      ensemble_database.get("initial_temperature_stddev", 0.0);
-
-  unsigned int n_rejected_draws = first_local_member;
-  std::vector<double> initial_temperature =
-      adamantine::get_normal_random_vector(
-          local_ensemble_size, n_rejected_draws, initial_temperature_mean,
-          initial_temperature_stddev, verbose_output);
-
-  // PropertyTreeInput ensemble.new_material_temperature_stddev
-  const double new_material_temperature_stddev =
-      ensemble_database.get("new_material_temperature_stddev", 0.0);
-
-  // Update the number of rejected draws to make sure that the variables are not
-  // correlated.
-  n_rejected_draws += global_ensemble_size;
-  std::vector<double> new_material_temperature =
-      adamantine::get_normal_random_vector(
-          local_ensemble_size, n_rejected_draws, new_material_temperature_mean,
-          new_material_temperature_stddev, verbose_output);
-
-  // PropertyTreeInput ensemble.beam_0_max_power_stddev
-  const double beam_0_max_power_stddev =
-      ensemble_database.get("beam_0_max_power_stddev", 0.0);
-
-  n_rejected_draws += global_ensemble_size;
-  std::vector<double> beam_0_max_power = adamantine::get_normal_random_vector(
-      local_ensemble_size, n_rejected_draws, beam_0_max_power_mean,
-      beam_0_max_power_stddev, verbose_output);
-
-  // PropertyTreeInput ensemble.beam_0_absorption_stddev
-  const double beam_0_absorption_stddev =
-      ensemble_database.get("beam_0_absorption_stddev", 0.0);
-
-  n_rejected_draws += global_ensemble_size;
-  std::vector<double> beam_0_absorption = adamantine::get_normal_random_vector(
-      local_ensemble_size, n_rejected_draws, beam_0_absorption_mean,
-      beam_0_absorption_stddev, verbose_output);
-
-  // Write the ensemble variables in files to simplify data analysis.
-  if (dealii::Utilities::MPI::this_mpi_process(local_communicator) == 0)
-  {
-    for (unsigned int member = 0; member < local_ensemble_size; ++member)
-    {
-
-      std::string member_data_filename =
-          post_processor_database.get<std::string>("filename_prefix") + "_m" +
-          std::to_string(first_local_member + member) + "_data.txt";
-      std::ofstream file(member_data_filename);
-      file << "Initial temperature: " << initial_temperature[member] << "\n";
-      file << "New material temperature: " << new_material_temperature[member]
-           << "\n";
-      file << "Beam_0 max power: " << beam_0_max_power[member] << "\n";
-      file << "Beam_0 absorption: " << beam_0_absorption[member] << "\n";
-    }
-  }
-
   // Create a new property tree database for each ensemble member
-  std::vector<boost::property_tree::ptree> database_ensemble(
-      local_ensemble_size, database);
+  std::vector<boost::property_tree::ptree> database_ensemble =
+      adamantine::create_database_ensemble(
+          database, local_communicator, first_local_member, local_ensemble_size,
+          global_ensemble_size);
 
   std::vector<std::unique_ptr<
       adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>>
@@ -1585,16 +1504,8 @@ run_ensemble(MPI_Comm const &global_communicator,
     solution_augmented_ensemble[member].reinit(2);
 
     // Edit the database for the ensemble
-    if (n_beams > 0)
+    if (database.get<unsigned int>("sources.n_beams") > 0)
     {
-      // PropertyTreeInput sources.beam_0.max_power
-      database_ensemble[member].put("sources.beam_0.max_power",
-                                    beam_0_max_power[member]);
-
-      // PropertyTreeInput sources.beam_0.absorption_efficiency
-      database_ensemble[member].put("sources.beam_0.absorption_efficiency",
-                                    beam_0_absorption[member]);
-
       // Populate the parameter augmentation block of the augmented state
       // ensemble
       if (assimilate_data)
@@ -1613,13 +1524,15 @@ run_ensemble(MPI_Comm const &global_communicator,
               adamantine::AugmentedStateParameters::beam_0_absorption)
           {
             solution_augmented_ensemble[member].block(augmented_state)[index] =
-                beam_0_absorption[member];
+                database_ensemble[member].get<double>(
+                    "sources.beam_0.absorption_efficiency");
           }
           else if (augmented_state_parameters.at(index) ==
                    adamantine::AugmentedStateParameters::beam_0_max_power)
           {
             solution_augmented_ensemble[member].block(augmented_state)[index] =
-                beam_0_max_power[member];
+                database_ensemble[member].get<double>(
+                    "sources.beam_0.max_power");
           }
         }
       }
@@ -1647,7 +1560,7 @@ run_ensemble(MPI_Comm const &global_communicator,
     {
       thermal_physics_ensemble[member]->setup();
       thermal_physics_ensemble[member]->initialize_dof_vector(
-          initial_temperature[member],
+          database_ensemble[member].get("materials.initial_temperature", 300.),
           solution_augmented_ensemble[member].block(base_state));
     }
     else
@@ -2006,7 +1919,8 @@ run_ensemble(MPI_Comm const &global_communicator,
 #endif
 
           thermal_physics_ensemble[member]->add_material_end(
-              new_material_temperature[member],
+              database_ensemble[member].get(
+                  "materials.new_material_temperature", 300.),
               solution_augmented_ensemble[member].block(base_state));
 
           solution_augmented_ensemble[member].collect_sizes();

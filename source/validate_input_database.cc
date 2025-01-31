@@ -421,31 +421,7 @@ void validate_input_database(boost::property_tree::ptree &database)
   }
 
   // Tree: ensemble
-  boost::optional<double> initial_temperature_stddev =
-      database.get_optional<double>("ensemble.initial_temperature_stddev");
-  if (initial_temperature_stddev)
-  {
-    ASSERT_THROW(initial_temperature_stddev.get() >= 0.0,
-                 "Error: The standard deviation for the initial temperature "
-                 "must be non-negative.");
-  }
-  boost::optional<double> new_material_temperature_stddev =
-      database.get_optional<double>("ensemble.new_material_temperature_stddev");
-  if (new_material_temperature_stddev)
-  {
-    ASSERT_THROW(
-        new_material_temperature_stddev.get() >= 0.0,
-        "Error: The standard deviation for the new material temperature "
-        "must be non-negative.");
-  }
-  boost::optional<double> beam_0_max_power_stddev =
-      database.get_optional<double>("ensembe.beam_0_max_power_stddev");
-  if (beam_0_max_power_stddev)
-  {
-    ASSERT_THROW(beam_0_max_power_stddev.get() >= 0.0,
-                 "Error: The standard deviation for the beam 0 max power "
-                 "must be non-negative.");
-  }
+  // We check the input in ensemble_management.cc
 
   // Tree: data_assimilation
   boost::optional<double> convergence_tolerance =

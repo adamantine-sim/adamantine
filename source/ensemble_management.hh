@@ -17,21 +17,6 @@
 namespace adamantine
 {
 /**
- * Return a vector of size @p length, with random values drawn following a
- * normal distribution of average @p mean and standard deviation @p stddev. The
- * first @p n_rejected_draws are rejected. @p n_rejected_draws is used to
- * ensure that wether we use one MPI rank or ten, we use the same random
- * numbers. If we don't reject the first few draws, all the processors will use
- * the same "random" numbers since they have the same seed. We also reject
- * negative values even because our physical quantities must be positive. If @p
- * verbose is true, we output a message when a negative value was rejected.
- */
-std::vector<double> get_normal_random_vector(unsigned int length,
-                                             unsigned int n_rejected_draws,
-                                             double mean, double stddev,
-                                             bool verbose);
-
-/**
  * Return the sources encompassing all the sources of the different ensemble
  * members.
  */
@@ -39,6 +24,16 @@ template <int dim>
 std::vector<std::shared_ptr<HeatSource<dim>>> get_bounding_heat_sources(
     std::vector<boost::property_tree::ptree> const &property_trees,
     MPI_Comm global_communicator);
+
+/**
+ * Given an input property tree @p database, return @p local_ensemble_size
+ * databases each one modified to respect the standard deviation of each
+ * quantity (if provided).
+ */
+std::vector<boost::property_tree::ptree> create_database_ensemble(
+    boost::property_tree::ptree const &database, MPI_Comm local_communicator,
+    unsigned int first_local_member, unsigned int local_ensemble_size,
+    unsigned int global_ensemble_size);
 } // namespace adamantine
 
 #endif

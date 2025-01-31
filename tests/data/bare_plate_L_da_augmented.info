@@ -2,7 +2,13 @@ ensemble
 {
   ensemble_simulation true
   ensemble_size 3
-  beam_0_absorption_stddev 0.1
+  sources
+  {
+    beam_0
+    {
+      absorption_efficiency_stddev 0.1
+    }
+  }
 }
 experiment
 {

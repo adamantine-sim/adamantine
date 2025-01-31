@@ -2,7 +2,10 @@ ensemble
 {
   ensemble_simulation true
   ensemble_size 3
-  initial_temperature_stddev 50.0
+  materials
+  {
+    initial_temperature_stddev 50.0
+  }
 }
 experiment
 {
@@ -63,6 +66,8 @@ materials
   n_materials 1
 
   property_format polynomial
+  initial_temperature 300
+
   material_0
   {
     solid
