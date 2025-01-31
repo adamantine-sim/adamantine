@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.15)
 
+if(POLICY CMP0167)
+  # Policy introduced in CMake 3.30. Use the Boost CMake Config installed with Boost instead of
+  # the FindBoost.cmake module installed with CMake.
+  cmake_policy(SET CMP0167 NEW)
+endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
