@@ -155,10 +155,11 @@ the file itself should be csv. (required)
 ## ensemble (optional):
 * **ensemble\_simulation**: whether to perform an ensemble of simulations (default value: false)
 * **ensemble\_size**: number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
-* **initial\_temperature\_stddev**: standard deviation for the initial temperature of the material (default value: 0.0)
-* **new\_material\_temperature\_stddev**: standard deviation for the temperature of material added during the process (default value: 0.0)
-* **beam\_0\_max\_power\_stddev**: standard deviation for the max power for beam 0 (if it exists) (default value: 0.0)
-* **beam\_0\_absorption\_efficiency\_stddev**: standard deviation for the absorption efficiency for beam 0 (if it exists) (default value: 0.0)
+* **initial\_temperature\_stddev**: standard deviation for the initial temperature of the material (default value: 0.0, <span style="color:red">removed in 1.1)
+* **new\_material\_temperature\_stddev**: standard deviation for the temperature of material added during the process (default value: 0.0, <span style="color:red">removed in 1.1)
+* **beam\_0\_max\_power\_stddev**: standard deviation for the max power for beam 0 (if it exists) (default value: 0.0, <span style="color:red">removed in 1.1)
+* **beam\_0\_absorption\_efficiency\_stddev**: standard deviation for the absorption efficiency for beam 0 (if it exists) (default value: 0.0, <span style="color:red">removed in 1.1)
+* **variable_stddev**: standard deviation associated to `variable`. `variable` is an other entry in the input file, for instance `sources.beam_0.max_power`. The input file accepts multiple `variable_stddev` at once. Note that this only works for scalar value and therefore it does not work for temperature dependent variables (<span style="color:green">since 1.1</span>).
 
 ## data\_assimilation (optional):
 * **assimilate\_data**: whether to perform data assimilation (default value: false)
