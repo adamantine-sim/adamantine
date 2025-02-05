@@ -1,24 +1,27 @@
 {
-  stdenv, fetchFromGitHub,
+  src, version,
+
+  stdenv,
 
   cmake,
 
-  openmpi, trilinos-mpi, arborx, p4est, boost
+  openmpi, trilinos-mpi, arborx, p4est, boost,
+
+  # Allow extra args as needed for callPackage chaining - not ideal.
+  ...
 }:
 
 stdenv.mkDerivation rec {
   pname = "dealii";
-  version = "9.6.2";
+  inherit version;
 
-  src = fetchFromGitHub {
-    owner = "dealii";
-    repo  = "dealii";
-    rev   = "v${version}";
-    hash  = "sha256-sIyGSEmGc2JMKwvFRkJJLROUNdLKVhPgfUx1IfjT3dI=";
-  };
+  inherit src;
+
+  nativeBuildInputs = [
+    cmake
+  ];
 
   buildInputs = [
-    cmake
     openmpi
     trilinos-mpi
     arborx

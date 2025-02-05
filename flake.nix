@@ -20,21 +20,81 @@
       callPackage = set: pkgs.lib.callPackageWith (pkgs // set);
     };
 
-    packages = with config; rec {
-      libs = let
-        callPackage = lib.callPackage libs;
-      in {
-        adiak   = callPackage ./nix/dependencies/adiak.nix   {};
-        caliper = callPackage ./nix/dependencies/caliper.nix {};
-        arborx  = callPackage ./nix/dependencies/arborx.nix  {};
-        dealii  = callPackage ./nix/dependencies/dealii.nix  {};
-      };
+    packages = with config; let
+      callPackage = lib.callPackage libs;
 
-      adamantine = (lib.callPackage libs) ./nix/adamantine/common.nix { version = self.dirtyShortRev; src = self; };
+      libs = {
+        adiak   = callPackage ./nix/dependencies/adiak   {};
+        caliper = callPackage ./nix/dependencies/caliper {};
+        arborx  = callPackage ./nix/dependencies/arborx  {};
+
+        dealii = let
+          versions = rec {
+            latest = v962;
+            v962   = callPackage ./nix/dependencies/dealii/v9.6.2.nix { inherit callPackage; };
+            v952   = callPackage ./nix/dependencies/dealii/v9.5.2.nix { inherit callPackage; };
+          };
+        in (versions.latest) // {
+          inherit versions;
+        };
+      };
+    in rec {
+      inherit libs;
+      inherit pkgs;
+
+      default = adamantine.versions.devel;
+
+      adamantine = let
+        versions = rec {
+          devel = callPackage ./nix/adamantine/common.nix {
+            version = self.shortRev or self.dirtyShortRev;
+            src     = self;
+          };
+
+          stable = v100;
+
+          v100 = callPackage ./nix/adamantine/v1.0.0.nix {
+            inherit callPackage;
+            dealii = libs.dealii.versions.v952;
+          };
+        };
+      in (versions.devel) // {
+        inherit versions;
+      };
     };
 
     devShells = with config; rec {
-      # TODO
+      default = adamantineDev;
+
+      adamantineDev = pkgs.mkShell rec {
+        name = "adamantine-dev";
+
+        packages = with pkgs; [
+          git
+          gdb
+          clang-tools
+          ninja
+        ] ++ pkgs.lib.optionals (pkgs.stdenv.hostPlatform.isLinux) [
+          cntr
+        ] ++ self.outputs.packages.${system}.default.buildInputs
+          ++ self.outputs.packages.${system}.default.nativeBuildInputs
+          ++ self.outputs.packages.${system}.default.propagatedBuildInputs;
+
+        # For dev, we want to disable hardening.
+        hardeningDisable = [
+          "bindnow"
+          "format"
+          "fortify"
+          "fortify3"
+          "pic"
+          "relro"
+          "stackprotector"
+          "strictoverflow"
+        ];
+
+        # Ensure the locales point at the correct archive location.
+        LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
+      };
     };
   });
 }
