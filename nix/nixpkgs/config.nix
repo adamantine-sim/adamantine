@@ -7,7 +7,7 @@
         version = "14.4.0";
 
         preConfigure = prev.preConfigure + ''
-            cmakeFlagsArray+=(-DTrilinos_ENABLE_ML=ON);
+          cmakeFlagsArray+=(-DTrilinos_ENABLE_ML=ON);
         '';
 
         src = prev.src.override {

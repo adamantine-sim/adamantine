@@ -20,21 +20,60 @@
       callPackage = set: pkgs.lib.callPackageWith (pkgs // set);
     };
 
-    packages = with config; rec {
-      libs = let
-        callPackage = lib.callPackage libs;
-      in {
+    packages = with config; let
+      callPackage = lib.callPackage libs;
+
+      libs = {
         adiak   = callPackage ./nix/dependencies/adiak.nix   {};
         caliper = callPackage ./nix/dependencies/caliper.nix {};
         arborx  = callPackage ./nix/dependencies/arborx.nix  {};
         dealii  = callPackage ./nix/dependencies/dealii.nix  {};
       };
+    in rec {
+      inherit libs;
 
-      adamantine = (lib.callPackage libs) ./nix/adamantine/common.nix { version = self.dirtyShortRev; src = self; };
+      adamantine = rec {
+        devel = callPackage ./nix/adamantine/common.nix {
+          version = self.dirtyShortRev;
+          src     = self;
+        };
+
+        stable = callPackage ./nix/adamantine/stable.nix { inherit callPackage; };
+      };
     };
 
     devShells = with config; rec {
-      # TODO
+      default = adamantineDev;
+
+      adamantineDev = pkgs.mkShell rec {
+        name = "adamantine-dev";
+
+        packages = with pkgs; [
+          git
+          gdb
+          clang-tools
+          ninja
+        ] ++ pkgs.lib.optionals (pkgs.stdenv.hostPlatform.isLinux) [
+          cntr
+        ] ++ self.outputs.packages.${system}.adamantine.devel.buildInputs
+          ++ self.outputs.packages.${system}.adamantine.devel.nativeBuildInputs
+          ++ self.outputs.packages.${system}.adamantine.devel.propagatedBuildInputs;
+
+        # For dev, we want to disable hardening.
+        hardeningDisable = [
+          "bindnow"
+          "format"
+          "fortify"
+          "fortify3"
+          "pic"
+          "relro"
+          "stackprotector"
+          "strictoverflow"
+        ];
+
+        # Ensure the locales point at the correct archive location.
+        LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
+      };
     };
   });
 }

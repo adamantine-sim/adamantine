@@ -5,7 +5,10 @@
 
     cmake,
 
-    arborx, adiak, caliper, p4est, trilinos-mpi, boost, openmpi, dealii
+    arborx, adiak, caliper, p4est, trilinos-mpi, boost, openmpi, dealii,
+
+    # Allow extra args as needed for callPackage chaining - not ideal.
+    ...
 }:
 
 stdenv.mkDerivation rec {

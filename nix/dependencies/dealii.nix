@@ -17,8 +17,11 @@ stdenv.mkDerivation rec {
     hash  = "sha256-sIyGSEmGc2JMKwvFRkJJLROUNdLKVhPgfUx1IfjT3dI=";
   };
 
-  buildInputs = [
+  nativeBuildInputs = [
     cmake
+  ];
+
+  buildInputs = [
     openmpi
     trilinos-mpi
     arborx
