@@ -12,6 +12,7 @@
 
         src = prev.src.override {
           sha256 = "sha256-jbXQYEyf/p9F2I/I7jP+0/6OOcH5ArFlUk6LHn453qY=";
+          rev = "${prev.pname}-release-${prevPkgs.lib.replaceStrings [ "." ] [ "-" ] version}";
         };
       });
     }

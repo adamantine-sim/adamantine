@@ -72,24 +72,58 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/validate_input_database.cc
   )
 
-# Because the Adamantine library is just used to simplify testing, we make it
-# static. Thus, once the application is created it can be moved around. The
-# other libraries can still be shared.
-add_library(Adamantine STATIC ${Adamantine_SOURCES} ${Adamantine_HEADERS})
+add_library(${PROJECT_NAME} ${Adamantine_SOURCES} ${Adamantine_HEADERS})
 
-DEAL_II_SETUP_TARGET(Adamantine)
+DEAL_II_SETUP_TARGET(${PROJECT_NAME})
 
-set_target_properties(Adamantine PROPERTIES
+set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
 )
 
-target_link_libraries(Adamantine Boost::boost)
-target_link_libraries(Adamantine Boost::chrono)
-target_link_libraries(Adamantine Boost::program_options)
-target_link_libraries(Adamantine MPI::MPI_CXX)
-target_include_directories(Adamantine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(${PROJECT_NAME} Boost::boost)
+target_link_libraries(${PROJECT_NAME} Boost::chrono)
+target_link_libraries(${PROJECT_NAME} Boost::program_options)
+target_link_libraries(${PROJECT_NAME} MPI::MPI_CXX)
 if (ADAMANTINE_ENABLE_CALIPER)
-  target_link_libraries(Adamantine caliper)
+  target_link_libraries(${PROJECT_NAME} caliper)
 endif()
+
+target_include_directories(
+    ${PROJECT_NAME} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
+# Install w/ find_package() support
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    "${PROJECT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
+install(
+    TARGETS ${PROJECT_NAME}
+    EXPORT ${PROJECT_NAME}Targets
+)
+
+configure_package_config_file(
+    "${PROJECT_SOURCE_DIR}/cmake/templates/${PROJECT_NAME}Config.cmake.in"
+    "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+install(
+    EXPORT      ${PROJECT_NAME}Targets
+    DESTINATION lib/cmake/${PROJECT_NAME}
+)
+install(
+    FILES       "${PROJECT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake" "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    DESTINATION lib/cmake/${PROJECT_NAME}
+)
+install(
+    DIRECTORY   "${CMAKE_CURRENT_LIST_DIR}/"
+    DESTINATION include
+)

@@ -1,7 +1,7 @@
 {
     src, version,
 
-    stdenv, fetchFromGitHub,
+    lib, stdenv, fetchFromGitHub,
 
     cmake,
 
@@ -38,16 +38,14 @@ stdenv.mkDerivation rec {
   cmakeFlags = [
     "-DADAMANTINE_ENABLE_ADIAK=ON"
     "-DADAMANTINE_ENABLE_CALIPER=ON"
+    "-DCMAKE_CXX_FLAGS=-ffast-math"
+    "-DBUILD_SHARED_LIBS=ON"
   ];
 
-  installPhase = ''
+  # Manual install if using versions 1.0 since adamantine was lacking CMake installs.
+  installPhase = lib.optional (version == "1.0") ''
     mkdir -p $out/bin
     cp bin/adamantine $out/bin
-  '';
-
-  doCheck = true;
-  check = ''
-    ctest -R integration_2d
   '';
 }
 

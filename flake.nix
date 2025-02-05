@@ -30,11 +30,13 @@
         dealii  = callPackage ./nix/dependencies/dealii.nix  {};
       };
     in rec {
+      default = adamantine.devel;
+
       inherit libs;
 
       adamantine = rec {
         devel = callPackage ./nix/adamantine/common.nix {
-          version = self.dirtyShortRev;
+          version = self.shortRev or self.dirtyShortRev;
           src     = self;
         };
 

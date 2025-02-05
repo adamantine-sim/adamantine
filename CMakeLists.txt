@@ -14,13 +14,15 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 # TPL and adamantine
 include(SetupDealII)
 
-project(adamantine LANGUAGES CXX VERSION 1.0.9)
+project(Adamantine LANGUAGES CXX VERSION 1.0.9)
 
 include(SetupTPLs)
 include(SetupAdamantine)
 
 add_subdirectory(application)
 add_subdirectory(source)
+
+option(BUILD_SHARED_LIBS "Build the adamantine library as a shared object" ON)
 
 option(ADAMANTINE_ENABLE_COVERAGE "Measure coverage" OFF)
 if (ADAMANTINE_ENABLE_COVERAGE)
@@ -36,14 +38,14 @@ if (ADAMANTINE_ENABLE_TESTS)
   add_test(NAME indent_code
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMAND ./indent
-    )
+  )
 endif()
 
 # Provide "indent" target for indenting all the header and the source files.
 add_custom_target(indent
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   COMMAND ./indent
-  )
+)
 
 if (ADAMANTINE_ENABLE_DOCUMENTATION)
     add_subdirectory(doc)
