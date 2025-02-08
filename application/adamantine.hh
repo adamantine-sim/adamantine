@@ -1201,12 +1201,15 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       {
         std::cout << "Checkpoint reached" << std::endl;
       }
+
+      std::string output_dir =
+          post_processor_database.get<std::string>("output_dir");
       std::string filename_prefix =
           checkpoint_overwrite
               ? checkpoint_filename
               : checkpoint_filename + '_' + std::to_string(n_time_step);
       thermal_physics->save_checkpoint(filename_prefix, temperature);
-      std::ofstream file{filename_prefix + "_time.txt"};
+      std::ofstream file{output_dir + filename_prefix + "_time.txt"};
       boost::archive::text_oarchive oa{file};
       oa << time;
       oa << n_time_step;
@@ -2191,6 +2194,9 @@ run_ensemble(MPI_Comm const &global_communicator,
       {
         std::cout << "Checkpoint reached" << std::endl;
       }
+
+      std::string output_dir =
+          post_processor_database.get<std::string>("output_dir");
       std::string filename_prefix =
           checkpoint_overwrite
               ? checkpoint_filename
@@ -2201,7 +2207,7 @@ run_ensemble(MPI_Comm const &global_communicator,
             filename_prefix + '_' + std::to_string(first_local_member + member),
             solution_augmented_ensemble[member].block(base_state));
       }
-      std::ofstream file{filename_prefix + "_time.txt"};
+      std::ofstream file{output_dir + filename_prefix + "_time.txt"};
       boost::archive::text_oarchive oa{file};
       oa << time;
       oa << n_time_step;

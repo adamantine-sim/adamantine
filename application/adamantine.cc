@@ -146,7 +146,10 @@ int main(int argc, char *argv[])
     boost_po::options_description description("Options:");
     description.add_options()("help,h", "Produce help message.")(
         "input-file,i", boost_po::value<std::string>(),
-        "Name of the input file.");
+        "Name of the input file.")("output-dir,o",
+                                   boost_po::value<std::string>(),
+                                   "Output directory; defaults to $PWD.");
+
     // Declare a map that will contains the values read. Parse the command
     // line and finally populate the map.
     boost_po::variables_map map;
@@ -196,6 +199,35 @@ int main(int argc, char *argv[])
       std::cerr << exception.what() << std::endl;
       return 0;
     }
+
+    // Abusing the database to pull out the output dir when writing the output
+    if (map.count("output-dir") == 1)
+    {
+      try
+      {
+        std::string outdir =
+            std::filesystem::absolute(map["output-dir"].as<std::string>())
+                .string() +
+            std::filesystem::path::preferred_separator;
+        std::filesystem::create_directories(outdir);
+
+        database.put("post_processor.output_dir", outdir);
+      }
+      catch (std::runtime_error const &exception)
+      {
+        std::cerr << exception.what() << std::endl;
+        return 0;
+      }
+    }
+    else if (database.count("post_processor.output_dir") == 0)
+    {
+      database.put("post_processor.output_dir", "");
+    }
+
+    // Make adamantine behave a bit better and not lock up if not in cwd of
+    // current input file
+    std::filesystem::current_path(
+        std::filesystem::path(filename).parent_path());
 
 #ifdef ADAMANTINE_WITH_CALIPER
     cali::ConfigManager caliper_manager;

@@ -1,0 +1,33 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name":        "generic-gcc-ninja",
+      "displayName": "Generic (gcc-ninja)",
+      "description": "Basic configuration with the GCC toolchain using Ninja generator.",
+      "generator":   "Ninja Multi-Config",
+      "binaryDir":   "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER":   "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name":            "debug-gcc-ninja",
+      "displayName":     "Debug (gcc-ninja)",
+      "description":     "Compile a debug build using GCC.",
+      "configurePreset": "generic-gcc-ninja",
+      "configuration":   "Debug"
+    },
+    {
+      "name":            "release-gcc-ninja",
+      "displayName":     "Release (gcc-ninja)",
+      "description":     "Compile a release build using GCC.",
+      "configurePreset": "generic-gcc-ninja",
+      "configuration":   "Release"
+    }
+  ]
+}
+

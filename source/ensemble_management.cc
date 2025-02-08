@@ -247,8 +247,10 @@ std::vector<boost::property_tree::ptree> create_database_ensemble(
   {
     for (unsigned int member = 0; member < local_ensemble_size; ++member)
     {
-
+      std::string output_dir =
+          database.get<std::string>("post_processor.output_dir");
       std::string member_data_filename =
+          output_dir +
           database.get<std::string>("post_processor.filename_prefix") + "_m" +
           std::to_string(first_local_member + member) + "_data.txt";
       std::ofstream file(member_data_filename);

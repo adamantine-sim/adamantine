@@ -44,6 +44,9 @@ PostProcessor<dim>::PostProcessor(MPI_Comm const &communicator,
         _filename_prefix + "_m" + std::to_string(ensemble_member_index);
   }
 
+  // PropertyTreeInput post_processor.output_dir
+  _output_dir = database.get<std::string>("output_dir");
+
   // PropertyTreeInput post_processor.additional_output_refinement
   _additional_output_refinement =
       database.get<unsigned int>("additional_output_refinement", 0);
@@ -82,7 +85,7 @@ void PostProcessor<dim>::write_pvd() const
   unsigned int rank = dealii::Utilities::MPI::this_mpi_process(_communicator);
   if (rank == 0)
   {
-    std::ofstream output(_filename_prefix + ".pvd");
+    std::ofstream output(_output_dir + _filename_prefix + ".pvd");
     dealii::DataOutBase::write_pvd_record(output, _times_filenames);
   }
 }
@@ -172,7 +175,7 @@ void PostProcessor<dim>::write_pvtu(unsigned int time_step, double time)
   dealii::types::subdomain_id subdomain_id =
       dof_handler->get_triangulation().locally_owned_subdomain();
   _data_out.build_patches(_additional_output_refinement);
-  std::string local_filename = _filename_prefix + "." +
+  std::string local_filename = _output_dir + _filename_prefix + "." +
                                dealii::Utilities::to_string(time_step) + "." +
                                dealii::Utilities::to_string(subdomain_id);
   std::ofstream output((local_filename + ".vtu").c_str());
@@ -193,7 +196,7 @@ void PostProcessor<dim>::write_pvtu(unsigned int time_step, double time)
                                dealii::Utilities::to_string(i) + ".vtu";
       filenames.push_back(local_name);
     }
-    std::string pvtu_filename = _filename_prefix + "." +
+    std::string pvtu_filename = _output_dir + _filename_prefix + "." +
                                 dealii::Utilities::to_string(time_step) +
                                 ".pvtu";
     std::ofstream pvtu_output(pvtu_filename.c_str());
