@@ -93,7 +93,9 @@
         ];
 
         # Ensure the locales point at the correct archive location.
-        LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
+        LOCALE_ARCHIVE = pkgs.lib.optional (pkgs.stdenv.hostPlatform.isLinux) (
+          "${pkgs.glibcLocales}/lib/locale/locale-archive"
+        );
       };
     };
   });
