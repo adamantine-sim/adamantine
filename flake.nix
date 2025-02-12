@@ -99,4 +99,9 @@
       };
     };
   });
+
+  nixConfig = {
+    extra-substituters = [ "https://mdfbaam.cachix.org" ];
+    extra-trusted-public-keys = [ "mdfbaam.cachix.org-1:WCQinXaMJP7Ny4sMlKdisNUyhcO2MHnPoobUef5aTmQ=" ];
+  };
 }
