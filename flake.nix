@@ -20,7 +20,7 @@
       callPackage = set: pkgs.lib.callPackageWith (pkgs // set);
     };
 
-    packages = with config; let
+    derivations = with config; rec {
       callPackage = lib.callPackage libs;
 
       libs = {
@@ -38,11 +38,6 @@
           inherit versions;
         };
       };
-    in rec {
-      inherit libs;
-      inherit pkgs;
-
-      default = adamantine.versions.devel;
 
       adamantine = let
         versions = rec {
@@ -63,6 +58,12 @@
       };
     };
 
+    packages = rec {
+      default = adamantine.versions.devel;
+
+      inherit (derivations) adamantine;
+    };
+
     devShells = with config; rec {
       default = adamantineDev;
 
@@ -71,10 +72,10 @@
 
         packages = with pkgs; [
           git
-          gdb
           clang-tools
           ninja
         ] ++ pkgs.lib.optionals (pkgs.stdenv.hostPlatform.isLinux) [
+          gdb
           cntr
         ] ++ self.outputs.packages.${system}.default.buildInputs
           ++ self.outputs.packages.${system}.default.nativeBuildInputs
