@@ -34,6 +34,7 @@ list(APPEND
      test_integration_2d
      test_integration_2d_device
      test_integration_3d
+     test_integration_3d_short
      test_integration_3d_amr
      test_integration_3d_amr_device
      test_integration_da_augmented

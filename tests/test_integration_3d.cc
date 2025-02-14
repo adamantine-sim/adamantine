@@ -92,8 +92,8 @@ BOOST_AUTO_TEST_CASE(integration_3D, *utf::tolerance(0.1))
     }
   }
 }
-/////////////////
-BOOST_AUTO_TEST_CASE(integration_3D, *utf::tolerance(0.1))
+
+BOOST_AUTO_TEST_CASE(integration_3D_short, *utf::tolerance(0.1))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
