@@ -21,7 +21,6 @@ RUN cd /home && git clone https://github.com/adamantine-sim/adamantine && \
     cmake \
       -DDEAL_II_DIR=${DEAL_II_DIR} \
       -DCMAKE_BUILD_TYPE=Release\
-      -DCMAKE_CXX_FLAGS="-g -ffast-math" \
       -DADAMANTINE_ENABLE_ADIAK=ON \
       -DADAMANTINE_ENABLE_CALIPER=ON \
     ../ && \
