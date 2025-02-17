@@ -121,10 +121,10 @@ BOOST_AUTO_TEST_CASE(integration_3D_short, *utf::tolerance(0.1))
   if (num_ranks == 1)
   {
     //Write the file for rank 1
-    std::ofstream gold_file_writer("integration_3d_gold_short.txt");
+    /*std::ofstream gold_file_writer("integration_3d_gold_short.txt");
     for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
       gold_file_writer << temperature.local_element(i) << " ";
-    gold_file_writer.close();
+    gold_file_writer.close();*/
 
     std::ifstream gold_file("integration_3d_gold_short.txt");
 
@@ -144,12 +144,11 @@ BOOST_AUTO_TEST_CASE(integration_3D_short, *utf::tolerance(0.1))
     MPI_Comm_rank(communicator, &rank);
 
     // To write the gold file
-    std::ofstream gold_file_writer("integration_3d_gold_short_" +
+    /*std::ofstream gold_file_writer("integration_3d_gold_short_" +
                                    std::to_string(rank) + ".txt");
     for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
       gold_file_writer << temperature.local_element(i) << " ";
-
-    gold_file_writer.close();
+    gold_file_writer.close();*/
 
     std::ifstream gold_file("integration_3d_gold_short_" + std::to_string(rank) +
                             ".txt");
