@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -49,6 +49,13 @@ double ElectronBeamHeatSource<dim>::value(dealii::Point<dim> const &point,
     {
       xpy_squared +=
           std::pow(point[axis<dim>::y] - _beam_center[axis<dim>::y], 2);
+    }
+
+    // Evaluating the exponential is very expensive. Return early if we know
+    // that the heat source will be small.
+    if (xpy_squared > 5. * this->_beam.radius_squared)
+    {
+      return 0.;
     }
 
     // Electron beam heat source equation
