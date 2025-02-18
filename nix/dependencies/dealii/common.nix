@@ -29,6 +29,11 @@ stdenv.mkDerivation rec {
     boost
   ];
 
+  hardeningDisable = [
+    "fortify"
+    "fortify3"
+  ];
+
   cmakeFlags = [
     "-DCMAKE_BUILD_TYPE=DebugRelease"
     "-DCMAKE_CXX_STANDARD=17"
