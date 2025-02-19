@@ -21,3 +21,5 @@ endif()
 
 file(COPY input.info DESTINATION ${CMAKE_BINARY_DIR}/bin)
 file(COPY input_scan_path.txt DESTINATION ${CMAKE_BINARY_DIR}/bin)
+
+install(TARGETS adamantine)
