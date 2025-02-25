@@ -134,6 +134,8 @@ BOOST_AUTO_TEST_CASE(read_material_deposition_file_3d, *utf::tolerance(1e-13))
 BOOST_AUTO_TEST_CASE(get_elements_to_activate_2d,
                      *utf::precondition(serial_only()))
 {
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
   // Geometry database
   boost::property_tree::ptree geometry_database;
   geometry_database.put("import_mesh", false);
@@ -194,6 +196,7 @@ BOOST_AUTO_TEST_CASE(get_elements_to_activate_3d,
                      *utf::precondition(serial_only()))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
+
   // Geometry database
   boost::property_tree::ptree geometry_database;
   geometry_database.put("import_mesh", false);
