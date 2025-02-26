@@ -25,6 +25,9 @@ pipeline {
                 label 'nvidia-docker || rocm-docker'
             }
           }
+          environment {
+            BOOST_TEST_LOG_LEVEL = 'test_suite'
+          }
           steps {
             sh 'rm -rf build && mkdir -p build'
               dir('build') {
@@ -39,7 +42,7 @@ pipeline {
                   ..
                 '''
                 sh 'make -j8'
-                sh 'ctest --timeout 3600 --no-compress-output -R test_ -T Test'
+                sh 'ctest -V --timeout 3600 --no-compress-output -R test_ -T Test'
               }
           }
           post {
@@ -57,6 +60,9 @@ pipeline {
                 label 'nvidia-docker && ampere'
             }
           }
+          environment {
+            BOOST_TEST_LOG_LEVEL = 'test_suite'
+          }
           steps {
             sh 'rm -rf build && mkdir -p build'
               dir('build') {
@@ -70,7 +76,7 @@ pipeline {
                   ..
                 '''
                 sh 'make -j8'
-                sh 'ctest --timeout 3600 --no-compress-output -R test_ -T Test'
+                sh 'ctest -V --timeout 3600 --no-compress-output -R test_ -T Test'
               }
           }
           post {
