@@ -162,6 +162,10 @@ private:
    */
   std::string _filename_prefix;
   /**
+   * Output directory name.
+   */
+  std::string _output_dir;
+  /**
    * Vector of pair of time and pvtu file.
    */
   std::vector<std::pair<double, std::string>> _times_filenames;
