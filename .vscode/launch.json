@@ -1,0 +1,75 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "cppdbg",
+      "request": "launch",
+      "name": "Launch Adamantine (GDB)",
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "args": [
+        "-i",
+        "${input:pickInputFile}",
+        "-o",
+        "${input:pickInputFile}.${input:shortDate}.output"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "pickInputFile",
+      "type": "command",
+      "command": "extension.commandvariable.pickStringRemember",
+      "args": {
+        "description": "Pick a info file to pass to adamantine",
+        "key": "debugInfoFile",
+        "rememberTransformed": "true",
+        "options": [
+          {
+            "label": "Use previous input",
+            "description": "${remember:debugInfoFile}",
+            "value": "${remember:debugInfoFile}"
+          },
+          {
+            "label": "Pick new input",
+            "value": "${pickFile:newDebugFile}"
+          }
+        ],
+        "pickFile": {
+          "newDebugFile": {
+            "description": "Pick new info file for adamantine",
+            "include": "**/*.info",
+            "exclude": "**/build/**",
+            "keyRemember": "newDebugFile"
+          }
+        },
+        "remember": {
+          "debugInfoFile": {
+            "key": "debugInfoFile",
+            "default": "Undefined - select an input first"
+          }
+        }
+      }
+    },
+    {
+      "id": "shortDate",
+      "type": "command",
+      "command": "extension.commandvariable.dateTime",
+      "args": {
+        "locale": "en-US",
+        "options": {
+          "weekday": "long",
+          "year": "numeric",
+          "month": "2-digit",
+          "day": "2-digit",
+          "hour12": false,
+          "hour": "2-digit",
+          "minute": "2-digit",
+          "second": "2-digit"
+        },
+        "template": "${year}${month}${day}T${hour}${minute}${second}"
+      }
+    }
+  ]
+}
+
