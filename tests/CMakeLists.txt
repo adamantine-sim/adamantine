@@ -8,6 +8,7 @@ set(UNIT_TESTS "")
 list(APPEND
      UNIT_TESTS
      test_data_assimilator
+     test_experimental_data
      test_geometry
      test_heat_source
      test_implicit_operator
@@ -30,7 +31,6 @@ list(APPEND
 set(MPI_UNIT_TESTS "")
 list(APPEND
      MPI_UNIT_TESTS
-     test_experimental_data
      test_integration_2d
      test_integration_2d_device
      test_integration_3d
