@@ -290,3 +290,55 @@ BOOST_AUTO_TEST_CASE(project_ray_data_on_mesh, *utf::tolerance(1e-12))
 
   BOOST_CHECK(expt_to_dof_mapping.first.size() == 174954);
 }
+
+BOOST_AUTO_TEST_CASE(project_ray_data_on_nonaligned_mesh,
+                     *utf::tolerance(1e-12))
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  boost::property_tree::ptree database;
+  database.put("import_mesh", true);
+  database.put("mesh_file", "hexahedra.msh");
+  database.put("mesh_format", "gmsh");
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+
+  adamantine::Geometry<3> geometry(communicator, database,
+                                   units_optional_database);
+  dealii::parallel::distributed::Triangulation<3> const &tria =
+      geometry.get_triangulation();
+
+  dealii::FE_Q<3> fe(1);
+  dealii::DoFHandler<3> dof_handler(tria);
+  dof_handler.distribute_dofs(fe);
+
+  // Read the rays from file
+  boost::property_tree::ptree experiment_database;
+  experiment_database.put("file", "raytracing_non_AA_cells-#camera-#frame.csv");
+  experiment_database.put("last_frame", 0);
+  experiment_database.put("first_camera_id", 0);
+  experiment_database.put("last_camera_id", 0);
+
+  adamantine::RayTracing ray_tracing(experiment_database, dof_handler);
+  ray_tracing.read_next_frame();
+
+  // Compute the intersection points
+  auto points_values = ray_tracing.get_points_values();
+  //
+  // Reference solution
+  std::vector<double> values_ref = {4, 5, 6};
+  std::vector<dealii::Point<3>> points_ref;
+  points_ref.emplace_back(0.5, 1. / 9., 0.5);
+  points_ref.emplace_back(1.0, 0.35, 0.5);
+  points_ref.emplace_back(0.5, 0.5, 2.0);
+
+  BOOST_TEST(points_values.values.size() = values_ref.size());
+  BOOST_TEST(points_values.points.size() = points_ref.size());
+  for (unsigned int i = 0; i < values_ref.size(); ++i)
+  {
+    BOOST_TEST(points_values.values[i] == values_ref[i]);
+    for (int j = 0; j < 3; ++j)
+    {
+      BOOST_TEST(points_values.points[i][j] == points_ref[i][j]);
+    }
+  }
+}
