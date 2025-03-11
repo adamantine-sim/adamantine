@@ -68,10 +68,48 @@ struct AccessTraits<adamantine::RayNearestPredicate, PredicatesTag>
         ArborX::Point{(float)origin[0], (float)origin[1], (float)origin[2]},
         ArborX::Experimental::Vector{(float)direction[0], (float)direction[1],
                                      (float)direction[2]}};
-    return nearest(arborx_ray, 1);
+    // When the mesh is unstructured, bounding boxes do not tightly bound the
+    // cells and so many of them overlap. A ray may hit a bounding box but may
+    // missed the cell. We need to ask for more bounding boxes to increase the
+    // chance that we don't miss a ray-cell interaction. Asking for eight
+    // bounding boxes seems to work pretty well.
+    return nearest(arborx_ray, 8);
   }
 };
 } // namespace ArborX
+
+namespace
+{
+template <int dim>
+bool point_in_triangle(dealii::Point<dim> const &a, dealii::Point<dim> const &b,
+                       dealii::Point<dim> const &c, dealii::Point<dim> const &p)
+{
+  // To decide if a point is inside the triangle, we compute the barycentric
+  // coordinate of the points. If they are positive, the point is in the
+  // triangle. See:
+  // https://math.stackexchange.com/questions/544946/determine-if-projection-of-3d-point-onto-plane-is-within-a-triangle/544947
+  // and
+  // https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates
+  dealii::Tensor<1, dim> ab({b[0] - a[0], b[1] - a[1], b[2] - a[2]});
+  dealii::Tensor<1, dim> ac({c[0] - a[0], c[1] - a[1], c[2] - a[2]});
+  dealii::Tensor<1, dim> ap({p[0] - a[0], p[1] - a[1], p[2] - a[2]});
+  double const ab_ab = ab * ab;
+  double const ab_ac = ab * ac;
+  double const ac_ac = ac * ac;
+  double const ap_ab = ap * ab;
+  double const ap_ac = ap * ac;
+  double const denom = ab_ab * ac_ac - ab_ac * ab_ac;
+  double const v = (ac_ac * ap_ab - ab_ac * ap_ac) / denom;
+  double const w = (ab_ab * ap_ac - ab_ac * ap_ab) / denom;
+  double const u = 1. - v - w;
+  if ((u >= 0.) && (v >= 0.) && (w >= 0.))
+  {
+    return true;
+  }
+
+  return false;
+}
+} // namespace
 
 namespace adamantine
 {
@@ -187,7 +225,19 @@ PointsValues<3> RayTracing::get_points_values()
   // processors have access to all the rays but we still need to use
   // DistributedTree because some rays can be stopped by activated cells on a
   // different processors. Since the rays are on all the processors, we don't
-  // need to communicate the results to other processors.
+  // need to communicate the results to other processors. Note that we may lose
+  // some rays because the bounding boxes are larger than the cells and so a ray
+  // can be stopped by a bounding box and then miss the associated cell. We
+  // could get around this by asking ArborX for all the bounding boxes that the
+  // rays intersect but then we would need to keep track of the order of the
+  // intersections ourselves.
+  // TODO The current code can be simplified a lot once we can use ArborX 2.0
+  // This version of ArborX supports distributed ray tracing on triangle.
+  // Currently we create a bounding box for each cell, use ArborX to perform a
+  // coarse search, and finally perform a fine search. With ArborX 2.0, we will
+  // need to create triangles for each face of each cell and then, ArborX will
+  // perform the ray tracing on these triangles. This will simplify the current
+  // code and will solve the problem of missing ray-cell intersections.
   auto communicator = _dof_handler.get_communicator();
   dealii::ArborXWrappers::DistributedTree distributed_tree(communicator,
                                                            bounding_boxes);
@@ -223,33 +273,49 @@ PointsValues<3> RayTracing::get_points_values()
     double constexpr tol = 1e-10;
     for (unsigned int i = 0; i < n_rays; ++i)
     {
+      dealii::Point<dim> intersection;
+      double distance = std::numeric_limits<double>::max();
       for (int j = offset[i]; j < offset[i + 1]; ++j)
       {
-        if (indices_ranks[j].second == my_rank)
+        // The bounding boxes found can be on different processors. Instead of
+        // performing the fine search and then comparing results between
+        // processors, we just filter out the bounding boxes found on a
+        // processor different than indices_ranks[offet[i]].second. Some rays
+        // will be lost but the loss should be minimal.
+        if ((indices_ranks[j].second == indices_ranks[offset[i]].second) &&
+            (indices_ranks[j].second == my_rank))
         {
-          double distance = std::numeric_limits<double>::max();
-          dealii::Point<dim> intersection;
           auto const &cell = cell_iterators[indices_ranks[j].first];
+
           // We know that the ray intersects the bounding box but we don't know
           // where it intersects the cells. We need to check the intersection of
-          // the ray with each face of the cell.
+          // the ray with each face of the cell. To do that, we split each face
+          // in two triangles and check if the point belongs either triangles.
+          // We then use the barycentric coordinate method which involves
+          // calculating the "weights" of the point relative to each vertex of
+          // the triangle; if all weights are non-negative, then the point lies
+          // inside the triangle.
           for (unsigned int f = 0; f < reference_cell.n_faces(); ++f)
           {
+            auto const point_0 = cell->face(f)->vertex(0);
+            auto const point_1 = cell->face(f)->vertex(1);
+            auto const point_2 = cell->face(f)->vertex(2);
+            auto const point_3 = cell->face(f)->vertex(3);
             // First we check if the ray is parallel to the face. If this is the
             // case, either the ray misses the face or the ray hits the edge of
             // the face. In that last case, the ray is also orthogonal to
             // another face and it is safe to discard all rays parallel to a
             // face.
-            auto const point_0 = cell->face(f)->vertex(0);
-            auto const point_1 = cell->face(f)->vertex(1);
-            auto const point_2 = cell->face(f)->vertex(2);
-            dealii::Tensor<1, dim> edge_01({point_1[0] - point_0[0],
-                                            point_1[1] - point_0[1],
-                                            point_1[2] - point_0[2]});
-            dealii::Tensor<1, dim> edge_02({point_2[0] - point_0[0],
-                                            point_2[1] - point_0[1],
-                                            point_2[2] - point_0[2]});
-            auto const &ray_direction = _rays_current_frame[i].direction;
+            dealii::Tensor<1, dim> const edge_01({point_1[0] - point_0[0],
+                                                  point_1[1] - point_0[1],
+                                                  point_1[2] - point_0[2]});
+            dealii::Tensor<1, dim> const edge_02({point_2[0] - point_0[0],
+                                                  point_2[1] - point_0[1],
+                                                  point_2[2] - point_0[2]});
+            dealii::Tensor<1, dim> const ray_direction(
+                {static_cast<double>(_rays_current_frame[i].direction[0]),
+                 static_cast<double>(_rays_current_frame[i].direction[1]),
+                 static_cast<double>(_rays_current_frame[i].direction[2])});
             dealii::Tensor<2, dim> matrix(
                 {{-ray_direction[0], -ray_direction[1], -ray_direction[2]},
                  {edge_01[0], edge_01[1], edge_01[2]},
@@ -271,7 +337,7 @@ PointsValues<3> RayTracing::get_points_values()
             dealii::Tensor<1, dim> p0_ray({ray_origin[0] - point_0[0],
                                            ray_origin[1] - point_0[1],
                                            ray_origin[2] - point_0[2]});
-            double d = cross_product * p0_ray / det;
+            double const d = cross_product * p0_ray / det;
             // If d is less than 0, this means that the ray intersects the plane
             // of the face but not the face itself. We can exit early.
             if (d < 0)
@@ -283,59 +349,29 @@ PointsValues<3> RayTracing::get_points_values()
             // intersection point is the one with the smallest distance.
             if (d < distance)
             {
-              // The point intersects the plane of the face but maybe not the
-              // face itself. Check that the point is on the face. NOTE: We
-              // assume that the face is an axis-aligned rectangle.
               dealii::Point<dim> face_intersection =
                   ray_origin + d * ray_direction;
-              std::vector<double> min(dim, std::numeric_limits<double>::max());
-              std::vector<double> max(dim,
-                                      std::numeric_limits<double>::lowest());
-              for (unsigned int coord = 0; coord < dim; ++coord)
+              // Check if the point intersect the first triangle
+              if (point_in_triangle(point_0, point_1, point_2,
+                                    face_intersection))
               {
-                if (point_0[coord] < min[coord])
-                  min[coord] = point_0[coord];
-                if (point_0[coord] > max[coord])
-                  max[coord] = point_0[coord];
-
-                if (point_1[coord] < min[coord])
-                  min[coord] = point_1[coord];
-                if (point_1[coord] > max[coord])
-                  max[coord] = point_1[coord];
-
-                if (point_2[coord] < min[coord])
-                  min[coord] = point_2[coord];
-                if (point_2[coord] > max[coord])
-                  max[coord] = point_2[coord];
+                distance = d;
+                intersection = face_intersection;
               }
-
-              bool on_the_face = true;
-              double const effective_edge = std::sqrt(face_area);
-              for (int coord = 0; coord < dim; ++coord)
-              {
-                if ((face_intersection[coord] <
-                     (min[coord] - tol * effective_edge)) ||
-                    (face_intersection[coord] >
-                     (max[coord] + tol * effective_edge)))
-                {
-                  on_the_face = false;
-                  break;
-                }
-              }
-
-              if (on_the_face)
+              else if (point_in_triangle(point_1, point_2, point_3,
+                                         face_intersection))
               {
                 distance = d;
                 intersection = face_intersection;
               }
             }
           }
-          if (distance < std::numeric_limits<double>::max())
-          {
-            points.push_back(intersection);
-            values.push_back(_values_current_frame[i]);
-          }
         }
+      }
+      if (distance < std::numeric_limits<double>::max())
+      {
+        points.push_back(intersection);
+        values.push_back(_values_current_frame[i]);
       }
     }
     // We know that there are at most n_intersections between the rays and the
