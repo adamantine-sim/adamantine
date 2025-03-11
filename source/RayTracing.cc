@@ -232,7 +232,7 @@ PointsValues<3> RayTracing::get_points_values()
   // rays intersect but then we would need to keep track of the order of the
   // intersections ourselves.
   // TODO The current code can be simplified a lot once we can use ArborX 2.0
-  // This version of ArborX supports distribued ray tracing on triangle.
+  // This version of ArborX supports distributed ray tracing on triangle.
   // Currently we create a bounding box for each cell, use ArborX to perform a
   // coarse search, and finally perform a fine search. With ArborX 2.0, we will
   // need to create triangles for each face of each cell and then, ArborX will
@@ -312,12 +312,10 @@ PointsValues<3> RayTracing::get_points_values()
             dealii::Tensor<1, dim> const edge_02({point_2[0] - point_0[0],
                                                   point_2[1] - point_0[1],
                                                   point_2[2] - point_0[2]});
-            dealii::Tensor<1, dim> ray_direction(
+            dealii::Tensor<1, dim> const ray_direction(
                 {static_cast<double>(_rays_current_frame[i].direction[0]),
                  static_cast<double>(_rays_current_frame[i].direction[1]),
                  static_cast<double>(_rays_current_frame[i].direction[2])});
-            // double const direction_norm = ray_direction.norm();
-            // ray_direction /= direction_norm;
             dealii::Tensor<2, dim> matrix(
                 {{-ray_direction[0], -ray_direction[1], -ray_direction[2]},
                  {edge_01[0], edge_01[1], edge_01[2]},
