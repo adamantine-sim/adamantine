@@ -1602,6 +1602,7 @@ run_ensemble(MPI_Comm const &global_communicator,
   unsigned int n_time_step = 0;
   double time = 0.;
   double activation_time_end = -1.;
+  double da_time = -1.;
   if (restart == true)
   {
     if (global_rank == 0)
@@ -1717,6 +1718,7 @@ run_ensemble(MPI_Comm const &global_communicator,
       refinement_database.get("time_steps_between_refinement", 10);
   // PropertyTreeInput time_stepping.time_step
   double time_step = time_stepping_database.get<double>("time_step");
+  double const da_time_window = 2. * time_step;
   // PropertyTreeInput time_stepping.scan_path_for_duration
   bool const scan_path_for_duration =
       time_stepping_database.get("scan_path_for_duration", false);
@@ -1727,6 +1729,9 @@ run_ensemble(MPI_Comm const &global_communicator,
   // PropertyTreeInput post_processor.time_steps_between_output
   unsigned int const time_steps_output =
       post_processor_database.get("time_steps_between_output", 1);
+  // PropertyTreeInput post_processor.output_on_data_assimilation
+  bool const output_on_da =
+      post_processor_database.get("output_on_data_assimilation", true);
 
   // ----- Deposit material -----
   // For now assume that all ensemble members share the same geometry (they
@@ -1963,16 +1968,18 @@ run_ensemble(MPI_Comm const &global_communicator,
 
       // Currently assume that all frames are synced so that the 0th camera
       // frame time is the relevant time
-      double frame_time;
-      if (((experimental_frame_index + 1) >= frame_time_stamps[0].size()) ||
-          (frame_time_stamps[0][experimental_frame_index + 1] > time))
+      double frame_time = std::numeric_limits<double>::max();
+      if ((experimental_frame_index + 1) < frame_time_stamps[0].size())
       {
-        frame_time = std::numeric_limits<double>::max();
-      }
-      else
-      {
-        experimental_frame_index = experimental_data->read_next_frame();
-        frame_time = frame_time_stamps[0][experimental_frame_index];
+        if (time > da_time + da_time_window)
+        {
+          da_time = frame_time_stamps[0][experimental_frame_index + 1];
+        }
+        if (frame_time_stamps[0][experimental_frame_index + 1] <= time)
+        {
+          experimental_frame_index = experimental_data->read_next_frame();
+          frame_time = frame_time_stamps[0][experimental_frame_index];
+        }
       }
 
       if (frame_time <= time)
@@ -2224,7 +2231,9 @@ run_ensemble(MPI_Comm const &global_communicator,
     }
 
     // ----- Output the solution -----
-    if (n_time_step % time_steps_output == 0)
+    if ((n_time_step % time_steps_output == 0) ||
+        (output_on_da && time > (da_time - da_time_window) &&
+         time < (da_time + da_time_window)))
     {
       for (unsigned int member = 0; member < local_ensemble_size; ++member)
       {
