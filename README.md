@@ -163,8 +163,8 @@ The following options are available:
 * memory\_space (optional): device (use GPU if Kokkos compiled with GPU support) or host (use CPU) (default value: host)
 * post\_processor (required):
   * filename\_prefix: prefix of output files (required)
-  * time\_steps\_between\_output: number of time steps between the
-  fields being written to the output files (default value: 1)
+  * time\_steps\_between\_output: number of time steps between the fields being written to the output files (default value: 1)
+  * output\_on\_data\_assimilation: output fields just before and just after data assimilation (default: true) **[since 1.1]**
   * additional\_output\_refinement: additional levels of refinement for the output (default: 0)
 * refinement (required):
   * n\_refinements: number of times the cells on the paths of the beams are refined (default value: 2)
