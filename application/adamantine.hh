@@ -1718,7 +1718,7 @@ run_ensemble(MPI_Comm const &global_communicator,
       refinement_database.get("time_steps_between_refinement", 10);
   // PropertyTreeInput time_stepping.time_step
   double time_step = time_stepping_database.get<double>("time_step");
-  double const da_time_window = 2. * time_step;
+  double const da_time_half_window = 1.01 * time_step;
   // PropertyTreeInput time_stepping.scan_path_for_duration
   bool const scan_path_for_duration =
       time_stepping_database.get("scan_path_for_duration", false);
@@ -1971,7 +1971,7 @@ run_ensemble(MPI_Comm const &global_communicator,
       double frame_time = std::numeric_limits<double>::max();
       if ((experimental_frame_index + 1) < frame_time_stamps[0].size())
       {
-        if (time > da_time + da_time_window)
+        if (time > da_time + da_time_half_window)
         {
           da_time = frame_time_stamps[0][experimental_frame_index + 1];
         }
@@ -2232,8 +2232,8 @@ run_ensemble(MPI_Comm const &global_communicator,
 
     // ----- Output the solution -----
     if ((n_time_step % time_steps_output == 0) ||
-        (output_on_da && time > (da_time - da_time_window) &&
-         time < (da_time + da_time_window)))
+        (output_on_da && time > (da_time - da_time_half_window) &&
+         time < (da_time + da_time_half_window)))
     {
       for (unsigned int member = 0; member < local_ensemble_size; ++member)
       {
