@@ -1596,9 +1596,21 @@ run_ensemble(MPI_Comm const &global_communicator,
       post_processor_database.get<std::string>("filename_prefix") + ".expt";
   post_processor_expt_database.put("filename_prefix", expt_file_prefix);
   post_processor_expt_database.put("thermal_output", true);
-  adamantine::PostProcessor<dim> post_processor_expt(
-      global_communicator, post_processor_expt_database,
-      thermal_physics_ensemble[0]->get_dof_handler());
+  std::unique_ptr<adamantine::PostProcessor<dim>> post_processor_expt;
+  // PropertyTreeInput experiment.output_experiment_on_mesh
+  bool const output_experiment_on_mesh =
+      experiment_optional_database
+          ? experiment_optional_database->get("output_experiment_on_mesh", true)
+          : false;
+  // Optionally output the experimental data projected onto the mesh. Since the
+  // experimental data is unique we may not need all the processors to write the
+  // output files.
+  if (output_experiment_on_mesh && (my_color == 0))
+  {
+    post_processor_expt = std::make_unique<adamantine::PostProcessor<dim>>(
+        local_communicator, post_processor_expt_database,
+        thermal_physics_ensemble[0]->get_dof_handler());
+  }
 
   // ----- Initialize time and time stepping counters -----
   unsigned int progress = 0;
@@ -1941,7 +1953,8 @@ run_ensemble(MPI_Comm const &global_communicator,
       if ((global_rank == 0) && (verbose_output == true) &&
           (activation_end - activation_start > 0))
       {
-        std::cout << "n_dofs after cell activation: "
+        std::cout << "n_time_step: " << n_time_step << " time: " << time
+                  << " n_dofs after cell activation: "
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
       }
@@ -2023,12 +2036,7 @@ run_ensemble(MPI_Comm const &global_communicator,
 #endif
         timers[adamantine::da_experimental_data].stop();
 
-        // Optionally output the experimental data projected onto the mesh
-        // PropertyTreeInput experiment.output_experiment_on_mesh
-        bool const output_experiment_on_mesh =
-            experiment_optional_database.get().get("output_experiment_on_mesh",
-                                                   true);
-        if (output_experiment_on_mesh)
+        if (post_processor_expt)
         {
           dealii::LA::distributed::Vector<double, MemorySpaceType>
               temperature_expt;
@@ -2042,7 +2050,7 @@ run_ensemble(MPI_Comm const &global_communicator,
           thermal_physics_ensemble[0]->get_affine_constraints().distribute(
               temperature_expt);
           post_processor_expt
-              .template write_thermal_output<typename Kokkos::View<
+              ->template write_thermal_output<typename Kokkos::View<
                   double **,
                   typename MemorySpaceType::kokkos_space>::array_layout>(
                   n_time_step, time, temperature_expt,
