@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -47,6 +47,14 @@ public:
    */
   double value(dealii::Point<dim> const &point,
                double const /*height*/) const final;
+
+  /**
+   * Same function as above but it uses vectorized data.
+   */
+  dealii::VectorizedArray<double>
+  value(dealii::Point<dim, dealii::VectorizedArray<double>> const &points,
+        dealii::VectorizedArray<double> const & /*height*/) const final;
+
   /**
    * Compute the current height of the where the heat source meets the material
    * (i.e. the current scan path height).

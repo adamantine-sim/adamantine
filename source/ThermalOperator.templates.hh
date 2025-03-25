@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -615,16 +615,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
           fe_eval.quadrature_point(q);
 
       dealii::VectorizedArray<double> quad_pt_source = 0.0;
-      for (unsigned int i = 0;
-           i < _matrix_free.n_active_entries_per_cell_batch(cell); ++i)
-      {
-        dealii::Point<dim> q_point_loc;
-        for (unsigned int d = 0; d < dim; ++d)
-          q_point_loc(d) = q_point(d)[i];
+      dealii::VectorizedArray<double> height = _current_source_height;
+      for (auto &beam : _heat_sources)
+        quad_pt_source += beam->value(q_point, height);
 
-        for (auto &beam : _heat_sources)
-          quad_pt_source[i] += beam->value(q_point_loc, _current_source_height);
-      }
       quad_pt_source *= inv_rho_cp;
 
       fe_eval.submit_value(quad_pt_source, q);
