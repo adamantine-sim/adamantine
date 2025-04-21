@@ -83,11 +83,18 @@ The Docker images cannot use GPUs.
 ## NIX
 You can use [NIX](https://nixos.org) to install the development version and the
 latest release of *adamantine*. You need to enable [Flakes](https://nixos.wiki/wiki/Flakes). 
-To install the vesion on master, use:
+To get a shell with adamantine temporarily installed, run:
 ``` bash
-nix develop github:adamantine-sim/adamantine
+nix shell github:adamantine-sim/adamantine
 ```
-The 1.0 release version is available using:
+
+To install this permanently, run:
 ``` bash
-nix develop github:adamantine-sim/adamantine#release
+nix profile install github:adamantine-sim/adamantine
 ```
+
+To get the latest stable release, use:
+``` bash
+nix shell github:adamantine-sim/adamantine#adamantine.versions.stable
+```
+Additional documentation can be found [here](https://github.com/adamantine-sim/adamantine/blob/master/NIX.md).
