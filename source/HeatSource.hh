@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -11,6 +11,7 @@
 
 #include <deal.II/base/bounding_box.h>
 #include <deal.II/base/point.h>
+#include <deal.II/base/vectorization.h>
 
 namespace adamantine
 {
@@ -76,8 +77,15 @@ public:
    * Compute the heat source at a given point at a given time given the current
    * height of the object being manufactured.
    */
-  virtual double value(dealii::Point<dim> const &point,
+  virtual double value(dealii::Point<dim> const &points,
                        double const height) const = 0;
+
+  /**
+   * Same function as above but it uses vectorized data.
+   */
+  virtual dealii::VectorizedArray<double>
+  value(dealii::Point<dim, dealii::VectorizedArray<double>> const &points,
+        dealii::VectorizedArray<double> const &height) const = 0;
   /**
    * Return the scan path for the heat source.
    */

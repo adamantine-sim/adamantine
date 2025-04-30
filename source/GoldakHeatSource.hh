@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -49,12 +49,24 @@ public:
   double value(dealii::Point<dim> const &point,
                double const height) const final;
 
+  /**
+   * Same function as above but it uses vectorized data.
+   */
+  dealii::VectorizedArray<double>
+  value(dealii::Point<dim, dealii::VectorizedArray<double>> const &points,
+        dealii::VectorizedArray<double> const &height) const final;
+
   dealii::BoundingBox<dim>
   get_bounding_box(double const scaling_factor) const final;
 
 private:
-  dealii::Point<3> _beam_center;
-  double _alpha = std::numeric_limits<double>::signaling_NaN();
+  dealii::Point<3, dealii::VectorizedArray<double>> _beam_center;
+  dealii::VectorizedArray<double> _alpha =
+      std::numeric_limits<double>::signaling_NaN();
+  dealii::VectorizedArray<double> _depth =
+      std::numeric_limits<double>::signaling_NaN();
+  dealii::VectorizedArray<double> _radius_squared =
+      std::numeric_limits<double>::signaling_NaN();
   double const _pi_over_3_to_1p5 = std::pow(dealii::numbers::PI / 3.0, 1.5);
 };
 } // namespace adamantine

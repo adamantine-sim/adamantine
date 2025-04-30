@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -69,6 +69,43 @@ double CubeHeatSource<dim>::value(dealii::Point<dim> const &point,
   }
 
   return 0.;
+}
+
+template <int dim>
+dealii::VectorizedArray<double> CubeHeatSource<dim>::value(
+    dealii::Point<dim, dealii::VectorizedArray<double>> const &points,
+    dealii::VectorizedArray<double> const & /*height*/) const
+{
+  dealii::VectorizedArray<double> mask = 0.;
+
+  if (_source_on)
+  {
+    for (unsigned int j = 0; j < points[0].size(); ++j)
+    {
+      if constexpr (dim == 2)
+      {
+        if ((points[0][j] >= _min_point[0]) &&
+            (points[0][j] <= _max_point[0]) &&
+            (points[1][j] >= _min_point[1]) && (points[1][j] <= _max_point[1]))
+        {
+          mask[j] = 1.;
+        }
+      }
+      if constexpr (dim == 3)
+      {
+        if ((points[0][j] >= _min_point[0]) &&
+            (points[0][j] <= _max_point[0]) &&
+            (points[1][j] >= _min_point[1]) &&
+            (points[1][j] <= _max_point[1]) &&
+            (points[2][j] >= _min_point[2]) && (points[2][j] <= _max_point[2]))
+        {
+          mask[j] = 1.;
+        }
+      }
+    }
+  }
+
+  return mask * _value;
 }
 
 template <int dim>

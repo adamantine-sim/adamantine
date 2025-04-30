@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -120,7 +120,7 @@ BOOST_AUTO_TEST_CASE(integration_3D_short, *utf::tolerance(0.1))
 
   if (num_ranks == 1)
   {
-    //Write the file for rank 1
+    // Write the file for rank 1
     /*
     std::ofstream gold_file_writer("integration_3d_gold_short.txt");
     for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
@@ -154,8 +154,8 @@ BOOST_AUTO_TEST_CASE(integration_3D_short, *utf::tolerance(0.1))
     gold_file_writer.close();
     */
 
-    std::ifstream gold_file("integration_3d_gold_short_" + std::to_string(rank) +
-                            ".txt");
+    std::ifstream gold_file("integration_3d_gold_short_" +
+                            std::to_string(rank) + ".txt");
 
     for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
     {
@@ -178,7 +178,7 @@ BOOST_AUTO_TEST_CASE(integration_3D_short, *utf::tolerance(0.1))
   }
 }
 
-BOOST_AUTO_TEST_CASE(integration_3D_checkpoint_restart)
+BOOST_AUTO_TEST_CASE(integration_3D_checkpoint_restart, *utf::tolerance(1e-10))
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
