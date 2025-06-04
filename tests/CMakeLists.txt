@@ -39,6 +39,7 @@ list(APPEND
      test_integration_da_augmented
      test_integration_thermoelastic
      test_material_deposition
+     test_microstructure
      test_thermal_physics
      test_ensemble_management
     )
@@ -113,3 +114,5 @@ adamantine_COPY_INPUT_FILE(material_property_table.info tests/data)
 adamantine_COPY_INPUT_FILE(material_property_polynomial.info tests/data)
 adamantine_COPY_INPUT_FILE(hexahedra.msh tests/data)
 adamantine_COPY_INPUT_FILE(raytracing_non_AA_cells-0-0.csv tests/data)
+adamantine_COPY_INPUT_FILE(microstructure_G_R_gold_1.txt tests/data)
+adamantine_COPY_INPUT_FILE(microstructure_G_R_gold_2.txt tests/data)
