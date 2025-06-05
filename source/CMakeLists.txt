@@ -14,6 +14,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialStates.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/Microstructure.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Operator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/PointCloud.hh
@@ -48,6 +49,7 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialPropertyInstHost.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/Microstructure.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/PointCloud.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.cc

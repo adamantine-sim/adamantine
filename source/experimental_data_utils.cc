@@ -28,7 +28,8 @@ get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler)
   std::unordered_set<dealii::types::global_dof_index> visited_dof_indices;
 
   // Manually do what dealii::DoFTools::map_dofs_to_support_points does, since
-  // that doesn't currently work with FE_Nothing
+  // that doesn't currently work with FE_Nothing. The issue has been fixed in
+  // deal.II 9.7
   const dealii::FiniteElement<dim> &fe = dof_handler.get_fe(0);
 
   dealii::FEValues<dim, dim> fe_values(fe, fe.get_unit_support_points(),

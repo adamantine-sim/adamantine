@@ -10,6 +10,7 @@
 #include <Geometry.hh>
 #include <MaterialProperty.hh>
 #include <MechanicalPhysics.hh>
+#include <Microstructure.hh>
 #include <PointCloud.hh>
 #include <PostProcessor.hh>
 #include <RayTracing.hh>
@@ -985,6 +986,23 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   double const new_material_temperature =
       database.get("materials.new_material_temperature", 300.);
 
+  // Extract the microstructure database if present
+  boost::optional<boost::property_tree::ptree const &>
+      microstructure_optional_database =
+          database.get_child_optional("microstructure");
+  bool const compute_microstructure =
+      microstructure_optional_database ? true : false;
+  std::unique_ptr<adamantine::Microstructure<dim>> microstructure;
+  if (compute_microstructure)
+  {
+    auto microstructure_database = microstructure_optional_database.get();
+    // PropertyTreeInput microstructure.filename_prefix
+    std::string microstructure_filename =
+        microstructure_database.get<std::string>("filename_prefix");
+    microstructure = std::make_unique<adamantine::Microstructure<dim>>(
+        communicator, microstructure_filename);
+  }
+
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_LOOP_BEGIN(main_loop_id, "main_loop");
 #endif
@@ -1161,8 +1179,44 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // Solve the thermal problem
     if (use_thermal_physics)
     {
+      if (compute_microstructure)
+      {
+        if constexpr (std::is_same_v<MemorySpaceType,
+                                     dealii::MemorySpace::Host>)
+        {
+          microstructure->set_old_temperature(temperature);
+        }
+        else
+        {
+          dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+              temperature_host(temperature.get_partitioner());
+          temperature_host.import_elements(temperature,
+                                           dealii::VectorOperation::insert);
+          microstructure->set_old_temperature(temperature_host);
+        }
+      }
       time = thermal_physics->evolve_one_time_step(time, time_step, temperature,
                                                    timers);
+      if (compute_microstructure)
+      {
+        if constexpr (std::is_same_v<MemorySpaceType,
+                                     dealii::MemorySpace::Host>)
+        {
+          microstructure->compute_G_and_R(material_properties,
+                                          thermal_physics->get_dof_handler(),
+                                          temperature, time_step);
+        }
+        else
+        {
+          dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+              temperature_host(temperature.get_partitioner());
+          temperature_host.import_elements(temperature,
+                                           dealii::VectorOperation::insert);
+          microstructure->compute_G_and_R(material_properties,
+                                          thermal_physics->get_dof_handler(),
+                                          temperature_host, time_step);
+        }
+      }
     }
     // Solve the (thermo-)mechanical problem
     if (use_mechanical_physics)
