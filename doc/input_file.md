@@ -75,9 +75,18 @@ false (default value: false)
 * **material\_X**: property tree for the material with number X
 * **material\_X.Y**: property tree where Y is either liquid, powder, or solid
 (one is required)
-* **material\_X.Y.Z**: Z is either `density` in kg/m^3, `specific_heat` in J/(K\*kg),
-`thermal_conductivity_x`, resp. `y` or `z`, in the direction `x`, resp. `y` or `z` (in 2D only `x` and `z` are used), in `W/(m\*K)`, `emissivity`,
-or `convection_heat_transfer_coef` in `W/(m^2\*K)` (optional)
+* **material\_X.Y.Z**: Z can be (all the properties are optional):
+  * **density** in kg/m^3 
+  * **specific_heat** in J/(K\*kg)
+  * **thermal_conductivity_x**, resp. `y` or `z`, in the direction `x`, resp. `y` or `z` (in 2D only `x` and `z` are used), in W/(m\*K)
+  * **emissivity** in W/(m^2\*K)
+  * **convection_heat_transfer_coef** in W/(m^2\*K)
+  * **lame_first_parameter** in Pa
+  * **lame_second_parameter** in Pa
+  * **thermal_expansion_coef** in 1/K
+  * **plastic_modulus** in Pa
+  * **isotropic_hardening**, a coefficients coefficient between 0 (no isotropic hardening) and 1 (no kinematic hardening)
+  * **elastic_limit** in Pa
 * **material\_X.A**: A is either `solidus` in kelvins, `liquidus` in kelvins, `latent_heat`
 in `J/kg`, `radiation_temperature_infty` in kelvins, or `convection_temperature_infty`
   in kelvins (optional)
