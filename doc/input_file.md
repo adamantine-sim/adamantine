@@ -16,7 +16,7 @@ can be chosen simultaneously by separating them by comma (required)
 
 ## physics (required):
 * **thermal**: thermal simulation: true or false (required)
-* **mechanical**: mechanical simulation: true or fase (required)
+* **mechanical**: mechanical simulation: true or false (required)
 * if both thermal and mechanical parameters are true, solve a coupled thermo-mechanics problem
 
 ## discretization (required):
