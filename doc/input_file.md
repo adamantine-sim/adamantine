@@ -198,5 +198,8 @@ Change the unit of some inputs (<span style="color:green">since 1.1</span>)
   * **scan\_path**: unit used for the scan path of the heat sources. Either
     millimeter, centimeter, inch, or meter (default value: meter)
 
+## microstructure (optional): 
+* **filename\_prefix**: prefix of the output file of the temperature gradient, the cooling rate, and the interface velocity at the liquidus. The format of the file is x y (z) temperature gradient (K/m) cooling rate (K/s) the inteface velocity (m/s)  (required, <span style="color:green">since 1.1</span>)
+
 ## verbose\_output (optional): 
 * true or false (default value: false)
