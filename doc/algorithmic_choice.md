@@ -51,8 +51,8 @@ distribute evenly the active cells between all the processors. If at the beginni
 of the simulation very few cells are active, each processor will own a very
 small number of active cells. In this case, the communication cost can be important
 compared to the computation cost. Once more cells are activated this ceases to
-be a problem. For a more in-depth discussion take a look at the [HourGlass
-example]({{site.baseurl}}/doc/examples/hour_glass).
+be a problem. For a more in-depth discussion take a look at the [data
+assimilation example]({{site.baseurl}}/doc/examples/data_assimilation).
 
 ### EnKF
 For EnKF ensemble simulations, the partitioning scheme works as follows:

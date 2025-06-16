@@ -6,8 +6,8 @@ nav_order: 3
 ---
 
 # Data Assimilation
-These examples are very similar to the [Demo316]({{site.baseurl}}/doc/examples/demo_316) 
-examples but we will use them to show how data assimilation works in
+These examples are very similar to the [thermal examples]({{site.baseurl}}/doc/examples/thermal_simulation) 
+but we will use them to show how data assimilation works in
 *adamantine*.
 
 ## Bare plate L: ensemble simulation
