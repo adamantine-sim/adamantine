@@ -1,7 +1,7 @@
 ---
 layout: default
 parent: Examples
-title: HourGlass
+title: Performance Study
 nav_order: 2
 ---
 
@@ -27,7 +27,7 @@ nav_order: 2
 </head>
 
 
-# HourGlass
+# Performance Study
 We will use this example to understand which parameters affects the performance
 of *adamantine*.
 

@@ -1,7 +1,7 @@
 ---
 layout: default
 parent: Examples
-title: Demo316
+title: Thermal Simulation
 nav_order: 1
 ---
 
@@ -26,7 +26,7 @@ nav_order: 1
 </style>
 </head>
 
-# Demo316
+# Thermal Simulation
 This example shows thermal simulation of material deposition on a plate.
 
 The example is composed of the following files:

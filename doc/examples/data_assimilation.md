@@ -1,7 +1,7 @@
 ---
 layout: default
 parent: Examples
-title: Bare plate L
+title: Data Assimilation
 nav_order: 3
 ---
 
@@ -9,7 +9,7 @@ These examples are very similar to the [Demo316]({{site.baseurl}}/doc/examples/d
 examples but we will use them to show how data assimilation works in
 *adamantine*.
 
-# Bare plate L ensemble
+# Data Assimilation
 This example shows how to run an ensemble of simulations. Ensemble simulations are 
 used to compute the simulation covariance matrix (see 
 [Data Assimilation]({{site.baseurl}}/doc/data_assimilation)).
