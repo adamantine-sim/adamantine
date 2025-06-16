@@ -5,11 +5,12 @@ title: Data Assimilation
 nav_order: 3
 ---
 
+# Data Assimilation
 These examples are very similar to the [Demo316]({{site.baseurl}}/doc/examples/demo_316) 
 examples but we will use them to show how data assimilation works in
 *adamantine*.
 
-# Data Assimilation
+## Bare plate L: ensemble simulation
 This example shows how to run an ensemble of simulations. Ensemble simulations are 
 used to compute the simulation covariance matrix (see 
 [Data Assimilation]({{site.baseurl}}/doc/data_assimilation)).
@@ -55,7 +56,7 @@ temperature at the end of the simulation is 679.5 K.
 <img src="https://github.com/adamantine-sim/website-assets/blob/master/examples/bare_plate_L/bare_plate_L_m2.png?raw=true" style="width:100%">
 
 
-# Bare plate L da
+## Bare plate L: data assimilation
 This example shows how *adamantine* can use experimental data through data
 assimilation.
 
@@ -107,7 +108,7 @@ covariance, $$R$$, is set.
 The `data_assimilation` input contains the parameters for the localization
 cutoff and for the solver used to compute the Kalman gain, $$K$$.
 
-# Bare plate L da augmented
+## Bare plate L: augmented data assimilation
 This example shows how data assimilation can be used to determine simulation 
 parameters such as material properties or the power of the heat source.
 
