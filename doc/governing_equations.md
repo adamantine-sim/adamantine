@@ -249,7 +249,7 @@ $$
 \beta = (3 \lambda + 2 \mu) \alpha
 $$
 
-where $$\boldsymbol{v}$$ is the flow velocity vector, $$\frac{D v_i}{Dt} = \frac{\partial v_i}{\partial t} + v_j \frac{\partial v_i}{\partial x_j}$$ is the material derivative, $$\rho$$ is the material density, $$\boldsymbol{f}$$ is the volumetric force, $$\sigma$$ is the stress tensor, $$\varepsilon$$ is the infinitesimal strain tensor, $\boldsymbol{u}$$ is the displacement vector, $$\alpha$$ is the thermal coefficient of linear expansion, $$\lambda$$ is Lamé first parameter, $$\mu$$ is Lamé second parameter and $$\theta = T - T_0$$, $$T$$ is the current temperature, and $$T_0$$ is a reference temperature.
+where $$\boldsymbol{v}$$ is the flow velocity vector, $$\frac{D v_i}{Dt} = \frac{\partial v_i}{\partial t} + v_j \frac{\partial v_i}{\partial x_j}$$ is the material derivative, $$\rho$$ is the material density, $$\boldsymbol{f}$$ is the volumetric force, $$\sigma$$ is the stress tensor, $$\varepsilon$$ is the infinitesimal strain tensor, $$\boldsymbol{u}$$ is the displacement vector, $$\alpha$$ is the thermal coefficient of linear expansion, $$\lambda$$ is Lamé first parameter, $$\mu$$ is Lamé second parameter and $$\theta = T - T_0$$, $$T$$ is the current temperature, and $$T_0$$ is a reference temperature.
 
 [^1]: A detailed discussion on thermoelasticity is available in Chapter 14 of *Classical and Computational Solid Mechanics* by Y.C. Fung & Pin Tong.
 
