@@ -29,7 +29,8 @@ function(adamantine_ADD_BOOST_TEST TEST_NAME)
     endforeach()
 endfunction()
 
-function(adamantine_COPY_INPUT_FILE INPUT_FILE PATH_TO_FILE)
+function(adamantine_COPY_DATA_FILE INPUT_FILE)
+  set(PATH_TO_FILE tests/data)
   add_custom_command(
     OUTPUT ${CMAKE_BINARY_DIR}/bin/${INPUT_FILE}
     DEPENDS ${CMAKE_SOURCE_DIR}/${PATH_TO_FILE}/${INPUT_FILE}
