@@ -161,7 +161,7 @@ void Microstructure<dim>::compute_G_and_R(
       G[q_point] = 0;
 
       // Compute the components of the gradient
-      std::array<double, dim> grad = {0.};
+      std::array<double, dim> grad = {{0.}};
       for (unsigned int const i : fe_values.dof_indices())
       {
         dealii::types::global_dof_index const dof = local_dof_indices[i];
