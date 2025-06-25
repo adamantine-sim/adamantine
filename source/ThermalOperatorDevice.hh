@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -20,7 +20,7 @@ class ThermalOperatorDevice final
 {
 public:
   ThermalOperatorDevice(MPI_Comm const &communicator,
-                        BoundaryType boundary_type,
+                        std::vector<BoundaryType> const &boundary_types,
                         MaterialProperty<dim, p_order, MaterialStates,
                                          MemorySpaceType> &material_properties);
 
@@ -110,9 +110,14 @@ private:
    */
   MPI_Comm const &_communicator;
   /**
-   * Type of boundary.
+   * Flag set to true if all the boundary conditions are adiabatic. It is set to
+   * false otherwise.
    */
-  BoundaryType _boundary_type;
+  bool _adiabatic_only_bc = true;
+  /**
+   * Types of boundary.
+   */
+  std::vector<BoundaryType> _boundary_types;
   dealii::types::global_dof_index _m;
   unsigned int _n_owned_cells;
   typename dealii::CUDAWrappers::MatrixFree<dim, double>::AdditionalData
