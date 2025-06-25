@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -450,14 +450,23 @@ template <int dim, bool use_table, int p_order, int fe_degree,
 ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                       MemorySpaceType>::
     ThermalOperatorDevice(
-        MPI_Comm const &communicator, BoundaryType boundary_type,
+        MPI_Comm const &communicator,
+        std::vector<BoundaryType> const &boundary_types,
         MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
             &material_properties)
-    : _communicator(communicator), _boundary_type(boundary_type), _m(0),
+    : _communicator(communicator), _boundary_types(boundary_types), _m(0),
       _n_owned_cells(0), _material_properties(material_properties),
       _inverse_mass_matrix(
           new dealii::LA::distributed::Vector<double, MemorySpaceType>())
 {
+  for (auto const boundary : _boundary_types)
+  {
+    if (!(boundary & BoundaryType::adiabatic))
+    {
+      _adiabatic_only_bc = false;
+    }
+  }
+
   _matrix_free_data.mapping_update_flags = dealii::update_gradients |
                                            dealii::update_JxW_values |
                                            dealii::update_quadrature_points;
@@ -755,7 +764,7 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
         dealii::LA::distributed::Vector<double, MemorySpaceType> const
             &temperature)
 {
-  if (!(_boundary_type & BoundaryType::adiabatic))
+  if (!_adiabatic_only_bc)
     _material_properties.update_boundary_material_properties(
         _matrix_free.get_dof_handler(), temperature);
 }

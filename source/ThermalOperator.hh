@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -26,7 +26,8 @@ class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
   ThermalOperator(
-      MPI_Comm const &communicator, BoundaryType boundary_type,
+      MPI_Comm const &communicator,
+      std::vector<BoundaryType> const &boundary_types,
       MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
           &material_properties,
       std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources);
@@ -170,9 +171,14 @@ private:
    */
   MPI_Comm const &_communicator;
   /**
-   * Type of boundary.
+   * Flag set to true if all the boundary conditions are adiabatic. It is set to
+   * false otherwise.
    */
-  BoundaryType _boundary_type;
+  bool _adiabatic_only_bc = true;
+  /**
+   * Types of boundary.
+   */
+  std::vector<BoundaryType> _boundary_types;
   /**
    * Current height of the heat sources.
    */
