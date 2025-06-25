@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -15,6 +15,10 @@
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/trilinos_precondition.h>
 #include <deal.II/numerics/vector_tools.h>
+
+#ifdef ADAMANTINE_WITH_CALIPER
+#include <caliper/cali.h>
+#endif
 
 namespace adamantine
 {
@@ -406,6 +410,10 @@ template <int dim, int p_order, typename MaterialStates,
 dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
 MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
 {
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("solve mechanical system");
+#endif
+
   dealii::IndexSet locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -445,6 +453,10 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
   compute_stress(incremental_displacement);
 
   _old_displacement.swap(displacement);
+
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("solve mechanical system");
+#endif
 
   return _old_displacement;
 }

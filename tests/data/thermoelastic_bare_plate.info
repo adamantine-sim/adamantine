@@ -129,11 +129,6 @@ post_processor
   time_steps_between_output 500
 }
 
-discretization
-{
-  fe_degree 2
-  quadrature gauss ; Optional parameter. Possibilities: gauss or lobatto
-}
 
 profiling
 {

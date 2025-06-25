@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -541,6 +541,7 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::set_state(
 
     if constexpr (std::is_same_v<MaterialStates, SolidLiquid>)
     {
+      unsigned int const n_q_points = liquid_ratio.size(1);
       for (auto const &cell : dealii::filter_iterators(
                dof_handler.active_cell_iterators(),
                dealii::IteratorFilters::LocallyOwnedCell()))
@@ -549,9 +550,9 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::set_state(
             cell);
         auto mp_dof_index = get_dof_index(cell_tria);
         auto const &mf_cell_vector = cell_it_to_mf_cell_map[cell];
-        unsigned int const n_q_points =
-            dof_handler.get_fe().tensor_degree() + 1;
         double liquid_ratio_sum = 0.;
+        // We should really use shape functions to compute the average. This is
+        // an approximation for FE degree greater than one.
         for (unsigned int q = 0; q < n_q_points; ++q)
         {
           liquid_ratio_sum +=
@@ -564,6 +565,7 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::set_state(
     }
     else if constexpr (std::is_same_v<MaterialStates, SolidLiquidPowder>)
     {
+      unsigned int const n_q_points = liquid_ratio.size(1);
       auto constexpr powder_state =
           static_cast<unsigned int>(MaterialStates::State::powder);
       for (auto const &cell : dealii::filter_iterators(
@@ -574,10 +576,10 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::set_state(
             cell);
         auto mp_dof_index = get_dof_index(cell_tria);
         auto const &mf_cell_vector = cell_it_to_mf_cell_map[cell];
-        unsigned int const n_q_points =
-            dof_handler.get_fe().tensor_degree() + 1;
         double liquid_ratio_sum = 0.;
         double powder_ratio_sum = 0.;
+        // We should really use shape functions to compute the average. This is
+        // an approximation for FE degree greater than one.
         for (unsigned int q = 0; q < n_q_points; ++q)
         {
           liquid_ratio_sum +=
@@ -608,7 +610,8 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
         dealii::DoFHandler<dim> const &dof_handler)
 {
   // Create a mapping between the matrix free dofs and material property dofs
-  unsigned int const n_q_points = dof_handler.get_fe().tensor_degree() + 1;
+  unsigned int const n_q_points = dealii::Utilities::fixed_power<dim>(
+      dof_handler.get_fe().tensor_degree() + 1);
   Kokkos::View<unsigned int **, dealii::MemorySpace::Default::kokkos_space>
       mapping(Kokkos::view_alloc("mapping", Kokkos::WithoutInitializing),
               _state.extent(1), n_q_points);

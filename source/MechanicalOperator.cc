@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -20,6 +20,10 @@
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/sparsity_tools.h>
 #include <deal.II/physics/elasticity/standard_tensors.h>
+
+#ifdef ADAMANTINE_WITH_CALIPER
+#include <caliper/cali.h>
+#endif
 
 namespace adamantine
 {
@@ -112,6 +116,10 @@ void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
     assemble_system(
         std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("assemble mechanical system");
+#endif
+
   // Create the sparsity pattern. Since we use a Trilinos matrix we don't need
   // the sparsity pattern to outlive the sparse matrix.
   auto locally_owned_dofs = _dof_handler->locally_owned_dofs();
@@ -332,6 +340,10 @@ void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
   // When solving the system, we don't want ghost entries
   _system_rhs.reinit(_dof_handler->locally_owned_dofs(), _communicator);
   _system_rhs = assembled_rhs;
+
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("assemble mechanical system");
+#endif
 }
 } // namespace adamantine
 
