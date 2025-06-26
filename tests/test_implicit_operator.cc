@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2017 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2017 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -86,11 +86,12 @@ BOOST_AUTO_TEST_CASE(implicit_operator)
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
+  std::vector<adamantine::BoundaryType> boundary(
+      2, adamantine::BoundaryType::adiabatic);
   auto thermal_operator = std::make_shared<
       adamantine::ThermalOperator<2, false, 0, 2, adamantine::SolidLiquidPowder,
                                   dealii::MemorySpace::Host>>(
-      communicator, adamantine::BoundaryType::adiabatic, mat_properties,
-      heat_sources);
+      communicator, boundary, mat_properties, heat_sources);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(

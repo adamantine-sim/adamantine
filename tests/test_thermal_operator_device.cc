@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -76,11 +76,12 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev, *utf::tolerance(1e-10))
                      mat_prop_database);
 
   // Initialize the ThermalOperator
+  std::vector<adamantine::BoundaryType> boundary(
+      2, adamantine::BoundaryType::adiabatic);
   adamantine::ThermalOperatorDevice<2, false, 0, 2,
                                     adamantine::SolidLiquidPowder,
                                     dealii::MemorySpace::Default>
-      thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
-                           mat_properties);
+      thermal_operator_dev(communicator, boundary, mat_properties);
   thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
                                                    affine_constraints);
   std::vector<double> deposition_cos(
@@ -170,11 +171,12 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
                      mat_prop_database);
 
   // Initialize the ThermalOperator
+  std::vector<adamantine::BoundaryType> boundary(
+      2, adamantine::BoundaryType::adiabatic);
   adamantine::ThermalOperatorDevice<2, false, 3, 2,
                                     adamantine::SolidLiquidPowder,
                                     dealii::MemorySpace::Default>
-      thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
-                           mat_properties);
+      thermal_operator_dev(communicator, boundary, mat_properties);
   thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
                                                    affine_constraints);
   std::vector<double> deposition_cos(
@@ -295,11 +297,12 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
+  std::vector<adamantine::BoundaryType> boundary(
+      2, adamantine::BoundaryType::adiabatic);
   adamantine::ThermalOperatorDevice<2, false, 4, 2,
                                     adamantine::SolidLiquidPowder,
                                     dealii::MemorySpace::Default>
-      thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
-                           mat_properties);
+      thermal_operator_dev(communicator, boundary, mat_properties);
   thermal_operator_dev.compute_inverse_mass_matrix(dof_handler,
                                                    affine_constraints);
   std::vector<double> deposition_cos(
@@ -314,8 +317,8 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
 
   adamantine::ThermalOperator<2, false, 4, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
-      thermal_operator_host(communicator, adamantine::BoundaryType::adiabatic,
-                            mat_properties_host, heat_sources);
+      thermal_operator_host(communicator, boundary, mat_properties_host,
+                            heat_sources);
   thermal_operator_host.compute_inverse_mass_matrix(dof_handler,
                                                     affine_constraints);
   thermal_operator_host.reinit(dof_handler, affine_constraints, q_collection);
@@ -417,11 +420,12 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
                      mat_prop_database);
 
   // Initialize the ThermalOperatorDevice
+  std::vector<adamantine::BoundaryType> boundary(
+      2, adamantine::BoundaryType::adiabatic);
   adamantine::ThermalOperatorDevice<3, false, 3, 2,
                                     adamantine::SolidLiquidPowder,
                                     dealii::MemorySpace::Default>
-      thermal_operator_dev(communicator, adamantine::BoundaryType::adiabatic,
-                           mat_properties);
+      thermal_operator_dev(communicator, boundary, mat_properties);
   double constexpr deposition_angle = M_PI / 6.;
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(),

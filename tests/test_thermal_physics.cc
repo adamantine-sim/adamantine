@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -62,6 +62,11 @@ BOOST_AUTO_TEST_CASE(radiation_bcs_host)
 BOOST_AUTO_TEST_CASE(convection_bcs_host)
 {
   convection_bcs<dealii::MemorySpace::Host>();
+}
+
+BOOST_AUTO_TEST_CASE(multiple_bcs_host)
+{
+  multiple_bcs<dealii::MemorySpace::Host>();
 }
 
 BOOST_AUTO_TEST_CASE(reference_temperature_host)

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -100,10 +100,11 @@ BOOST_AUTO_TEST_CASE(thermal_operator, *utf::tolerance(1e-15))
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
+  std::vector<adamantine::BoundaryType> boundary(
+      2, adamantine::BoundaryType::adiabatic);
   adamantine::ThermalOperator<2, false, 1, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
-      thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
-                       mat_properties, heat_sources);
+      thermal_operator(communicator, boundary, mat_properties, heat_sources);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
@@ -208,10 +209,11 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
+  std::vector<adamantine::BoundaryType> boundary(
+      2, adamantine::BoundaryType::adiabatic);
   adamantine::ThermalOperator<2, false, 2, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
-      thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
-                       mat_properties, heat_sources);
+      thermal_operator(communicator, boundary, mat_properties, heat_sources);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
@@ -320,10 +322,11 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic, *utf::tolerance(1e-12))
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
+  std::vector<adamantine::BoundaryType> boundary(
+      2, adamantine::BoundaryType::adiabatic);
   adamantine::ThermalOperator<2, false, 2, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
-      thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
-                       mat_properties, heat_sources);
+      thermal_operator(communicator, boundary, mat_properties, heat_sources);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
@@ -461,10 +464,11 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
   std::vector<std::shared_ptr<adamantine::HeatSource<3>>> heat_sources;
 
   // Initialize the ThermalOperator
+  std::vector<adamantine::BoundaryType> boundary(
+      2, adamantine::BoundaryType::adiabatic);
   adamantine::ThermalOperator<3, false, 1, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
-      thermal_operator(communicator, adamantine::BoundaryType::adiabatic,
-                       mat_properties, heat_sources);
+      thermal_operator(communicator, boundary, mat_properties, heat_sources);
   double constexpr deposition_angle = M_PI / 6.;
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(),
@@ -632,10 +636,11 @@ BOOST_AUTO_TEST_CASE(spmv_rad, *utf::tolerance(1e-12))
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
+  std::vector<adamantine::BoundaryType> boundary(
+      2, adamantine::BoundaryType::radiative);
   adamantine::ThermalOperator<2, false, 1, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
-      thermal_operator(communicator, adamantine::BoundaryType::radiative,
-                       mat_properties, heat_sources);
+      thermal_operator(communicator, boundary, mat_properties, heat_sources);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
@@ -819,10 +824,11 @@ BOOST_AUTO_TEST_CASE(spmv_conv, *utf::tolerance(1e-12))
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
+  std::vector<adamantine::BoundaryType> boundary(
+      2, adamantine::BoundaryType::convective);
   adamantine::ThermalOperator<2, false, 1, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
-      thermal_operator(communicator, adamantine::BoundaryType::convective,
-                       mat_properties, heat_sources);
+      thermal_operator(communicator, boundary, mat_properties, heat_sources);
   std::vector<double> deposition_cos(
       geometry.get_triangulation().n_locally_owned_active_cells(), 1.);
   std::vector<double> deposition_sin(
