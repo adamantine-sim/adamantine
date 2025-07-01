@@ -28,15 +28,24 @@ template <int dim, bool use_table, int p_order, int fe_degree,
 ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                 MemorySpaceType>::
     ThermalOperator(
-        MPI_Comm const &communicator, BoundaryType boundary_type,
+        MPI_Comm const &communicator,
+        std::vector<BoundaryType> const &boundary_types,
         MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
             &material_properties,
         std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources)
-    : _communicator(communicator), _boundary_type(boundary_type),
+    : _communicator(communicator), _boundary_types(boundary_types),
       _material_properties(material_properties), _heat_sources(heat_sources),
       _inverse_mass_matrix(
           new dealii::LA::distributed::Vector<double, MemorySpaceType>())
 {
+  for (auto const boundary : _boundary_types)
+  {
+    if (!(boundary & BoundaryType::adiabatic))
+    {
+      _adiabatic_only_bc = false;
+    }
+  }
+
   _matrix_free_data.tasks_parallel_scheme =
       dealii::MatrixFree<dim, double>::AdditionalData::partition_color;
   _matrix_free_data.mapping_update_flags =
@@ -204,7 +213,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
 
   // If we use adiabatic boundary condition, we have nothing to do on the faces
   // of the cell
-  if (_boundary_type & BoundaryType::adiabatic)
+  if (_adiabatic_only_bc)
   {
     _matrix_free.cell_loop(&ThermalOperator::cell_local_apply, this, dst, src);
   }
@@ -679,8 +688,8 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   auto rad_heat_transfer_coef = dealii::make_vectorized_array<double>(0.);
 
   // We need powers of temperature to compute the material properties. We
-  // could compute it in MaterialProperty but because it's in a hot loop.
-  // It's really worth to compute it once and pass it when we compute a
+  // could compute it in MaterialProperty but because it's in a hot loop,
+  // it's really worth to compute it once and pass it when we compute a
   // material property.
   dealii::AlignedVector<dealii::VectorizedArray<double>> temperature_powers(
       p_order + 1);
@@ -688,8 +697,17 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   // Loop over the faces
   for (unsigned int face = face_range.first; face < face_range.second; ++face)
   {
+    conv_heat_transfer_coef = 0.;
+    rad_heat_transfer_coef = 0.;
+
     // Reinit fe_face_eval on the current face
     fe_face_eval.reinit(face);
+    // Get the boundary type
+    dealii::types::boundary_id boundary_id = fe_face_eval.boundary_id();
+    BoundaryType const boundary_type =
+        (boundary_id < _boundary_types.size() - 1)
+            ? _boundary_types[boundary_id]
+            : _boundary_types.back();
     // Store in a local vector the local values of src
     fe_face_eval.read_dof_values(src);
     // Evalue the function on the reference cell
@@ -711,7 +729,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
       update_face_state_ratios(face, q, temperature, face_state_ratios);
       auto const inv_rho_cp = get_inv_rho_cp(material_id, face_state_ratios,
                                              temperature, temperature_powers);
-      if (_boundary_type & BoundaryType::convective)
+      if (boundary_type & BoundaryType::convective)
       {
         for (unsigned int n = 0; n < conv_temperature_infty.size(); ++n)
         {
@@ -724,7 +742,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                 material_id.data(), face_state_ratios.data(), temperature,
                 temperature_powers);
       }
-      if (_boundary_type & BoundaryType::radiative)
+      if (boundary_type & BoundaryType::radiative)
       {
         for (unsigned int n = 0; n < rad_temperature_infty.size(); ++n)
         {
@@ -806,7 +824,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
 
   // If we are using boundary conditions other than adiabatic, we also need to
   // update the face variables
-  if (!(_boundary_type & BoundaryType::adiabatic))
+  if (!_adiabatic_only_bc)
   {
     unsigned int const n_inner_faces = _matrix_free.n_inner_face_batches();
     unsigned int const n_boundary_faces =

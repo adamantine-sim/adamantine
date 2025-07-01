@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -172,9 +172,9 @@ private:
    */
   double _current_source_height = 0.;
   /**
-   * Type of boundary.
+   * Types of boundary.
    */
-  BoundaryType _boundary_type;
+  std::vector<BoundaryType> _boundary_types;
   /**
    * Associated geometry.
    */
