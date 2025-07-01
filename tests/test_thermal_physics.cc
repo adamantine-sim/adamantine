@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -9,6 +9,8 @@
 
 #include "test_thermal_physics.hh"
 // clang-format on
+
+namespace utf = boost::unit_test;
 
 BOOST_AUTO_TEST_CASE(thermal_2d_explicit_host)
 {
@@ -59,7 +61,7 @@ BOOST_AUTO_TEST_CASE(radiation_bcs_host)
   radiation_bcs<dealii::MemorySpace::Host>();
 }
 
-BOOST_AUTO_TEST_CASE(convection_bcs_host)
+BOOST_AUTO_TEST_CASE(convection_bcs_host, *utf::tolerance(1e-6))
 {
   convection_bcs<dealii::MemorySpace::Host>();
 }

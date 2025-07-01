@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -9,6 +9,8 @@
 #include <Timer.hh>
 
 #include <deal.II/base/quadrature_lib.h>
+
+#include <fstream>
 
 namespace tt = boost::test_tools;
 
@@ -501,24 +503,26 @@ void convection_bcs()
   // Geometry database
   boost::property_tree::ptree geometry_database;
   geometry_database.put("import_mesh", false);
-  geometry_database.put("length", 5);
-  geometry_database.put("length_divisions", 5);
-  geometry_database.put("height", 5);
-  geometry_database.put("height_divisions", 5);
+  geometry_database.put("length", 0.1);
+  geometry_database.put("length_divisions", 100);
+  geometry_database.put("height", 0.1);
+  geometry_database.put("height_divisions", 1);
+  geometry_database.put("width", 0.1);
+  geometry_database.put("width_divisions", 1);
   boost::optional<boost::property_tree::ptree const &> units_optional_database;
   // Build Geometry
-  adamantine::Geometry<2> geometry(communicator, geometry_database,
+  adamantine::Geometry<3> geometry(communicator, geometry_database,
                                    units_optional_database);
   boost::property_tree::ptree material_property_database;
   // MaterialProperty database
   material_property_database.put("property_format", "polynomial");
   material_property_database.put("n_materials", 1);
-  material_property_database.put("material_0.solid.density", 1.);
-  material_property_database.put("material_0.powder.density", 1.);
-  material_property_database.put("material_0.liquid.density", 1.);
-  material_property_database.put("material_0.solid.specific_heat", 1.);
-  material_property_database.put("material_0.powder.specific_heat", 1.);
-  material_property_database.put("material_0.liquid.specific_heat", 1.);
+  material_property_database.put("material_0.solid.density", 100.);
+  material_property_database.put("material_0.powder.density", 100.);
+  material_property_database.put("material_0.liquid.density", 100.);
+  material_property_database.put("material_0.solid.specific_heat", 100.);
+  material_property_database.put("material_0.powder.specific_heat", 100.);
+  material_property_database.put("material_0.liquid.specific_heat", 100.);
   material_property_database.put("material_0.solid.thermal_conductivity_x", 1.);
   material_property_database.put("material_0.solid.thermal_conductivity_z", 1.);
   material_property_database.put("material_0.powder.thermal_conductivity_x",
@@ -533,16 +537,16 @@ void convection_bcs()
   material_property_database.put("material_0.powder.emissivity", 1.);
   material_property_database.put("material_0.liquid.emissivity", 1.);
   material_property_database.put(
-      "material_0.solid.convection_heat_transfer_coef", 1.);
+      "material_0.solid.convection_heat_transfer_coef", 50.);
   material_property_database.put(
-      "material_0.powder.convection_heat_transfer_coef", 1.);
+      "material_0.powder.convection_heat_transfer_coef", 50.);
   material_property_database.put(
-      "material_0.liquid.convection_heat_transfer_coef", 1.);
+      "material_0.liquid.convection_heat_transfer_coef", 50.);
   material_property_database.put("material_0.radiation_temperature_infty", 0.0);
   material_property_database.put("material_0.convection_temperature_infty",
-                                 20.0);
+                                 300.0);
   // Build MaterialProperty
-  adamantine::MaterialProperty<2, 0, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<3, 0, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
       material_properties(communicator, geometry.get_triangulation(),
                           material_property_database);
@@ -552,52 +556,54 @@ void convection_bcs()
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
   // Boundary database
-  database.put("boundary.type", "convective");
+  database.put("boundary.type", "adiabatic");
+  database.put("boundary.boundary_1.type", "convective");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 0, 2, adamantine::SolidLiquidPowder,
-                             dealii::MemorySpace::Host, dealii::QGauss<1>>
+  adamantine::ThermalPhysics<3, 0, 2, adamantine::SolidLiquidPowder,
+                             MemorySpaceType, dealii::QGauss<1>>
       physics(communicator, database, geometry, material_properties);
   physics.setup();
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
-  double constexpr initial_temperature = 10;
+  dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
+  double constexpr initial_temperature = 400;
   physics.initialize_dof_vector(initial_temperature, solution);
   std::vector<adamantine::Timer> timers(adamantine::Timing::n_timers);
   double time = 0;
-  while (time < 100)
+  while (time < 1.0)
   {
-    time = physics.evolve_one_time_step(time, 0.005, solution, timers);
+    time = physics.evolve_one_time_step(time, 2.5e-4, solution, timers);
   }
 
-  double max = -1;
-  double min = 1e4;
-  if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
+  if (dealii::Utilities::MPI::n_mpi_processes(communicator) == 1)
   {
-    for (auto v : solution)
+    // Compare the solution to a gold solution. Comparison to an analytical
+    // solution, use analytical_1D_transient.py
+    std::ifstream gold_file("convective_bc_gold.txt");
+    if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
     {
-      if (max < v)
-        max = v;
-      if (min > v)
-        min = v;
+      for (unsigned int i = 0; i < solution.locally_owned_size(); ++i)
+      {
+        double gold_value = -1.;
+        gold_file >> gold_value;
+        BOOST_TEST(solution.local_element(i) == gold_value);
+      }
+    }
+    else
+    {
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+          solution_host(solution.get_partitioner());
+      solution_host.import(solution, dealii::VectorOperation::insert);
+      for (unsigned int i = 0; i < solution.locally_owned_size(); ++i)
+      {
+        double gold_value = -1.;
+        gold_file >> gold_value;
+        BOOST_TEST(solution_host.local_element(i) == gold_value);
+      }
     }
   }
   else
   {
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-        solution_host(solution.get_partitioner());
-    solution_host.import(solution, dealii::VectorOperation::insert);
-    for (auto v : solution_host)
-    {
-      if (max < v)
-        max = v;
-      if (min > v)
-        min = v;
-    }
+    BOOST_TEST(solution.l2_norm() == 16860.163757);
   }
-
-  BOOST_TEST(min >= 10.);
-  BOOST_TEST(min <= 20.);
-  BOOST_TEST(max > 10.);
-  BOOST_TEST(max <= 20.);
 }
 
 template <typename MemorySpaceType>
