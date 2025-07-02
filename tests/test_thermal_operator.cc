@@ -733,10 +733,9 @@ BOOST_AUTO_TEST_CASE(spmv_rad, *utf::tolerance(1e-12))
               for (unsigned i = 0; i < dofs_per_cell; ++i)
                 for (unsigned j = 0; j < dofs_per_cell; ++j)
                 {
-                  cell_matrix(i, j) -= heat_transfer_coeff * T *
-                                       fe_face_values.shape_value(i, q) *
-                                       fe_face_values.shape_value(j, q) *
-                                       fe_face_values.JxW(q);
+                  cell_matrix(i, j) -=
+                      heat_transfer_coeff * fe_face_values.shape_value(i, q) *
+                      fe_face_values.shape_value(j, q) * fe_face_values.JxW(q);
                 }
             }
           }
@@ -886,9 +885,6 @@ BOOST_AUTO_TEST_CASE(spmv_conv, *utf::tolerance(1e-12))
     dealii::FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
     std::vector<dealii::types::global_dof_index> local_dof_indices(
         dofs_per_cell);
-    dealii::FEPointEvaluation<1, 2> fe_pt_evaluator(
-        dealii::StaticMappingQ1<2>::mapping, fe,
-        dealii::UpdateFlags::update_values);
     dealii::Vector<double> src_values(fe.n_dofs_per_cell());
     for (auto const &cell : dof_handler.active_cell_iterators())
     {
@@ -909,16 +905,12 @@ BOOST_AUTO_TEST_CASE(spmv_conv, *utf::tolerance(1e-12))
                   dealii::StaticMappingQ1<2>::mapping
                       .transform_real_to_unit_cell(cell, q_point));
             }
-            fe_pt_evaluator.reinit(cell, face_quad_pts);
-            fe_pt_evaluator.evaluate(dealii::make_array_view(src_values),
-                                     dealii::EvaluationFlags::values);
             for (unsigned int q = 0; q < n_face_q_points; ++q)
             {
-              double T = fe_pt_evaluator.get_value(q);
               for (unsigned i = 0; i < dofs_per_cell; ++i)
                 for (unsigned j = 0; j < dofs_per_cell; ++j)
                 {
-                  cell_matrix(i, j) -= T * fe_face_values.shape_value(i, q) *
+                  cell_matrix(i, j) -= fe_face_values.shape_value(i, q) *
                                        fe_face_values.shape_value(j, q) *
                                        fe_face_values.JxW(q);
                 }
