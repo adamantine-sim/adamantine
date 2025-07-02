@@ -194,6 +194,9 @@ evaluate_thermal_physics_impl(
       adiabatic_only_bc = false;
     }
   }
+  ASSERT_THROW(
+      adiabatic_only_bc,
+      "On GPU, only adiabatic boundary conditions are currently supported.");
 
   // Loop over the locally owned cells with an active FE index of zero
   for (auto const &cell : dealii::filter_iterators(

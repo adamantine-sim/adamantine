@@ -767,7 +767,7 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
           -inv_rho_cp *
           (conv_heat_transfer_coef * (temperature - conv_temperature_infty) +
            rad_heat_transfer_coef * (temperature - rad_temperature_infty));
-      fe_face_eval.submit_value(boundary_val * fe_face_eval.get_value(q), q);
+      fe_face_eval.submit_value(boundary_val, q);
     }
     // Sum over the quadrature points
     fe_face_eval.integrate(dealii::EvaluationFlags::values);
