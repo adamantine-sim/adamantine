@@ -16,11 +16,6 @@ can be chosen simultaneously by separating them by comma (required)
 * **boundary\_X**: property tree describing the boundary condition of the faces with a boundary id of X (optional)
 * **boundary\_X.type**: type of the boundary (required if the property tree boundary\_X is present)
 
-## physics (required):
-* **thermal**: thermal simulation: true or false (required)
-* **mechanical**: mechanical simulation: true or false (required)
-* if both thermal and mechanical parameters are true, solve a coupled thermo-mechanics problem
-
 ## discretization (required):
 * **thermal** (required if *physics.thermal* is true):
   * **fe\_degree**: degree of the finite element used (required)
@@ -93,8 +88,10 @@ false (default value: false)
 in `J/kg`, `radiation_temperature_infty` in kelvins, or `convection_temperature_infty`
   in kelvins (optional)
 
-## memory\_space (optional): 
-* `device` (use GPU if Kokkos was compiled with GPU support) or `host` (use CPU) (default value: host)
+## physics (required):
+* **thermal**: thermal simulation: true or false (required)
+* **mechanical**: mechanical simulation: true or false (required)
+* if both thermal and mechanical parameters are true, solve a coupled thermo-mechanics problem
 
 ## post\_processor (required):
 * **filename\_prefix**: prefix of output files (required)
@@ -144,6 +141,31 @@ between 0 and 1 (required).
   * **newton\_tolerance**: tolerance of the Newton solver (default value: 1e-6)
   * **jfnk**: use Jacobian-Free Newton Krylov method (default value: false)
 
+## checkpoint (optional):
+* **time\_steps\_between\_checkpoint**: number of time steps after which checkpointing is performed (required)
+* **filename\_prefix**: prefix of the checkpoint files (required)
+* **overwrite\_files**: if true the checkpoint files are overwritten by newer ones. If false, the time steps is added to the filename prefix (required)
+
+## data\_assimilation (optional):
+* **assimilate\_data**: whether to perform data assimilation (default value: false)
+* **localization\_cutoff\_function**: function used to decrease the sample covariance as the relevant points become farther away: gaspari\_cohn, step\_function, none (default: none)
+* **localization\_cutoff\_distance**: distance at which sample covariance entries are set to zero (default: infinity)
+* **augment\_with\_beam\_0\_absorption**: whether to augment the state vector with the beam 0 absorption efficiency (default: false)
+* **augment\_with\_beam\_0\_max_power**: whether to augment the state vector with the beam 0 max power (default: false)
+* **solver**:
+  * **max\_number\_of\_temp\_vectors**: maximum number of temporary vectors for the GMRES solve (optional)
+  * **max\_iterations**: maximum number of iterations for the GMRES solve (optional)
+  * **convergence\_tolerance**: convergence tolerance for the GMRES solve (optional)
+
+## ensemble (optional):
+* **ensemble\_simulation**: whether to perform an ensemble of simulations (default value: false)
+* **ensemble\_size**: number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
+* **initial\_temperature\_stddev**: standard deviation for the initial temperature of the material (default value: 0.0, <span style="color:red">removed in 1.1)
+* **new\_material\_temperature\_stddev**: standard deviation for the temperature of material added during the process (default value: 0.0, <span style="color:red">removed in 1.1)
+* **beam\_0\_max\_power\_stddev**: standard deviation for the max power for beam 0 (if it exists) (default value: 0.0, <span style="color:red">removed in 1.1)
+* **beam\_0\_absorption\_efficiency\_stddev**: standard deviation for the absorption efficiency for beam 0 (if it exists) (default value: 0.0, <span style="color:red">removed in 1.1)
+* **variable_stddev**: standard deviation associated to `variable`. `variable` is an other entry in the input file, for instance `sources.beam_0.max_power`. The input file accepts multiple `variable_stddev` at once. Note that this only works for scalar value and therefore it does not work for temperature dependent variables (<span style="color:green">since 1.1</span>).
+
 ## experiment (optional):
 * **read\_in\_experimental\_data**: whether to read in experimental data (default: false)
 * **file**: format of the file names. The format is pretty arbitrary, the keywords \#frame
@@ -164,34 +186,15 @@ the file itself should be csv. (required)
 * **output\_experiment\_on\_mesh**: whether to output the experimental data
     projected onto the simulation mesh at each experiment time stamp (default: true)
 
-## ensemble (optional):
-* **ensemble\_simulation**: whether to perform an ensemble of simulations (default value: false)
-* **ensemble\_size**: number of ensemble members for the ensemble Kalman filter (EnKF) (default value: 5)
-* **initial\_temperature\_stddev**: standard deviation for the initial temperature of the material (default value: 0.0, <span style="color:red">removed in 1.1)
-* **new\_material\_temperature\_stddev**: standard deviation for the temperature of material added during the process (default value: 0.0, <span style="color:red">removed in 1.1)
-* **beam\_0\_max\_power\_stddev**: standard deviation for the max power for beam 0 (if it exists) (default value: 0.0, <span style="color:red">removed in 1.1)
-* **beam\_0\_absorption\_efficiency\_stddev**: standard deviation for the absorption efficiency for beam 0 (if it exists) (default value: 0.0, <span style="color:red">removed in 1.1)
-* **variable_stddev**: standard deviation associated to `variable`. `variable` is an other entry in the input file, for instance `sources.beam_0.max_power`. The input file accepts multiple `variable_stddev` at once. Note that this only works for scalar value and therefore it does not work for temperature dependent variables (<span style="color:green">since 1.1</span>).
+## memory\_space (optional): 
+* `device` (use GPU if Kokkos was compiled with GPU support) or `host` (use CPU) (default value: host)
 
-## data\_assimilation (optional):
-* **assimilate\_data**: whether to perform data assimilation (default value: false)
-* **localization\_cutoff\_function**: function used to decrease the sample covariance as the relevant points become farther away: gaspari\_cohn, step\_function, none (default: none)
-* **localization\_cutoff\_distance**: distance at which sample covariance entries are set to zero (default: infinity)
-* **augment\_with\_beam\_0\_absorption**: whether to augment the state vector with the beam 0 absorption efficiency (default: false)
-* **augment\_with\_beam\_0\_max_power**: whether to augment the state vector with the beam 0 max power (default: false)
-* **solver**:
-  * **max\_number\_of\_temp\_vectors**: maximum number of temporary vectors for the GMRES solve (optional)
-  * **max\_iterations**: maximum number of iterations for the GMRES solve (optional)
-  * **convergence\_tolerance**: convergence tolerance for the GMRES solve (optional)
+## microstructure (optional): 
+* **filename\_prefix**: prefix of the output file of the temperature gradient, the cooling rate, and the interface velocity at the liquidus. The format of the file is x y (z) temperature gradient (K/m) cooling rate (K/s) the inteface velocity (m/s)  (required, <span style="color:green">since 1.1</span>)
 
 ## profiling (optional):
 * **timer**: output timing information (default value: false)
 * **caliper**: configuration string for Caliper (optional)
-
-## checkpoint (optional):
-* **time\_steps\_between\_checkpoint**: number of time steps after which checkpointing is performed (required)
-* **filename\_prefix**: prefix of the checkpoint files (required)
-* **overwrite\_files**: if true the checkpoint files are overwritten by newer ones. If false, the time steps is added to the filename prefix (required)
 
 ## restart (optional):
 * **filename\_prefix**: prefix of the restart files (required)
@@ -208,9 +211,6 @@ Change the unit of some inputs (<span style="color:green">since 1.1</span>)
     millimeter, centimeter, inch, or meter (default value: meter)
   * **scan\_path**: unit used for the scan path of the heat sources. Either
     millimeter, centimeter, inch, or meter (default value: meter)
-
-## microstructure (optional): 
-* **filename\_prefix**: prefix of the output file of the temperature gradient, the cooling rate, and the interface velocity at the liquidus. The format of the file is x y (z) temperature gradient (K/m) cooling rate (K/s) the inteface velocity (m/s)  (required, <span style="color:green">since 1.1</span>)
 
 ## verbose\_output (optional): 
 * true or false (default value: false)
