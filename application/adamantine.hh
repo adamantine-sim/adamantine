@@ -1181,6 +1181,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     {
       if (compute_microstructure)
       {
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_BEGIN("compute microstructure");
+#endif
         if constexpr (std::is_same_v<MemorySpaceType,
                                      dealii::MemorySpace::Host>)
         {
@@ -1194,11 +1197,19 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                                            dealii::VectorOperation::insert);
           microstructure->set_old_temperature(temperature_host);
         }
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_END("compute microstructure");
+#endif
       }
+
       time = thermal_physics->evolve_one_time_step(time, time_step, temperature,
                                                    timers);
+
       if (compute_microstructure)
       {
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_BEGIN("compute microstructure");
+#endif
         if constexpr (std::is_same_v<MemorySpaceType,
                                      dealii::MemorySpace::Host>)
         {
@@ -1216,8 +1227,12 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                                           thermal_physics->get_dof_handler(),
                                           temperature_host, time_step);
         }
+#ifdef ADAMANTINE_WITH_CALIPER
+        CALI_MARK_END("compute microstructure");
+#endif
       }
     }
+
     // Solve the (thermo-)mechanical problem
     if (use_mechanical_physics)
     {
