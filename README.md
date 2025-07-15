@@ -12,7 +12,7 @@ through the use of [Ensemble Kalman
 filter](https://en.wikipedia.org/wiki/Ensemble_Kalman_filter).
 
 ## Documentation
-The documentation is hosted on our [website](https://adamantine-sim.github.io/adamantine).
+The documentation is hosted on our [website](https://adamantine-sim.github.io/adamantine), with instructions on installing `adamantine`, running simulations, and visualizing results. 
 
 ## Examples
 Examples that showcase `adamantine` capabilities can be found
