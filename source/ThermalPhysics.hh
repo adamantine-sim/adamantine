@@ -145,7 +145,10 @@ private:
   LA_Vector id_minus_tau_J_inverse(double const t, double const tau,
                                    LA_Vector const &y,
                                    std::vector<Timer> &timers) const;
-
+  /**
+   * This flag is true if the time stepping method is forward euler.
+   */
+  bool _forward_euler = false;
   /**
    * This flag is true if the time stepping method is implicit.
    */
