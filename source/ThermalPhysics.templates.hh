@@ -450,17 +450,21 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
   std::transform(method.begin(), method.end(), method.begin(),
                  [](unsigned char c) { return std::tolower(c); });
   if (method.compare("forward_euler") == 0)
-    _time_stepping =
-        std::make_unique<dealii::TimeStepping::ExplicitRungeKutta<LA_Vector>>(
-            dealii::TimeStepping::FORWARD_EULER);
+  {
+    _forward_euler = true;
+  }
   else if (method.compare("rk_third_order") == 0)
+  {
     _time_stepping =
         std::make_unique<dealii::TimeStepping::ExplicitRungeKutta<LA_Vector>>(
             dealii::TimeStepping::RK_THIRD_ORDER);
+  }
   else if (method.compare("rk_fourth_order") == 0)
+  {
     _time_stepping =
         std::make_unique<dealii::TimeStepping::ExplicitRungeKutta<LA_Vector>>(
             dealii::TimeStepping::RK_CLASSIC_FOURTH_ORDER);
+  }
   else if (method.compare("backward_euler") == 0)
   {
     _time_stepping =
@@ -928,16 +932,28 @@ double ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
   }
   _current_source_height = temp_height;
 
-  auto eval = [&](double const t, LA_Vector const &y)
-  { return evaluate_thermal_physics(t, y, timers); };
-  auto id_m_Jinv = [&](double const t, double const tau, LA_Vector const &y)
-  { return id_minus_tau_J_inverse(t, tau, y, timers); };
+  // For very small time steps (e.g., less than 1e-4 second), using deal.II to
+  // perform a forward steps becomes costly. In that case, we just peform the
+  // forward euler ourselves.
+  if (_forward_euler)
+  {
+    solution.sadd(1., delta_t, evaluate_thermal_physics(t, solution, timers));
 
-  double time = _time_stepping->evolve_one_time_step(eval, id_m_Jinv, t,
-                                                     delta_t, solution);
+    return (t + delta_t);
+  }
+  else
+  {
+    auto eval = [&](double const t, LA_Vector const &y)
+    { return evaluate_thermal_physics(t, y, timers); };
+    auto id_m_Jinv = [&](double const t, double const tau, LA_Vector const &y)
+    { return id_minus_tau_J_inverse(t, tau, y, timers); };
 
-  // Return the time at the end of the time step.
-  return time;
+    double time = _time_stepping->evolve_one_time_step(eval, id_m_Jinv, t,
+                                                       delta_t, solution);
+
+    // Return the time at the end of the time step.
+    return time;
+  }
 }
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,
