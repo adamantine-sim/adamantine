@@ -42,6 +42,14 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev, *utf::tolerance(1e-10))
   boost::optional<boost::property_tree::ptree const &> units_optional_database;
   adamantine::Geometry<2> geometry(communicator, geometry_database,
                                    units_optional_database);
+
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("type", "adiabatic");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
+
   // Create the DoFHandler
   dealii::hp::FECollection<2> fe_collection;
   fe_collection.push_back(dealii::FE_Q<2>(2));
@@ -76,8 +84,6 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev, *utf::tolerance(1e-10))
                      mat_prop_database);
 
   // Initialize the ThermalOperator
-  std::vector<adamantine::BoundaryType> boundary(
-      2, adamantine::BoundaryType::adiabatic);
   adamantine::ThermalOperatorDevice<2, false, 0, 2,
                                     adamantine::SolidLiquidPowder,
                                     dealii::MemorySpace::Default>
@@ -137,6 +143,14 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   boost::optional<boost::property_tree::ptree const &> units_optional_database;
   adamantine::Geometry<2> geometry(communicator, geometry_database,
                                    units_optional_database);
+
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("type", "adiabatic");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
+
   // Create the DoFHandler
   dealii::hp::FECollection<2> fe_collection;
   fe_collection.push_back(dealii::FE_Q<2>(2));
@@ -171,8 +185,6 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
                      mat_prop_database);
 
   // Initialize the ThermalOperator
-  std::vector<adamantine::BoundaryType> boundary(
-      2, adamantine::BoundaryType::adiabatic);
   adamantine::ThermalOperatorDevice<2, false, 3, 2,
                                     adamantine::SolidLiquidPowder,
                                     dealii::MemorySpace::Default>
@@ -245,6 +257,14 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   boost::optional<boost::property_tree::ptree const &> units_optional_database;
   adamantine::Geometry<2> geometry(communicator, geometry_database,
                                    units_optional_database);
+
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("type", "adiabatic");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
+
   // Create the DoFHandler
   dealii::hp::FECollection<2> fe_collection;
   fe_collection.push_back(dealii::FE_Q<2>(2));
@@ -297,8 +317,6 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
-  std::vector<adamantine::BoundaryType> boundary(
-      2, adamantine::BoundaryType::adiabatic);
   adamantine::ThermalOperatorDevice<2, false, 4, 2,
                                     adamantine::SolidLiquidPowder,
                                     dealii::MemorySpace::Default>
@@ -380,6 +398,14 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
   boost::optional<boost::property_tree::ptree const &> units_optional_database;
   adamantine::Geometry<3> geometry(communicator, geometry_database,
                                    units_optional_database);
+
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("type", "adiabatic");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
+
   // Create the DoFHandler
   dealii::hp::FECollection<3> fe_collection;
   fe_collection.push_back(dealii::FE_Q<3>(2));
@@ -420,8 +446,6 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
                      mat_prop_database);
 
   // Initialize the ThermalOperatorDevice
-  std::vector<adamantine::BoundaryType> boundary(
-      2, adamantine::BoundaryType::adiabatic);
   adamantine::ThermalOperatorDevice<3, false, 3, 2,
                                     adamantine::SolidLiquidPowder,
                                     dealii::MemorySpace::Default>

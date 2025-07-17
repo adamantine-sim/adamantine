@@ -28,23 +28,18 @@ template <int dim, bool use_table, int p_order, int fe_degree,
 ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                 MemorySpaceType>::
     ThermalOperator(
-        MPI_Comm const &communicator,
-        std::vector<BoundaryType> const &boundary_types,
+        MPI_Comm const &communicator, Boundary const &boundary,
         MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
             &material_properties,
         std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources)
-    : _communicator(communicator), _boundary_types(boundary_types),
+    : _communicator(communicator), _boundary(boundary),
       _material_properties(material_properties), _heat_sources(heat_sources),
       _inverse_mass_matrix(
           new dealii::LA::distributed::Vector<double, MemorySpaceType>())
 {
-  for (auto const boundary : _boundary_types)
-  {
-    if (!(boundary & BoundaryType::adiabatic))
-    {
-      _adiabatic_only_bc = false;
-    }
-  }
+  _adiabatic_only_bc =
+      _boundary.get_boundary_ids(BoundaryType::adiabatic).size() ==
+      _boundary.n_boundary_ids();
 
   _matrix_free_data.tasks_parallel_scheme =
       dealii::MatrixFree<dim, double>::AdditionalData::partition_color;
@@ -703,11 +698,8 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
     // Reinit fe_face_eval on the current face
     fe_face_eval.reinit(face);
     // Get the boundary type
-    dealii::types::boundary_id boundary_id = fe_face_eval.boundary_id();
     BoundaryType const boundary_type =
-        (boundary_id < _boundary_types.size() - 1)
-            ? _boundary_types[boundary_id]
-            : _boundary_types.back();
+        _boundary.get_boundary_type(fe_face_eval.boundary_id());
     // Store in a local vector the local values of src
     fe_face_eval.read_dof_values(src);
     // Evalue the function on the reference cell

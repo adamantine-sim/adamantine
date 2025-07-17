@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -286,6 +286,13 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   adamantine::Geometry<dim> geometry(communicator, geometry_database,
                                      units_optional_database);
 
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("type", "adiabatic");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
+
   // MaterialProperty database
   database.put("materials.property_format", "polynomial");
   database.put("materials.initial_temperature", initial_temperature);
@@ -311,13 +318,12 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   database.put("sources.n_beams", 0);
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
-  // Boundary database
-  database.put("boundary.type", "adiabatic");
 
   // Build ThermalPhysics
   adamantine::ThermalPhysics<dim, 1, dim, adamantine::SolidLiquidPowder,
                              dealii::MemorySpace::Host, dealii::QGauss<1>>
-      thermal_physics(communicator, database, geometry, material_properties);
+      thermal_physics(communicator, database, geometry, boundary,
+                      material_properties);
   thermal_physics.setup();
   auto &dof_handler = thermal_physics.get_dof_handler();
 

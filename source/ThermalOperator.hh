@@ -5,6 +5,7 @@
 #ifndef THERMAL_OPERATOR_HH
 #define THERMAL_OPERATOR_HH
 
+#include <Boundary.hh>
 #include <HeatSource.hh>
 #include <MaterialProperty.hh>
 #include <MaterialStates.hh>
@@ -26,8 +27,7 @@ class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
   ThermalOperator(
-      MPI_Comm const &communicator,
-      std::vector<BoundaryType> const &boundary_types,
+      MPI_Comm const &communicator, Boundary const &boundary,
       MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
           &material_properties,
       std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources);
@@ -176,13 +176,13 @@ private:
    */
   bool _adiabatic_only_bc = true;
   /**
-   * Types of boundary.
-   */
-  std::vector<BoundaryType> _boundary_types;
-  /**
    * Current height of the heat sources.
    */
   double _current_source_height = 0.;
+  /**
+   * Boundary ids associated to the domain.
+   */
+  Boundary _boundary;
   /**
    * Data to configure the MatrixFree object.
    */

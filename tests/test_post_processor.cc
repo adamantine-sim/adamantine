@@ -38,6 +38,14 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
   boost::optional<boost::property_tree::ptree const &> units_optional_database;
   adamantine::Geometry<2> geometry(communicator, geometry_database,
                                    units_optional_database);
+
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("type", "adiabatic");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
+
   // Create the DoFHandler
   dealii::hp::FECollection<2> fe_collection;
   fe_collection.push_back(dealii::FE_Q<2>(2));
@@ -84,8 +92,6 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
       beam_database, units_optional_database);
 
   // Initialize the ThermalOperator
-  std::vector<adamantine::BoundaryType> boundary(
-      2, adamantine::BoundaryType::adiabatic);
   adamantine::ThermalOperator<2, false, 0, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
       thermal_operator(communicator, boundary, mat_properties, heat_sources);

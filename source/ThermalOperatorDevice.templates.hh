@@ -450,22 +450,17 @@ template <int dim, bool use_table, int p_order, int fe_degree,
 ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                       MemorySpaceType>::
     ThermalOperatorDevice(
-        MPI_Comm const &communicator,
-        std::vector<BoundaryType> const &boundary_types,
+        MPI_Comm const &communicator, Boundary const &boundary,
         MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
             &material_properties)
-    : _communicator(communicator), _boundary_types(boundary_types), _m(0),
-      _n_owned_cells(0), _material_properties(material_properties),
+    : _communicator(communicator), _m(0), _n_owned_cells(0),
+      _material_properties(material_properties),
       _inverse_mass_matrix(
           new dealii::LA::distributed::Vector<double, MemorySpaceType>())
 {
-  for (auto const boundary : _boundary_types)
-  {
-    if (!(boundary & BoundaryType::adiabatic))
-    {
-      _adiabatic_only_bc = false;
-    }
-  }
+  _adiabatic_only_bc =
+      boundary.get_boundary_ids(BoundaryType::adiabatic).size() ==
+      boundary.n_boundary_ids();
 
   _matrix_free_data.mapping_update_flags = dealii::update_gradients |
                                            dealii::update_JxW_values |
