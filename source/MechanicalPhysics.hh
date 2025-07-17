@@ -1,10 +1,11 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
 #ifndef MECHANICAL_PHYSICS_HH
 #define MECHANICAL_PHYSICS_HH
 
+#include <Boundary.hh>
 #include <Geometry.hh>
 #include <MechanicalOperator.hh>
 
@@ -26,7 +27,7 @@ public:
    * Constructor.
    */
   MechanicalPhysics(MPI_Comm const &communicator, unsigned int const fe_degree,
-                    Geometry<dim> &geometry,
+                    Geometry<dim> &geometry, Boundary const &boundary,
                     MaterialProperty<dim, p_order, MaterialStates,
                                      MemorySpaceType> &material_properties,
                     std::vector<double> const &initial_temperatures);
@@ -95,6 +96,10 @@ private:
    * Associated Geometry.
    */
   Geometry<dim> &_geometry;
+  /**
+   * Associated Boundary.
+   */
+  Boundary _boundary;
   /**
    * Associated MaterialProperty.
    */

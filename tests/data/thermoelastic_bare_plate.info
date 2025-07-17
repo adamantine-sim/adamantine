@@ -39,6 +39,10 @@ discretization
 boundary
 {
   type adiabatic ; convective,radiative
+  boundary_4
+  {
+    type adiabatic,clamped
+  }
 }
 
 refinement

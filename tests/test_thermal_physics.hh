@@ -90,6 +90,12 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   // Build Geometry
   adamantine::Geometry<2> geometry(communicator, geometry_database,
                                    units_optional_database);
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("type", "adiabatic");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
   // MaterialProperty database
   boost::property_tree::ptree material_property_database;
   material_property_database.put("property_format", "polynomial");
@@ -125,13 +131,11 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   database.put("sources.beam_0.scan_path_file",
                "scan_path_test_thermal_physics.txt");
   database.put("sources.beam_0.scan_path_file_format", "segment");
-  // Boundary database
-  database.put("boundary.type", "adiabatic");
 
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 2, 2, adamantine::SolidLiquidPowder,
                              MemorySpaceType, dealii::QGauss<1>>
-      physics(communicator, database, geometry, material_properties);
+      physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(0., solution);
@@ -167,6 +171,12 @@ void thermal_2d_manufactured_solution()
   // Build Geometry
   adamantine::Geometry<2> geometry(communicator, geometry_database,
                                    units_optional_database);
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("type", "adiabatic");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
 
   // MaterialProperty database
   boost::property_tree::ptree material_property_database;
@@ -206,15 +216,13 @@ void thermal_2d_manufactured_solution()
                "scan_path_test_thermal_physics.txt");
   database.put("sources.beam_0.type", "electron_beam");
   database.put("sources.beam_0.scan_path_file_format", "segment");
-  // Boundary database
-  database.put("boundary.type", "adiabatic");
 
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 1, 2, adamantine::SolidLiquidPowder,
                              MemorySpaceType, dealii::QGauss<1>>
-      physics(communicator, database, geometry, material_properties);
+      physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(0., solution);
@@ -265,10 +273,15 @@ void initial_temperature()
   // Other generic input parameters
   auto database = basic_input_database();
 
+  // Build Boundary
+  adamantine::Boundary boundary(database.get_child("boundary"),
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
+
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 4, 2, adamantine::SolidLiquidPowder,
                              MemorySpaceType, dealii::QGauss<1>>
-      physics(communicator, database, geometry, material_properties);
+      physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(1000., solution);
@@ -293,6 +306,12 @@ void energy_conservation()
   adamantine::Geometry<2> geometry(communicator, geometry_database,
                                    units_optional_database);
   boost::property_tree::ptree material_property_database;
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("type", "adiabatic");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
   // MaterialProperty database
   material_property_database.put("property_format", "polynomial");
   material_property_database.put("n_materials", 1);
@@ -330,12 +349,10 @@ void energy_conservation()
   database.put("sources.beam_0.max_y", 6);
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
-  // Boundary database
-  database.put("boundary.type", "adiabatic");
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 0, 2, adamantine::SolidLiquidPowder,
                              MemorySpaceType, dealii::QGauss<1>>
-      physics(communicator, database, geometry, material_properties);
+      physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   double constexpr initial_temperature = 10;
@@ -397,6 +414,12 @@ void radiation_bcs()
   // Build Geometry
   adamantine::Geometry<2> geometry(communicator, geometry_database,
                                    units_optional_database);
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("type", "radiative");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
   // MaterialProperty database
   boost::property_tree::ptree material_property_database;
   material_property_database.put("property_format", "polynomial");
@@ -446,12 +469,10 @@ void radiation_bcs()
   database.put("sources.n_beams", 0);
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
-  // Boundary database
-  database.put("boundary.type", "radiative");
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 1, 2, adamantine::SolidLiquidPowder,
                              dealii::MemorySpace::Host, dealii::QGauss<1>>
-      physics(communicator, database, geometry, material_properties);
+      physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
   double constexpr initial_temperature = 10;
@@ -514,6 +535,13 @@ void convection_bcs()
   adamantine::Geometry<3> geometry(communicator, geometry_database,
                                    units_optional_database);
   boost::property_tree::ptree material_property_database;
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("type", "adiabatic");
+  boundary_database.put("boundary_1.type", "convective");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
   // MaterialProperty database
   material_property_database.put("property_format", "polynomial");
   material_property_database.put("n_materials", 1);
@@ -555,13 +583,10 @@ void convection_bcs()
   database.put("sources.n_beams", 0);
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
-  // Boundary database
-  database.put("boundary.type", "adiabatic");
-  database.put("boundary.boundary_1.type", "convective");
   // Build ThermalPhysics
   adamantine::ThermalPhysics<3, 0, 2, adamantine::SolidLiquidPowder,
                              MemorySpaceType, dealii::QGauss<1>>
-      physics(communicator, database, geometry, material_properties);
+      physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   double constexpr initial_temperature = 400;
@@ -627,10 +652,15 @@ void reference_temperature()
   // Other generic input parameters
   auto database = basic_input_database();
 
+  // Build Boundary
+  adamantine::Boundary boundary(database.get_child("boundary"),
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
+
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 4, 2, adamantine::SolidLiquidPowder,
                              MemorySpaceType, dealii::QGauss<1>>
-      physics(communicator, database, geometry, material_properties);
+      physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
   dealii::LA::distributed::Vector<double, MemorySpaceType> solution;
   physics.initialize_dof_vector(1000., solution);

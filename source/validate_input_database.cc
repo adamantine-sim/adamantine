@@ -1,7 +1,8 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
+#include <Boundary.hh>
 #include <types.hh>
 #include <utils.hh>
 #include <validate_input_database.hh>
@@ -33,31 +34,39 @@ void validate_input_database(boost::property_tree::ptree &database)
   std::string delimiter = ",";
   auto parse_boundary_type = [&](std::string const &boundary)
   {
-    if (boundary == "adiabatic")
+    if (use_thermal_physics)
     {
-      ASSERT_THROW(
-          boundary_type == BoundaryType::invalid,
-          "Error: Adiabatic condition cannot be combined with another type.");
-      boundary_type = BoundaryType::adiabatic;
-    }
-    else
-    {
-      ASSERT_THROW(
-          boundary_type != BoundaryType::adiabatic,
-          "Error: Adiabatic condition cannot be combined with another type.");
-
-      if (boundary == "radiative")
+      if (boundary == "adiabatic")
       {
-        boundary_type |= BoundaryType::radiative;
-      }
-      else if (boundary == "convective")
-      {
-        boundary_type |= BoundaryType::convective;
+        ASSERT_THROW(
+            boundary_type == BoundaryType::invalid,
+            "Error: Adiabatic condition cannot be combined with another type.");
+        boundary_type = BoundaryType::adiabatic;
       }
       else
       {
-        ASSERT_THROW(false, "Error: Unknown boundary type.");
+        ASSERT_THROW(
+            boundary_type != BoundaryType::adiabatic,
+            "Error: Adiabatic condition cannot be combined with another type.");
+
+        if (boundary == "radiative")
+        {
+          boundary_type |= BoundaryType::radiative;
+        }
+        else if (boundary == "convective")
+        {
+          boundary_type |= BoundaryType::convective;
+        }
+        else
+        {
+          ASSERT_THROW(false, "Error: Unknown boundary type.");
+        }
       }
+    }
+    else
+    {
+      ASSERT_THROW(false, "Error: Global boundary type can only be assigned "
+                          "when thermal physic is enabled.");
     }
   };
   while ((pos_str = boundary_type_str.find(delimiter)) != std::string::npos)

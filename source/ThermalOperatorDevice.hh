@@ -5,6 +5,7 @@
 #ifndef THERMAL_OPERATOR_DEVICE_HH
 #define THERMAL_OPERATOR_DEVICE_HH
 
+#include <Boundary.hh>
 #include <MaterialProperty.hh>
 #include <ThermalOperatorBase.hh>
 
@@ -19,8 +20,7 @@ class ThermalOperatorDevice final
     : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
-  ThermalOperatorDevice(MPI_Comm const &communicator,
-                        std::vector<BoundaryType> const &boundary_types,
+  ThermalOperatorDevice(MPI_Comm const &communicator, Boundary const &boundary,
                         MaterialProperty<dim, p_order, MaterialStates,
                                          MemorySpaceType> &material_properties);
 
@@ -114,10 +114,6 @@ private:
    * false otherwise.
    */
   bool _adiabatic_only_bc = true;
-  /**
-   * Types of boundary.
-   */
-  std::vector<BoundaryType> _boundary_types;
   dealii::types::global_dof_index _m;
   unsigned int _n_owned_cells;
   typename dealii::CUDAWrappers::MatrixFree<dim, double>::AdditionalData

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -185,64 +185,6 @@ struct axis<3>
   static unsigned int constexpr y = 1;
   static unsigned int constexpr z = 2;
 };
-
-/**
- * Enum on the different types of boundary condition supported. Some of them can
- * be combined, for example radiative and convective.
- */
-enum BoundaryType
-{
-  invalid = 0,
-  adiabatic = 0x1,
-  radiative = 0x2,
-  convective = 0x4,
-};
-
-/**
- * Global operator which returns an object in which all bits are set which are
- * either set in the first or the second argument. This operator exists since if
- * it did not then the result of the bit-or operator | would be an integer which
- * would in turn trigger a compiler warning when we tried to assign it to an
- * object of type BoundaryType.
- */
-inline BoundaryType operator|(const BoundaryType b1, const BoundaryType b2)
-{
-  return static_cast<BoundaryType>(static_cast<unsigned int>(b1) |
-                                   static_cast<unsigned int>(b2));
-}
-
-/**
- * Global operator which sets the bits from the second argument also in the
- * first one.
- */
-inline BoundaryType &operator|=(BoundaryType &b1, const BoundaryType b2)
-{
-  b1 = b1 | b2;
-  return b1;
-}
-
-/**
- * Global operator which returns an object in which all bits are set which are
- * set in the first as well as the second argument. This operator exists since
- * if it did not then the result of the bit-and operator & would be an integer
- * which would in turn trigger a compiler warning when we tried to assign it to
- * an object of type BoundaryType.
- */
-inline BoundaryType operator&(const BoundaryType b1, const BoundaryType b2)
-{
-  return static_cast<BoundaryType>(static_cast<unsigned int>(b1) &
-                                   static_cast<unsigned int>(b2));
-}
-
-/**
- * Global operator which clears all the bits in the first argument if they are
- * not also set in the second argument.
- */
-inline BoundaryType &operator&=(BoundaryType &b1, const BoundaryType b2)
-{
-  b1 = b1 & b2;
-  return b1;
-}
 
 } // namespace adamantine
 

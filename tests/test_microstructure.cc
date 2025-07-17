@@ -67,6 +67,13 @@ BOOST_AUTO_TEST_CASE(G_and_R)
   adamantine::Geometry<2> geometry(communicator, geometry_database,
                                    units_optional_database);
 
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("type", "adiabatic");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
+
   // Build MaterialProperty
   boost::property_tree::ptree material_property_database;
   material_property_database.put("property_format", "polynomial");
@@ -106,8 +113,6 @@ BOOST_AUTO_TEST_CASE(G_and_R)
   database.put("sources.beam_0.scan_path_file",
                "scan_path_test_thermal_physics.txt");
   database.put("sources.beam_0.scan_path_file_format", "segment");
-  // Boundary database
-  database.put("boundary.type", "adiabatic");
 
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
@@ -115,7 +120,7 @@ BOOST_AUTO_TEST_CASE(G_and_R)
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 4, 2, adamantine::SolidLiquidPowder,
                              dealii::MemorySpace::Host, dealii::QGauss<1>>
-      physics(communicator, database, geometry, material_properties);
+      physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solution;
 

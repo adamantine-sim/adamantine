@@ -5,6 +5,7 @@
 #ifndef THERMAL_PHYSICS_HH
 #define THERMAL_PHYSICS_HH
 
+#include <Boundary.hh>
 #include <Geometry.hh>
 #include <HeatSource.hh>
 #include <ImplicitOperator.hh>
@@ -37,7 +38,7 @@ public:
    */
   ThermalPhysics(MPI_Comm const &communicator,
                  boost::property_tree::ptree const &database,
-                 Geometry<dim> &geometry,
+                 Geometry<dim> &geometry, Boundary const &boundary,
                  MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
                      &material_properties);
 
@@ -175,13 +176,13 @@ private:
    */
   double _current_source_height = 0.;
   /**
-   * Types of boundary.
-   */
-  std::vector<BoundaryType> _boundary_types;
-  /**
    * Associated geometry.
    */
   Geometry<dim> &_geometry;
+  /**
+   * Associated boundary.
+   */
+  Boundary _boundary;
   /**
    * Associated Lagrange finite elements.
    */
