@@ -27,10 +27,12 @@ template <int dim, int p_order, typename MaterialStates,
 MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
     MechanicalPhysics(MPI_Comm const &communicator,
                       unsigned int const fe_degree, Geometry<dim> &geometry,
+                      Boundary const &boundary,
                       MaterialProperty<dim, p_order, MaterialStates,
                                        MemorySpaceType> &material_properties,
                       std::vector<double> const &reference_temperatures)
-    : _geometry(geometry), _material_properties(material_properties),
+    : _geometry(geometry), _boundary(boundary),
+      _material_properties(material_properties),
       _dof_handler(_geometry.get_triangulation()),
       _solution_transfer(_dof_handler),
       _cell_data_transfer(
@@ -109,13 +111,17 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   _affine_constraints.reinit(locally_relevant_dofs);
   dealii::DoFTools::make_hanging_node_constraints(_dof_handler,
                                                   _affine_constraints);
-  // FIXME For now this is only a Dirichlet boundary condition. It is also
-  // manually set to be what is the bottom face for a dealii hyper-rectangle. We
-  // need to decide how we want to expose BC control to the user more generally
-  // (including for user-supplied meshes).
+
+  std::map<dealii::types::boundary_id, const dealii::Function<dim> *>
+      boundary_function_map;
+  dealii::Functions::ZeroFunction<dim> zero_function(dim);
+  auto boundary_ids = _boundary.get_boundary_ids(BoundaryType::clamped);
+  for (auto id : boundary_ids)
+  {
+    boundary_function_map[id] = &zero_function;
+  }
   dealii::VectorTools::interpolate_boundary_values(
-      _dof_handler, 4, dealii::Functions::ZeroFunction<dim>(dim),
-      _affine_constraints);
+      _dof_handler, boundary_function_map, _affine_constraints);
   _affine_constraints.close();
 
   _mechanical_operator->reinit(_dof_handler, _affine_constraints, _q_collection,

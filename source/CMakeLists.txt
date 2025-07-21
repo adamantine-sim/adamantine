@@ -1,6 +1,7 @@
 set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/BeamHeatSourceProperties.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/BodyForce.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/Boundary.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/CubeHeatSource.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/DataAssimilator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ElectronBeamHeatSource.hh
@@ -39,6 +40,7 @@ set(Adamantine_HEADERS
   )
 set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/BodyForce.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/Boundary.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/CubeHeatSource.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/DataAssimilator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ElectronBeamHeatSource.cc

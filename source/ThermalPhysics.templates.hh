@@ -40,48 +40,6 @@ namespace adamantine
 {
 namespace
 {
-BoundaryType parse_boundary_line(std::string boundary_type_str)
-{
-  BoundaryType boundary_type = BoundaryType::invalid;
-  std::string delimiter = ",";
-
-  // Lambda function to parse the string
-  auto parse_boundary_type =
-      [](std::string const &boundary, BoundaryType &boundary_type)
-  {
-    if (boundary == "adiabatic")
-    {
-      boundary_type = BoundaryType::adiabatic;
-    }
-    else
-    {
-      if (boundary == "radiative")
-      {
-        boundary_type |= BoundaryType::radiative;
-      }
-      else if (boundary == "convective")
-      {
-        boundary_type |= BoundaryType::convective;
-      }
-      else
-      {
-        ASSERT_THROW(false, "Unknown boundary type.");
-      }
-    }
-  };
-
-  size_t pos_str = 0;
-  while ((pos_str = boundary_type_str.find(delimiter)) != std::string::npos)
-  {
-    std::string boundary = boundary_type_str.substr(0, pos_str);
-    parse_boundary_type(boundary, boundary_type);
-    boundary_type_str.erase(0, pos_str + delimiter.length());
-  }
-  parse_boundary_type(boundary_type_str, boundary_type);
-
-  return boundary_type;
-}
-
 template <int dim, int fe_degree, typename MemorySpaceType,
           std::enable_if_t<
               std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value,
@@ -135,7 +93,7 @@ evaluate_thermal_physics_impl(
     dealii::hp::FECollection<dim> const &fe_collection, double const t,
     dealii::DoFHandler<dim> const &dof_handler,
     std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources,
-    double current_source_height, std::vector<BoundaryType> boundary_types,
+    double current_source_height, Boundary const &boundary,
     MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::AffineConstraints<double> const &affine_constraints,
@@ -186,14 +144,9 @@ evaluate_thermal_physics_impl(
           dealii::update_JxW_values);
   unsigned int const n_face_q_points = face_quadrature.size();
   dealii::Vector<double> cell_source(dofs_per_cell);
-  bool adiabatic_only_bc = true;
-  for (auto const boundary : boundary_types)
-  {
-    if (!(boundary & BoundaryType::adiabatic))
-    {
-      adiabatic_only_bc = false;
-    }
-  }
+  bool const adiabatic_only_bc =
+      boundary.get_boundary_ids(BoundaryType::adiabatic).size() ==
+      boundary.n_boundary_ids();
   ASSERT_THROW(
       adiabatic_only_bc,
       "On GPU, only adiabatic boundary conditions are currently supported.");
@@ -243,9 +196,7 @@ evaluate_thermal_physics_impl(
           double rad_temperature_infty = 0.;
           double rad_heat_transfer_coef = 0.;
           BoundaryType boundary_type =
-              face->boundary_id() < boundary_types.size()
-                  ? boundary_types[face->boundary_id()]
-                  : boundary_types.back();
+              boundary.get_boundary_type(face->boundary_id());
           if (boundary_type & BoundaryType::convective)
           {
             conv_temperature_infty = material_properties.get_cell_value(
@@ -322,10 +273,11 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
                QuadratureType>::
     ThermalPhysics(MPI_Comm const &communicator,
                    boost::property_tree::ptree const &database,
-                   Geometry<dim> &geometry,
+                   Geometry<dim> &geometry, Boundary const &boundary,
                    MaterialProperty<dim, p_order, MaterialStates,
                                     MemorySpaceType> &material_properties)
-    : _geometry(geometry), _dof_handler(_geometry.get_triangulation()),
+    : _geometry(geometry), _boundary(boundary),
+      _dof_handler(_geometry.get_triangulation()),
       _cell_weights(
           _dof_handler,
           dealii::parallel::CellWeights<dim>::ndofs_weighting({1, 1})),
@@ -378,34 +330,6 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
     }
   }
 
-  // Create the boundary condition types
-  boost::property_tree::ptree boundary_database =
-      database.get_child("boundary");
-  std::vector<dealii::types::boundary_id> boundary_ids =
-      _geometry.get_triangulation().get_boundary_ids();
-  _boundary_types.resize(boundary_ids.size() + 1, BoundaryType::invalid);
-  // Set the default boundary condition. It can be overwritten for given
-  // boundary ids. It is the boundary used for the current layer.
-  // PropertyTreeInput boundary.type
-  std::string boundary_type_str = boundary_database.get<std::string>("type");
-  BoundaryType default_boundary = parse_boundary_line(boundary_type_str);
-  for (auto &boundary : _boundary_types)
-  {
-    boundary = default_boundary;
-  }
-  // Check if the user wants to use different boundaries for different part
-  // of the domain's boundary.
-  for (auto const id : boundary_ids)
-  {
-    // PropertyTreeInput boundary.boundary_id.type
-    auto boundary_type_str = boundary_database.get_optional<std::string>(
-        "boundary_" + std::to_string(id) + ".type");
-    if (boundary_type_str)
-    {
-      _boundary_types[id] = parse_boundary_line(*boundary_type_str);
-    }
-  }
-
   // Create the thermal operator
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
   {
@@ -414,16 +338,14 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
       _thermal_operator =
           std::make_shared<ThermalOperator<dim, true, p_order, fe_degree,
                                            MaterialStates, MemorySpaceType>>(
-              communicator, _boundary_types, _material_properties,
-              _heat_sources);
+              communicator, _boundary, _material_properties, _heat_sources);
     }
     else
     {
       _thermal_operator =
           std::make_shared<ThermalOperator<dim, false, p_order, fe_degree,
                                            MaterialStates, MemorySpaceType>>(
-              communicator, _boundary_types, _material_properties,
-              _heat_sources);
+              communicator, _boundary, _material_properties, _heat_sources);
     }
   }
   else
@@ -432,13 +354,13 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
     {
       _thermal_operator = std::make_shared<ThermalOperatorDevice<
           dim, true, p_order, fe_degree, MaterialStates, MemorySpaceType>>(
-          communicator, _boundary_types, _material_properties);
+          communicator, _boundary, _material_properties);
     }
     else
     {
       _thermal_operator = std::make_shared<ThermalOperatorDevice<
           dim, false, p_order, fe_degree, MaterialStates, MemorySpaceType>>(
-          communicator, _boundary_types, _material_properties);
+          communicator, _boundary, _material_properties);
     }
   }
 
@@ -1014,7 +936,7 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
       return evaluate_thermal_physics_impl<dim, true, p_order, fe_degree,
                                            MaterialStates, MemorySpaceType>(
           _thermal_operator, _fe_collection, t, _dof_handler, _heat_sources,
-          _current_source_height, _boundary_types, _material_properties,
+          _current_source_height, _boundary, _material_properties,
           _affine_constraints, y, timers);
     }
     else
@@ -1022,7 +944,7 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
       return evaluate_thermal_physics_impl<dim, false, p_order, fe_degree,
                                            MaterialStates, MemorySpaceType>(
           _thermal_operator, _fe_collection, t, _dof_handler, _heat_sources,
-          _current_source_height, _boundary_types, _material_properties,
+          _current_source_height, _boundary, _material_properties,
           _affine_constraints, y, timers);
     }
   }

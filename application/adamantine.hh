@@ -1,10 +1,11 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
 #ifndef ADAMANTINE_HH
 #define ADAMANTINE_HH
 
+#include <Boundary.hh>
 #include <DataAssimilator.hh>
 #include <ExperimentalData.hh>
 #include <Geometry.hh>
@@ -218,13 +219,14 @@ std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
 initialize(MPI_Comm const &communicator,
            boost::property_tree::ptree const &database,
            adamantine::Geometry<dim> &geometry,
+           adamantine::Boundary const &boundary,
            adamantine::MaterialProperty<dim, p_order, MaterialStates,
                                         MemorySpaceType> &material_properties)
 {
   return std::make_unique<
       adamantine::ThermalPhysics<dim, p_order, fe_degree, MaterialStates,
                                  MemorySpaceType, QuadratureType>>(
-      communicator, database, geometry, material_properties);
+      communicator, database, geometry, boundary, material_properties);
 }
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,
@@ -233,21 +235,21 @@ std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
 initialize_quadrature(
     std::string const &quadrature_type, MPI_Comm const &communicator,
     boost::property_tree::ptree const &database,
-    adamantine::Geometry<dim> &geometry,
+    adamantine::Geometry<dim> &geometry, adamantine::Boundary const &boundary,
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties)
 {
   if (quadrature_type.compare("gauss") == 0)
     return initialize<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
                       dealii::QGauss<1>>(communicator, database, geometry,
-                                         material_properties);
+                                         boundary, material_properties);
   else
   {
     adamantine::ASSERT_THROW(quadrature_type.compare("lobatto") == 0,
                              "quadrature should be Gauss or Lobatto.");
     return initialize<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
-                      dealii::QGaussLobatto<1>>(communicator, database,
-                                                geometry, material_properties);
+                      dealii::QGaussLobatto<1>>(
+        communicator, database, geometry, boundary, material_properties);
   }
 }
 
@@ -257,7 +259,7 @@ std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
 initialize_thermal_physics(
     unsigned int fe_degree, std::string const &quadrature_type,
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
-    adamantine::Geometry<dim> &geometry,
+    adamantine::Geometry<dim> &geometry, adamantine::Boundary const &boundary,
     adamantine::MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
         &material_properties)
 {
@@ -266,34 +268,39 @@ initialize_thermal_physics(
   case 1:
   {
     return initialize_quadrature<dim, p_order, 1, MaterialStates,
-                                 MemorySpaceType>(
-        quadrature_type, communicator, database, geometry, material_properties);
+                                 MemorySpaceType>(quadrature_type, communicator,
+                                                  database, geometry, boundary,
+                                                  material_properties);
   }
   case 2:
   {
     return initialize_quadrature<dim, p_order, 2, MaterialStates,
-                                 MemorySpaceType>(
-        quadrature_type, communicator, database, geometry, material_properties);
+                                 MemorySpaceType>(quadrature_type, communicator,
+                                                  database, geometry, boundary,
+                                                  material_properties);
   }
   case 3:
   {
     return initialize_quadrature<dim, p_order, 3, MaterialStates,
-                                 MemorySpaceType>(
-        quadrature_type, communicator, database, geometry, material_properties);
+                                 MemorySpaceType>(quadrature_type, communicator,
+                                                  database, geometry, boundary,
+                                                  material_properties);
   }
   case 4:
   {
     return initialize_quadrature<dim, p_order, 4, MaterialStates,
-                                 MemorySpaceType>(
-        quadrature_type, communicator, database, geometry, material_properties);
+                                 MemorySpaceType>(quadrature_type, communicator,
+                                                  database, geometry, boundary,
+                                                  material_properties);
   }
   default:
   {
     adamantine::ASSERT_THROW(fe_degree == 5,
                              "fe_degree should be between 1 and 5.");
     return initialize_quadrature<dim, p_order, 5, MaterialStates,
-                                 MemorySpaceType>(
-        quadrature_type, communicator, database, geometry, material_properties);
+                                 MemorySpaceType>(quadrature_type, communicator,
+                                                  database, geometry, boundary,
+                                                  material_properties);
   }
   }
 }
@@ -760,8 +767,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // Extract the physics property tree
   boost::property_tree::ptree physics_database = database.get_child("physics");
   bool const use_thermal_physics = physics_database.get<bool>("thermal");
-  [[maybe_unused]] bool const use_mechanical_physics =
-      physics_database.get<bool>("mechanical");
+  bool const use_mechanical_physics = physics_database.get<bool>("mechanical");
 
   // Extract the discretization property tree
   boost::property_tree::ptree discretization_database =
@@ -774,6 +780,13 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // Extract the verbosity
   // PropertyTreeInput verbose_output
   bool const verbose_output = database.get("verbose_output", false);
+
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database =
+      database.get_child("boundary");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                use_mechanical_physics && !use_thermal_physics);
 
   // Create ThermalPhysics if necessary
   std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
@@ -788,7 +801,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     std::string quadrature_type =
         discretization_database.get("thermal.quadrature", "gauss");
     thermal_physics = initialize_thermal_physics<dim>(
-        fe_degree, quadrature_type, communicator, database, geometry,
+        fe_degree, quadrature_type, communicator, database, geometry, boundary,
         material_properties);
     heat_sources = thermal_physics->get_heat_sources();
     post_processor_database.put("thermal_output", true);
@@ -826,7 +839,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         discretization_database.get<unsigned int>("mechanical.fe_degree");
     mechanical_physics = std::make_unique<adamantine::MechanicalPhysics<
         dim, p_order, MaterialStates, MemorySpaceType>>(
-        communicator, fe_degree, geometry, material_properties,
+        communicator, fe_degree, geometry, boundary, material_properties,
         material_reference_temps);
     post_processor_database.put("mechanical_output", true);
   }
@@ -1419,6 +1432,8 @@ run_ensemble(MPI_Comm const &global_communicator,
   // Mandatory subtrees
   boost::property_tree::ptree geometry_database =
       database.get_child("geometry");
+  boost::property_tree::ptree boundary_database =
+      database.get_child("boundary");
   boost::property_tree::ptree discretization_database =
       database.get_child("discretization");
   boost::property_tree::ptree time_stepping_database =
@@ -1486,6 +1501,8 @@ run_ensemble(MPI_Comm const &global_communicator,
       heat_sources_ensemble(local_ensemble_size);
 
   std::vector<std::unique_ptr<adamantine::Geometry<dim>>> geometry_ensemble;
+
+  std::vector<std::unique_ptr<adamantine::Boundary>> boundary_ensemble;
 
   std::vector<std::unique_ptr<adamantine::MaterialProperty<
       dim, p_order, MaterialStates, MemorySpaceType>>>
@@ -1615,6 +1632,11 @@ run_ensemble(MPI_Comm const &global_communicator,
     geometry_ensemble.push_back(std::make_unique<adamantine::Geometry<dim>>(
         local_communicator, geometry_database, units_optional_database));
 
+    boundary_ensemble.push_back(std::make_unique<adamantine::Boundary>(
+        boundary_database,
+        geometry_ensemble.back()->get_triangulation().get_boundary_ids(),
+        false));
+
     material_properties_ensemble.push_back(
         std::make_unique<adamantine::MaterialProperty<
             dim, p_order, MaterialStates, MemorySpaceType>>(
@@ -1624,7 +1646,7 @@ run_ensemble(MPI_Comm const &global_communicator,
     thermal_physics_ensemble[member] = initialize_thermal_physics<dim>(
         fe_degree, quadrature_type, local_communicator,
         database_ensemble[member], *geometry_ensemble[member],
-        *material_properties_ensemble[member]);
+        *boundary_ensemble[member], *material_properties_ensemble[member]);
     heat_sources_ensemble[member] =
         thermal_physics_ensemble[member]->get_heat_sources();
 

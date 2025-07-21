@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -227,13 +227,18 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   adamantine::MaterialProperty<3, 4, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("boundary_4.type", "clamped");
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids(), true);
   // Build MechanicalPhysics
   unsigned int const fe_degree = 1;
   std::vector<double> empty_vector;
   adamantine::MechanicalPhysics<3, 4, adamantine::SolidLiquidPowder,
                                 dealii::MemorySpace::Host>
-      mechanical_physics(communicator, fe_degree, geometry, material_properties,
-                         empty_vector);
+      mechanical_physics(communicator, fe_degree, geometry, boundary,
+                         material_properties, empty_vector);
   std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
   auto gravity_force = std::make_shared<adamantine::GravityForce<
       3, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
@@ -300,13 +305,18 @@ BOOST_AUTO_TEST_CASE(fe_nothing)
   adamantine::MaterialProperty<3, 2, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("boundary_4.type", "clamped");
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids(), true);
   // Build MechanicalPhysics
   unsigned int const fe_degree = 1;
   std::vector<double> empty_vector;
   adamantine::MechanicalPhysics<3, 2, adamantine::SolidLiquidPowder,
                                 dealii::MemorySpace::Host>
-      mechanical_physics(communicator, fe_degree, geometry, material_properties,
-                         empty_vector);
+      mechanical_physics(communicator, fe_degree, geometry, boundary,
+                         material_properties, empty_vector);
   std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
   auto gravity_force = std::make_shared<adamantine::GravityForce<
       3, 2, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
@@ -414,6 +424,14 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
     triangulation.execute_coarsening_and_refinement();
   }
 
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("type", "adiabatic");
+  boundary_database.put("boundary_4.type", "adiabatic,clamped");
+  adamantine::Boundary boundary(boundary_database,
+                                geometry.get_triangulation().get_boundary_ids(),
+                                false);
+
   // Create the MaterialProperty
   boost::property_tree::ptree material_database;
   material_database.put("property_format", "polynomial");
@@ -453,10 +471,10 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
   database.put("sources.beam_0.scan_path_file",
                "scan_path_test_thermal_physics.txt");
   database.put("sources.beam_0.scan_path_file_format", "segment");
-  database.put("boundary.type", "adiabatic");
   adamantine::ThermalPhysics<dim, 3, 1, adamantine::SolidLiquidPowder,
                              dealii::MemorySpace::Host, dealii::QGauss<1>>
-      thermal_physics(communicator, database, geometry, material_properties);
+      thermal_physics(communicator, database, geometry, boundary,
+                      material_properties);
   thermal_physics.setup();
 
   dealii::LinearAlgebra::distributed::Vector<double> temperature;
@@ -470,8 +488,8 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
   std::vector<double> initial_temperature = {2.0};
   adamantine::MechanicalPhysics<3, 3, adamantine::SolidLiquidPowder,
                                 dealii::MemorySpace::Host>
-      mechanical_physics(communicator, fe_degree, geometry, material_properties,
-                         initial_temperature);
+      mechanical_physics(communicator, fe_degree, geometry, boundary,
+                         material_properties, initial_temperature);
 
   boost::property_tree::ptree post_processor_database;
   post_processor_database.put("filename_prefix", "mech_phys_test");
@@ -576,13 +594,18 @@ BOOST_AUTO_TEST_CASE(elastoplastic)
   adamantine::MaterialProperty<3, 4, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("boundary_4.type", "clamped");
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids(), true);
   // Build MechanicalPhysics
   unsigned int const fe_degree = 1;
   std::vector<double> empty_vector;
   adamantine::MechanicalPhysics<3, 4, adamantine::SolidLiquidPowder,
                                 dealii::MemorySpace::Host>
-      mechanical_physics(communicator, fe_degree, geometry, material_properties,
-                         empty_vector);
+      mechanical_physics(communicator, fe_degree, geometry, boundary,
+                         material_properties, empty_vector);
   std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
   auto gravity_force = std::make_shared<adamantine::GravityForce<
       3, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
