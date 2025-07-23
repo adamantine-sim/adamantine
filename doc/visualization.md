@@ -21,7 +21,7 @@ been activated yet are visible. To only visualize the activated cells, do the
 following:
  - Add the **Threshold** operator. This operator is part of the **Selection**
  operator.
- - Open the **Threshild operator attributes** and delete the default selected
+ - Open the **Threshold operator attributes** and delete the default selected
  variable.
  - Add a new variable. Choose **Scalars**, then **temperature**.
  - Modify the **Lower bound** to 1.
