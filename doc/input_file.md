@@ -123,23 +123,10 @@ between 0 and 1 (required).
 
 ## time\_stepping (required):
 * **method**: name of the method to use for the time integration: `forward_euler`,
-`rk_third_order`, `rk_fourth_order`, `backward_euler`, `implicit_midpoint`, `crank_nicolson`, or
-`sdirk2` (required)
+`rk_third_order`, or `rk_fourth_order` (required)
 * **scan\_path\_for\_duration**: if the flag is true, the duration of the simulation is determined by the duration of the scan path. In this case the scan path file needs to contain SCAN\_PATH\_END to terminate the simulation. If the flag is false, the duration of the simulation is determined by the duration input (default value: false, <span style="color:green">since 1.1<span>)
 * **duration**: duration of the simulation in seconds (<span style="color:red">required for 1.0,</span> <span style="color:green">since 1.1 only required if scan\_path\_for\_duration is false</span>)
 * **time\_step**: length of the time steps used for the simulation in seconds (required)
-* for implicit method:
-  * **max\_iteration**: mamximum number of the iterations of the linear solver
-  (default value: 1000)
-  * **tolerance**: tolerance of the linear solver (default value: 1e-12)
-  * **n\_tmp\_vectors**: maximum number of vectors used by GMRES (default value:
-  30)
-  * **right\_preconditioner**: use left or right preconditioning for the linear
-  solver (default value: false)
-  * **newton\_max\_iteration**: maximum number of iterations of Newton solver
-  (default value: 100)
-  * **newton\_tolerance**: tolerance of the Newton solver (default value: 1e-6)
-  * **jfnk**: use Jacobian-Free Newton Krylov method (default value: false)
 
 ## checkpoint (optional):
 * **time\_steps\_between\_checkpoint**: number of time steps after which checkpointing is performed (required)
