@@ -93,9 +93,8 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   // Create the Boundary
   boost::property_tree::ptree boundary_database;
   boundary_database.put("type", "adiabatic");
-  adamantine::Boundary boundary(boundary_database,
-                                geometry.get_triangulation().get_boundary_ids(),
-                                false);
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
   // MaterialProperty database
   boost::property_tree::ptree material_property_database;
   material_property_database.put("property_format", "polynomial");
@@ -174,9 +173,8 @@ void thermal_2d_manufactured_solution()
   // Create the Boundary
   boost::property_tree::ptree boundary_database;
   boundary_database.put("type", "adiabatic");
-  adamantine::Boundary boundary(boundary_database,
-                                geometry.get_triangulation().get_boundary_ids(),
-                                false);
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
 
   // MaterialProperty database
   boost::property_tree::ptree material_property_database;
@@ -274,9 +272,9 @@ void initial_temperature()
   auto database = basic_input_database();
 
   // Build Boundary
-  adamantine::Boundary boundary(database.get_child("boundary"),
-                                geometry.get_triangulation().get_boundary_ids(),
-                                false);
+  adamantine::Boundary boundary(
+      database.get_child("boundary"),
+      geometry.get_triangulation().get_boundary_ids());
 
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 4, 2, adamantine::SolidLiquidPowder,
@@ -309,9 +307,8 @@ void energy_conservation()
   // Create the Boundary
   boost::property_tree::ptree boundary_database;
   boundary_database.put("type", "adiabatic");
-  adamantine::Boundary boundary(boundary_database,
-                                geometry.get_triangulation().get_boundary_ids(),
-                                false);
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
   // MaterialProperty database
   material_property_database.put("property_format", "polynomial");
   material_property_database.put("n_materials", 1);
@@ -417,9 +414,8 @@ void radiation_bcs()
   // Create the Boundary
   boost::property_tree::ptree boundary_database;
   boundary_database.put("type", "radiative");
-  adamantine::Boundary boundary(boundary_database,
-                                geometry.get_triangulation().get_boundary_ids(),
-                                false);
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
   // MaterialProperty database
   boost::property_tree::ptree material_property_database;
   material_property_database.put("property_format", "polynomial");
@@ -539,9 +535,8 @@ void convection_bcs()
   boost::property_tree::ptree boundary_database;
   boundary_database.put("type", "adiabatic");
   boundary_database.put("boundary_1.type", "convective");
-  adamantine::Boundary boundary(boundary_database,
-                                geometry.get_triangulation().get_boundary_ids(),
-                                false);
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
   // MaterialProperty database
   material_property_database.put("property_format", "polynomial");
   material_property_database.put("n_materials", 1);
@@ -653,9 +648,9 @@ void reference_temperature()
   auto database = basic_input_database();
 
   // Build Boundary
-  adamantine::Boundary boundary(database.get_child("boundary"),
-                                geometry.get_triangulation().get_boundary_ids(),
-                                false);
+  adamantine::Boundary boundary(
+      database.get_child("boundary"),
+      geometry.get_triangulation().get_boundary_ids());
 
   // Build ThermalPhysics
   adamantine::ThermalPhysics<2, 4, 2, adamantine::SolidLiquidPowder,
