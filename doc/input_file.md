@@ -25,24 +25,6 @@ can be chosen simultaneously by separating them by comma (required)
 
 ## geometry (required):
 * **dim**: the dimension of the problem (2 or 3, required)
-* **material\_height**: below this height the domain contains material. Above this
-height the domain is empty. The height is in meters (default value: 1e9)
-* **use\_powder**: the additive manufacturing process use powder: true or false
-(default value: false)
-* if use\_powder is true:
-  * **powder\_layer**: thickness of the initial layer of powder in meters (required)
-* **material\_deposition**: material is deposed during the simulation: true or
-false (default value: false)
-* if material\_deposition is true:
-  * **material\_deposition\_method**: `file` or `scan_paths`
-  * if material\_deposition\_method is file:
-      * **material\_deposition\_file**: material deposition filename
-  * if material\_deposition\_method is scan\_paths:
-      * **deposition\_length**: length of material deposition boxes along the scan direction in meters (required)
-      * **deposition\_width**: width of material deposition boxes (in the plane of the material, normal to the scan direction, 3D only) in meters (required)
-      * **deposition\_height**: height of material deposition boxes (out of the plane of the material) in meters (required)
-      * **deposition\_lead\_time**: amount of time before the scan path reaches a point that the material is added in seconds (required)
-      * **deposition\_time**: add the material in bigger lumps in seconds (optional)
 * **import\_mesh**: true or false (required)
 * if import\_mesh is true:
   * **mesh\_file**: The filename for the mesh file (required)
@@ -63,6 +45,24 @@ false (default value: false)
   * **length\_divisions**: number of cell layers in length (default value: 10)
   * **height\_divisions**: number of cell layers in the height (default value: 10)
   * **width\_divisions**: number of cell layers in width (only in 3D) (default value: 10)
+* **material\_height**: below this height the domain contains material. Above this
+height the domain is empty. The height is in meters (default value: 1e9)
+* **use\_powder**: the additive manufacturing process use powder: true or false
+(default value: false)
+* if use\_powder is true:
+  * **powder\_layer**: thickness of the initial layer of powder in meters (required)
+* **material\_deposition**: material is deposed during the simulation: true or
+false (default value: false)
+* if material\_deposition is true:
+  * **material\_deposition\_method**: `file` or `scan_paths`
+  * if material\_deposition\_method is file:
+      * **material\_deposition\_file**: material deposition filename
+  * if material\_deposition\_method is scan\_paths:
+      * **deposition\_length**: length of material deposition boxes along the scan direction in meters (required)
+      * **deposition\_width**: width of material deposition boxes (in the plane of the material, normal to the scan direction, 3D only) in meters (required)
+      * **deposition\_height**: height of material deposition boxes (out of the plane of the material) in meters (required)
+      * **deposition\_lead\_time**: amount of time before the scan path reaches a point that the material is added in seconds (required)
+      * **deposition\_time**: add the material in bigger lumps in seconds (optional)
 
 ## materials (required):
 * **n\_materials**: number of materials (required)
