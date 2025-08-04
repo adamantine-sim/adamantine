@@ -3,6 +3,7 @@ layout: default
 parent: Examples
 title: Data Assimilation
 nav_order: 3
+usemathjax: true
 ---
 
 # Data Assimilation
@@ -63,7 +64,7 @@ assimilation.
 The example is composed of the following files:
  * **bare_plate_L_da.info:** the input file
  * **bare_plate_L_scan_path.txt:** the scan path of the heat source
- * **bare_plate_L_expt_data_0_0.csv** and **bare_plate_L_expt_data_0_0.csv:**
+ * **bare_plate_L_expt_data_0_0.csv** and **bare_plate_L_expt_data_0_1.csv:**
  point cloud synthetic data that represent experimental data
  * **bare_plate_L_expt_log.txt:** the log file that lists the timestamps for each
  frame from each camera
