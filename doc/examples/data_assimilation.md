@@ -119,7 +119,7 @@ The example is composed of the following files:
  * [bare_plate_L_da_aug_ref_data_0_0.csv](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_da_aug_ref_data_0_0.csv) and 
  [bare_plate_L_da_aug_ref_data_0_0.csv](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_da_aug_ref_data_0_0.csv):
  point cloud synthetic data that represent experimental data
- * [bare_plate_L_da_aug_reg_log.txt](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_da_aug_reg_log.txt): the log file that lists the timestamps for each
+ * [bare_plate_L_da_aug_reg_log.txt](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_da_aug_ref_log.txt): the log file that lists the timestamps for each
 
 The interesting part of the input files are:
 ```
