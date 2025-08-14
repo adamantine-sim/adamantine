@@ -784,9 +784,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // Create the Boundary
   boost::property_tree::ptree boundary_database =
       database.get_child("boundary");
-  adamantine::Boundary boundary(boundary_database,
-                                geometry.get_triangulation().get_boundary_ids(),
-                                use_mechanical_physics && !use_thermal_physics);
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
 
   // Create ThermalPhysics if necessary
   std::unique_ptr<adamantine::ThermalPhysicsInterface<dim, MemorySpaceType>>
@@ -1634,8 +1633,7 @@ run_ensemble(MPI_Comm const &global_communicator,
 
     boundary_ensemble.push_back(std::make_unique<adamantine::Boundary>(
         boundary_database,
-        geometry_ensemble.back()->get_triangulation().get_boundary_ids(),
-        false));
+        geometry_ensemble.back()->get_triangulation().get_boundary_ids()));
 
     material_properties_ensemble.push_back(
         std::make_unique<adamantine::MaterialProperty<

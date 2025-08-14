@@ -289,9 +289,8 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   // Create the Boundary
   boost::property_tree::ptree boundary_database;
   boundary_database.put("type", "adiabatic");
-  adamantine::Boundary boundary(boundary_database,
-                                geometry.get_triangulation().get_boundary_ids(),
-                                false);
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
 
   // MaterialProperty database
   database.put("materials.property_format", "polynomial");

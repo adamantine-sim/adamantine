@@ -70,9 +70,8 @@ BOOST_AUTO_TEST_CASE(G_and_R)
   // Create the Boundary
   boost::property_tree::ptree boundary_database;
   boundary_database.put("type", "adiabatic");
-  adamantine::Boundary boundary(boundary_database,
-                                geometry.get_triangulation().get_boundary_ids(),
-                                false);
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
 
   // Build MaterialProperty
   boost::property_tree::ptree material_property_database;

@@ -24,58 +24,105 @@ void validate_input_database(boost::property_tree::ptree &database)
                "Error: both thermal and mechanical physics are disabled");
 
   // Tree: boundary
-  // Read the boundary condition type and check for disallowed combinations
-  // PropertyTreeInput boundary.type
+  // Read the boundary condition type and check for disallowed combinations.
+  // Store if we use radiative or convective boundary so we can check later that
+  // the appropriate material properties are saved.
   BoundaryType boundary_type = BoundaryType::invalid;
-  std::string boundary_type_str = database.get<std::string>("boundary.type");
   // Parse the string
-  size_t pos_str = 0;
-  std::string boundary;
   std::string delimiter = ",";
-  auto parse_boundary_type = [&](std::string const &boundary)
+  auto parse_boundary_type = [&](std::string const &boundary,
+                                 BoundaryType &line_boundary_type,
+                                 bool &thermal_bc, bool &mechanical_bc)
   {
-    if (use_thermal_physics)
+    if (boundary == "adiabatic")
     {
-      if (boundary == "adiabatic")
-      {
-        ASSERT_THROW(
-            boundary_type == BoundaryType::invalid,
-            "Error: Adiabatic condition cannot be combined with another type.");
-        boundary_type = BoundaryType::adiabatic;
-      }
-      else
-      {
-        ASSERT_THROW(
-            boundary_type != BoundaryType::adiabatic,
-            "Error: Adiabatic condition cannot be combined with another type.");
-
-        if (boundary == "radiative")
-        {
-          boundary_type |= BoundaryType::radiative;
-        }
-        else if (boundary == "convective")
-        {
-          boundary_type |= BoundaryType::convective;
-        }
-        else
-        {
-          ASSERT_THROW(false, "Error: Unknown boundary type.");
-        }
-      }
+      ASSERT_THROW(!(line_boundary_type & BoundaryType::radiative) ||
+                       !(line_boundary_type & BoundaryType::convective),
+                   "Error: Adiabatic condition cannot be combined with another "
+                   "type of thermal boundary condition.");
+      line_boundary_type |= BoundaryType::adiabatic;
+      thermal_bc = true;
     }
     else
     {
-      ASSERT_THROW(false, "Error: Global boundary type can only be assigned "
-                          "when thermal physic is enabled.");
+      if (boundary == "radiative")
+      {
+        ASSERT_THROW(!(line_boundary_type & BoundaryType::adiabatic),
+                     "Error: Adiabatic condition cannot be combined with "
+                     "another type of thermal boundary condition.");
+        line_boundary_type |= BoundaryType::radiative;
+        boundary_type |= BoundaryType::radiative;
+        thermal_bc = true;
+      }
+      else if (boundary == "convective")
+      {
+        ASSERT_THROW(!(line_boundary_type & BoundaryType::adiabatic),
+                     "Error: Adiabatic condition cannot be combined with "
+                     "another type of thermal boundary condition.");
+        line_boundary_type |= BoundaryType::convective;
+        boundary_type |= BoundaryType::convective;
+        thermal_bc = true;
+      }
+      else if (boundary == "clamped")
+      {
+        ASSERT_THROW(!(line_boundary_type & BoundaryType::traction_free),
+                     "Error: Mechanical boundary condition cannot be combined "
+                     "together.");
+        line_boundary_type |= BoundaryType::clamped;
+        mechanical_bc = true;
+      }
+      else if (boundary == "traction_free")
+      {
+        ASSERT_THROW(!(line_boundary_type & BoundaryType::clamped),
+                     "Error: Mechanical boundary condition cannot be combined "
+                     "together.");
+        line_boundary_type |= BoundaryType::traction_free;
+        mechanical_bc = true;
+      }
+      else
+      {
+        ASSERT_THROW(false, "Error: Unknown boundary type.");
+      }
     }
   };
-  while ((pos_str = boundary_type_str.find(delimiter)) != std::string::npos)
+  auto const boundary_database = database.get_child("boundary");
+  for (auto const &child_pair : boundary_database)
   {
-    boundary = boundary_type_str.substr(0, pos_str);
-    parse_boundary_type(boundary);
-    boundary_type_str.erase(0, pos_str + delimiter.length());
+    size_t pos_str = 0;
+    bool thermal_bc = false;
+    bool mechanical_bc = false;
+    BoundaryType line_boundary_type = BoundaryType::invalid;
+    std::string boundary_type_str = "invalid";
+    if (child_pair.first == "type")
+    {
+      boundary_type_str = child_pair.second.data();
+    }
+    else
+    {
+      boundary_type_str =
+          boundary_database.get<std::string>(child_pair.first + ".type");
+    }
+
+    while ((pos_str = boundary_type_str.find(delimiter)) != std::string::npos)
+    {
+      std::string boundary = boundary_type_str.substr(0, pos_str);
+      parse_boundary_type(boundary, line_boundary_type, thermal_bc,
+                          mechanical_bc);
+      boundary_type_str.erase(0, pos_str + delimiter.length());
+    }
+    parse_boundary_type(boundary_type_str, line_boundary_type, thermal_bc,
+                        mechanical_bc);
+
+    if (use_thermal_physics)
+    {
+      ASSERT_THROW(thermal_bc, "Error: Missing thermal boundary condition.");
+    }
+    if (use_mechanical_physics)
+    {
+      ASSERT_THROW(mechanical_bc,
+                   "Error: Missing mechanical boundary condition.");
+    }
   }
-  parse_boundary_type(boundary_type_str);
 
   // Tree: discretization.thermal
   if (use_thermal_physics)

@@ -231,7 +231,7 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   boost::property_tree::ptree boundary_database;
   boundary_database.put("boundary_4.type", "clamped");
   adamantine::Boundary boundary(
-      boundary_database, geometry.get_triangulation().get_boundary_ids(), true);
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
   // Build MechanicalPhysics
   unsigned int const fe_degree = 1;
   std::vector<double> empty_vector;
@@ -309,7 +309,7 @@ BOOST_AUTO_TEST_CASE(fe_nothing)
   boost::property_tree::ptree boundary_database;
   boundary_database.put("boundary_4.type", "clamped");
   adamantine::Boundary boundary(
-      boundary_database, geometry.get_triangulation().get_boundary_ids(), true);
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
   // Build MechanicalPhysics
   unsigned int const fe_degree = 1;
   std::vector<double> empty_vector;
@@ -428,9 +428,8 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
   boost::property_tree::ptree boundary_database;
   boundary_database.put("type", "adiabatic");
   boundary_database.put("boundary_4.type", "adiabatic,clamped");
-  adamantine::Boundary boundary(boundary_database,
-                                geometry.get_triangulation().get_boundary_ids(),
-                                false);
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
 
   // Create the MaterialProperty
   boost::property_tree::ptree material_database;
@@ -598,7 +597,7 @@ BOOST_AUTO_TEST_CASE(elastoplastic)
   boost::property_tree::ptree boundary_database;
   boundary_database.put("boundary_4.type", "clamped");
   adamantine::Boundary boundary(
-      boundary_database, geometry.get_triangulation().get_boundary_ids(), true);
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
   // Build MechanicalPhysics
   unsigned int const fe_degree = 1;
   std::vector<double> empty_vector;

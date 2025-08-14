@@ -32,7 +32,7 @@ BOOST_AUTO_TEST_CASE(expected_passes)
   database.put("materials.material_0.solid.density", 10.);
   database.put("materials.material_0.solid.specific_heat", 10.);
   database.put("physics.thermal", true);
-  database.put("physics.mechanical", true);
+  database.put("physics.mechanical", false);
   database.put("post_processor.filename_prefix", "output");
   database.put("refinement.n_heat_refinements", 0);
   database.put("sources.n_beams", 1);
@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   boost::property_tree::ptree database;
 
   // Start with a valid set of bare-bones inputs
-  database.put("boundary.type", "adiabatic");
+  database.put("boundary.type", "adiabatic,traction_free");
   database.put("discretization.thermal.fe_degree", "1");
   database.put("geometry.dim", "3");
   database.put("discretization.thermal.quadrature", "gauss");
@@ -111,10 +111,16 @@ BOOST_AUTO_TEST_CASE(expected_failures)
 
   // Invalid BC combination
   database.get_child("boundary").erase("type");
-  database.put("boundary.type", "adiabatic,convective");
+  database.put("boundary.type", "adiabatic,convective,traction_free");
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.get_child("boundary").erase("type");
   database.put("boundary.type", "adiabatic");
+  BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
+  database.get_child("boundary").erase("type");
+  database.put("boundary.type", "adiabatic,clamped,traction_free");
+  BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
+  database.get_child("boundary").erase("type");
+  database.put("boundary.type", "adiabatic,traction_free");
 
   // Invalid fe degree
   database.get_child("discretization").erase("thermal.fe_degree");
@@ -309,7 +315,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
 
   // Missing required material properties with convective BCs
   database.get_child("boundary").erase("type");
-  database.put("boundary.type", "convective");
+  database.put("boundary.type", "convective,traction_free");
   database.put("materials.material_0.solid.convection_heat_transfer_coef", 10.);
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.get_child("materials")
@@ -323,11 +329,11 @@ BOOST_AUTO_TEST_CASE(expected_failures)
       .get_child("solid")
       .erase("convection_temperature_infty");
   database.get_child("boundary").erase("type");
-  database.put("boundary.type", "adiabatic");
+  database.put("boundary.type", "adiabatic,traction_free");
 
   // Missing required material properties with radiative BCs
   database.get_child("boundary").erase("type");
-  database.put("boundary.type", "radiative");
+  database.put("boundary.type", "radiative,traction_free");
   database.put("materials.material_0.solid.emissivity", 10.);
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.get_child("materials")
@@ -341,7 +347,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
       .get_child("solid")
       .erase("radiation_temperature_infty");
   database.get_child("boundary").erase("type");
-  database.put("boundary.type", "adiabatic");
+  database.put("boundary.type", "adiabatic,traction_free");
 
   // Invalid memory space
   database.erase("memory_space");

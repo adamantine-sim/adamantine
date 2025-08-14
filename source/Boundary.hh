@@ -24,7 +24,8 @@ enum BoundaryType
   adiabatic = 0x1,
   radiative = 0x2,
   convective = 0x4,
-  clamped = 0x8
+  clamped = 0x8,
+  traction_free = 0x10
 };
 
 /**
@@ -84,8 +85,7 @@ public:
    * Constructor.
    */
   Boundary(boost::property_tree::ptree const &database,
-           std::vector<dealii::types::boundary_id> const &boundary_ids,
-           bool const mechanical_only);
+           std::vector<dealii::types::boundary_id> const &boundary_ids);
 
   /**
    * Return the number of boundary ids associated with the Geometry.
