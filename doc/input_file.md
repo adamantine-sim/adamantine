@@ -159,9 +159,10 @@ between 0 and 1 (required).
 and \#camera are replaced by the frame and the camera number. The format of
 the file itself should be csv. (required)
 * **format**: format of the experimental data, either `point_cloud`, with
-    `(x, y, z, value)` per line, or `ray`, with `(pt0_x, pt0_y, pt0_z,
-     pt1_x, pt1_y, pt1_z, value )` per line, where the ray starts at `pt0`
-    and passes through `pt1` (required)
+    `(x, y, z, temperature)` per line, or `ray`, with `(pt0_x, pt0_y, pt0_z,
+     pt1_x, pt1_y, pt1_z, temperature)` per line, where the ray starts at `pt0`
+    and passes through `pt1`. For both the format, the first line is an
+    arbitrary header which is igonred (required)
 * **first\_frame**: number associated to the first frame (default value: 0)
 * **last\_frame**: number associated to the last frame (required)
 * **first\_camera\_id**: number associated to the first camera (required)
