@@ -1745,14 +1745,12 @@ run_ensemble(MPI_Comm const &global_communicator,
       frame_time_stamps =
           adamantine::read_frame_timestamps(experiment_database);
 
-      adamantine::ASSERT_THROW(
-          frame_time_stamps.size() > 0,
-          "Error: Experimental data parsing is activated, but "
-          "the log shows zero cameras.");
-      adamantine::ASSERT_THROW(
-          frame_time_stamps[0].size() > 0,
-          "Error: Experimental data parsing is activated, but "
-          "the log shows zero data frames.");
+      adamantine::ASSERT_THROW(frame_time_stamps.size() > 0,
+                               "Experimental data parsing is activated, but "
+                               "the log shows zero cameras.");
+      adamantine::ASSERT_THROW(frame_time_stamps[0].size() > 0,
+                               "Experimental data parsing is activated, but "
+                               "the log shows zero data frames.");
 
       if (global_rank == 0)
         std::cout << "Done. Log entries found for " << frame_time_stamps.size()

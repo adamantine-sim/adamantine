@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -146,9 +146,9 @@ int main(int argc, char *argv[])
     boost_po::options_description description("Options:");
     description.add_options()("help,h", "Produce help message.")(
         "input-file,i", boost_po::value<std::string>(),
-        "Name of the input file.")("output-dir,o",
-                                   boost_po::value<std::string>(),
-                                   "Output directory; defaults to the current working directory.");
+        "Name of the input file.")(
+        "output-dir,o", boost_po::value<std::string>(),
+        "Output directory; defaults to the current working directory.");
 
     // Declare a map that will contains the values read. Parse the command
     // line and finally populate the map.
@@ -222,7 +222,8 @@ int main(int argc, char *argv[])
 
     // Make adamantine behave a bit better and not lock up if not in cwd of
     // current input file
-    std::filesystem::current_path(std::filesystem::absolute(filename).parent_path());
+    std::filesystem::current_path(
+        std::filesystem::absolute(filename).parent_path());
 
 #ifdef ADAMANTINE_WITH_CALIPER
     cali::ConfigManager caliper_manager;
@@ -291,8 +292,8 @@ int main(int argc, char *argv[])
         {
           // TODO: Add device version of run_ensemble and call it here
           adamantine::ASSERT_THROW(
-              false, "Error: Device version of ensemble simulations not "
-                     "yet implemented.");
+              false,
+              "Device version of ensemble simulations not yet implemented.");
         }
         else
         {
@@ -725,8 +726,8 @@ int main(int argc, char *argv[])
         {
           // TODO: Add device version of run_ensemble and call it here
           adamantine::ASSERT_THROW(
-              false, "Error: Device version of ensemble simulations not "
-                     "yet implemented.");
+              false,
+              "Device version of ensemble simulations not yet implemented.");
         }
         else
         {
