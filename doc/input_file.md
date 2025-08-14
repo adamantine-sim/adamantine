@@ -11,7 +11,7 @@ usemathjax: true
 The following options are available:
 
 ## boundary (required)
-* **type**: type of boundary: `adiabatic`, `radiative`, or `convective`. Multiple types
+* **type**: type of boundary: `adiabatic`, `radiative`, `convective` and <span style="color:green">since 1.1<span> `clamped` and `traction_free`. Multiple types
 can be chosen simultaneously by separating them by comma (required)
 * **boundary\_X**: property tree describing the boundary condition of the faces with a boundary id of X (optional)
 * **boundary\_X.type**: type of the boundary (required if the property tree boundary\_X is present)
