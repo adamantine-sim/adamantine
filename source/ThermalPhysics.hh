@@ -8,7 +8,6 @@
 #include <Boundary.hh>
 #include <Geometry.hh>
 #include <HeatSource.hh>
-#include <ImplicitOperator.hh>
 #include <ThermalOperatorBase.hh>
 #include <ThermalPhysicsInterface.hh>
 
@@ -141,36 +140,9 @@ private:
                                      std::vector<Timer> &timers) const;
 
   /**
-   * Compute the inverse of the ImplicitOperator.
-   */
-  LA_Vector id_minus_tau_J_inverse(double const t, double const tau,
-                                   LA_Vector const &y,
-                                   std::vector<Timer> &timers) const;
-  /**
    * This flag is true if the time stepping method is forward euler.
    */
   bool _forward_euler = false;
-  /**
-   * This flag is true if the time stepping method is implicit.
-   */
-  bool _implicit_method = false;
-  /**
-   * This flag is true if right preconditioning is used to invert the
-   * ImplicitOperator.
-   */
-  bool _right_preconditioning;
-  /**
-   * Maximum number of iterations to invert the ImplicitOperator.
-   */
-  unsigned int _max_iter;
-  /**
-   * Maximum number of temporary vectors when inverting the ImplicitOperator.
-   */
-  unsigned int _max_n_tmp_vectors;
-  /**
-   * Tolerance to inverte the ImplicitOperator.
-   */
-  double _tolerance;
   /**
    * Current height of the object.
    */
@@ -232,14 +204,10 @@ private:
    */
   std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> _thermal_operator;
   /**
-   * Unique pointer to the underlying ImplicitOperator.
-   */
-  std::unique_ptr<ImplicitOperator<MemorySpaceType>> _implicit_operator;
-  /**
    * Shared pointer to the underlying time stepping scheme.
    */
-  std::unique_ptr<dealii::TimeStepping::RungeKutta<LA_Vector>> _time_stepping;
-
+  std::unique_ptr<dealii::TimeStepping::ExplicitRungeKutta<LA_Vector>>
+      _time_stepping;
   /**
    * Cell data transfer object used for updating _solution, _has_melted,
    * _deposition_cos, _deposition_sin, and state of _material_properties when

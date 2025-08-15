@@ -11,13 +11,11 @@ list(APPEND
      test_experimental_data
      test_geometry
      test_heat_source
-     test_implicit_operator
      test_integration_3d_device
      test_material_property
      test_material_property_device
      test_mechanical_operator
      test_mechanical_physics
-     test_newton_solver
      test_post_processor
      test_scan_path
      test_thermal_operator
