@@ -324,7 +324,7 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
     }
     else
     {
-      ASSERT_THROW(false, "Error: Beam type '" +
+      ASSERT_THROW(false, "Beam type '" +
                               beam_database.get<std::string>("type") +
                               "' not recognized.");
     }

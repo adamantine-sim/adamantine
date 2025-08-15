@@ -25,9 +25,8 @@ Boundary::Boundary(boost::property_tree::ptree const &database,
       main_string.erase(pos, substring.length());
       auto it = std::find(boundary_ids.begin(), boundary_ids.end(),
                           std::stoi(main_string));
-      ASSERT_THROW(it != boundary_ids.end(), "Error: Provided boundary id " +
-                                                 main_string +
-                                                 " is not valid.");
+      ASSERT_THROW(it != boundary_ids.end(),
+                   "Provided boundary id " + main_string + " is not valid.");
     }
   }
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -81,9 +81,8 @@ DataAssimilator::DataAssimilator(MPI_Comm const &global_communicator,
     }
     else
     {
-      ASSERT_THROW(false,
-                   "Error: Unknown localization cutoff function. Valid options "
-                   "are 'gaspari_cohn', 'step_function', and 'none'.");
+      ASSERT_THROW(false, "Unknown localization cutoff function. Valid options "
+                          "are 'gaspari_cohn', 'step_function', and 'none'.");
     }
   }
 }
@@ -111,7 +110,7 @@ void DataAssimilator::update_ensemble(
     _parameter_size = block_sizes[1];
 
     adamantine::ASSERT_THROW(_expt_size == expt_data.size(),
-                             "Error: Unexpected experiment vector size.");
+                             "Unexpected experiment vector size.");
 
     // Check if R is diagonal, needed for filling the noise vector
     auto bandwidth = R.get_sparsity_pattern().bandwidth();

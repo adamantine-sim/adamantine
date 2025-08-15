@@ -21,7 +21,7 @@ void validate_input_database(boost::property_tree::ptree &database)
   // PropertyTreeInput physics.mechanical
   bool const use_mechanical_physics = database.get<bool>("physics.mechanical");
   ASSERT_THROW(use_thermal_physics || use_mechanical_physics,
-               "Error: both thermal and mechanical physics are disabled");
+               "Both thermal and mechanical physics are disabled");
 
   // Tree: boundary
   // Read the boundary condition type and check for disallowed combinations.
@@ -38,8 +38,8 @@ void validate_input_database(boost::property_tree::ptree &database)
     {
       ASSERT_THROW(!(line_boundary_type & BoundaryType::radiative) ||
                        !(line_boundary_type & BoundaryType::convective),
-                   "Error: Adiabatic condition cannot be combined with another "
-                   "type of thermal boundary condition.");
+                   "adiabatic condition cannot be combined with another type "
+                   "of thermal boundary condition.");
       line_boundary_type |= BoundaryType::adiabatic;
       thermal_bc = true;
     }
@@ -48,8 +48,8 @@ void validate_input_database(boost::property_tree::ptree &database)
       if (boundary == "radiative")
       {
         ASSERT_THROW(!(line_boundary_type & BoundaryType::adiabatic),
-                     "Error: Adiabatic condition cannot be combined with "
-                     "another type of thermal boundary condition.");
+                     "adiabatic condition cannot be combined with another type "
+                     "of thermal boundary condition.");
         line_boundary_type |= BoundaryType::radiative;
         boundary_type |= BoundaryType::radiative;
         thermal_bc = true;
@@ -57,31 +57,31 @@ void validate_input_database(boost::property_tree::ptree &database)
       else if (boundary == "convective")
       {
         ASSERT_THROW(!(line_boundary_type & BoundaryType::adiabatic),
-                     "Error: Adiabatic condition cannot be combined with "
-                     "another type of thermal boundary condition.");
+                     "adiabatic condition cannot be combined with another type "
+                     "of thermal boundary condition.");
         line_boundary_type |= BoundaryType::convective;
         boundary_type |= BoundaryType::convective;
         thermal_bc = true;
       }
       else if (boundary == "clamped")
       {
-        ASSERT_THROW(!(line_boundary_type & BoundaryType::traction_free),
-                     "Error: Mechanical boundary condition cannot be combined "
-                     "together.");
+        ASSERT_THROW(
+            !(line_boundary_type & BoundaryType::traction_free),
+            "Mechanical boundary conditions cannot be combined together.");
         line_boundary_type |= BoundaryType::clamped;
         mechanical_bc = true;
       }
       else if (boundary == "traction_free")
       {
-        ASSERT_THROW(!(line_boundary_type & BoundaryType::clamped),
-                     "Error: Mechanical boundary condition cannot be combined "
-                     "together.");
+        ASSERT_THROW(
+            !(line_boundary_type & BoundaryType::clamped),
+            "Mechanical boundary conditions cannot be combined together.");
         line_boundary_type |= BoundaryType::traction_free;
         mechanical_bc = true;
       }
       else
       {
-        ASSERT_THROW(false, "Error: Unknown boundary type.");
+        ASSERT_THROW(false, "Unknown boundary type.");
       }
     }
   };
@@ -115,12 +115,11 @@ void validate_input_database(boost::property_tree::ptree &database)
 
     if (use_thermal_physics)
     {
-      ASSERT_THROW(thermal_bc, "Error: Missing thermal boundary condition.");
+      ASSERT_THROW(thermal_bc, "Missing thermal boundary condition.");
     }
     if (use_mechanical_physics)
     {
-      ASSERT_THROW(mechanical_bc,
-                   "Error: Missing mechanical boundary condition.");
+      ASSERT_THROW(mechanical_bc, "Missing mechanical boundary condition.");
     }
   }
 
@@ -131,7 +130,7 @@ void validate_input_database(boost::property_tree::ptree &database)
     unsigned int const fe_degree =
         database.get<unsigned int>("discretization.thermal.fe_degree");
     ASSERT_THROW(fe_degree > 0 && fe_degree < 6,
-                 "Error: fe_degree should be between 1 and 5.");
+                 "fe_degree should be between 1 and 5.");
 
     // PropertyTreeInput discretization.thermal.quadrature
     boost::optional<std::string> quadrature_type_optional =
@@ -143,22 +142,21 @@ void validate_input_database(boost::property_tree::ptree &database)
       if (!((boost::iequals(quadrature_type, "gauss") ||
              (boost::iequals(quadrature_type, "lobatto")))))
       {
-        ASSERT_THROW(false, "Error: Unknown quadrature type.");
+        ASSERT_THROW(false, "Unknown quadrature type.");
       }
     }
   }
 
   // Tree: geometry
   unsigned int dim = database.get<unsigned int>("geometry.dim");
-  ASSERT_THROW((dim == 2) || (dim == 3), "Error: dim should be 2 or 3");
+  ASSERT_THROW((dim == 2) || (dim == 3), "dim should be 2 or 3");
 
   bool use_powder = database.get("geometry.use_powder", false);
 
   if (use_powder)
   {
     double powder_layer = database.get<double>("geometry.powder_layer");
-    ASSERT_THROW(powder_layer >= 0.0,
-                 "Error: Powder layer must be non-negative.");
+    ASSERT_THROW(powder_layer >= 0.0, "powder_layer must be non-negative.");
   }
 
   bool material_deposition =
@@ -169,37 +167,37 @@ void validate_input_database(boost::property_tree::ptree &database)
     std::string method =
         database.get<std::string>("geometry.material_deposition_method");
 
-    ASSERT_THROW((method == "file" || method == "scan_paths"),
-                 "Error: Method type for material deposition, '" + method +
-                     "', is not recognized. Valid options are: 'file' "
-                     "and 'scan_paths'");
+    ASSERT_THROW(
+        (method == "file" || method == "scan_paths"),
+        "Method type for material deposition, '" + method +
+            "', is not recognized. Valid options are: 'file' and 'scan_paths'");
 
     if (method == "file")
     {
       ASSERT_THROW(database.count("geometry.material_deposition_file") != 0,
-                   "Error: If the material deposition method is 'file', "
+                   "If the material deposition method is 'file', "
                    "'material_deposition_file' must be given.");
     }
     else
     {
       ASSERT_THROW(database.get_child("geometry").count("deposition_length") !=
                        0,
-                   "Error: If the material deposition method is 'scan_path', "
+                   "If the material deposition method is 'scan_path', "
                    "'deposition_length' must be given.");
       ASSERT_THROW(database.get_child("geometry").count("deposition_height") !=
                        0,
-                   "Error: If the material deposition method is 'scan_path', "
+                   "If the material deposition method is 'scan_path', "
                    "'deposition_height' must be given.");
       if (dim == 3)
       {
         ASSERT_THROW(database.get_child("geometry").count("deposition_width") !=
                          0,
-                     "Error: If the material deposition method is 'scan_path', "
+                     "If the material deposition method is 'scan_path', "
                      "'deposition_width' must be given.");
       }
       ASSERT_THROW(
           database.get_child("geometry").count("deposition_lead_time") != 0,
-          "Error: If the material deposition method is 'scan_path', "
+          "If the material deposition method is 'scan_path', "
           "'deposition_lead_time' must be given.");
     }
   }
@@ -208,25 +206,20 @@ void validate_input_database(boost::property_tree::ptree &database)
   if (import_mesh)
   {
     ASSERT_THROW(database.get_child("geometry").count("mesh_file") != 0,
-                 "Error: If the the mesh is imported, "
-                 "'mesh_file' must be given.");
+                 "If the the mesh is imported, 'mesh_file' must be given.");
     ASSERT_THROW(database.get_child("geometry").count("mesh_format") != 0,
-                 "Error: If the the mesh is imported, "
-                 "'mesh_format' must be given.");
+                 "If the the mesh is imported, 'mesh_format' must be given.");
   }
   else
   {
     ASSERT_THROW(database.get_child("geometry").count("length") != 0,
-                 "Error: If the the mesh is not imported, "
-                 "'length' must be given.");
+                 "If the the mesh is not imported, 'length' must be given.");
     ASSERT_THROW(database.get_child("geometry").count("height") != 0,
-                 "Error: If the the mesh is not imported, "
-                 "'height' must be given.");
+                 "If the the mesh is not imported, 'height' must be given.");
     if (dim == 3)
     {
       ASSERT_THROW(database.get_child("geometry").count("width") != 0,
-                   "Error: If the the mesh is not imported, "
-                   "'width' must be given.");
+                   "If the the mesh is not imported, 'width' must be given.");
     }
   }
 
@@ -242,11 +235,10 @@ void validate_input_database(boost::property_tree::ptree &database)
 
   for (dealii::types::material_id id = 0; id < n_materials; ++id)
   {
-    ASSERT_THROW(
-        database.get_child("materials")
-                .count("material_" + std::to_string(id)) != 0,
-        "Error: Number of material subtrees does not match the set number of "
-        "materials.");
+    ASSERT_THROW(database.get_child("materials")
+                         .count("material_" + std::to_string(id)) != 0,
+                 "Number of material subtrees does not match the set number of "
+                 "materials.");
 
     bool has_a_valid_state = false;
     for (unsigned int state_index = 0;
@@ -262,57 +254,52 @@ void validate_input_database(boost::property_tree::ptree &database)
                              .get_child("material_" + std::to_string(id))
                              .get_child(material_state_names.at(state_index))
                              .count("density") != 0,
-                     "Error: Each state needs a user-specified density.");
+                     "Each state needs a user-specified density.");
         ASSERT_THROW(database.get_child("materials")
                              .get_child("material_" + std::to_string(id))
                              .get_child(material_state_names.at(state_index))
                              .count("specific_heat") != 0,
-                     "Error: Each state needs a user-specified specific heat.");
-        ASSERT_THROW(
-            database.get_child("materials")
-                    .get_child("material_" + std::to_string(id))
-                    .get_child(material_state_names.at(state_index))
-                    .count("thermal_conductivity_x") != 0,
-            "Error: Each state needs a user-specified specific thermal "
-            "conductivity x.");
-        ASSERT_THROW(
-            database.get_child("materials")
-                    .get_child("material_" + std::to_string(id))
-                    .get_child(material_state_names.at(state_index))
-                    .count("thermal_conductivity_z") != 0,
-            "Error: Each state needs a user-specified specific thermal "
-            "conductivity z.");
+                     "Each state needs a user-specified specific heat.");
+        ASSERT_THROW(database.get_child("materials")
+                             .get_child("material_" + std::to_string(id))
+                             .get_child(material_state_names.at(state_index))
+                             .count("thermal_conductivity_x") != 0,
+                     "Each state needs a user-specified specific thermal "
+                     "conductivity x.");
+        ASSERT_THROW(database.get_child("materials")
+                             .get_child("material_" + std::to_string(id))
+                             .get_child(material_state_names.at(state_index))
+                             .count("thermal_conductivity_z") != 0,
+                     "Each state needs a user-specified specific thermal "
+                     "conductivity z.");
 
         if (dim == 3)
         {
-          ASSERT_THROW(
-              database.get_child("materials")
-                      .get_child("material_" + std::to_string(id))
-                      .get_child(material_state_names.at(state_index))
-                      .count("thermal_conductivity_y") != 0,
-              "Error: Each state needs a user-specified specific thermal "
-              "conductivity y.");
+          ASSERT_THROW(database.get_child("materials")
+                               .get_child("material_" + std::to_string(id))
+                               .get_child(material_state_names.at(state_index))
+                               .count("thermal_conductivity_y") != 0,
+                       "Each state needs a user-specified specific thermal "
+                       "conductivity y.");
         }
 
         if (boundary_type & BoundaryType::convective)
         {
-          ASSERT_THROW(
-              database.get_child("materials")
-                      .get_child("material_" + std::to_string(id))
-                      .get_child(material_state_names.at(state_index))
-                      .count("convection_heat_transfer_coef") != 0,
-              "Error: Convective BCs require a user-specified convection "
-              "heat transfer coefficient.");
+          ASSERT_THROW(database.get_child("materials")
+                               .get_child("material_" + std::to_string(id))
+                               .get_child(material_state_names.at(state_index))
+                               .count("convection_heat_transfer_coef") != 0,
+                       "Convective BCs require a user-specified convection "
+                       "heat transfer coefficient.");
         }
 
         if (boundary_type & BoundaryType::radiative)
         {
-          ASSERT_THROW(
-              database.get_child("materials")
-                      .get_child("material_" + std::to_string(id))
-                      .get_child(material_state_names.at(state_index))
-                      .count("emissivity") != 0,
-              "Error: Radiative BCs require a user-specified emissivity.");
+          ASSERT_THROW(database.get_child("materials")
+                               .get_child("material_" + std::to_string(id))
+                               .get_child(material_state_names.at(state_index))
+                               .count("emissivity") != 0,
+                       "Radiative BCs require a user-specified emissivity.");
         }
 
         // For now I'm leaving the error checking for the polynomials and tables
@@ -323,24 +310,24 @@ void validate_input_database(boost::property_tree::ptree &database)
 
     ASSERT_THROW(
         has_a_valid_state == true,
-        "Error: Material without any valid state (solid, powder, or liquid).");
+        "Material without any valid state (solid, powder, or liquid).");
 
     if (boundary_type & BoundaryType::convective)
     {
-      ASSERT_THROW(database.get_child("materials")
-                           .get_child("material_" + std::to_string(id))
-                           .count("convection_temperature_infty") != 0,
-                   "Error: Convective BCs require setting "
-                   "'convection_temperature_infty'.");
+      ASSERT_THROW(
+          database.get_child("materials")
+                  .get_child("material_" + std::to_string(id))
+                  .count("convection_temperature_infty") != 0,
+          "Convective BCs require setting 'convection_temperature_infty'.");
     }
 
     if (boundary_type & BoundaryType::radiative)
     {
-      ASSERT_THROW(database.get_child("materials")
-                           .get_child("material_" + std::to_string(id))
-                           .count("radiation_temperature_infty") != 0,
-                   "Error: Convective BCs require setting "
-                   "'radiation_temperature_infty'.");
+      ASSERT_THROW(
+          database.get_child("materials")
+                  .get_child("material_" + std::to_string(id))
+                  .count("radiation_temperature_infty") != 0,
+          "Radiative BCs require setting 'radiation_temperature_infty'.");
     }
   }
 
@@ -350,20 +337,20 @@ void validate_input_database(boost::property_tree::ptree &database)
   if (memory_space_optional)
   {
     std::string memory_space = memory_space_optional.get();
-    ASSERT_THROW((memory_space == "device" || memory_space == "host"),
-                 "Error: Method type for memory space, '" + memory_space +
-                     "', is not recognized. Valid options are: 'host' "
-                     "and 'device'");
+    ASSERT_THROW(
+        (memory_space == "device" || memory_space == "host"),
+        "Method type for memory space, '" + memory_space +
+            "', is not recognized. Valid options are: 'host' and 'device'");
   }
 
   // Tree: post_processor
-  ASSERT_THROW(
-      database.get_child("post_processor").count("filename_prefix") != 0,
-      "Error: The filename prefix for the postprocessor must be specified.");
+  ASSERT_THROW(database.get_child("post_processor").count("filename_prefix") !=
+                   0,
+               "The filename prefix for the postprocessor must be specified.");
 
   // Tree: refinement
   ASSERT_THROW(database.count("refinement") != 0,
-               "Error: A refinement section of the input file must exist.");
+               "A refinement section of the input file must exist.");
 
   // Tree: sources
   unsigned int n_beams = database.get<unsigned int>("sources.n_beams");
@@ -374,33 +361,32 @@ void validate_input_database(boost::property_tree::ptree &database)
     ASSERT_THROW(boost::iequals(beam_type, "goldak") ||
                      boost::iequals(beam_type, "electron_beam") ||
                      boost::iequals(beam_type, "cube"),
-                 "Error: Beam type, '" + beam_type +
+                 "Beam type, '" + beam_type +
                      "', is not recognized. Valid options are: 'goldak', "
                      "'electron_beam', and 'cube'.");
     ASSERT_THROW(database.get_child("sources")
                          .get_child("beam_" + std::to_string(beam_index))
                          .count("scan_path_file") != 0,
-                 "Error: A scan path file for each beam must be given.");
+                 "A scan path file for each beam must be given.");
 
     std::string file_format =
         database.get<std::string>("sources.beam_" + std::to_string(beam_index) +
                                   ".scan_path_file_format");
     ASSERT_THROW(boost::iequals(file_format, "segment") ||
                      boost::iequals(file_format, "event_series"),
-                 "Error: Scan path file format, '" + file_format +
+                 "Scan path file format, '" + file_format +
                      "', is not recognized. Valid options are: 'segment' and "
                      "'event_series'.");
     ASSERT_THROW(database.get<double>("sources.beam_" +
                                       std::to_string(beam_index) + ".depth") >=
                      0.0,
-                 "Error: Heat source depth must be non-negative.");
+                 "Heat source depth must be non-negative.");
 
     double absorption_efficiency =
         database.get<double>("sources.beam_" + std::to_string(beam_index) +
                              ".absorption_efficiency");
-    ASSERT_THROW(
-        absorption_efficiency >= 0.0 && absorption_efficiency <= 1.0,
-        "Error: Heat source absorption efficiency must be between 0 and 1.");
+    ASSERT_THROW(absorption_efficiency >= 0.0 && absorption_efficiency <= 1.0,
+                 "Heat source absorption efficiency must be between 0 and 1.");
   }
 
   // Tree: time_stepping
@@ -413,7 +399,7 @@ void validate_input_database(boost::property_tree::ptree &database)
                    boost::iequals(time_stepping_method, "implicit_midpoint") ||
                    boost::iequals(time_stepping_method, "crank_nicolson") ||
                    boost::iequals(time_stepping_method, "sdirk2"),
-               "Error: Time stepping method, '" + time_stepping_method +
+               "Time stepping method, '" + time_stepping_method +
                    "', is not recognized. Valid options are: 'forward_euler', "
                    "'rk_third_order', 'rk_fourth_order', 'backward_euler', "
                    "'implicit_midpoint', 'crank_nicolson', and 'sdirk2'.");
@@ -421,11 +407,11 @@ void validate_input_database(boost::property_tree::ptree &database)
   if (database.get("time.scan_path_for_duration", false))
   {
     ASSERT_THROW(database.get<double>("time_stepping.duration") >= 0.0,
-                 "Error: Time stepping duration must be non-negative.");
+                 "Time stepping duration must be non-negative.");
   }
 
   ASSERT_THROW(database.get<double>("time_stepping.time_step") >= 0.0,
-               "Error: Time step must be non-negative.");
+               "Time step must be non-negative.");
 
   // Tree: experiment
   // I'm not checking for the existence of the experimental files here, that's
@@ -439,40 +425,38 @@ void validate_input_database(boost::property_tree::ptree &database)
         database.get("experiment.read_in_experimental_data", false);
     if (experiment_active)
     {
-      ASSERT_THROW(
-          database.get_child("experiment").count("file") != 0,
-          "Error: If reading experimental data, a file must be given.");
+      ASSERT_THROW(database.get_child("experiment").count("file") != 0,
+                   "If reading experimental data, a file must be given.");
 
       ASSERT_THROW(database.get_child("experiment").count("last_frame") != 0,
-                   "Error: If reading experimental data, a last frame index "
+                   "If reading experimental data, a last frame index "
                    "must be given.");
 
       std::string experiment_format =
           database.get<std::string>("experiment.format");
       ASSERT_THROW(boost::iequals(experiment_format, "point_cloud") ||
                        boost::iequals(experiment_format, "ray"),
-                   "Error: Experiment format must be 'point_cloud' or 'ray'.");
+                   "Experiment format must be 'point_cloud' or 'ray'.");
 
       unsigned int first_frame_index =
           database.get<unsigned int>("experiment.first_frame", 0);
       unsigned int last_frame_index =
           database.get<unsigned int>("experiment.last_frame");
-      ASSERT_THROW(
-          last_frame_index >= first_frame_index,
-          "Error: When reading experimental data, the last frame index "
-          "cannot be lower than the first frame index.");
+      ASSERT_THROW(last_frame_index >= first_frame_index,
+                   "When reading experimental data, the last frame index "
+                   "cannot be lower than the first frame index.");
 
       unsigned int first_camera_id =
           database.get<unsigned int>("experiment.first_camera_id");
       unsigned int last_camera_id =
           database.get<unsigned int>("experiment.last_camera_id");
       ASSERT_THROW(last_camera_id >= first_camera_id,
-                   "Error: When reading experimental data, the last camera id "
-                   "cannot be lower than the first camera id.");
+                   "When reading experimental data, the last camera id cannot "
+                   "be lower than the first camera id.");
 
-      ASSERT_THROW(database.get_child("experiment").count("log_filename") != 0,
-                   "Error: If reading experimental data, a log filename must "
-                   "be given.");
+      ASSERT_THROW(
+          database.get_child("experiment").count("log_filename") != 0,
+          "If reading experimental data, a log filename must be given.");
     }
   }
 
@@ -484,9 +468,9 @@ void validate_input_database(boost::property_tree::ptree &database)
       database.get_optional<double>("data_assimilation.convergence_tolerance");
   if (convergence_tolerance)
   {
-    ASSERT_THROW(convergence_tolerance.get() >= 0.0,
-                 "Error: The data assimilation convergene tolerance must be "
-                 "non-negative.");
+    ASSERT_THROW(
+        convergence_tolerance.get() >= 0.0,
+        "The data assimilation convergene tolerance must be non-negative.");
   }
 
   std::string localization_cutoff_function_str =
@@ -496,9 +480,8 @@ void validate_input_database(boost::property_tree::ptree &database)
         boost::iequals(localization_cutoff_function_str, "step_function") ||
         boost::iequals(localization_cutoff_function_str, "none")))
   {
-    ASSERT_THROW(false,
-                 "Error: Unknown localization cutoff function. Valid options "
-                 "are 'gaspari_cohn', 'step_function', and 'none'.");
+    ASSERT_THROW(false, "Unknown localization cutoff function. Valid options "
+                        "are 'gaspari_cohn', 'step_function', and 'none'.");
   }
 
   // Tree: units
@@ -509,9 +492,8 @@ void validate_input_database(boost::property_tree::ptree &database)
                       boost::iequals(mesh_unit.get(), "inch") ||
                       boost::iequals(mesh_unit.get(), "meter"))))
   {
-    ASSERT_THROW(false,
-                 "Error: Unknown unit associated with the mesh. Valid "
-                 "options are `millimeter`, `centimeter`, `inch`, and `meter`");
+    ASSERT_THROW(false, "Unknown unit associated with the mesh. Valid options "
+                        "are `millimeter`, `centimeter`, `inch`, and `meter`");
   }
 
   boost::optional<std::string> heat_source_power_unit =
@@ -520,9 +502,8 @@ void validate_input_database(boost::property_tree::ptree &database)
       (!(boost::iequals(heat_source_power_unit.get(), "milliwatt") ||
          boost::iequals(heat_source_power_unit.get(), "watt"))))
   {
-    ASSERT_THROW(false,
-                 "Error: Unknown unit associated with the power of the "
-                 "heat source. Valid options are `milliwatt`, and `watt`");
+    ASSERT_THROW(false, "Unknown unit associated with the power of the heat "
+                        "source. Valid options are `milliwatt`, and `watt`");
   }
 
   boost::optional<std::string> heat_source_velocity_unit =
@@ -532,10 +513,9 @@ void validate_input_database(boost::property_tree::ptree &database)
          boost::iequals(heat_source_velocity_unit.get(), "centimeter/second") ||
          boost::iequals(heat_source_velocity_unit.get(), "meter/second"))))
   {
-    ASSERT_THROW(false,
-                 "Error: Unknown unit associated with the velocity of the heat "
-                 "source. Valid options are `millimeter/second`, "
-                 "`centimeter/second`, and `meter/second`");
+    ASSERT_THROW(false, "Unknown unit associated with the velocity of the heat "
+                        "source. Valid options are `millimeter/second`, "
+                        "`centimeter/second`, and `meter/second`");
   }
 
   boost::optional<std::string> heat_source_dimension_unit =
@@ -548,8 +528,8 @@ void validate_input_database(boost::property_tree::ptree &database)
   {
     ASSERT_THROW(
         false,
-        "Error: Unknown unit associated with the dimension of the heat source. "
-        "Valid options are `millimeter`, `centimeter`, `inch`, and `meter`");
+        "Unknown unit associated with the dimension of the heat source. Valid "
+        "options are `millimeter`, `centimeter`, `inch`, and `meter`");
   }
 
   boost::optional<std::string> heat_source_scan_path_unit =
@@ -561,8 +541,8 @@ void validate_input_database(boost::property_tree::ptree &database)
          boost::iequals(heat_source_scan_path_unit.get(), "meter"))))
   {
     ASSERT_THROW(false,
-                 "Error: Unknown unit associated with the scan path. Valid "
-                 "options are `millimeter`, `centimeter`, `inch`, and `meter`");
+                 "Unknown unit associated with the scan path. Valid options "
+                 "are `millimeter`, `centimeter`, `inch`, and `meter`");
   }
 }
 } // namespace adamantine
