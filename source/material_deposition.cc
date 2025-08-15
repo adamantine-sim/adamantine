@@ -165,24 +165,32 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
     if (segment.power_modifier > eps)
     {
       dealii::Point<3> segment_end_point = segment.end_point;
-      double segment_length = segment_end_point.distance(segment_start_point);
+      double const segment_length =
+          segment_end_point.distance(segment_start_point);
       bool in_segment = true;
       dealii::Point<3> center = segment_start_point;
-      double segment_velocity =
+      double const segment_velocity =
           segment_length / (segment.end_time - segment_start_time);
 
-      // Set the segment orientation
+      // Set the segment orientation. In spot mode, set the cos to 1 and the sin
+      // to 0.
       double const cos =
-          (segment_end_point[0] - segment_start_point[0]) / segment_length;
+          segment_length != 0.
+              ? (segment_end_point[0] - segment_start_point[0]) / segment_length
+              : 1.0;
       double const sin =
-          (segment_end_point[1] - segment_start_point[1]) / segment_length;
-      bool segment_along_x = std::abs(cos) > std::abs(sin) ? true : false;
+          segment_length != 0.
+              ? (segment_end_point[1] - segment_start_point[1]) / segment_length
+              : 0.0;
+      bool const segment_along_x = std::abs(cos) > std::abs(sin) ? true : false;
       double next_box_length = deposition_length;
 
       while (in_segment)
       {
         double distance_to_box_center = center.distance(segment_start_point);
-        double time_to_box_center = distance_to_box_center / segment_velocity;
+        double time_to_box_center =
+            segment_velocity != 0. ? distance_to_box_center / segment_velocity
+                                   : 0.;
 
         std::vector<double> box_size(dim);
         box_size.at(axis<dim>::z) = deposition_height;
