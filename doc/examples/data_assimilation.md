@@ -28,10 +28,13 @@ ensemble
 {
     ensemble_simulation true
     ensemble_size 3
-    initial_temperature_stddev 10.0
+    materials 
+    {
+      initial_temperature_stddev 10.0
+    }
 }
 ```
-The first parameter,`ensemble_simulation`, enables the ensemble simulations. The
+The first parameter, `ensemble_simulation`, enables the ensemble simulations. The
 second parameter, `ensemble_size`, determines the number of simulations that
 will be run, in this case three. The third paremeter, `initial_temperature_stddev`, 
 sets the initial temperature to a normal distribution with a standard
@@ -39,8 +42,9 @@ distribution of ten. The mean of the distribution is 300 K.
 
 When launching *adamantine*, three simulations using different initial
 temperature will be run. The initial temperatures are chosen randomly using a
-normal distribution with a standard deviation of ten. The output files are named
-`output_mX.*` where `X` is 0, 1, or 2. Each number is associated with a single
+normal distribution with a standard deviation of ten. The values choses are
+written in the files `output_mX_data.txt` where `X` is 0, 1, or 2.The output 
+files are named `output_mX.*`. Each number is associated with a single
 simulation. In *paraview* or *VisIt*, we will open `output_m0.pvd`,
 `output_m1.pvd`, and `output_m2.pvd`.
 
@@ -62,11 +66,11 @@ This example shows how *adamantine* can use experimental data through data
 assimilation.
 
 The example is composed of the following files:
- * **bare_plate_L_da.info:** the input file
- * **bare_plate_L_scan_path.txt:** the scan path of the heat source
- * **bare_plate_L_expt_data_0_0.csv** and **bare_plate_L_expt_data_0_1.csv:**
+ * [bare_plate_L_da.info](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_da.info): the input file
+ * [bare_plate_L_scan_path.txt](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_scan_path.txt): the scan path of the heat source
+ * [bare_plate_L_expt_data_0_0.csv](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_expt_data_0_0.csv) and [bare_plate_L_expt_data_0_1.csv](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_expt_data_0_1.csv):
  point cloud synthetic data that represent experimental data
- * **bare_plate_L_expt_log.txt:** the log file that lists the timestamps for each
+ * [bare_plate_L_expt_log.txt](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/bare_plate_L_expt_log.txt): the log file that lists the timestamps for each
  frame from each camera
 
 It can be run using `./adamantine -i bare_plate`.
@@ -127,7 +131,13 @@ ensemble
 {
   ensemble_simulation true
   ensemble_size 3
-  beam_0_absorption_stddev 0.1
+  sources
+  {
+    beam_0
+    {
+      absorption_efficiency_stddev 0.1
+    }
+  }
 }
 ```
 and
