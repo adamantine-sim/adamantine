@@ -994,6 +994,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
   // PropertyTreeInput post_processor.time_steps_between_output
   unsigned int const time_steps_output =
       post_processor_database.get("time_steps_between_output", 1);
+  // PropertyTreeInput post_processor.offset_output
+  unsigned int const offset_output =
+      post_processor_database.get("offset_output", 0);
   // PropertyTreeInput materials.new_material_temperature
   double const new_material_temperature =
       database.get("materials.new_material_temperature", 300.);
@@ -1313,8 +1316,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     }
 
     // Output the solution
-    if (n_time_step % time_steps_output == 0)
+    if ((n_time_step >= offset_output) && ((n_time_step - offset_output) % time_steps_output == 0))
     {
+      //std::cout << "Made it into output solution. " << offset_output << " " << n_time_step << std::endl;
       if (use_thermal_physics)
       {
         thermal_physics->set_state_to_material_properties();
@@ -1831,6 +1835,9 @@ run_ensemble(MPI_Comm const &global_communicator,
   // PropertyTreeInput post_processor.time_steps_between_output
   unsigned int const time_steps_output =
       post_processor_database.get("time_steps_between_output", 1);
+  // PropertyTreeInput post_processor.offset_output
+  unsigned int const offset_output =
+      post_processor_database.get("offset_output", 0);
   // PropertyTreeInput post_processor.output_on_data_assimilation
   bool const output_on_da =
       post_processor_database.get("output_on_data_assimilation", true);
