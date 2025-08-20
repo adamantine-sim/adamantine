@@ -68,7 +68,7 @@ false (default value: false)
 
 ## materials (required):
 * **n\_materials**: number of materials (required)
-* **property\_format**: format of the material property: `table` or `polynomial`. For `table`, the format of the matieral properties is as follows: `temperature_1,value_1|temperature_2,value_2|...` with `temperature_1 < temperature_2`. For `polynomial`, the format is as follows: `coeff_0,coeff_1,coeff_2` where `coeff_0` is the coefficient of `T^0`, `coeff_1` is the coefficient of `T^1`, etc (required)
+* **property\_format**: format of the material property: `table` or `polynomial`. For `table`, the format of the material properties is as follows: `temperature_1,value_1|temperature_2,value_2|...` with `temperature_1 < temperature_2`. For `polynomial`, the format is as follows: `coeff_0,coeff_1,coeff_2` where `coeff_0` is the coefficient of `T^0`, `coeff_1` is the coefficient of `T^1`, etc (required)
 * **initial\_temperature**: initial temperature of all the materials in kelvins (default value: 300)
 * **new\_material\_temperature**: temperature of all the material that is being added during the process in kelvins (default value: 300)
 * **material\_X**: property tree for the material with number X
@@ -169,7 +169,7 @@ the file itself should be csv. (required)
 * **last\_frame**: number associated to the last frame (required)
 * **first\_camera\_id**: number associated to the first camera (required)
 * **last\_camera\_id**: number associated to the last camera (required)
-* **log\_filename**: the (full) filename of the log file that lists the timestamps for each frame from each camera. Note that the timestamps are not assumed to match the simulation time frame. The `first_frame_temporal_offset` parameter controls the simulation time corresponding to the first camera frame (required)
+* **log\_filename**: the (full) filename of the log file that lists the timestamps for each frame from each camera. The format of file is `frame_id, frame time of the first camera, frame time of the second camera, etc.` Note that the timestamps are not assumed to match the simulation time frame. The `first_frame_temporal_offset` parameter controls the simulation time corresponding to the first camera frame (required)
 * **first\_frame\_temporal\_offset**: a uniform shift to the timestamps from all cameras to match the simulation time (default value: 0.0)
 * **estimated\_uncertainty**: the estimate of the uncertainty in the experimental data points as given by a standard deviation 
   (under the simplifying assumption that the error is normally distributed and independent for each data point) (default value: 0.0).
