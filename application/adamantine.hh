@@ -562,9 +562,8 @@ compute_cells_to_refine(
     // Build the bounding boxes associated with the heat sources
     for (auto &beam : heat_sources)
     {
-      beam->update_time(current_time);
       heat_source_bounding_boxes.push_back(
-          beam->get_bounding_box(bounding_box_scaling));
+          beam->get_bounding_box(current_time, bounding_box_scaling));
     }
   }
 

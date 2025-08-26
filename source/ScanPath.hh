@@ -78,13 +78,14 @@ public:
   /**
    * Calculate the location of the scan path at a given time for a single
    * coordinate.
+   * TODO
    */
-  dealii::Point<3> value(double const &time) const;
+  dealii::Point<3> value(double const time, bool const save_time = true) const;
 
   /**
    * Return the power coefficient for the current segment
    */
-  double get_power_modifier(double const &time) const;
+  double get_power_modifier(double const time) const;
 
   /**
    * Return the scan path's list of segments
@@ -115,7 +116,8 @@ private:
   /**
    * Method to determine the current segment, its start point, and start time.
    */
-  void update_current_segment_info(double time,
+  void update_current_segment_info(double time, bool save_segment,
+                                   unsigned int &current_segment,
                                    dealii::Point<3> &segment_start_point,
                                    double &segment_start_time) const;
 
@@ -148,9 +150,9 @@ private:
    */
   std::vector<ScanPathSegment> _segment_list;
   /**
-   * The index of the current segment in the scan path.
+   * The index of the old segment in the scan path.
    */
-  mutable unsigned int _current_segment = 0;
+  mutable unsigned int _old_segment = 0;
 };
 } // namespace adamantine
 
