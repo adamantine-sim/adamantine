@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -428,6 +428,7 @@ MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
             &temperature_powers) const
 {
   dealii::VectorizedArray<double> value = 0.0;
+  dealii::VectorizedArray<double> property;
   unsigned int const property_index = static_cast<unsigned int>(state_property);
 
   if constexpr (use_table)
@@ -437,13 +438,12 @@ MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
     {
       for (unsigned int n = 0; n < dealii::VectorizedArray<double>::size(); ++n)
       {
-        const dealii::types::material_id m_id = material_id[n];
-
-        value[n] += state_ratios[material_state][n] *
-                    compute_property_from_table(_state_property_tables, m_id,
-                                                material_state, property_index,
-                                                temperature[n]);
+        property[n] = compute_property_from_table(
+            _state_property_tables, material_id[n], material_state,
+            property_index, temperature[n]);
       }
+
+      value += state_ratios[material_state] * property;
     }
   }
   else
@@ -451,17 +451,17 @@ MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
     for (unsigned int material_state = 0;
          material_state < MaterialStates::n_material_states; ++material_state)
     {
-      for (unsigned int n = 0; n < dealii::VectorizedArray<double>::size(); ++n)
+      for (unsigned int i = 0; i <= p_order; ++i)
       {
-        dealii::types::material_id m_id = material_id[n];
-
-        for (unsigned int i = 0; i <= p_order; ++i)
+        for (unsigned int n = 0; n < dealii::VectorizedArray<double>::size();
+             ++n)
         {
-          value[n] += state_ratios[material_state][n] *
-                      _state_property_polynomials(m_id, material_state,
-                                                  property_index, i) *
-                      temperature_powers[i][n];
+          property[n] = _state_property_polynomials(
+              material_id[n], material_state, property_index, i);
         }
+
+        value +=
+            state_ratios[material_state] * property * temperature_powers[i];
       }
     }
   }
