@@ -139,8 +139,10 @@ public:
   template <bool use_table>
   dealii::VectorizedArray<double> compute_material_property(
       StateProperty state_property,
-      dealii::types::material_id const *material_id,
-      dealii::VectorizedArray<double> const *state_ratios,
+      std::array<dealii::types::material_id,
+                 dealii::VectorizedArray<double>::size()> const &material_id,
+      std::array<dealii::VectorizedArray<double>,
+                 MaterialStates::n_material_states> const &state_ratios,
       dealii::VectorizedArray<double> const &temperature,
       dealii::AlignedVector<dealii::VectorizedArray<double>> const
           &temperature_powers) const;
@@ -421,8 +423,10 @@ dealii::VectorizedArray<double>
 MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
     compute_material_property(
         StateProperty state_property,
-        dealii::types::material_id const *material_id,
-        dealii::VectorizedArray<double> const *state_ratios,
+        std::array<dealii::types::material_id,
+                   dealii::VectorizedArray<double>::size()> const &material_id,
+        std::array<dealii::VectorizedArray<double>,
+                   MaterialStates::n_material_states> const &state_ratios,
         dealii::VectorizedArray<double> const &temperature,
         dealii::AlignedVector<dealii::VectorizedArray<double>> const
             &temperature_powers) const
