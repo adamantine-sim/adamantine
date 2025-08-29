@@ -116,7 +116,8 @@ double CubeHeatSource<dim>::get_current_height(double const /*time*/) const
 
 template <int dim>
 dealii::BoundingBox<dim>
-CubeHeatSource<dim>::get_bounding_box(double const /*scaling_factor*/) const
+CubeHeatSource<dim>::get_bounding_box(double const /*time*/,
+                                      double const /*scaling_factor*/) const
 {
   if constexpr (dim == 2)
   {

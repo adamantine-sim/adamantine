@@ -132,25 +132,25 @@ dealii::VectorizedArray<double> ElectronBeamHeatSource<dim>::value(
 
 template <int dim>
 dealii::BoundingBox<dim>
-ElectronBeamHeatSource<dim>::get_bounding_box(double const scaling_factor) const
+ElectronBeamHeatSource<dim>::get_bounding_box(double const time,
+                                              double const scaling_factor) const
 {
+  dealii::Point<3> const &beam_center = this->_scan_path.value(time, false);
   if constexpr (dim == 2)
   {
-    return {
-        {{_beam_center[axis<dim>::x][0] - scaling_factor * this->_beam.radius,
-          _beam_center[axis<dim>::z][0] - scaling_factor * this->_beam.depth},
-         {_beam_center[axis<dim>::x][0] + scaling_factor * this->_beam.radius,
-          _beam_center[axis<dim>::z][0]}}};
+    return {{{beam_center[axis<dim>::x] - scaling_factor * this->_beam.radius,
+              beam_center[axis<dim>::z] - scaling_factor * this->_beam.depth},
+             {beam_center[axis<dim>::x] + scaling_factor * this->_beam.radius,
+              beam_center[axis<dim>::z]}}};
   }
   else
   {
-    return {
-        {{_beam_center[axis<dim>::x][0] - scaling_factor * this->_beam.radius,
-          _beam_center[axis<dim>::y][0] - scaling_factor * this->_beam.radius,
-          _beam_center[axis<dim>::z][0] - scaling_factor * this->_beam.depth},
-         {_beam_center[axis<dim>::x][0] + scaling_factor * this->_beam.radius,
-          _beam_center[axis<dim>::y][0] + scaling_factor * this->_beam.radius,
-          _beam_center[axis<dim>::z][0]}}};
+    return {{{beam_center[axis<dim>::x] - scaling_factor * this->_beam.radius,
+              beam_center[axis<dim>::y] - scaling_factor * this->_beam.radius,
+              beam_center[axis<dim>::z] - scaling_factor * this->_beam.depth},
+             {beam_center[axis<dim>::x] + scaling_factor * this->_beam.radius,
+              beam_center[axis<dim>::y] + scaling_factor * this->_beam.radius,
+              beam_center[axis<dim>::z]}}};
   }
 }
 } // namespace adamantine

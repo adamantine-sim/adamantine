@@ -104,10 +104,10 @@ public:
   virtual void set_beam_properties(boost::property_tree::ptree const &database);
 
   /**
-   * Return a scaled bounding box of the heat source.
+   * Return a scaled bounding box of the heat source at the given time.
    */
   virtual dealii::BoundingBox<dim>
-  get_bounding_box(double const scaling_factor) const = 0;
+  get_bounding_box(double const time, double const scaling_factor) const = 0;
 
 protected:
   /**

@@ -185,29 +185,34 @@ void ScanPath::load_event_series_scan_path()
 }
 
 void ScanPath::update_current_segment_info(
-    double time, dealii::Point<3> &segment_start_point,
-    double &segment_start_time) const
+    double time, bool save_segment, unsigned int &current_segment,
+    dealii::Point<3> &segment_start_point, double &segment_start_time) const
 {
   // Get to the correct segment
-  _current_segment = 0;
-  while (time > _segment_list[_current_segment].end_time)
+  current_segment = _old_segment;
+  while (time > _segment_list[current_segment].end_time)
   {
-    ++_current_segment;
+    ++current_segment;
   }
   // Update the start position and time for the current segment
-  if (_current_segment > 0)
+  if (current_segment > 0)
   {
-    segment_start_time = _segment_list[_current_segment - 1].end_time;
-    segment_start_point = _segment_list[_current_segment - 1].end_point;
+    segment_start_time = _segment_list[current_segment - 1].end_time;
+    segment_start_point = _segment_list[current_segment - 1].end_point;
   }
   else
   {
     segment_start_time = 0.0;
-    segment_start_point = _segment_list[_current_segment].end_point;
+    segment_start_point = _segment_list[current_segment].end_point;
+  }
+
+  if (save_segment)
+  {
+    _old_segment = current_segment;
   }
 }
 
-dealii::Point<3> ScanPath::value(double const &time) const
+dealii::Point<3> ScanPath::value(double const time, bool save_segment) const
 {
   // If the current time is after the scan path data is over, return a point
   // that is (presumably) out of the domain.
@@ -222,19 +227,21 @@ dealii::Point<3> ScanPath::value(double const &time) const
   // Get to the correct segment
   dealii::Point<3> segment_start_point;
   double segment_start_time = 0.0;
-  update_current_segment_info(time, segment_start_point, segment_start_time);
+  unsigned int current_segment = 0;
+  update_current_segment_info(time, save_segment, current_segment,
+                              segment_start_point, segment_start_time);
 
   // Calculate the position in the direction given by "component"
   dealii::Point<3> position =
       segment_start_point +
-      (_segment_list[_current_segment].end_point - segment_start_point) /
-          (_segment_list[_current_segment].end_time - segment_start_time) *
+      (_segment_list[current_segment].end_point - segment_start_point) /
+          (_segment_list[current_segment].end_time - segment_start_time) *
           (time - segment_start_time);
 
   return position;
 }
 
-double ScanPath::get_power_modifier(double const &time) const
+double ScanPath::get_power_modifier(double const time) const
 {
   // If the current time is after the scan path data is over, set the power to
   // zero.
@@ -244,9 +251,11 @@ double ScanPath::get_power_modifier(double const &time) const
   // Get to the correct segment
   dealii::Point<3> segment_start_point;
   double segment_start_time = 0.0;
-  update_current_segment_info(time, segment_start_point, segment_start_time);
+  unsigned int current_segment = 0;
+  update_current_segment_info(time, true, current_segment, segment_start_point,
+                              segment_start_time);
 
-  return _segment_list[_current_segment].power_modifier;
+  return _segment_list[current_segment].power_modifier;
 }
 
 std::vector<ScanPathSegment> ScanPath::get_segment_list() const

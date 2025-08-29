@@ -58,7 +58,7 @@ public:
         dealii::VectorizedArray<double> const &height) const final;
 
   dealii::BoundingBox<dim>
-  get_bounding_box(double const scaling_factor) const final;
+  get_bounding_box(double const time, double const scaling_factor) const final;
 
 private:
   dealii::Point<3, dealii::VectorizedArray<double>> _beam_center;
