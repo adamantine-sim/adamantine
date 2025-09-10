@@ -1844,19 +1844,6 @@ run_ensemble(MPI_Comm const &global_communicator,
       adamantine::create_material_deposition_boxes<dim>(
           geometry_database, heat_sources_ensemble[0]);
 
-  timers[adamantine::add_material_search].start();
-  std::vector<std::vector<
-      std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>>
-      elements_to_activate_ensemble(local_ensemble_size);
-  for (unsigned int member = 0; member < local_ensemble_size; ++member)
-  {
-    elements_to_activate_ensemble[member] =
-        adamantine::get_elements_to_activate(
-            thermal_physics_ensemble[member]->get_dof_handler(),
-            material_deposition_boxes);
-  }
-  timers[adamantine::add_material_search].stop();
-
   // ----- Compute bounding heat sources -----
   // When using AMR, we refine the cells that the heat sources intersect. Since
   // each ensemble members can have slightly different sources, we create a new
@@ -1974,7 +1961,7 @@ run_ensemble(MPI_Comm const &global_communicator,
         }
       }
 
-      double const eps = time_step / 1e12;
+      double const eps = time_step / 1e10;
       auto activation_start =
           std::lower_bound(deposition_times.begin(), deposition_times.end(),
                            time - eps) -
@@ -1997,9 +1984,11 @@ run_ensemble(MPI_Comm const &global_communicator,
           // for the entire material deposition. We should restrict the list
           // to the cells that are activated between activation_start and
           // activation_end.
+          timers[adamantine::add_material_search].start();
           auto elements_to_activate = adamantine::get_elements_to_activate(
               thermal_physics_ensemble[member]->get_dof_handler(),
               material_deposition_boxes);
+          timers[adamantine::add_material_search].stop();
           // For now assume that all deposited material has never been
           // melted (may or may not be reasonable)
           std::vector<bool> has_melted(deposition_cos.size(), false);
