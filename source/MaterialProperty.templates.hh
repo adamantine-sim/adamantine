@@ -352,8 +352,8 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
               property_values(property, dof) +=
                   state(material_state, dof) *
                   compute_property_from_table(
-                      state_property_tables, material_id, material_state,
-                      property, temp_average_local[dof]);
+                      state_property_tables, material_id, property,
+                      material_state, temp_average_local[dof]);
             }
           }
         }
@@ -370,8 +370,8 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::update(
               {
                 property_values(property, dof) +=
                     state(material_state, dof) *
-                    state_property_polynomials(material_id, material_state,
-                                               property, i) *
+                    state_property_polynomials(material_id, property,
+                                               material_state, i) *
                     std::pow(temp_average_local[dof], i);
               }
             }
@@ -465,7 +465,7 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
           _property_values(property, dof) +=
               _state(material_state, dof) *
               compute_property_from_table(
-                  _state_property_tables, material_id, material_state, property,
+                  _state_property_tables, material_id, property, material_state,
                   temperature_average.local_element(dof));
         }
       }
@@ -485,8 +485,8 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
           {
             _property_values(property, dof) +=
                 _state(material_state, dof) *
-                _state_property_polynomials(material_id, material_state,
-                                            property, i) *
+                _state_property_polynomials(material_id, property,
+                                            material_state, i) *
                 std::pow(temperature_average.local_element(dof), i);
           }
         }
@@ -805,8 +805,8 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
   {
     // View is initialized to zero in purpose
     _state_property_tables =
-        Kokkos::View<double * [MaterialStates::n_material_states]
-                                  [g_n_thermal_state_properties][table_size][2],
+        Kokkos::View<double *[g_n_thermal_state_properties]
+                         [MaterialStates::n_material_states][table_size][2],
                      typename MemorySpaceType::kokkos_space>(
             "state_property_tables", n_material_ids);
     // Mechanical properties only exist for the solid state. View is initialized
@@ -820,8 +820,8 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
   {
     // View is initialized to zero in purpose
     _state_property_polynomials =
-        Kokkos::View<double * [MaterialStates::n_material_states]
-                                  [g_n_thermal_state_properties][p_order + 1],
+        Kokkos::View<double *[g_n_thermal_state_properties]
+                         [MaterialStates::n_material_states][p_order + 1],
                      typename MemorySpaceType::kokkos_space>(
             "state_property_polynomials", n_material_ids);
     // Mechanical properties only exist for the solid state. View is initialized
@@ -883,9 +883,9 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
                 ASSERT(t_v.size() == 2, "Error reading material property.");
                 if (p < g_n_thermal_state_properties)
                 {
-                  state_property_tables_host(material_id, state, p, i, 0) =
+                  state_property_tables_host(material_id, p, state, i, 0) =
                       std::stod(t_v[0]);
-                  state_property_tables_host(material_id, state, p, i, 1) =
+                  state_property_tables_host(material_id, p, state, i, 1) =
                       std::stod(t_v[1]);
                 }
                 else
@@ -907,11 +907,11 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
               {
                 if (p < g_n_thermal_state_properties)
                 {
-                  state_property_tables_host(material_id, state, p, i, 0) =
-                      state_property_tables_host(material_id, state, p, i - 1,
+                  state_property_tables_host(material_id, p, state, i, 0) =
+                      state_property_tables_host(material_id, p, state, i - 1,
                                                  0);
-                  state_property_tables_host(material_id, state, p, i, 1) =
-                      state_property_tables_host(material_id, state, p, i - 1,
+                  state_property_tables_host(material_id, p, state, i, 1) =
+                      state_property_tables_host(material_id, p, state, i - 1,
                                                  1);
                 }
                 else
@@ -946,7 +946,7 @@ void MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
               {
                 if (p < g_n_thermal_state_properties)
                 {
-                  state_property_polynomials_host(material_id, state, p, i) =
+                  state_property_polynomials_host(material_id, p, state, i) =
                       std::stod(parsed_property[i]);
                 }
                 else if (state == static_cast<unsigned int>(
@@ -1080,15 +1080,17 @@ template <int dim, int p_order, typename MaterialStates,
 KOKKOS_FUNCTION double
 MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
     compute_property_from_table(
-        Kokkos::View<double ****[2], typename MemorySpaceType::kokkos_space>
+        Kokkos::View<double *[g_n_thermal_state_properties]
+                         [MaterialStates::n_material_states][table_size][2],
+                     typename MemorySpaceType::kokkos_space>
             state_property_tables,
-        unsigned int const material_id, unsigned int const material_state,
-        unsigned int const property, double const temperature)
+        unsigned int const material_id, unsigned int const property,
+        unsigned int const material_state, double const temperature)
 {
   if (temperature <=
-      state_property_tables(material_id, material_state, property, 0, 0))
+      state_property_tables(material_id, property, material_state, 0, 0))
   {
-    return state_property_tables(material_id, material_state, property, 0, 1);
+    return state_property_tables(material_id, property, material_state, 0, 1);
   }
   else
   {
@@ -1097,7 +1099,7 @@ MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
     for (; i < size; ++i)
     {
       if (temperature <
-          state_property_tables(material_id, material_state, property, i, 0))
+          state_property_tables(material_id, property, material_state, i, 0))
       {
         break;
       }
@@ -1105,19 +1107,19 @@ MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
 
     if (i >= size - 1)
     {
-      return state_property_tables(material_id, material_state, property,
+      return state_property_tables(material_id, property, material_state,
                                    size - 1, 1);
     }
     else
     {
       auto tempertature_i =
-          state_property_tables(material_id, material_state, property, i, 0);
-      auto tempertature_im1 = state_property_tables(material_id, material_state,
-                                                    property, i - 1, 0);
+          state_property_tables(material_id, property, material_state, i, 0);
+      auto tempertature_im1 = state_property_tables(material_id, property,
+                                                    material_state, i - 1, 0);
       auto property_i =
-          state_property_tables(material_id, material_state, property, i, 1);
-      auto property_im1 = state_property_tables(material_id, material_state,
-                                                property, i - 1, 1);
+          state_property_tables(material_id, property, material_state, i, 1);
+      auto property_im1 = state_property_tables(material_id, property,
+                                                material_state, i - 1, 1);
       return property_im1 + (temperature - tempertature_im1) *
                                 (property_i - property_im1) /
                                 (tempertature_i - tempertature_im1);

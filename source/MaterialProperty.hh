@@ -95,8 +95,8 @@ public:
    * Return the properties of the material that are dependent of the state of
    * the material and which have been set using tables.
    */
-  Kokkos::View<double * [MaterialStates::n_material_states]
-                            [g_n_thermal_state_properties][table_size][2],
+  Kokkos::View<double *[g_n_thermal_state_properties]
+                   [MaterialStates::n_material_states][table_size][2],
                typename MemorySpaceType::kokkos_space>
   get_state_property_tables();
 
@@ -104,8 +104,8 @@ public:
    * Return the properties of the material that are dependent of the state of
    * the material and which have beese set using polynomials.
    */
-  Kokkos::View<double * [MaterialStates::n_material_states]
-                            [g_n_thermal_state_properties][p_order + 1],
+  Kokkos::View<double *[g_n_thermal_state_properties]
+                   [MaterialStates::n_material_states][p_order + 1],
                typename MemorySpaceType::kokkos_space>
   get_state_property_polynomials();
 
@@ -230,7 +230,9 @@ public:
    * Compute a property from a table given the temperature.
    */
   static KOKKOS_FUNCTION double compute_property_from_table(
-      Kokkos::View<double ****[2], typename MemorySpaceType::kokkos_space>
+      Kokkos::View<double *[g_n_thermal_state_properties]
+                       [MaterialStates::n_material_states][table_size][2],
+                   typename MemorySpaceType::kokkos_space>
           state_property_tables,
       unsigned int const material_id, unsigned int const material_state,
       unsigned int const property, double const temperature);
@@ -269,16 +271,16 @@ private:
   /**
    * Thermal material properties which have been set using tables.
    */
-  Kokkos::View<double * [MaterialStates::n_material_states]
-                            [g_n_thermal_state_properties][table_size][2],
+  Kokkos::View<double *[g_n_thermal_state_properties]
+                   [MaterialStates::n_material_states][table_size][2],
                typename MemorySpaceType::kokkos_space>
       _state_property_tables;
   /**
    * Thermal material properties which have been set
    * using polynomials.
    */
-  Kokkos::View<double * [MaterialStates::n_material_states]
-                            [g_n_thermal_state_properties][p_order + 1],
+  Kokkos::View<double *[g_n_thermal_state_properties]
+                   [MaterialStates::n_material_states][p_order + 1],
                typename MemorySpaceType::kokkos_space>
       _state_property_polynomials;
   /**
@@ -360,11 +362,12 @@ inline bool MaterialProperty<dim, p_order, MaterialStates,
 
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-inline Kokkos::View<double *[MaterialStates::n_material_states]
-                                [g_n_thermal_state_properties][MaterialProperty<
-                                    dim, p_order, MaterialStates,
-                                    MemorySpaceType>::table_size][2],
-                    typename MemorySpaceType::kokkos_space>
+inline Kokkos::View<
+    double *[g_n_thermal_state_properties]
+                [MaterialStates::n_material_states]
+                [MaterialProperty<dim, p_order, MaterialStates,
+                                  MemorySpaceType>::table_size][2],
+    typename MemorySpaceType::kokkos_space>
 MaterialProperty<dim, p_order, MaterialStates,
                  MemorySpaceType>::get_state_property_tables()
 { return _state_property_tables; }
@@ -372,8 +375,8 @@ MaterialProperty<dim, p_order, MaterialStates,
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 inline Kokkos::View<
-    double *[MaterialStates::n_material_states][g_n_thermal_state_properties]
-                                               [p_order + 1],
+    double *[g_n_thermal_state_properties][MaterialStates::n_material_states]
+                                          [p_order + 1],
     typename MemorySpaceType::kokkos_space> MaterialProperty<dim, p_order,
                                                              MaterialStates,
                                                              MemorySpaceType>::
@@ -443,8 +446,8 @@ MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
       for (unsigned int n = 0; n < dealii::VectorizedArray<double>::size(); ++n)
       {
         property[n] = compute_property_from_table(
-            _state_property_tables, material_id[n], material_state,
-            property_index, temperature[n]);
+            _state_property_tables, material_id[n], property_index,
+            material_state, temperature[n]);
       }
 
       value += state_ratios[material_state] * property;
@@ -461,7 +464,7 @@ MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
              ++n)
         {
           property[n] = _state_property_polynomials(
-              material_id[n], material_state, property_index, i);
+              material_id[n], property_index, material_state, i);
         }
 
         value +=
@@ -495,7 +498,7 @@ MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
 
       value += state_ratios[material_state] *
                compute_property_from_table(_state_property_tables, m_id,
-                                           material_state, property_index,
+                                           property_index, material_state,
                                            temperature);
     }
   }
@@ -509,8 +512,8 @@ MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>::
       for (unsigned int i = 0; i <= p_order; ++i)
       {
         value += state_ratios[material_state] *
-                 _state_property_polynomials(m_id, material_state,
-                                             property_index, i) *
+                 _state_property_polynomials(m_id, property_index,
+                                             material_state, i) *
                  std::pow(temperature, i);
       }
     }

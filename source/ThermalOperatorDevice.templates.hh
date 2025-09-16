@@ -271,7 +271,7 @@ ThermalOperatorQuad<dim, use_table, p_order, fe_degree, MaterialStates>::
                adamantine::MaterialProperty<dim, p_order, MaterialStates,
                                             dealii::MemorySpace::Default>::
                    compute_property_from_table(_state_property_tables, m_id,
-                                               material_state, property_index,
+                                               property_index, material_state,
                                                temperature);
     }
   }
@@ -285,8 +285,8 @@ ThermalOperatorQuad<dim, use_table, p_order, fe_degree, MaterialStates>::
       for (unsigned int i = 0; i <= p_order; ++i)
       {
         value += state_ratios[material_state] *
-                 _state_property_polynomials(m_id, material_state,
-                                             property_index, i) *
+                 _state_property_polynomials(m_id, property_index,
+                                             material_state, i) *
                  std::pow(temperature, i);
       }
     }
