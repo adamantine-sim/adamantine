@@ -387,66 +387,6 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
         std::make_unique<dealii::TimeStepping::ExplicitRungeKutta<LA_Vector>>(
             dealii::TimeStepping::RK_CLASSIC_FOURTH_ORDER);
   }
-  else if (method.compare("backward_euler") == 0)
-  {
-    _time_stepping =
-        std::make_unique<dealii::TimeStepping::ImplicitRungeKutta<LA_Vector>>(
-            dealii::TimeStepping::BACKWARD_EULER);
-    _implicit_method = true;
-  }
-  else if (method.compare("implicit_midpoint") == 0)
-  {
-    _time_stepping =
-        std::make_unique<dealii::TimeStepping::ImplicitRungeKutta<LA_Vector>>(
-            dealii::TimeStepping::IMPLICIT_MIDPOINT);
-    _implicit_method = true;
-  }
-  else if (method.compare("crank_nicolson") == 0)
-  {
-    _time_stepping =
-        std::make_unique<dealii::TimeStepping::ImplicitRungeKutta<LA_Vector>>(
-            dealii::TimeStepping::CRANK_NICOLSON);
-    _implicit_method = true;
-  }
-  else if (method.compare("sdirk2") == 0)
-  {
-    _time_stepping =
-        std::make_unique<dealii::TimeStepping::ImplicitRungeKutta<LA_Vector>>(
-            dealii::TimeStepping::SDIRK_TWO_STAGES);
-    _implicit_method = true;
-  }
-
-  // If the time stepping scheme is implicit, set the parameters for the solver
-  // and create the implicit operator.
-  if (_implicit_method == true)
-  {
-    // PropertyTreeInput time_stepping.max_iteration
-    _max_iter = time_stepping_database.get("max_iteration", 1000);
-    // PropertyTreeInput time_stepping.tolerance
-    _tolerance = time_stepping_database.get("tolerance", 1e-12);
-    // PropertyTreeInput time_stepping.right_preconditioning
-    _right_preconditioning =
-        time_stepping_database.get("right_preconditioning", false);
-    // PropertyTreeInput time_stepping.n_tmp_vectors
-    _max_n_tmp_vectors = time_stepping_database.get("n_tmp_vectors", 30);
-    // PropertyTreeInput time_stepping.newton_max_iteration
-    unsigned int newton_max_iter =
-        time_stepping_database.get("newton_max_iteration", 100);
-    // PropertyTreeInput time_stepping.newton_tolerance
-    double newton_tolerance =
-        time_stepping_database.get("newton_tolerance", 1e-6);
-    dealii::TimeStepping::ImplicitRungeKutta<LA_Vector> *implicit_rk =
-        static_cast<dealii::TimeStepping::ImplicitRungeKutta<LA_Vector> *>(
-            _time_stepping.get());
-    implicit_rk->set_newton_solver_parameters(newton_max_iter,
-                                              newton_tolerance);
-
-    // PropertyTreeInput time_stepping.jfnk
-    bool jfnk = time_stepping_database.get("jfnk", false);
-    _implicit_operator = std::make_unique<ImplicitOperator<MemorySpaceType>>(
-        _thermal_operator, jfnk);
-  }
-
   // Set material on part of the domain
   // PropertyTreeInput geometry.material_height
   double const material_height = database.get("geometry.material_height", 1e9);
@@ -517,9 +457,6 @@ void ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
 {
   _thermal_operator->compute_inverse_mass_matrix(_dof_handler,
                                                  _affine_constraints);
-  if (_implicit_method == true)
-    _implicit_operator->set_inverse_mass_matrix(
-        _thermal_operator->get_inverse_mass_matrix());
 }
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,
@@ -867,11 +804,9 @@ double ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
   {
     auto eval = [&](double const t, LA_Vector const &y)
     { return evaluate_thermal_physics(t, y, timers); };
-    auto id_m_Jinv = [&](double const t, double const tau, LA_Vector const &y)
-    { return id_minus_tau_J_inverse(t, tau, y, timers); };
 
-    double time = _time_stepping->evolve_one_time_step(eval, id_m_Jinv, t,
-                                                       delta_t, solution);
+    double time =
+        _time_stepping->evolve_one_time_step(eval, t, delta_t, solution);
 
     // Return the time at the end of the time step.
     return time;
@@ -951,39 +886,6 @@ ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
 
   // Dummy to silence warning
   return dealii::LA::distributed::Vector<double, MemorySpaceType>();
-}
-
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
-dealii::LA::distributed::Vector<double, MemorySpaceType>
-ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
-               QuadratureType>::
-    id_minus_tau_J_inverse(
-        double const /*t*/, double const tau,
-        dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
-        std::vector<Timer> &timers) const
-{
-  timers[evol_time_J_inv].start();
-  _implicit_operator->set_tau(tau);
-  dealii::LA::distributed::Vector<double, MemorySpaceType> solution(
-      y.get_partitioner());
-
-  // TODO Add a geometric multigrid preconditioner.
-  dealii::PreconditionIdentity preconditioner;
-
-  dealii::SolverControl solver_control(_max_iter, _tolerance * y.l2_norm());
-  // We need to inverse (I - tau M^{-1} J). While M^{-1} and J are SPD,
-  // (I - tau M^{-1} J) is symmetric indefinite in the general case.
-  typename dealii::SolverGMRES<
-      dealii::LA::distributed::Vector<double, MemorySpaceType>>::AdditionalData
-      additional_data(_max_n_tmp_vectors, _right_preconditioning);
-  dealii::SolverGMRES<dealii::LA::distributed::Vector<double, MemorySpaceType>>
-      solver(solver_control, additional_data);
-  solver.solve(*_implicit_operator, solution, y, preconditioner);
-
-  timers[evol_time_J_inv].stop();
-
-  return solution;
 }
 
 template <int dim, int p_order, int fe_degree, typename MaterialStates,

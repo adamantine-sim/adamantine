@@ -453,7 +453,7 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
 
   // Build ThermalPhysics
   boost::property_tree::ptree database;
-  database.put("time_stepping.method", "backward_euler");
+  database.put("time_stepping.method", "forward_euler");
   database.put("time_stepping.max_iteration", 100);
   database.put("time_stepping.tolerance", 1e-6);
   database.put("time_stepping.n_tmp_vectors", 100);

@@ -9,14 +9,12 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/Geometry.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/GoldakHeatSource.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/HeatSource.hh
-    ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialProperty.templates.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialStates.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Microstructure.hh
-    ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Operator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/PointCloud.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.hh
@@ -46,13 +44,11 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ElectronBeamHeatSource.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/Geometry.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/GoldakHeatSource.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ImplicitOperator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialPropertyInstDev.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialPropertyInstHost.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/Microstructure.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/NewtonSolver.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/PointCloud.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/RayTracing.cc
