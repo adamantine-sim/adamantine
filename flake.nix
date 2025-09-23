@@ -77,9 +77,11 @@
         ] ++ pkgs.lib.optionals (pkgs.stdenv.hostPlatform.isLinux) [
           gdb
           cntr
-        ] ++ self.outputs.packages.${system}.default.buildInputs
-          ++ self.outputs.packages.${system}.default.nativeBuildInputs
-          ++ self.outputs.packages.${system}.default.propagatedBuildInputs;
+	];
+
+	inputsFrom = [
+	  self.outputs.packages.${system}.default
+	];
 
         # For dev, we want to disable hardening.
         hardeningDisable = [

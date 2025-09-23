@@ -10,6 +10,16 @@
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "g++"
       }
+    },
+    {
+      "name":        "generic-clang++",
+      "displayName": "Generic (clang-ninja)",
+      "description": "Basic configuration with the GCC toolchain using Ninja generator.",
+      "generator":   "Ninja Multi-Config",
+      "binaryDir":   "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
     }
   ],
   "buildPresets": [
