@@ -14,7 +14,7 @@
     {
       "name":        "generic-clang++",
       "displayName": "Generic (clang-ninja)",
-      "description": "Basic configuration with the GCC toolchain using Ninja generator.",
+      "description": "Basic configuration with the LLVM toolchain using Ninja generator.",
       "generator":   "Ninja Multi-Config",
       "binaryDir":   "${sourceDir}/build/${presetName}",
       "cacheVariables": {
