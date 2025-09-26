@@ -394,15 +394,10 @@ void validate_input_database(boost::property_tree::ptree &database)
       database.get<std::string>("time_stepping.method");
   ASSERT_THROW(boost::iequals(time_stepping_method, "forward_euler") ||
                    boost::iequals(time_stepping_method, "rk_third_order") ||
-                   boost::iequals(time_stepping_method, "rk_fourth_order") ||
-                   boost::iequals(time_stepping_method, "backward_euler") ||
-                   boost::iequals(time_stepping_method, "implicit_midpoint") ||
-                   boost::iequals(time_stepping_method, "crank_nicolson") ||
-                   boost::iequals(time_stepping_method, "sdirk2"),
+                   boost::iequals(time_stepping_method, "rk_fourth_order"),
                "Time stepping method, '" + time_stepping_method +
                    "', is not recognized. Valid options are: 'forward_euler', "
-                   "'rk_third_order', 'rk_fourth_order', 'backward_euler', "
-                   "'implicit_midpoint', 'crank_nicolson', and 'sdirk2'.");
+                   "'rk_third_order', and 'rk_fourth_order'.");
 
   if (database.get("time.scan_path_for_duration", false))
   {
