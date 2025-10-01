@@ -207,8 +207,6 @@ inline void initialize_timers(MPI_Comm const &communicator,
   timers.push_back(adamantine::Timer(
       communicator, "Evolve One Time Step: evaluate_thermal_physics"));
   timers.push_back(adamantine::Timer(
-      communicator, "Evolve One Time Step: id_minus_tau_J_inverse"));
-  timers.push_back(adamantine::Timer(
       communicator, "Evolve One Time Step: evaluate_material_properties"));
   timers.push_back(adamantine::Timer(communicator, "Output"));
 }

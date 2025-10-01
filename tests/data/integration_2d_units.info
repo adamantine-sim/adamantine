@@ -92,9 +92,8 @@ sources
 
 time_stepping
 {
-  method backward_euler ; Possibilities: backward_euler, implicit_midpoint,
-                        ; crank_nicolson, sdirk2, forward_euler, rk_third_order,
-                        ; rk_fourth_order
+  method forward_euler ; Possibilities: forward_euler, rk_third_order,
+                       ; rk_fourth_order
   duration 1e-9 ; [s]
   time_step 5e-11 ; [s]
 }

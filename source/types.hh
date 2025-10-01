@@ -142,7 +142,6 @@ enum Timing
   da_update_ensemble,
   evol_time,
   evol_time_eval_th_ph,
-  evol_time_J_inv,
   evol_time_update_bound_mat_prop,
   output,
   n_timers
