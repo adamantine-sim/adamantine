@@ -162,8 +162,6 @@ read_frame_timestamps(boost::property_tree::ptree const &experiment_database)
   unsigned int num_cameras = last_camera_id - first_camera_id + 1;
   std::vector<std::vector<double>> time_stamps(num_cameras);
 
-  std::vector<double> first_frame_value(num_cameras);
-
   // Read and parse the file
   std::ifstream file;
   file.open(log_filename);
@@ -193,13 +191,9 @@ read_frame_timestamps(boost::property_tree::ptree const &experiment_database)
       }
       else
       {
-        if (frame == first_frame && substring.size() > 0)
-          first_frame_value[entry_index - 1] = std::stod(substring);
-
         if (frame_of_interest && substring.size() > 0)
-          time_stamps[entry_index - 1].push_back(
-              std::stod(substring) - first_frame_value[entry_index - 1] +
-              first_frame_offset);
+          time_stamps[entry_index - 1].push_back(std::stod(substring) +
+                                                 first_frame_offset);
       }
       entry_index++;
     }

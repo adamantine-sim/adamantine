@@ -205,13 +205,13 @@ BOOST_AUTO_TEST_CASE(timestamp, *utf::tolerance(1e-12))
   BOOST_TEST(time_stamps[0].size() == 3);
   BOOST_TEST(time_stamps[1].size() == 3);
 
-  BOOST_TEST(time_stamps[0][0] == 0.1);
-  BOOST_TEST(time_stamps[0][1] == 0.1135);
-  BOOST_TEST(time_stamps[0][2] == 0.1345);
+  BOOST_TEST(time_stamps[0][0] == 0.1105);
+  BOOST_TEST(time_stamps[0][1] == 0.124);
+  BOOST_TEST(time_stamps[0][2] == 0.145);
 
-  BOOST_TEST(time_stamps[1][0] == 0.1);
-  BOOST_TEST(time_stamps[1][1] == 0.1136);
-  BOOST_TEST(time_stamps[1][2] == 0.1348);
+  BOOST_TEST(time_stamps[1][0] == 0.1106);
+  BOOST_TEST(time_stamps[1][1] == 0.1242);
+  BOOST_TEST(time_stamps[1][2] == 0.1454);
 }
 
 BOOST_AUTO_TEST_CASE(project_ray_data_on_mesh, *utf::tolerance(1e-12))
