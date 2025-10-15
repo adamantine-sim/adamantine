@@ -5,4 +5,4 @@
 #include <ThermalOperator.templates.hh>
 #include <instantiation.hh>
 
-INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_SL_HOST(ThermalOperator)
+INSTANTIATE_DIM_NMAT_USETABLE_PORDER_FEDEGREE_SL_HOST(ThermalOperator)

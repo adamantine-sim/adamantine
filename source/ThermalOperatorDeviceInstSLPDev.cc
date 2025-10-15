@@ -5,4 +5,4 @@
 #include <ThermalOperatorDevice.templates.hh>
 #include <instantiation.hh>
 
-INSTANTIATE_DIM_USETABLE_PORDER_FEDEGREE_SLP_DEVICE(ThermalOperatorDevice)
+INSTANTIATE_DIM_NMAT_USETABLE_PORDER_FEDEGREE_SLP_DEVICE(ThermalOperatorDevice)

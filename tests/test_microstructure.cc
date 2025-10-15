@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE(G_and_R)
   material_property_database.put("material_0.liquid.thermal_conductivity_z",
                                  1.);
   material_property_database.put("material_0.liquidus", 100.);
-  adamantine::MaterialProperty<2, 4, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, 1, 4, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       material_properties(communicator, geometry.get_triangulation(),
                           material_property_database);
@@ -117,7 +117,7 @@ BOOST_AUTO_TEST_CASE(G_and_R)
   database.put("time_stepping.method", "rk_fourth_order");
 
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 4, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalPhysics<2, 1, 4, 2, adamantine::SolidLiquidPowder,
                              dealii::MemorySpace::Host, dealii::QGauss<1>>
       physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();

@@ -116,7 +116,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   material_property_database.put("material_0.liquid.thermal_conductivity_z",
                                  1.);
   // Build MaterialProperty
-  adamantine::MaterialProperty<2, 2, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, 1, 2, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
       material_properties(communicator, geometry.get_triangulation(),
                           material_property_database);
@@ -132,7 +132,7 @@ void thermal_2d(boost::property_tree::ptree &database, double time_step)
   database.put("sources.beam_0.scan_path_file_format", "segment");
 
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 2, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalPhysics<2, 1, 2, 2, adamantine::SolidLiquidPowder,
                              MemorySpaceType, dealii::QGauss<1>>
       physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
@@ -197,7 +197,7 @@ void thermal_2d_manufactured_solution()
   material_property_database.put("material_0.liquid.thermal_conductivity_z",
                                  1.);
   // Build MaterialProperty
-  adamantine::MaterialProperty<2, 1, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, 1, 1, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
       material_properties(communicator, geometry.get_triangulation(),
                           material_property_database);
@@ -218,7 +218,7 @@ void thermal_2d_manufactured_solution()
   // Time-stepping database
   database.put("time_stepping.method", "rk_fourth_order");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 1, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalPhysics<2, 1, 1, 2, adamantine::SolidLiquidPowder,
                              MemorySpaceType, dealii::QGauss<1>>
       physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
@@ -263,7 +263,7 @@ void initial_temperature()
 
   // Build MaterialProperty
   auto material_property_database = basic_material_properies_database();
-  adamantine::MaterialProperty<2, 4, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, -1, 4, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
       material_properties(communicator, geometry.get_triangulation(),
                           material_property_database);
@@ -277,7 +277,7 @@ void initial_temperature()
       geometry.get_triangulation().get_boundary_ids());
 
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 4, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalPhysics<2, -1, 4, 2, adamantine::SolidLiquidPowder,
                              MemorySpaceType, dealii::QGauss<1>>
       physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
@@ -329,7 +329,7 @@ void energy_conservation()
   material_property_database.put("material_0.liquid.thermal_conductivity_z",
                                  2.);
   // Build MaterialProperty
-  adamantine::MaterialProperty<2, 0, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, 1, 0, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
       material_properties(communicator, geometry.get_triangulation(),
                           material_property_database);
@@ -347,7 +347,7 @@ void energy_conservation()
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 0, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalPhysics<2, 1, 0, 2, adamantine::SolidLiquidPowder,
                              MemorySpaceType, dealii::QGauss<1>>
       physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
@@ -456,7 +456,7 @@ void radiation_bcs()
   material_property_database.put("material_0.convection_temperature_infty",
                                  0.0);
   // Build MaterialProperty
-  adamantine::MaterialProperty<2, 1, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, 1, 1, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
       material_properties(communicator, geometry.get_triangulation(),
                           material_property_database);
@@ -466,7 +466,7 @@ void radiation_bcs()
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 1, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalPhysics<2, 1, 1, 2, adamantine::SolidLiquidPowder,
                              dealii::MemorySpace::Host, dealii::QGauss<1>>
       physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
@@ -569,7 +569,7 @@ void convection_bcs()
   material_property_database.put("material_0.convection_temperature_infty",
                                  300.0);
   // Build MaterialProperty
-  adamantine::MaterialProperty<3, 0, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<3, -1, 0, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
       material_properties(communicator, geometry.get_triangulation(),
                           material_property_database);
@@ -579,7 +579,7 @@ void convection_bcs()
   // Time-stepping database
   database.put("time_stepping.method", "forward_euler");
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<3, 0, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalPhysics<3, -1, 0, 2, adamantine::SolidLiquidPowder,
                              MemorySpaceType, dealii::QGauss<1>>
       physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();
@@ -639,7 +639,7 @@ void reference_temperature()
 
   // Build MaterialProperty
   auto material_property_database = basic_material_properies_database();
-  adamantine::MaterialProperty<2, 4, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, -1, 4, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
       material_properties(communicator, geometry.get_triangulation(),
                           material_property_database);
@@ -653,7 +653,7 @@ void reference_temperature()
       geometry.get_triangulation().get_boundary_ids());
 
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<2, 4, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalPhysics<2, -1, 4, 2, adamantine::SolidLiquidPowder,
                              MemorySpaceType, dealii::QGauss<1>>
       physics(communicator, database, geometry, boundary, material_properties);
   physics.setup();

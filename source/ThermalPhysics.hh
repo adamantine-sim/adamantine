@@ -27,8 +27,9 @@ namespace adamantine
  * This class takes care of building the linear operator and the
  * right-hand-side. Also used to evolve the system in time.
  */
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int n_materials, int p_order, int fe_degree,
+          typename MaterialStates, typename MemorySpaceType,
+          typename QuadratureType>
 class ThermalPhysics : public ThermalPhysicsInterface<dim, MemorySpaceType>
 {
 public:
@@ -38,8 +39,8 @@ public:
   ThermalPhysics(MPI_Comm const &communicator,
                  boost::property_tree::ptree const &database,
                  Geometry<dim> &geometry, Boundary const &boundary,
-                 MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
-                     &material_properties);
+                 MaterialProperty<dim, n_materials, p_order, MaterialStates,
+                                  MemorySpaceType> &material_properties);
 
   void setup() override;
 
@@ -193,7 +194,7 @@ private:
   /**
    * Associated material properties.
    */
-  MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
+  MaterialProperty<dim, n_materials, p_order, MaterialStates, MemorySpaceType>
       &_material_properties;
   /**
    * Vector of heat sources.
@@ -228,19 +229,22 @@ private:
   std::vector<std::vector<double>> _data_to_transfer;
 };
 
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int n_materials, int p_order, int fe_degree,
+          typename MaterialStates, typename MemorySpaceType,
+          typename QuadratureType>
 inline void
-ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
+ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
+               MemorySpaceType,
                QuadratureType>::update_material_deposition_orientation()
 {
   _thermal_operator->set_material_deposition_orientation(_deposition_cos,
                                                          _deposition_sin);
 }
 
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
-inline void ThermalPhysics<dim, p_order, fe_degree, MaterialStates,
+template <int dim, int n_materials, int p_order, int fe_degree,
+          typename MaterialStates, typename MemorySpaceType,
+          typename QuadratureType>
+inline void ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
                            MemorySpaceType, QuadratureType>::
     set_material_deposition_orientation(
         std::vector<double> const &deposition_cos,
@@ -251,93 +255,106 @@ inline void ThermalPhysics<dim, p_order, fe_degree, MaterialStates,
   update_material_deposition_orientation();
 }
 
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int n_materials, int p_order, int fe_degree,
+          typename MaterialStates, typename MemorySpaceType,
+          typename QuadratureType>
 inline double
-ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
+ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
+               MemorySpaceType,
                QuadratureType>::get_deposition_cos(unsigned int const i) const
 {
   return _deposition_cos[i];
 }
 
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int n_materials, int p_order, int fe_degree,
+          typename MaterialStates, typename MemorySpaceType,
+          typename QuadratureType>
 inline double
-ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
+ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
+               MemorySpaceType,
                QuadratureType>::get_deposition_sin(unsigned int const i) const
 {
   return _deposition_sin[i];
 }
 
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int n_materials, int p_order, int fe_degree,
+          typename MaterialStates, typename MemorySpaceType,
+          typename QuadratureType>
 inline std::vector<bool>
-ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
-               QuadratureType>::get_has_melted_vector() const
+ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
+               MemorySpaceType, QuadratureType>::get_has_melted_vector() const
 {
   return _has_melted;
 }
 
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
-inline void
-ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
-               QuadratureType>::set_has_melted_vector(std::vector<bool> const
-                                                          &has_melted)
+template <int dim, int n_materials, int p_order, int fe_degree,
+          typename MaterialStates, typename MemorySpaceType,
+          typename QuadratureType>
+inline void ThermalPhysics<
+    dim, n_materials, p_order, fe_degree, MaterialStates, MemorySpaceType,
+    QuadratureType>::set_has_melted_vector(std::vector<bool> const &has_melted)
 {
   _has_melted = has_melted;
 }
 
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int n_materials, int p_order, int fe_degree,
+          typename MaterialStates, typename MemorySpaceType,
+          typename QuadratureType>
 inline bool
-ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
+ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
+               MemorySpaceType,
                QuadratureType>::get_has_melted(unsigned int const i) const
 {
   return _has_melted[i];
 }
 
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int n_materials, int p_order, int fe_degree,
+          typename MaterialStates, typename MemorySpaceType,
+          typename QuadratureType>
 inline dealii::DoFHandler<dim> &
-ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
-               QuadratureType>::get_dof_handler()
+ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
+               MemorySpaceType, QuadratureType>::get_dof_handler()
 {
   return _dof_handler;
 }
 
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int n_materials, int p_order, int fe_degree,
+          typename MaterialStates, typename MemorySpaceType,
+          typename QuadratureType>
 inline dealii::AffineConstraints<double> &
-ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
-               QuadratureType>::get_affine_constraints()
+ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
+               MemorySpaceType, QuadratureType>::get_affine_constraints()
 {
   return _affine_constraints;
 }
 
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int n_materials, int p_order, int fe_degree,
+          typename MaterialStates, typename MemorySpaceType,
+          typename QuadratureType>
 inline std::vector<std::shared_ptr<HeatSource<dim>>> &
-ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
-               QuadratureType>::get_heat_sources()
+ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
+               MemorySpaceType, QuadratureType>::get_heat_sources()
 {
   return _heat_sources;
 }
 
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int n_materials, int p_order, int fe_degree,
+          typename MaterialStates, typename MemorySpaceType,
+          typename QuadratureType>
 inline unsigned int
-ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
-               QuadratureType>::get_fe_degree() const
+ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
+               MemorySpaceType, QuadratureType>::get_fe_degree() const
 {
   return fe_degree;
 }
 
-template <int dim, int p_order, int fe_degree, typename MaterialStates,
-          typename MemorySpaceType, typename QuadratureType>
+template <int dim, int n_materials, int p_order, int fe_degree,
+          typename MaterialStates, typename MemorySpaceType,
+          typename QuadratureType>
 inline double
-ThermalPhysics<dim, p_order, fe_degree, MaterialStates, MemorySpaceType,
-               QuadratureType>::get_current_source_height() const
+ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
+               MemorySpaceType, QuadratureType>::get_current_source_height()
+    const
 {
   return _current_source_height;
 }

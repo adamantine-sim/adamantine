@@ -53,7 +53,7 @@ void material_property()
   database.put("material_0.liquidus", "100");
   database.put("material_0.solid.lame_first_parameter", 2.);
   database.put("material_0.solid.lame_second_parameter", 3.);
-  adamantine::MaterialProperty<2, 2, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, 1, 2, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
       mat_prop(communicator, triangulation, database);
   // Evaluate the material property at the given temperature
@@ -134,7 +134,7 @@ void ratios()
   database.put("material_0.solidus", "50");
   database.put("material_0.liquidus", "100");
   database.put("material_0.latent_heat", "1000");
-  adamantine::MaterialProperty<2, 0, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, 1, 0, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
       mat_prop(communicator, triangulation, database);
   dealii::LinearAlgebra::distributed::Vector<double, MemorySpaceType>
@@ -297,7 +297,7 @@ void material_property_table()
   // Create the MaterialProperty
   boost::property_tree::ptree material_database =
       database.get_child("materials");
-  adamantine::MaterialProperty<2, 0, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, -1, 0, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
       mat_prop(communicator, triangulation, material_database);
   // Evaluate the material property at the given temperature
@@ -401,7 +401,7 @@ void material_property_polynomials()
   // Create the MaterialProperty
   boost::property_tree::ptree material_database =
       database.get_child("materials");
-  adamantine::MaterialProperty<2, 4, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, -1, 4, adamantine::SolidLiquidPowder,
                                MemorySpaceType>
       mat_prop(communicator, triangulation, material_database);
   // Evaluate the material property at the given temperature

@@ -77,13 +77,13 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev, *utf::tolerance(1e-10))
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  adamantine::MaterialProperty<2, 0, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, 1, 0, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Default>
       mat_properties(communicator, geometry.get_triangulation(),
                      mat_prop_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperatorDevice<2, false, 0, 2,
+  adamantine::ThermalOperatorDevice<2, 1, false, 0, 2,
                                     adamantine::SolidLiquidPowder,
                                     dealii::MemorySpace::Default>
       thermal_operator_dev(communicator, boundary, mat_properties);
@@ -170,13 +170,13 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 1.);
-  adamantine::MaterialProperty<2, 3, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, 1, 3, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Default>
       mat_properties(communicator, geometry.get_triangulation(),
                      mat_prop_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperatorDevice<2, false, 3, 2,
+  adamantine::ThermalOperatorDevice<2, 1, false, 3, 2,
                                     adamantine::SolidLiquidPowder,
                                     dealii::MemorySpace::Default>
       thermal_operator_dev(communicator, boundary, mat_properties);
@@ -283,11 +283,11 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 0.266);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 0.266);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 0.266);
-  adamantine::MaterialProperty<2, 4, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, -1, 4, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       mat_properties_host(communicator, geometry.get_triangulation(),
                           mat_prop_database);
-  adamantine::MaterialProperty<2, 4, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, -1, 4, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Default>
       mat_properties(communicator, geometry.get_triangulation(),
                      mat_prop_database);
@@ -307,7 +307,7 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperatorDevice<2, false, 4, 2,
+  adamantine::ThermalOperatorDevice<2, -1, false, 4, 2,
                                     adamantine::SolidLiquidPowder,
                                     dealii::MemorySpace::Default>
       thermal_operator_dev(communicator, boundary, mat_properties);
@@ -323,7 +323,7 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   thermal_operator_dev.get_state_from_material_properties();
   BOOST_TEST(thermal_operator_dev.m() == thermal_operator_dev.n());
 
-  adamantine::ThermalOperator<2, false, 4, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalOperator<2, -1, false, 4, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
       thermal_operator_host(communicator, boundary, mat_properties_host,
                             heat_sources);
@@ -429,13 +429,13 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", th_cond_x);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_y", th_cond_y);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", th_cond_z);
-  adamantine::MaterialProperty<3, 3, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<3, -1, 3, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Default>
       mat_properties(communicator, geometry.get_triangulation(),
                      mat_prop_database);
 
   // Initialize the ThermalOperatorDevice
-  adamantine::ThermalOperatorDevice<3, false, 3, 2,
+  adamantine::ThermalOperatorDevice<3, -1, false, 3, 2,
                                     adamantine::SolidLiquidPowder,
                                     dealii::MemorySpace::Default>
       thermal_operator_dev(communicator, boundary, mat_properties);

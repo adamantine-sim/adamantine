@@ -30,7 +30,7 @@ BOOST_AUTO_TEST_CASE(integration_3D, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto [temperature, displacement] =
-      run<3, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
+      run<3, -1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
           communicator, database, timers);
 
   int num_ranks = 0;
@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE(integration_3D_short, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto [temperature, displacement] =
-      run<3, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
+      run<3, 1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
           communicator, database, timers);
 
   int num_ranks = 0;
@@ -198,12 +198,12 @@ BOOST_AUTO_TEST_CASE(integration_3D_checkpoint_restart, *utf::tolerance(1e-10))
   database.put("checkpoint.overwrite_files", true);
   database.put("checkpoint.time_steps_between_checkpoint", 80);
   auto [temperature_1, displacement_1] =
-      run<3, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
+      run<3, -1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
           communicator, database, timers);
   // Restart of the simulation
   database.put("restart.filename_prefix", checkpoint_filename);
   auto [temperature_2, displacement_2] =
-      run<3, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
+      run<3, -1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
           communicator, database, timers);
 
   // Compare the temperatures. When using more than one processor, the
@@ -249,7 +249,7 @@ BOOST_AUTO_TEST_CASE(hourglass, *utf::tolerance(0.1))
     boost::property_tree::ptree database;
     boost::property_tree::info_parser::read_info(filename, database);
 
-    run<3, 1, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
+    run<3, 1, 1, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
         communicator, database, timers);
   }
 }

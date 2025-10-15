@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  adamantine::MaterialProperty<2, 0, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, 1, 0, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       mat_properties(communicator, geometry.get_triangulation(),
                      mat_prop_database);
@@ -91,7 +91,7 @@ BOOST_AUTO_TEST_CASE(thermal_post_processor)
       beam_database, units_optional_database);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, false, 0, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalOperator<2, 1, false, 0, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
       thermal_operator(communicator, boundary, mat_properties, heat_sources);
   std::vector<double> deposition_cos(
@@ -198,14 +198,14 @@ BOOST_AUTO_TEST_CASE(mechanical_post_processor)
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.solid.lame_first_parameter", 2.);
   mat_prop_database.put("material_0.solid.lame_second_parameter", 3.);
-  adamantine::MaterialProperty<dim, 0, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<dim, 1, 0, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       mat_properties(communicator, geometry.get_triangulation(),
                      mat_prop_database);
 
   std::vector<double> empty_vector;
 
-  adamantine::MechanicalOperator<dim, 0, adamantine::SolidLiquidPowder,
+  adamantine::MechanicalOperator<dim, 1, 0, adamantine::SolidLiquidPowder,
                                  dealii::MemorySpace::Host>
       mechanical_operator(communicator, mat_properties, empty_vector);
   mechanical_operator.reinit(dof_handler, affine_constraints, q_collection);

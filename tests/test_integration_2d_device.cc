@@ -31,8 +31,8 @@ BOOST_AUTO_TEST_CASE(intregation_2D_device, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto [temperature, displacement] =
-      run<2, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Default>(
-          communicator, database, timers);
+      run<2, -1, 4, adamantine::SolidLiquidPowder,
+          dealii::MemorySpace::Default>(communicator, database, timers);
 
   std::ifstream gold_file("integration_2d_gold.txt");
   for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)

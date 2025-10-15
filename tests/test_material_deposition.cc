@@ -308,7 +308,7 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   // Build MaterialProperty
   boost::property_tree::ptree material_property_database =
       database.get_child("materials");
-  adamantine::MaterialProperty<dim, 1, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<dim, 1, 1, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       material_properties(communicator, geometry.get_triangulation(),
                           material_property_database);
@@ -319,7 +319,7 @@ BOOST_AUTO_TEST_CASE(material_deposition)
   database.put("time_stepping.method", "forward_euler");
 
   // Build ThermalPhysics
-  adamantine::ThermalPhysics<dim, 1, dim, adamantine::SolidLiquidPowder,
+  adamantine::ThermalPhysics<dim, 1, 1, dim, adamantine::SolidLiquidPowder,
                              dealii::MemorySpace::Host, dealii::QGauss<1>>
       thermal_physics(communicator, database, geometry, boundary,
                       material_properties);
