@@ -126,7 +126,7 @@ between 0 and 1 (required).
 ## time\_stepping (required):
 * **method**: name of the method to use for the time integration: `forward_euler`,
 `rk_third_order`, or `rk_fourth_order` (required)
-* **scan\_path\_for\_duration**: if the flag is true, the duration of the simulation is determined by the duration of the scan path. In this case the scan path file needs to contain SCAN\_PATH\_END to terminate the simulation. If the flag is false, the duration of the simulation is determined by the duration input (default value: false, <span style="color:green">since 1.1<span>)
+* **scan\_path\_for\_duration**: if the flag is true, the duration of the simulation is determined by the duration of the scan path. In this case the scan path file needs to contain SCAN\_PATH\_END to terminate the simulation. If the flag is false, the duration of the simulation is determined by the duration input. Note that if the scan path file is using the [segment format]({{site.baseurl}}/doc/scan_path.html#segment-format), the value of the number of path segments in the scan path file must be at least equal to the number of segments plus one (default value: false, <span style="color:green">since 1.1<span>)
 * **duration**: duration of the simulation in seconds (<span style="color:red">required for 1.0,</span> <span style="color:green">since 1.1 only required if scan\_path\_for\_duration is false</span>)
 * **time\_step**: length of the time steps used for the simulation in seconds (required)
 
