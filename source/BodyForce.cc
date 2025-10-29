@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2023 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2023 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -33,5 +33,5 @@ GravityForce<dim, p_order, MaterialStates, MemorySpaceType>::eval(
 }
 } // namespace adamantine
 
-INSTANTIATE_DIM_PORDER_MATERIALSTATES_HOST(TUPLE(GravityForce))
-INSTANTIATE_DIM_PORDER_MATERIALSTATES_DEVICE(TUPLE(GravityForce))
+INSTANTIATE_DIM_PORDER_MATERIALSTATES_HOST(GravityForce)
+INSTANTIATE_DIM_PORDER_MATERIALSTATES_DEVICE(GravityForce)

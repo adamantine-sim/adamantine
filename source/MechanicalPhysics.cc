@@ -558,5 +558,5 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
 
 } // namespace adamantine
 
-INSTANTIATE_DIM_PORDER_MATERIALSTATES_HOST(TUPLE(MechanicalPhysics))
-INSTANTIATE_DIM_PORDER_MATERIALSTATES_DEVICE(TUPLE(MechanicalPhysics))
+INSTANTIATE_DIM_PORDER_MATERIALSTATES_HOST(MechanicalPhysics)
+INSTANTIATE_DIM_PORDER_MATERIALSTATES_DEVICE(MechanicalPhysics)
