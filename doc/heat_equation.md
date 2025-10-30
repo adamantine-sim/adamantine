@@ -1,8 +1,8 @@
 ---
 layout: default
 parent: Home
-nav_order: 4
-published: false
+title: Heat Equation
+nav_exclude: true
 usemathjax: true
 ---
 
