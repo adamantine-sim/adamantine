@@ -347,5 +347,5 @@ void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
 }
 } // namespace adamantine
 
-INSTANTIATE_DIM_PORDER_MATERIALSTATES_HOST(TUPLE(MechanicalOperator))
-INSTANTIATE_DIM_PORDER_MATERIALSTATES_DEVICE(TUPLE(MechanicalOperator))
+INSTANTIATE_DIM_PORDER_MATERIALSTATES_HOST(MechanicalOperator)
+INSTANTIATE_DIM_PORDER_MATERIALSTATES_DEVICE(MechanicalOperator)
