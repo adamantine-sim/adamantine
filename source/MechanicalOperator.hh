@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -7,7 +7,6 @@
 
 #include <BodyForce.hh>
 #include <MaterialProperty.hh>
-#include <Operator.hh>
 
 #include <deal.II/base/memory_space.h>
 #include <deal.II/base/quadrature_lib.h>
@@ -28,7 +27,7 @@ namespace adamantine
  */
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-class MechanicalOperator : public Operator<dealii::MemorySpace::Host>
+class MechanicalOperator
 {
 public:
   /**
@@ -46,29 +45,6 @@ public:
               std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
                   std::vector<std::shared_ptr<BodyForce<dim>>>());
 
-  dealii::types::global_dof_index m() const override;
-
-  dealii::types::global_dof_index n() const override;
-
-  void
-  vmult(dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &dst,
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &src) const override;
-
-  void Tvmult(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &dst,
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &src) const override;
-
-  void vmult_add(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &dst,
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &src) const override;
-
-  void Tvmult_add(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &dst,
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &src) const override;
   /**
    * Update the DoFHandler used by ThermalPhysics and update the temperature.
    */
@@ -143,22 +119,6 @@ private:
    */
   std::vector<bool> _has_melted;
 };
-
-template <int dim, int p_order, typename MaterialStates,
-          typename MemorySpaceType>
-inline dealii::types::global_dof_index
-MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::m() const
-{
-  return _system_matrix.m();
-}
-
-template <int dim, int p_order, typename MaterialStates,
-          typename MemorySpaceType>
-inline dealii::types::global_dof_index
-MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::n() const
-{
-  return _system_matrix.n();
-}
 
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
