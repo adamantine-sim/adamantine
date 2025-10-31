@@ -592,18 +592,6 @@ template <int dim, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
 void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                            MemorySpaceType>::
-    Tvmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
-           dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
-        const
-{
-  dst = 0.;
-  Tvmult_add(dst, src);
-}
-
-template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MaterialStates, typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
-                           MemorySpaceType>::
     vmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
               dealii::LA::distributed::Vector<double, MemorySpaceType> const
                   &src) const
@@ -618,18 +606,6 @@ void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                      _material_properties.get_state_property_polynomials());
   _matrix_free.cell_loop(local_operator, src, dst);
   _matrix_free.copy_constrained_values(src, dst);
-}
-
-template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MaterialStates, typename MemorySpaceType>
-void ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
-                           MemorySpaceType>::
-    Tvmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
-               dealii::LA::distributed::Vector<double, MemorySpaceType> const
-                   &src) const
-{
-  // The system of equation is symmetric so we can use vmult_add
-  vmult_add(dst, src);
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,

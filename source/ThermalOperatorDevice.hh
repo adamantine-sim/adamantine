@@ -44,20 +44,7 @@ public:
              dealii::LA::distributed::Vector<double, MemorySpaceType> const
                  &src) const override;
 
-  void Tvmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
-              dealii::LA::distributed::Vector<double, MemorySpaceType> const
-                  &src) const override;
-
   void vmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
-                 dealii::LA::distributed::Vector<double, MemorySpaceType> const
-                     &src) const override;
-
-  void Tvmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
-                  dealii::LA::distributed::Vector<double, MemorySpaceType> const
-                      &src) const override;
-
-  void
-  jacobian_vmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
                  dealii::LA::distributed::Vector<double, MemorySpaceType> const
                      &src) const override;
 
@@ -174,18 +161,6 @@ ThermalOperatorDevice<dim, use_table, p_order, fe_degree, MaterialStates,
                       MemorySpaceType>::get_matrix_free() const
 {
   return _matrix_free;
-}
-
-template <int dim, bool use_table, int p_order, int fe_degree,
-          typename MaterialStates, typename MemorySpaceType>
-inline void ThermalOperatorDevice<dim, use_table, p_order, fe_degree,
-                                  MaterialStates, MemorySpaceType>::
-    jacobian_vmult(
-        dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
-        dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
-        const
-{
-  vmult(dst, src);
 }
 
 template <int dim, bool use_table, int p_order, int fe_degree,

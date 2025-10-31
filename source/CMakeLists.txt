@@ -15,7 +15,6 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Microstructure.hh
-    ${CMAKE_CURRENT_SOURCE_DIR}/Operator.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/PointCloud.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/RayTracing.hh
