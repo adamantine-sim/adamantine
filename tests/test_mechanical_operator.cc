@@ -227,7 +227,7 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
   {
     src = 0.;
     src[i] = 1;
-    mechanical_operator.vmult(dst_1, src);
+    mechanical_operator.system_matrix().vmult(dst_1, src);
     system_matrix.vmult(dst_2, src);
     for (unsigned int j = 0; j < n_dofs; ++j)
       BOOST_TEST(dst_1[j] - dst_2[j] == 0.);

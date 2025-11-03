@@ -56,48 +56,6 @@ void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::reinit(
 
 template <int dim, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::vmult(
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &dst,
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-        &src) const
-{
-  _system_matrix.vmult(dst, src);
-}
-
-template <int dim, int p_order, typename MaterialStates,
-          typename MemorySpaceType>
-void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::Tvmult(
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &dst,
-    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-        &src) const
-{
-  _system_matrix.Tvmult(dst, src);
-}
-
-template <int dim, int p_order, typename MaterialStates,
-          typename MemorySpaceType>
-void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
-    vmult_add(
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &dst,
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &src) const
-{
-  _system_matrix.vmult_add(dst, src);
-}
-
-template <int dim, int p_order, typename MaterialStates,
-          typename MemorySpaceType>
-void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
-    Tvmult_add(
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> &dst,
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &src) const
-{
-  _system_matrix.Tvmult_add(dst, src);
-}
-
-template <int dim, int p_order, typename MaterialStates,
-          typename MemorySpaceType>
 void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
     update_temperature(
         dealii::DoFHandler<dim> const &thermal_dof_handler,

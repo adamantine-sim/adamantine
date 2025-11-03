@@ -114,17 +114,10 @@ BOOST_AUTO_TEST_CASE(thermal_operator_dev, *utf::tolerance(1e-10))
   thermal_operator_dev.vmult(dst_1, src);
   BOOST_TEST(dst_1.l1_norm() == 0);
 
-  thermal_operator_dev.Tvmult(dst_2, src);
-  BOOST_TEST(dst_2.l1_norm() == dst_1.l1_norm());
-
   dst_2 = 1.;
   thermal_operator_dev.vmult_add(dst_2, src);
   thermal_operator_dev.vmult(dst_1, src);
   dst_1 += src;
-  BOOST_TEST(dst_1.l1_norm() == dst_2.l1_norm());
-
-  dst_1 = 1.;
-  thermal_operator_dev.Tvmult_add(dst_1, src);
   BOOST_TEST(dst_1.l1_norm() == dst_2.l1_norm());
 }
 
