@@ -25,7 +25,7 @@ namespace adamantine
  * The class is templated on the MemorySpace because it use MaterialProperty
  * which itself is templated on the MemorySpace but the operator is CPU only.
  */
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 class MechanicalOperator
 {
@@ -35,7 +35,7 @@ public:
    * mechanical only. Otherwise, we solve a thermo-mechanical problem.
    */
   MechanicalOperator(MPI_Comm const &communicator,
-                     MaterialProperty<dim, p_order, MaterialStates,
+                     MaterialProperty<dim, n_materials, p_order, MaterialStates,
                                       MemorySpaceType> &material_properties,
                      std::vector<double> const &reference_temperatures);
 
@@ -80,7 +80,7 @@ private:
   /**
    * Reference to the MaterialProperty from MechanicalPhysics.
    */
-  MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
+  MaterialProperty<dim, n_materials, p_order, MaterialStates, MemorySpaceType>
       &_material_properties;
   /**
    * Non-owning pointer to the DoFHandler from MechanicalPhysics
@@ -120,19 +120,20 @@ private:
   std::vector<bool> _has_melted;
 };
 
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 inline dealii::LA::distributed::Vector<double,
                                        dealii::MemorySpace::Host> const &
-MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::rhs() const
+MechanicalOperator<dim, n_materials, p_order, MaterialStates,
+                   MemorySpaceType>::rhs() const
 {
   return _system_rhs;
 }
 
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 inline dealii::TrilinosWrappers::SparseMatrix const &
-MechanicalOperator<dim, p_order, MaterialStates,
+MechanicalOperator<dim, n_materials, p_order, MaterialStates,
                    MemorySpaceType>::system_matrix() const
 {
   return _system_matrix;

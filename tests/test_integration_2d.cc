@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_CASE(integration_2D, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto [temperature, displacement] =
-      run<2, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
+      run<2, 1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
           communicator, database, timers);
 
   std::ifstream gold_file("integration_2d_gold.txt");
@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE(integration_2D_ensemble, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto result_ensemble =
-      run_ensemble<2, 3, adamantine::SolidLiquidPowder,
+      run_ensemble<2, -1, 3, adamantine::SolidLiquidPowder,
                    dealii::MemorySpace::Host>(communicator, database, timers);
 
   for (auto &result_member : result_ensemble)
@@ -90,7 +90,7 @@ BOOST_AUTO_TEST_CASE(integration_2D_units, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto [temperature, displacement] =
-      run<2, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
+      run<2, 1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
           communicator, database, timers);
 
   std::ifstream gold_file("integration_2d_gold.txt");

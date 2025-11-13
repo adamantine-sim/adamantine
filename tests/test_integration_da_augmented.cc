@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_CASE(integration_3D_data_assimilation_augmented,
 
   // Run the simulation
   auto result =
-      run_ensemble<3, 3, adamantine::SolidLiquidPowder,
+      run_ensemble<3, -1, 3, adamantine::SolidLiquidPowder,
                    dealii::MemorySpace::Host>(communicator, database, timers);
 
   // Three ensemble members expected

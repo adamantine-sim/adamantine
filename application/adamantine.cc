@@ -4,8 +4,9 @@
 
 #include "adamantine.hh"
 
-#include "MaterialStates.hh"
-#include "utils.hh"
+#include <MaterialStates.hh>
+#include <instantiation.hh>
+#include <utils.hh>
 #include <validate_input_database.hh>
 
 #include <boost/program_options.hpp>
@@ -15,7 +16,7 @@
 #include <Kokkos_Core.hpp>
 
 #include <filesystem>
-#include <utility>
+#include <tuple>
 
 #ifdef ADAMANTINE_WITH_ADIAK
 #include <adiak.hpp>
@@ -25,8 +26,135 @@
 #include <caliper/cali-manager.h>
 #endif
 
-std::pair<int, int>
-get_p_order_and_n_material_states(boost::property_tree::ptree &database)
+// Define macros that replace nested ifs
+#define RUN_ENSEMBLE_SOLID_HOST_IF(z, SEQ)                                     \
+  if (BOOST_PP_SEQ_ELEM(0, SEQ) ==                                             \
+      std::tuple<int, int, int>(BOOST_PP_SEQ_ELEM(1, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(2, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(3, SEQ)))                    \
+    run_ensemble<BOOST_PP_SEQ_ELEM(1, SEQ), BOOST_PP_SEQ_ELEM(2, SEQ),         \
+                 BOOST_PP_SEQ_ELEM(3, SEQ), adamantine::Solid,                 \
+                 dealii::MemorySpace::Host>(communicator, database, timers);
+
+#define RUN_ENSEMBLE_SOLID_HOST(TUPLE)                                         \
+  BOOST_PP_SEQ_FOR_EACH_PRODUCT(                                               \
+      RUN_ENSEMBLE_SOLID_HOST_IF,                                              \
+      ((TUPLE))(ADAMANTINE_DIM)(ADAMANTINE_N_MATERIALS)(ADAMANTINE_P_ORDER))
+
+#define RUN_ENSEMBLE_SOLID_LIQUID_HOST_IF(z, SEQ)                              \
+  if (BOOST_PP_SEQ_ELEM(0, SEQ) ==                                             \
+      std::tuple<int, int, int>(BOOST_PP_SEQ_ELEM(1, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(2, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(3, SEQ)))                    \
+    run_ensemble<BOOST_PP_SEQ_ELEM(1, SEQ), BOOST_PP_SEQ_ELEM(2, SEQ),         \
+                 BOOST_PP_SEQ_ELEM(3, SEQ), adamantine::SolidLiquid,           \
+                 dealii::MemorySpace::Host>(communicator, database, timers);
+
+#define RUN_ENSEMBLE_SOLID_LIQUID_HOST(TUPLE)                                  \
+  BOOST_PP_SEQ_FOR_EACH_PRODUCT(                                               \
+      RUN_ENSEMBLE_SOLID_LIQUID_HOST_IF,                                       \
+      ((TUPLE))(ADAMANTINE_DIM)(ADAMANTINE_N_MATERIALS)(ADAMANTINE_P_ORDER))
+
+#define RUN_ENSEMBLE_SOLID_LIQUID_POWDER_HOST_IF(z, SEQ)                       \
+  if (BOOST_PP_SEQ_ELEM(0, SEQ) ==                                             \
+      std::tuple<int, int, int>(BOOST_PP_SEQ_ELEM(1, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(2, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(3, SEQ)))                    \
+    run_ensemble<BOOST_PP_SEQ_ELEM(1, SEQ), BOOST_PP_SEQ_ELEM(2, SEQ),         \
+                 BOOST_PP_SEQ_ELEM(3, SEQ), adamantine::SolidLiquidPowder,     \
+                 dealii::MemorySpace::Host>(communicator, database, timers);
+
+#define RUN_ENSEMBLE_SOLID_LIQUID_POWDER_HOST(TUPLE)                           \
+  BOOST_PP_SEQ_FOR_EACH_PRODUCT(                                               \
+      RUN_ENSEMBLE_SOLID_LIQUID_POWDER_HOST_IF,                                \
+      ((TUPLE))(ADAMANTINE_DIM)(ADAMANTINE_N_MATERIALS)(ADAMANTINE_P_ORDER))
+
+#define RUN_SOLID_HOST_IF(z, SEQ)                                              \
+  if (BOOST_PP_SEQ_ELEM(0, SEQ) ==                                             \
+      std::tuple<int, int, int>(BOOST_PP_SEQ_ELEM(1, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(2, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(3, SEQ)))                    \
+    run<BOOST_PP_SEQ_ELEM(1, SEQ), BOOST_PP_SEQ_ELEM(2, SEQ),                  \
+        BOOST_PP_SEQ_ELEM(3, SEQ), adamantine::Solid,                          \
+        dealii::MemorySpace::Host>(communicator, database, timers);
+
+#define RUN_SOLID_HOST(TUPLE)                                                  \
+  BOOST_PP_SEQ_FOR_EACH_PRODUCT(                                               \
+      RUN_SOLID_HOST_IF,                                                       \
+      ((TUPLE))(ADAMANTINE_DIM)(ADAMANTINE_N_MATERIALS)(ADAMANTINE_P_ORDER))
+
+#define RUN_SOLID_LIQUID_HOST_IF(z, SEQ)                                       \
+  if (BOOST_PP_SEQ_ELEM(0, SEQ) ==                                             \
+      std::tuple<int, int, int>(BOOST_PP_SEQ_ELEM(1, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(2, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(3, SEQ)))                    \
+    run<BOOST_PP_SEQ_ELEM(1, SEQ), BOOST_PP_SEQ_ELEM(2, SEQ),                  \
+        BOOST_PP_SEQ_ELEM(3, SEQ), adamantine::SolidLiquid,                    \
+        dealii::MemorySpace::Host>(communicator, database, timers);
+
+#define RUN_SOLID_LIQUID_HOST(TUPLE)                                           \
+  BOOST_PP_SEQ_FOR_EACH_PRODUCT(                                               \
+      RUN_SOLID_LIQUID_HOST_IF,                                                \
+      ((TUPLE))(ADAMANTINE_DIM)(ADAMANTINE_N_MATERIALS)(ADAMANTINE_P_ORDER))
+
+#define RUN_SOLID_LIQUID_POWDER_HOST_IF(z, SEQ)                                \
+  if (BOOST_PP_SEQ_ELEM(0, SEQ) ==                                             \
+      std::tuple<int, int, int>(BOOST_PP_SEQ_ELEM(1, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(2, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(3, SEQ)))                    \
+    run<BOOST_PP_SEQ_ELEM(1, SEQ), BOOST_PP_SEQ_ELEM(2, SEQ),                  \
+        BOOST_PP_SEQ_ELEM(3, SEQ), adamantine::SolidLiquidPowder,              \
+        dealii::MemorySpace::Host>(communicator, database, timers);
+
+#define RUN_SOLID_LIQUID_POWDER_HOST(TUPLE)                                    \
+  BOOST_PP_SEQ_FOR_EACH_PRODUCT(                                               \
+      RUN_SOLID_LIQUID_POWDER_HOST_IF,                                         \
+      ((TUPLE))(ADAMANTINE_DIM)(ADAMANTINE_N_MATERIALS)(ADAMANTINE_P_ORDER))
+
+#define RUN_SOLID_DEV_IF(z, SEQ)                                               \
+  if (BOOST_PP_SEQ_ELEM(0, SEQ) ==                                             \
+      std::tuple<int, int, int>(BOOST_PP_SEQ_ELEM(1, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(2, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(3, SEQ)))                    \
+    run<BOOST_PP_SEQ_ELEM(1, SEQ), BOOST_PP_SEQ_ELEM(2, SEQ),                  \
+        BOOST_PP_SEQ_ELEM(3, SEQ), adamantine::Solid,                          \
+        dealii::MemorySpace::Default>(communicator, database, timers);
+
+#define RUN_SOLID_DEVICE(TUPLE)                                                \
+  BOOST_PP_SEQ_FOR_EACH_PRODUCT(                                               \
+      RUN_SOLID_DEV_IF,                                                        \
+      ((TUPLE))(ADAMANTINE_DIM)(ADAMANTINE_N_MATERIALS)(ADAMANTINE_P_ORDER))
+
+#define RUN_SOLID_LIQUID_DEV_IF(z, SEQ)                                        \
+  if (BOOST_PP_SEQ_ELEM(0, SEQ) ==                                             \
+      std::tuple<int, int, int>(BOOST_PP_SEQ_ELEM(1, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(2, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(3, SEQ)))                    \
+    run<BOOST_PP_SEQ_ELEM(1, SEQ), BOOST_PP_SEQ_ELEM(2, SEQ),                  \
+        BOOST_PP_SEQ_ELEM(3, SEQ), adamantine::SolidLiquid,                    \
+        dealii::MemorySpace::Default>(communicator, database, timers);
+
+#define RUN_SOLID_LIQUID_DEVICE(TUPLE)                                         \
+  BOOST_PP_SEQ_FOR_EACH_PRODUCT(                                               \
+      RUN_SOLID_LIQUID_DEV_IF,                                                 \
+      ((TUPLE))(ADAMANTINE_DIM)(ADAMANTINE_N_MATERIALS)(ADAMANTINE_P_ORDER))
+
+#define RUN_SOLID_LIQUID_POWDER_DEV_IF(z, SEQ)                                 \
+  if (BOOST_PP_SEQ_ELEM(0, SEQ) ==                                             \
+      std::tuple<int, int, int>(BOOST_PP_SEQ_ELEM(1, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(2, SEQ),                     \
+                                BOOST_PP_SEQ_ELEM(3, SEQ)))                    \
+    run<BOOST_PP_SEQ_ELEM(1, SEQ), BOOST_PP_SEQ_ELEM(2, SEQ),                  \
+        BOOST_PP_SEQ_ELEM(3, SEQ), adamantine::SolidLiquidPowder,              \
+        dealii::MemorySpace::Default>(communicator, database, timers);
+
+#define RUN_SOLID_LIQUID_POWDER_DEVICE(TUPLE)                                  \
+  BOOST_PP_SEQ_FOR_EACH_PRODUCT(                                               \
+      RUN_SOLID_LIQUID_POWDER_DEV_IF,                                          \
+      ((TUPLE))(ADAMANTINE_DIM)(ADAMANTINE_N_MATERIALS)(ADAMANTINE_P_ORDER))
+
+std::tuple<int, int, int>
+get_material_template_parameters(boost::property_tree::ptree &database)
 {
   // We need to detect the degree of the polynomial. There are two cases. First,
   // we are using a table format. In this case, we return zero. Second, we are
@@ -109,7 +237,7 @@ get_p_order_and_n_material_states(boost::property_tree::ptree &database)
       n_material_states > 0 && n_material_states < 4,
       "Error when computing the number of material states");
 
-  return std::make_pair(p_order, n_material_states);
+  return std::make_tuple(n_materials, p_order, n_material_states);
 }
 
 int main(int argc, char *argv[])
@@ -264,8 +392,8 @@ int main(int argc, char *argv[])
     int const dim = geometry_database.get<int>("dim");
 
     // Get the polynomial order used in the material properties
-    auto const [p_order, n_material_states] =
-        get_p_order_and_n_material_states(database.get_child("materials"));
+    auto const [n_materials, p_order, n_material_states] =
+        get_material_template_parameters(database.get_child("materials"));
     adamantine::ASSERT_THROW(p_order < 5,
                              "Material properties have too many coefficients.");
 
@@ -282,867 +410,67 @@ int main(int argc, char *argv[])
       adiak::value("MemorySpace", "Host");
 #endif
 
-    if (dim == 2)
+    std::tuple<int, int, int> template_parameters(dim, n_materials, p_order);
+
+    if (ensemble_calc)
     {
-      if (ensemble_calc)
+      if (memory_space == "device")
       {
-        if (rank == 0)
-          std::cout << "Starting ensemble simulation" << std::endl;
-        if (memory_space == "device")
-        {
-          // TODO: Add device version of run_ensemble and call it here
-          adamantine::ASSERT_THROW(
-              false,
-              "Device version of ensemble simulations not yet implemented.");
-        }
-        else
-        {
-          switch (p_order)
-          {
-          // p_order case
-          case 0:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run_ensemble<2, 0, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run_ensemble<2, 0, adamantine::SolidLiquid,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-              break;
-            }
-            default:
-            {
-              run_ensemble<2, 0, adamantine::SolidLiquidPowder,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-            }
-            }
+        // TODO: Add device version of run_ensemble and call it here
+        adamantine::ASSERT_THROW(
+            false,
+            "Device version of ensemble simulations not yet implemented.");
+      }
 
-            break;
-          }
-          // p_order case
-          case 1:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run_ensemble<2, 1, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run_ensemble<2, 1, adamantine::SolidLiquid,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-              break;
-            }
-            default:
-            {
-              run_ensemble<2, 1, adamantine::SolidLiquidPowder,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-            }
-            }
+      if (rank == 0)
+        std::cout << "Starting ensemble simulation" << std::endl;
 
-            break;
-          }
-          // p_order case
-          case 2:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run_ensemble<2, 2, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run_ensemble<2, 2, adamantine::SolidLiquid,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-              break;
-            }
-            default:
-            {
-              run_ensemble<2, 2, adamantine::SolidLiquidPowder,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 3:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run_ensemble<2, 3, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run_ensemble<2, 3, adamantine::SolidLiquid,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-              break;
-            }
-            default:
-            {
-              run_ensemble<2, 3, adamantine::SolidLiquidPowder,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          default:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run_ensemble<2, 4, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run_ensemble<2, 4, adamantine::SolidLiquid,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-              break;
-            }
-            default:
-            {
-              run_ensemble<2, 4, adamantine::SolidLiquidPowder,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-            }
-            }
-          }
-          }
-        }
+      if (n_material_states == 1)
+      {
+        RUN_ENSEMBLE_SOLID_HOST(template_parameters);
+      }
+      else if (n_material_states == 2)
+      {
+        RUN_ENSEMBLE_SOLID_LIQUID_HOST(template_parameters);
       }
       else
       {
-        if (rank == 0)
-          std::cout << "Starting non-ensemble simulation" << std::endl;
-
-        if (memory_space == "device")
-        {
-          switch (p_order)
-          {
-          // p_order case
-          case 0:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<2, 0, adamantine::Solid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<2, 0, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<2, 0, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Default>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 1:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<2, 1, adamantine::Solid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<2, 1, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<2, 1, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Default>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 2:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<2, 2, adamantine::Solid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<2, 2, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<2, 2, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Default>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 3:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<2, 3, adamantine::Solid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<2, 3, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<2, 3, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Default>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          default:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<2, 4, adamantine::Solid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<2, 4, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<2, 4, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Default>(communicator, database, timers);
-            }
-            }
-          }
-          }
-        }
-        else
-        {
-          switch (p_order)
-          {
-          // p_order case
-          case 0:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<2, 0, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<2, 0, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<2, 0, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Host>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 1:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<2, 1, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<2, 1, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<2, 1, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Host>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 2:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<2, 2, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<2, 2, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<2, 2, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Host>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 3:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<2, 3, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<2, 3, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<2, 3, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Host>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          default:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<2, 4, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<2, 4, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<2, 4, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Host>(communicator, database, timers);
-            }
-            }
-          }
-          }
-        }
+        RUN_ENSEMBLE_SOLID_LIQUID_POWDER_HOST(template_parameters);
       }
     }
     else
     {
-      if (ensemble_calc)
-      {
-        if (rank == 0)
-          std::cout << "Starting ensemble simulation" << std::endl;
+      if (rank == 0)
+        std::cout << "Starting non-ensemble simulation" << std::endl;
 
-        if (memory_space == "device")
+      if (memory_space == "device")
+      {
+        if (n_material_states == 1)
         {
-          // TODO: Add device version of run_ensemble and call it here
-          adamantine::ASSERT_THROW(
-              false,
-              "Device version of ensemble simulations not yet implemented.");
+          RUN_SOLID_DEVICE(template_parameters);
+        }
+        else if (n_material_states == 2)
+        {
+          RUN_SOLID_LIQUID_DEVICE(template_parameters);
         }
         else
         {
-          switch (p_order)
-          {
-          // p_order case
-          case 0:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run_ensemble<3, 0, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run_ensemble<3, 0, adamantine::SolidLiquid,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-              break;
-            }
-            default:
-            {
-              run_ensemble<3, 0, adamantine::SolidLiquidPowder,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 1:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run_ensemble<3, 1, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run_ensemble<3, 1, adamantine::SolidLiquid,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-              break;
-            }
-            default:
-            {
-              run_ensemble<3, 1, adamantine::SolidLiquidPowder,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 2:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run_ensemble<3, 2, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run_ensemble<3, 2, adamantine::SolidLiquid,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-              break;
-            }
-            default:
-            {
-              run_ensemble<3, 2, adamantine::SolidLiquidPowder,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 3:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run_ensemble<3, 3, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run_ensemble<3, 3, adamantine::SolidLiquid,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-              break;
-            }
-            default:
-            {
-              run_ensemble<3, 3, adamantine::SolidLiquidPowder,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          default:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run_ensemble<3, 4, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run_ensemble<3, 4, adamantine::SolidLiquid,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-              break;
-            }
-            default:
-            {
-              run_ensemble<3, 4, adamantine::SolidLiquidPowder,
-                           dealii::MemorySpace::Host>(communicator, database,
-                                                      timers);
-            }
-            }
-          }
-          }
+          RUN_SOLID_LIQUID_POWDER_DEVICE(template_parameters);
         }
       }
       else
       {
-        if (rank == 0)
-          std::cout << "Starting non-ensemble simulation" << std::endl;
-
-        if (memory_space == "device")
+        if (n_material_states == 1)
         {
-          switch (p_order)
-          {
-          // p_order case
-          case 0:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<3, 0, adamantine::Solid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<3, 0, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<3, 0, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Default>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 1:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<3, 1, adamantine::Solid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<3, 1, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 2:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<3, 2, adamantine::Solid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<3, 2, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<3, 2, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Default>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 3:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<3, 3, adamantine::Solid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<3, 3, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<3, 3, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Default>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          default:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<3, 4, adamantine::Solid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<3, 4, adamantine::SolidLiquid, dealii::MemorySpace::Default>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<3, 4, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Default>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          }
+          RUN_SOLID_DEVICE(template_parameters);
+        }
+        else if (n_material_states == 2)
+        {
+          RUN_SOLID_LIQUID_DEVICE(template_parameters);
         }
         else
         {
-          switch (p_order)
-          {
-          // p_order case
-          case 0:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<3, 0, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<3, 0, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<3, 0, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Host>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 1:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<3, 1, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<3, 1, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<3, 1, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 2:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<3, 2, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<3, 2, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<3, 2, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Host>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          case 3:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<3, 3, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<3, 3, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<3, 3, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Host>(communicator, database, timers);
-            }
-            }
-
-            break;
-          }
-          // p_order case
-          default:
-          {
-            switch (n_material_states)
-            {
-            case 1:
-            {
-              run<3, 4, adamantine::Solid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            case 2:
-            {
-              run<3, 4, adamantine::SolidLiquid, dealii::MemorySpace::Host>(
-                  communicator, database, timers);
-              break;
-            }
-            default:
-            {
-              run<3, 4, adamantine::SolidLiquidPowder,
-                  dealii::MemorySpace::Host>(communicator, database, timers);
-            }
-            }
-          }
-          }
+          RUN_SOLID_LIQUID_POWDER_DEVICE(template_parameters);
         }
       }
     }

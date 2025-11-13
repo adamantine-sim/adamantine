@@ -23,14 +23,14 @@
 namespace adamantine
 {
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+ThermalOperator<dim, n_materials, use_table, p_order, fe_degree, MaterialStates,
                 MemorySpaceType>::
     ThermalOperator(
         MPI_Comm const &communicator, Boundary const &boundary,
-        MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
-            &material_properties,
+        MaterialProperty<dim, n_materials, p_order, MaterialStates,
+                         MemorySpaceType> &material_properties,
         std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources)
     : _communicator(communicator), _boundary(boundary),
       _material_properties(material_properties), _heat_sources(heat_sources),
@@ -52,10 +52,10 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
       dealii::update_values | dealii::update_JxW_values;
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
-                     MemorySpaceType>::
+void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                     MaterialStates, MemorySpaceType>::
     reinit(dealii::DoFHandler<dim> const &dof_handler,
            dealii::AffineConstraints<double> const &affine_constraints,
            dealii::hp::QCollection<1> const &q_collection)
@@ -77,10 +77,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
     }
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
-                     MemorySpaceType>::
+void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                     MaterialStates, MemorySpaceType>::
     cell_local_mass(
         dealii::MatrixFree<dim, double> const &data,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
@@ -114,10 +114,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   }
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
-                     MemorySpaceType>::
+void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                     MaterialStates, MemorySpaceType>::
     compute_inverse_mass_matrix(
         dealii::DoFHandler<dim> const &dof_handler,
         dealii::AffineConstraints<double> const &affine_constraints)
@@ -162,20 +162,20 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   }
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
-                     MemorySpaceType>::clear()
+void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                     MaterialStates, MemorySpaceType>::clear()
 {
   _cell_it_to_mf_cell_map.clear();
   _matrix_free.clear();
   _inverse_mass_matrix->reinit(0);
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
-                     MemorySpaceType>::
+void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                     MaterialStates, MemorySpaceType>::
     vmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
           dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
         const
@@ -184,10 +184,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   vmult_add(dst, src);
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
-                     MemorySpaceType>::
+void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                     MaterialStates, MemorySpaceType>::
     vmult_add(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
               dealii::LA::distributed::Vector<double, MemorySpaceType> const
                   &src) const
@@ -223,10 +223,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
     dst.local_element(dof) += scaling * src.local_element(dof);
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
-                     MemorySpaceType>::
+void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                     MaterialStates, MemorySpaceType>::
     update_state_ratios(
         [[maybe_unused]] unsigned int cell, [[maybe_unused]] unsigned int q,
         [[maybe_unused]] dealii::VectorizedArray<double> temperature,
@@ -315,10 +315,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   }
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
-                     MemorySpaceType>::
+void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                     MaterialStates, MemorySpaceType>::
     update_face_state_ratios(
         [[maybe_unused]] unsigned int face, [[maybe_unused]] unsigned int q,
         [[maybe_unused]] dealii::VectorizedArray<double> temperature,
@@ -411,10 +411,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   }
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
 dealii::VectorizedArray<double>
-ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+ThermalOperator<dim, n_materials, use_table, p_order, fe_degree, MaterialStates,
                 MemorySpaceType>::
     get_inv_rho_cp(
         std::array<dealii::types::material_id,
@@ -475,10 +475,10 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   return 1.0 / (density * specific_heat);
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
-                     MemorySpaceType>::
+void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                     MaterialStates, MemorySpaceType>::
     cell_local_apply(
         dealii::MatrixFree<dim, double> const &data,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
@@ -610,10 +610,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   }
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
-                     MemorySpaceType>::
+void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                     MaterialStates, MemorySpaceType>::
     face_local_apply(
         dealii::MatrixFree<dim, double> const &data,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
@@ -744,9 +744,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   }
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                     MaterialStates,
                      MemorySpaceType>::get_state_from_material_properties()
 {
   unsigned int const n_cells = _matrix_free.n_cell_batches();
@@ -876,9 +877,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
   }
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                     MaterialStates,
                      MemorySpaceType>::set_state_to_material_properties()
 {
   _material_properties.set_state(_liquid_ratio, _powder_ratio,
@@ -886,10 +888,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
                                  _matrix_free.get_dof_handler());
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
-                     MemorySpaceType>::
+void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                     MaterialStates, MemorySpaceType>::
     set_material_deposition_orientation(
         std::vector<double> const &deposition_cos,
         std::vector<double> const &deposition_sin)

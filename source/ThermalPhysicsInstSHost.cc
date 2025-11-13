@@ -5,4 +5,4 @@
 #include <ThermalPhysics.templates.hh>
 #include <instantiation.hh>
 
-INSTANTIATE_DIM_PORDER_FEDEGREE_S_QUAD_HOST(ThermalPhysics)
+INSTANTIATE_DIM_NMAT_PORDER_FEDEGREE_S_QUAD_HOST(ThermalPhysics)

@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(thermal_operator, *utf::tolerance(1e-15))
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 10.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 10.);
-  adamantine::MaterialProperty<2, 1, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, 1, 1, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       mat_properties(communicator, geometry.get_triangulation(),
                      mat_prop_database);
@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE(thermal_operator, *utf::tolerance(1e-15))
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, false, 1, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalOperator<2, 1, false, 1, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
       thermal_operator(communicator, boundary, mat_properties, heat_sources);
   std::vector<double> deposition_cos(
@@ -193,7 +193,7 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 1.);
-  adamantine::MaterialProperty<2, 2, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, -1, 2, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       mat_properties(communicator, geometry.get_triangulation(),
                      mat_prop_database);
@@ -213,7 +213,7 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, false, 2, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalOperator<2, -1, false, 2, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
       thermal_operator(communicator, boundary, mat_properties, heat_sources);
   std::vector<double> deposition_cos(
@@ -311,7 +311,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic, *utf::tolerance(1e-12))
   mat_prop_database.put("material_0.powder.thermal_conductivity_z", 0.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", 1.);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", 0.);
-  adamantine::MaterialProperty<2, 2, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, 1, 2, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       mat_properties(communicator, geometry.get_triangulation(),
                      mat_prop_database);
@@ -331,7 +331,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic, *utf::tolerance(1e-12))
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, false, 2, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalOperator<2, 1, false, 2, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
       thermal_operator(communicator, boundary, mat_properties, heat_sources);
   std::vector<double> deposition_cos(
@@ -469,7 +469,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
   mat_prop_database.put("material_0.liquid.thermal_conductivity_x", th_cond_x);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_y", th_cond_y);
   mat_prop_database.put("material_0.liquid.thermal_conductivity_z", th_cond_z);
-  adamantine::MaterialProperty<3, 1, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<3, 1, 1, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       mat_properties(communicator, geometry.get_triangulation(),
                      mat_prop_database);
@@ -478,7 +478,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
   std::vector<std::shared_ptr<adamantine::HeatSource<3>>> heat_sources;
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<3, false, 1, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalOperator<3, 1, false, 1, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
       thermal_operator(communicator, boundary, mat_properties, heat_sources);
   double constexpr deposition_angle = M_PI / 6.;
@@ -635,7 +635,7 @@ BOOST_AUTO_TEST_CASE(spmv_rad, *utf::tolerance(1e-12))
   mat_prop_database.put("material_0.liquid.convection_heat_transfer_coef", 1.);
   mat_prop_database.put("material_0.radiation_temperature_infty", 0.0);
   mat_prop_database.put("material_0.convection_temperature_infty", 0.0);
-  adamantine::MaterialProperty<2, 1, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, -1, 1, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       mat_properties(communicator, geometry.get_triangulation(),
                      mat_prop_database);
@@ -655,7 +655,7 @@ BOOST_AUTO_TEST_CASE(spmv_rad, *utf::tolerance(1e-12))
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, false, 1, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalOperator<2, -1, false, 1, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
       thermal_operator(communicator, boundary, mat_properties, heat_sources);
   std::vector<double> deposition_cos(
@@ -827,7 +827,7 @@ BOOST_AUTO_TEST_CASE(spmv_conv, *utf::tolerance(1e-12))
   mat_prop_database.put("material_0.liquid.convection_heat_transfer_coef", 1.);
   mat_prop_database.put("material_0.radiation_temperature_infty", 0.0);
   mat_prop_database.put("material_0.convection_temperature_infty", 0.0);
-  adamantine::MaterialProperty<2, 1, adamantine::SolidLiquidPowder,
+  adamantine::MaterialProperty<2, 1, 1, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       mat_properties(communicator, geometry.get_triangulation(),
                      mat_prop_database);
@@ -847,7 +847,7 @@ BOOST_AUTO_TEST_CASE(spmv_conv, *utf::tolerance(1e-12))
   heat_sources[0]->update_time(0.);
 
   // Initialize the ThermalOperator
-  adamantine::ThermalOperator<2, false, 1, 2, adamantine::SolidLiquidPowder,
+  adamantine::ThermalOperator<2, 1, false, 1, 2, adamantine::SolidLiquidPowder,
                               dealii::MemorySpace::Host>
       thermal_operator(communicator, boundary, mat_properties, heat_sources);
   std::vector<double> deposition_cos(

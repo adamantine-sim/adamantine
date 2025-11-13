@@ -21,15 +21,15 @@ namespace adamantine
  * This class is the operator associated with the heat equation, i.e., vmult
  * performs \f$ dst = -\nabla k \nabla src \f$.
  */
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
 class ThermalOperator final : public ThermalOperatorBase<dim, MemorySpaceType>
 {
 public:
   ThermalOperator(
       MPI_Comm const &communicator, Boundary const &boundary,
-      MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
-          &material_properties,
+      MaterialProperty<dim, n_materials, p_order, MaterialStates,
+                       MemorySpaceType> &material_properties,
       std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources);
 
   /**
@@ -181,7 +181,7 @@ private:
   /**
    * Material properties associated with the domain.
    */
-  MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType>
+  MaterialProperty<dim, n_materials, p_order, MaterialStates, MemorySpaceType>
       &_material_properties;
   /**
    * Vector of heat sources.
@@ -247,56 +247,56 @@ private:
   dealii::Table<2, dealii::VectorizedArray<double>> _deposition_sin;
 };
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
 inline dealii::types::global_dof_index
-ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+ThermalOperator<dim, n_materials, use_table, p_order, fe_degree, MaterialStates,
                 MemorySpaceType>::m() const
 {
   return _matrix_free.get_vector_partitioner()->size();
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
 inline dealii::types::global_dof_index
-ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+ThermalOperator<dim, n_materials, use_table, p_order, fe_degree, MaterialStates,
                 MemorySpaceType>::n() const
 {
   return _matrix_free.get_vector_partitioner()->size();
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
 inline std::shared_ptr<dealii::LA::distributed::Vector<double, MemorySpaceType>>
-ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+ThermalOperator<dim, n_materials, use_table, p_order, fe_degree, MaterialStates,
                 MemorySpaceType>::get_inverse_mass_matrix() const
 {
   return _inverse_mass_matrix;
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
 inline dealii::MatrixFree<dim, double> const &
-ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+ThermalOperator<dim, n_materials, use_table, p_order, fe_degree, MaterialStates,
                 MemorySpaceType>::get_matrix_free() const
 {
   return _matrix_free;
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-inline void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
-                            MemorySpaceType>::
+inline void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                            MaterialStates, MemorySpaceType>::
     initialize_dof_vector(
         dealii::LA::distributed::Vector<double, MemorySpaceType> &vector) const
 {
   _matrix_free.initialize_dof_vector(vector);
 }
 
-template <int dim, bool use_table, int p_order, int fe_degree,
+template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
 inline void
-ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
+ThermalOperator<dim, n_materials, use_table, p_order, fe_degree, MaterialStates,
                 MemorySpaceType>::set_time_and_source_height(double t,
                                                              double height)
 {

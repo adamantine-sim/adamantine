@@ -27,26 +27,28 @@
 
 namespace adamantine
 {
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
-    MechanicalOperator(MPI_Comm const &communicator,
-                       MaterialProperty<dim, p_order, MaterialStates,
-                                        MemorySpaceType> &material_properties,
-                       std::vector<double> const &reference_temperatures)
+MechanicalOperator<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
+    MechanicalOperator(
+        MPI_Comm const &communicator,
+        MaterialProperty<dim, n_materials, p_order, MaterialStates,
+                         MemorySpaceType> &material_properties,
+        std::vector<double> const &reference_temperatures)
     : _communicator(communicator),
       _reference_temperatures(reference_temperatures),
       _material_properties(material_properties)
 {
 }
 
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::reinit(
-    dealii::DoFHandler<dim> const &dof_handler,
-    dealii::AffineConstraints<double> const &affine_constraints,
-    dealii::hp::QCollection<dim> const &q_collection,
-    std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
+                        MemorySpaceType>::
+    reinit(dealii::DoFHandler<dim> const &dof_handler,
+           dealii::AffineConstraints<double> const &affine_constraints,
+           dealii::hp::QCollection<dim> const &q_collection,
+           std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   _dof_handler = &dof_handler;
   _affine_constraints = &affine_constraints;
@@ -54,9 +56,10 @@ void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::reinit(
   assemble_system(body_forces);
 }
 
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
+void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
+                        MemorySpaceType>::
     update_temperature(
         dealii::DoFHandler<dim> const &thermal_dof_handler,
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
@@ -68,9 +71,10 @@ void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
   _has_melted = has_melted;
 }
 
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
+void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
+                        MemorySpaceType>::
     assemble_system(
         std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
@@ -305,5 +309,5 @@ void MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>::
 }
 } // namespace adamantine
 
-INSTANTIATE_DIM_PORDER_MATERIALSTATES_HOST(MechanicalOperator)
-INSTANTIATE_DIM_PORDER_MATERIALSTATES_DEVICE(MechanicalOperator)
+INSTANTIATE_DIM_NMAT_PORDER_MATERIALSTATES_HOST(MechanicalOperator)
+INSTANTIATE_DIM_NMAT_PORDER_MATERIALSTATES_DEVICE(MechanicalOperator)
