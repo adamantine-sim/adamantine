@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
+#include <GaussianHeatSource.hh>
 #include <CubeHeatSource.hh>
 #include <ElectronBeamHeatSource.hh>
 #include <GoldakHeatSource.hh>
@@ -157,6 +158,16 @@ std::vector<std::shared_ptr<HeatSource<dim>>> get_bounding_heat_sources(
     {
       bounding_heat_sources[i] = std::make_shared<CubeHeatSource<dim>>(
           beam_database, units_optional_database);
+    }
+    else if (type == "gaussian")
+    {
+      boost::property_tree::ptree modified_beam_database = beam_database;
+      modified_beam_database.put("diameter", diameter_max[bounding_source]);
+      modified_beam_database.put("depth", depth_max[bounding_source]);
+      ++bounding_source;
+
+      bounding_heat_sources[i] = std::make_shared<GaussianHeatSource<dim>>(
+          modified_beam_database, units_optional_database);
     }
   }
 
