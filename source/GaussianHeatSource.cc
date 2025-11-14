@@ -16,58 +16,85 @@ GaussianHeatSource<dim>::GaussianHeatSource(
         &units_optional_database)
     : HeatSource<dim>(beam_database, units_optional_database)
 {
+  // Read the mandatory empirical coefficients for the Gaussian model.
+  _A = beam_database.get<double>("A");
+  _B = beam_database.get<double>("B");
 }
 
 template <int dim>
 void GaussianHeatSource<dim>::update_time(double time)
 {
+  // Get the current beam center from the scan path
   dealii::Point<3> const &path = this->_scan_path.value(time);
-  // Copy the scalar value of path to the vectorized data type
   for (unsigned int d = 0; d < 3; ++d)
   {
     _beam_center(d) = path(d);
   }
-  double segment_power_modifier = this->_scan_path.get_power_modifier(time);
-  _alpha = 2.0 * this->_beam.absorption_efficiency * this->_beam.max_power *
-           segment_power_modifier /
-           (this->_beam.radius_squared * this->_beam.depth * _pi_over_3_to_1p5);
+
+  // Update the beam dimensions
   _depth = this->_beam.depth;
   _radius_squared = this->_beam.radius_squared;
+
+  // Calculate the shape factor 'k' based on the beam aspect ratio.
+  double const aspect_ratio = std::max(1.0, _depth[0] / this->_beam.radius); // TODO: check
+  double const n = std::min(std::max(0.0, _A * std::log2(aspect_ratio) + _B), 9.0);
+  _k = std::pow(2.0, n);
+  
+  // Calculate the effective volume (V0) of the heat source.
+  // This is the integral of the weight function and is used for normalization.
+  auto const V0 = 0.5 * dealii::numbers::PI * _radius_squared * _depth *
+                  std::tgamma(1.0 / _k) /
+                  (_k * std::pow(3.0, 1.0 / _k));
+
+  double segment_power_modifier = this->_scan_path.get_power_modifier(time);
+  double const effective_power = this->_beam.absorption_efficiency *
+                                 this->_beam.max_power *
+                                 segment_power_modifier;
+                                 
+  // Normalize alpha to ensure total power equals the integral of the heat source
+  _alpha = effective_power / V0;
 }
 
 template <int dim>
 double GaussianHeatSource<dim>::value(dealii::Point<dim> const &point,
                                     double const height) const
 {
+  // Get the reference depth of the beam
   double const z = point[axis<dim>::z] - height;
   if ((z + this->_beam.depth) < 0.)
   {
     return 0.;
   }
-  else
+  
+  double xpy_squared =
+      std::pow(point[axis<dim>::x] - _beam_center[axis<dim>::x][0], 2);
+
+  if (dim == 3)
   {
-    double xpy_squared =
-        std::pow(point[axis<dim>::x] - _beam_center[axis<dim>::x][0], 2);
-    if (dim == 3)
-    {
-      xpy_squared +=
-          std::pow(point[axis<dim>::y] - _beam_center[axis<dim>::y][0], 2);
-    }
-
-    // Evaluating the exponential is very expensive. Return early if we know
-    // that the heat source will be small.
-    if (xpy_squared > 5. * this->_beam.radius_squared)
-    {
-      return 0.;
-    }
-
-    // Gaussian heat source equation
-    double heat_source =
-        _alpha[0] * std::exp(-3.0 * xpy_squared / this->_beam.radius_squared +
-                             -3.0 * std::pow(z / this->_beam.depth, 2));
-
-    return heat_source;
+    xpy_squared +=
+        std::pow(point[axis<dim>::y] - _beam_center[axis<dim>::y][0], 2);
   }
+
+  // Optimization: return zero if the heat source contribution will be negligible.
+  if (xpy_squared > 5. * this->_beam.radius_squared)
+  {
+    return 0.;
+  }
+  if (std::abs(z) > 5. * this->_beam.depth)
+  {
+    return 0.;
+  }
+  
+  // Radial component
+  double const radial_component =
+      std::exp(-2.0 * xpy_squared / this->_radius_squared[0]); // TODO: check
+
+  // Depth component
+  double const depth_component =
+      std::exp(-3.0 * std::pow(std::abs(z / this->_beam.depth), _k));
+ 
+  // Heat source equation  
+  return _alpha[0] * radial_component * depth_component;
 }
 
 template <int dim>
@@ -77,12 +104,13 @@ dealii::VectorizedArray<double> GaussianHeatSource<dim>::value(
 {
   auto const z = points[axis<dim>::z] - height;
   auto const z_depth = z + _depth;
+  
+  // Optimization: create a mask for points where the heat source is negligible (depth)
   dealii::VectorizedArray<double> depth_mask;
   for (unsigned int i = 0; i < depth_mask.size(); ++i)
   {
     depth_mask[i] = z_depth[i] < 0. ? 0. : 1.;
   }
-  // If all the lanes of depth_mask are zero, we can return early
   if (depth_mask.sum() == 0)
   {
     return depth_mask;
@@ -97,15 +125,13 @@ dealii::VectorizedArray<double> GaussianHeatSource<dim>::value(
     xpy_squared += y_squared;
   }
 
-  // Evaluating the exponential is very expensive. Return early if we know
-  // that the heat source will be small.
+  // Optimization: create a mask for points where the heat source is negligible (radial)
   auto const xpy_area = 5. * _radius_squared - xpy_squared;
   dealii::VectorizedArray<double> xpy_mask;
   for (unsigned int i = 0; i < xpy_mask.size(); ++i)
   {
     xpy_mask[i] = xpy_area[i] < 0. ? 0. : 1.;
   }
-  // If all the lanes of xpy_mask are zero, we can return early
   if (xpy_mask.sum() == 0)
   {
     return xpy_mask;
@@ -113,13 +139,15 @@ dealii::VectorizedArray<double> GaussianHeatSource<dim>::value(
 
   // Gaussian heat source equation:
   // alpha * exp(-3*(xpy_squared/radius_squared + (z/depth)^2))
-  dealii::VectorizedArray<double> minus_three = -3.;
-  xpy_squared /= _radius_squared;
-  auto exponent = z / _depth;
-  exponent *= exponent;
-  exponent += xpy_squared;
-  exponent *= minus_three;
-  return depth_mask * _alpha * std::exp(exponent);
+  auto const radial_component =
+    std::exp(-2.0 * xpy_squared / _radius_squared);
+
+  dealii::VectorizedArray<double> shape = _k;
+
+  auto const depth_component =
+      std::exp(-3.0 * std::pow(std::abs(z / _depth), shape));
+  
+  return depth_mask * _alpha * radial_component * depth_component;
 }
 
 template <int dim>
