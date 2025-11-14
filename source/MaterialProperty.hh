@@ -225,9 +225,11 @@ public:
 
   /**
    * Compute a material property at a quadrature point for a mix of states.
+   * @note This function is templated on @tparam because it is in a hot loop.
    */
-  template <bool use_table, StateProperty state_property>
+  template <bool use_table>
   dealii::VectorizedArray<double> compute_material_property(
+      StateProperty state_property,
       std::array<dealii::types::material_id,
                  dealii::VectorizedArray<double>::size()> const &material_id,
       std::array<dealii::VectorizedArray<double>,
@@ -238,6 +240,7 @@ public:
 
   /**
    * Compute a material property at a quadrature point for a mix of states.
+   * @note This function is templated on @tparam because it is in a hot loop.
    */
   template <bool use_table>
   KOKKOS_FUNCTION double
@@ -528,10 +531,11 @@ MaterialProperty<dim, n_materials, p_order, MaterialStates,
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-template <bool use_table, StateProperty state_property>
+template <bool use_table>
 dealii::VectorizedArray<double>
 MaterialProperty<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
     compute_material_property(
+        StateProperty state_property,
         std::array<dealii::types::material_id,
                    dealii::VectorizedArray<double>::size()> const &material_id,
         std::array<dealii::VectorizedArray<double>,
@@ -549,8 +553,7 @@ MaterialProperty<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
 
   dealii::VectorizedArray<double> value = 0.0;
   dealii::VectorizedArray<double> property;
-  unsigned int constexpr property_index =
-      static_cast<unsigned int>(state_property);
+  unsigned int const property_index = static_cast<unsigned int>(state_property);
 
   if constexpr (use_table)
   {
