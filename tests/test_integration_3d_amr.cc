@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_CASE(integration_3D_amr, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto [temperature, displacement] =
-      run<3, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
+      run<3, -1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
           communicator, database, timers);
 
   double min_val = std::numeric_limits<double>::max();
@@ -72,7 +72,7 @@ BOOST_AUTO_TEST_CASE(integration_3D_amr_refine_coarsen, *utf::tolerance(0.1))
   boost::property_tree::info_parser::read_info(filename, database);
 
   auto [temperature, displacement] =
-      run<3, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
+      run<3, 1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>(
           communicator, database, timers);
 
   auto global_size = temperature.size();

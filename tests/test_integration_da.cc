@@ -30,7 +30,7 @@ double integration_da(MPI_Comm communicator, bool l2_norm)
 
   // Run the simulation
   auto result =
-      run_ensemble<3, 1, adamantine::SolidLiquidPowder,
+      run_ensemble<3, 1, 1, adamantine::SolidLiquidPowder,
                    dealii::MemorySpace::Host>(communicator, database, timers);
 
   if (l2_norm)
@@ -100,7 +100,7 @@ double integration_da_point_cloud_add_mat(MPI_Comm communicator, bool l2_norm)
 
   // Run the simulation
   auto result =
-      run_ensemble<3, 1, adamantine::SolidLiquidPowder,
+      run_ensemble<3, 1, 1, adamantine::SolidLiquidPowder,
                    dealii::MemorySpace::Host>(communicator, database, timers);
 
   if (l2_norm)
@@ -183,7 +183,7 @@ double integration_da_ray_add_mat(MPI_Comm communicator, bool l2_norm)
 
   // Run the simulation
   auto result =
-      run_ensemble<3, 1, adamantine::SolidLiquidPowder,
+      run_ensemble<3, -1, 1, adamantine::SolidLiquidPowder,
                    dealii::MemorySpace::Host>(communicator, database, timers);
 
   if (l2_norm)

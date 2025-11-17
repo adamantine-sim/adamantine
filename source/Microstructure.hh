@@ -51,10 +51,11 @@ public:
    * - Cooling Rate (K/s) = |dT/dt|
    * - Interface Velocity: R (m/s) = cooling rate / G
    */
-  template <int p_order, typename MaterialStates, typename MemorySpaceType>
+  template <int n_materials, int p_order, typename MaterialStates,
+            typename MemorySpaceType>
   void compute_G_and_R(
-      MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType> const
-          &material_properties,
+      MaterialProperty<dim, n_materials, p_order, MaterialStates,
+                       MemorySpaceType> const &material_properties,
       dealii::DoFHandler<dim> const &dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &temperature,
@@ -81,10 +82,11 @@ private:
 };
 
 template <int dim>
-template <int p_order, typename MaterialStates, typename MemorySpaceType>
+template <int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 void Microstructure<dim>::compute_G_and_R(
-    MaterialProperty<dim, p_order, MaterialStates, MemorySpaceType> const
-        &material_properties,
+    MaterialProperty<dim, n_materials, p_order, MaterialStates,
+                     MemorySpaceType> const &material_properties,
     dealii::DoFHandler<dim> const &dof_handler,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
         &temperature,

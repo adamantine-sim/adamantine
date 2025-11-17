@@ -22,15 +22,15 @@
 
 namespace adamantine
 {
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
-    MechanicalPhysics(MPI_Comm const &communicator,
-                      unsigned int const fe_degree, Geometry<dim> &geometry,
-                      Boundary const &boundary,
-                      MaterialProperty<dim, p_order, MaterialStates,
-                                       MemorySpaceType> &material_properties,
-                      std::vector<double> const &reference_temperatures)
+MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
+    MechanicalPhysics(
+        MPI_Comm const &communicator, unsigned int const fe_degree,
+        Geometry<dim> &geometry, Boundary const &boundary,
+        MaterialProperty<dim, n_materials, p_order, MaterialStates,
+                         MemorySpaceType> &material_properties,
+        std::vector<double> const &reference_temperatures)
     : _geometry(geometry), _boundary(boundary),
       _material_properties(material_properties),
       _dof_handler(_geometry.get_triangulation()),
@@ -69,9 +69,10 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   }
 
   // Create the mechanical operator
-  _mechanical_operator = std::make_unique<
-      MechanicalOperator<dim, p_order, MaterialStates, MemorySpaceType>>(
-      communicator, _material_properties, reference_temperatures);
+  _mechanical_operator =
+      std::make_unique<MechanicalOperator<dim, n_materials, p_order,
+                                          MaterialStates, MemorySpaceType>>(
+          communicator, _material_properties, reference_temperatures);
 
   // Create the data used to compute the stress tensor
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
@@ -98,9 +99,10 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
                       std::vector<dealii::SymmetricTensor<2, dim>>(n_quad_pts));
 }
 
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
+void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
+                       MemorySpaceType>::
     setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   _dof_handler.distribute_dofs(_fe_collection);
@@ -128,9 +130,9 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
                                body_forces);
 }
 
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-void MechanicalPhysics<dim, p_order, MaterialStates,
+void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
                        MemorySpaceType>::prepare_transfer_mpi()
 {
   _old_displacement.update_ghost_values();
@@ -182,9 +184,9 @@ void MechanicalPhysics<dim, p_order, MaterialStates,
   _cell_data_transfer.prepare_for_coarsening_and_refinement(_data_to_transfer);
 }
 
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-void MechanicalPhysics<dim, p_order, MaterialStates,
+void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
                        MemorySpaceType>::complete_transfer_mpi()
 {
   _dof_handler.distribute_dofs(_fe_collection);
@@ -247,9 +249,10 @@ void MechanicalPhysics<dim, p_order, MaterialStates,
   }
 }
 
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
+void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
+                       MemorySpaceType>::
     setup_dofs(
         dealii::DoFHandler<dim> const &thermal_dof_handler,
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
@@ -411,10 +414,11 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
   }
 }
 
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
+MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
+                  MemorySpaceType>::solve()
 {
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_BEGIN("solve mechanical system");
@@ -467,9 +471,10 @@ MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::solve()
   return _old_displacement;
 }
 
-template <int dim, int p_order, typename MaterialStates,
+template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
+void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
+                       MemorySpaceType>::
     compute_stress(
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
             &displacement)
@@ -558,5 +563,5 @@ void MechanicalPhysics<dim, p_order, MaterialStates, MemorySpaceType>::
 
 } // namespace adamantine
 
-INSTANTIATE_DIM_PORDER_MATERIALSTATES_HOST(MechanicalPhysics)
-INSTANTIATE_DIM_PORDER_MATERIALSTATES_DEVICE(MechanicalPhysics)
+INSTANTIATE_DIM_NMAT_PORDER_MATERIALSTATES_HOST(MechanicalPhysics)
+INSTANTIATE_DIM_NMAT_PORDER_MATERIALSTATES_DEVICE(MechanicalPhysics)
