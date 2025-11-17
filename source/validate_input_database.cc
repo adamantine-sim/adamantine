@@ -364,7 +364,7 @@ void validate_input_database(boost::property_tree::ptree &database)
                      boost::iequals(beam_type, "gaussian"),
                  "Beam type, '" + beam_type +
                      "', is not recognized. Valid options are: 'goldak', "
-                     "'electron_beam', 'cube', and gaussian.");
+                     "'electron_beam', 'cube', and 'gaussian'.");
     ASSERT_THROW(database.get_child("sources")
                          .get_child("beam_" + std::to_string(beam_index))
                          .count("scan_path_file") != 0,
