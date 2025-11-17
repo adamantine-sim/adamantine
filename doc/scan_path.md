@@ -14,7 +14,7 @@ usemathjax: true
 After the self-explainatory tree-line header, the column descriptions are:
 * Column 1: mode 0 for line mode, mode 1 for spot mode
 * Columns 2 to 4: (x,y,z) coordinates in units of m. For line mode, this
-is the ending position of the the line.
+is the ending position of the line.
 * Column 5: the coefficient for the nominal power. Usually this is either
 0 or 1, but sometimes intermediate values are used when turning a corner.
 * Column 6: in spot mode, this is the dwell time in seconds, in line mode
