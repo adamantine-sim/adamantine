@@ -430,14 +430,14 @@ ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
 
   // Compute the state-dependent properties
   dealii::VectorizedArray<double> density =
-      _material_properties.template compute_material_property<use_table>(
-          StateProperty::density, material_id, state_ratios, temperature,
-          temperature_powers);
+      _material_properties.template compute_material_property<
+          use_table, StateProperty::density>(material_id, state_ratios,
+                                             temperature, temperature_powers);
 
   dealii::VectorizedArray<double> specific_heat =
-      _material_properties.template compute_material_property<use_table>(
-          StateProperty::specific_heat, material_id, state_ratios, temperature,
-          temperature_powers);
+      _material_properties.template compute_material_property<
+          use_table, StateProperty::specific_heat>(
+          material_id, state_ratios, temperature, temperature_powers);
 
   // Add in the latent heat contribution
   if constexpr (!std::is_same_v<MaterialStates, Solid>)
@@ -535,13 +535,13 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
       if constexpr (dim == 2)
       {
         th_conductivity_grad[axis<dim>::x] *=
-            _material_properties.template compute_material_property<use_table>(
-                StateProperty::thermal_conductivity_x, material_id,
-                state_ratios, temperature, temperature_powers);
+            _material_properties.template compute_material_property<
+                use_table, StateProperty::thermal_conductivity_x>(
+                material_id, state_ratios, temperature, temperature_powers);
         th_conductivity_grad[axis<dim>::z] *=
-            _material_properties.template compute_material_property<use_table>(
-                StateProperty::thermal_conductivity_z, material_id,
-                state_ratios, temperature, temperature_powers);
+            _material_properties.template compute_material_property<
+                use_table, StateProperty::thermal_conductivity_z>(
+                material_id, state_ratios, temperature, temperature_powers);
       }
 
       if constexpr (dim == 3)
@@ -549,13 +549,13 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
         auto const th_conductivity_grad_x = th_conductivity_grad[axis<dim>::x];
         auto const th_conductivity_grad_y = th_conductivity_grad[axis<dim>::y];
         auto const thermal_conductivity_x =
-            _material_properties.template compute_material_property<use_table>(
-                StateProperty::thermal_conductivity_x, material_id,
-                state_ratios, temperature, temperature_powers);
+            _material_properties.template compute_material_property<
+                use_table, StateProperty::thermal_conductivity_x>(
+                material_id, state_ratios, temperature, temperature_powers);
         auto const thermal_conductivity_y =
-            _material_properties.template compute_material_property<use_table>(
-                StateProperty::thermal_conductivity_y, material_id,
-                state_ratios, temperature, temperature_powers);
+            _material_properties.template compute_material_property<
+                use_table, StateProperty::thermal_conductivity_y>(
+                material_id, state_ratios, temperature, temperature_powers);
 
         auto cos = _deposition_cos(cell, q);
         auto sin = _deposition_sin(cell, q);
@@ -583,9 +583,9 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
 
         // There is no deposition angle for the z axis
         th_conductivity_grad[axis<dim>::z] *=
-            _material_properties.template compute_material_property<use_table>(
-                StateProperty::thermal_conductivity_z, material_id,
-                state_ratios, temperature, temperature_powers);
+            _material_properties.template compute_material_property<
+                use_table, StateProperty::thermal_conductivity_z>(
+                material_id, state_ratios, temperature, temperature_powers);
       }
 
       fe_eval.submit_gradient(-inv_rho_cp * th_conductivity_grad, q);
@@ -705,9 +705,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
               material_id[n], Property::convection_temperature_infty);
         }
         conv_heat_transfer_coef =
-            _material_properties.template compute_material_property<use_table>(
-                StateProperty::convection_heat_transfer_coef, material_id,
-                face_state_ratios, temperature, temperature_powers);
+            _material_properties.template compute_material_property<
+                use_table, StateProperty::convection_heat_transfer_coef>(
+                material_id, face_state_ratios, temperature,
+                temperature_powers);
       }
       if (boundary_type & BoundaryType::radiative)
       {
@@ -722,9 +723,10 @@ void ThermalOperator<dim, use_table, p_order, fe_degree, MaterialStates,
         // properties: h_rad = emissitivity * stefan-boltzmann constant * (T
         // + T_infty) (T^2 + T^2_infty).
         rad_heat_transfer_coef =
-            _material_properties.template compute_material_property<use_table>(
-                StateProperty::emissivity, material_id, face_state_ratios,
-                temperature, temperature_powers) *
+            _material_properties.template compute_material_property<
+                use_table, StateProperty::emissivity>(
+                material_id, face_state_ratios, temperature,
+                temperature_powers) *
             Constant::stefan_boltzmann * (temperature + rad_temperature_infty) *
             (temperature * temperature +
              rad_temperature_infty * rad_temperature_infty);
