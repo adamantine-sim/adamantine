@@ -36,10 +36,9 @@ void GoldakHeatSource<dim>::update_time(double time)
 }
 
 template <int dim>
-double GoldakHeatSource<dim>::value(dealii::Point<dim> const &point,
-                                    double const height) const
+double GoldakHeatSource<dim>::value(dealii::Point<dim> const &point) const
 {
-  double const z = point[axis<dim>::z] - height;
+  double const z = point[axis<dim>::z] - _beam_center[axis<dim>::z][0];
   if ((z + this->_beam.depth) < 0.)
   {
     return 0.;
@@ -72,10 +71,9 @@ double GoldakHeatSource<dim>::value(dealii::Point<dim> const &point,
 
 template <int dim>
 dealii::VectorizedArray<double> GoldakHeatSource<dim>::value(
-    dealii::Point<dim, dealii::VectorizedArray<double>> const &points,
-    dealii::VectorizedArray<double> const &height) const
+    dealii::Point<dim, dealii::VectorizedArray<double>> const &points) const
 {
-  auto const z = points[axis<dim>::z] - height;
+  auto const z = points[axis<dim>::z] - _beam_center[axis<dim>::z];
   auto const z_depth = z + _depth;
   dealii::VectorizedArray<double> depth_mask;
   for (unsigned int i = 0; i < depth_mask.size(); ++i)

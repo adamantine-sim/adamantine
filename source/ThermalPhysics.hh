@@ -119,11 +119,6 @@ public:
 
   unsigned int get_fe_degree() const override;
 
-  /**
-   * Return the current height of the heat source.
-   */
-  double get_current_source_height() const;
-
 private:
   using LA_Vector =
       typename dealii::LA::distributed::Vector<double, MemorySpaceType>;
@@ -144,10 +139,6 @@ private:
    * This flag is true if the time stepping method is forward euler.
    */
   bool _forward_euler = false;
-  /**
-   * Current height of the object.
-   */
-  double _current_source_height = 0.;
   /**
    * Associated geometry.
    */
@@ -346,17 +337,6 @@ ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
                MemorySpaceType, QuadratureType>::get_fe_degree() const
 {
   return fe_degree;
-}
-
-template <int dim, int n_materials, int p_order, int fe_degree,
-          typename MaterialStates, typename MemorySpaceType,
-          typename QuadratureType>
-inline double
-ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
-               MemorySpaceType, QuadratureType>::get_current_source_height()
-    const
-{
-  return _current_source_height;
 }
 } // namespace adamantine
 

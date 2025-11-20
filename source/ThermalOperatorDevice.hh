@@ -71,7 +71,7 @@ public:
       std::vector<double> const &deposition_cos,
       std::vector<double> const &deposition_sin) override;
 
-  void set_time_and_source_height(double, double) override
+  void set_time(double) override
   {
     // TODO
   }

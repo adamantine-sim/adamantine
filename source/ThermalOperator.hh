@@ -91,7 +91,7 @@ public:
       std::vector<double> const &deposition_cos,
       std::vector<double> const &deposition_sin) override;
 
-  void set_time_and_source_height(double t, double height) override;
+  void set_time(double t) override;
 
 private:
   /**
@@ -162,10 +162,6 @@ private:
    * false otherwise.
    */
   bool _adiabatic_only_bc = true;
-  /**
-   * Current height of the heat sources.
-   */
-  double _current_source_height = 0.;
   /**
    * Boundary ids associated to the domain.
    */
@@ -295,12 +291,9 @@ inline void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
 
 template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-inline void
-ThermalOperator<dim, n_materials, use_table, p_order, fe_degree, MaterialStates,
-                MemorySpaceType>::set_time_and_source_height(double t,
-                                                             double height)
+inline void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
+                            MaterialStates, MemorySpaceType>::set_time(double t)
 {
-  _current_source_height = height;
   for (auto &beam : _heat_sources)
     beam->update_time(t);
 }
