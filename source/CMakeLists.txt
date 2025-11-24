@@ -17,6 +17,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/Microstructure.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/PointCloud.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/Quaternion.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/RayTracing.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ScanPath.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorBase.hh
@@ -50,6 +51,7 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Microstructure.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/PointCloud.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/Quaternion.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/RayTracing.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ScanPath.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalOperatorInstSHost.cc
