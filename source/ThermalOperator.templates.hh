@@ -595,9 +595,8 @@ void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
           fe_eval.quadrature_point(q);
 
       dealii::VectorizedArray<double> quad_pt_source = 0.0;
-      dealii::VectorizedArray<double> height = _current_source_height;
       for (auto &beam : _heat_sources)
-        quad_pt_source += beam->value(q_point, height);
+        quad_pt_source += beam->value(q_point);
 
       quad_pt_source *= inv_rho_cp;
 

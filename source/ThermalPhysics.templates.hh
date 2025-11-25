@@ -47,12 +47,12 @@ template <int dim, int fe_degree, typename MemorySpaceType,
 dealii::LA::distributed::Vector<double, MemorySpaceType>
 evaluate_thermal_physics_impl(
     std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> thermal_operator,
-    double const t, double const current_source_height,
+    double const t,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
     std::vector<Timer> &timers)
 {
   timers[evol_time_eval_th_ph].start();
-  thermal_operator->set_time_and_source_height(t, current_source_height);
+  thermal_operator->set_time(t);
 
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> value(
       y.get_partitioner());
@@ -93,7 +93,7 @@ evaluate_thermal_physics_impl(
     dealii::hp::FECollection<dim> const &fe_collection, double const t,
     dealii::DoFHandler<dim> const &dof_handler,
     std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources,
-    double current_source_height, Boundary const &boundary,
+    Boundary const &boundary,
     MaterialProperty<dim, n_materials, p_order, MaterialStates, MemorySpaceType>
         &material_properties,
     dealii::AffineConstraints<double> const &affine_constraints,
@@ -170,7 +170,7 @@ evaluate_thermal_physics_impl(
         double quad_pt_source = 0.;
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
         for (auto &beam : heat_sources)
-          quad_pt_source += beam->value(q_point, current_source_height);
+          quad_pt_source += beam->value(q_point);
 
         cell_source[i] += inv_rho_cp * quad_pt_source *
                           fe_values.shape_value(i, q) * fe_values.JxW(q);
@@ -412,16 +412,6 @@ ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
     else
       cell->set_active_fe_index(1);
   }
-
-  // Set the initial height of the heat source. Right now this is just the
-  // maximum heat source height, which can lead to unexpected behavior for
-  // different sources with different heights.
-  double temp_height = std::numeric_limits<double>::lowest();
-  for (auto const &source : _heat_sources)
-  {
-    temp_height = std::max(temp_height, source->get_current_height(0.0));
-  }
-  _current_source_height = temp_height;
 }
 
 template <int dim, int n_materials, int p_order, int fe_degree,
@@ -793,16 +783,6 @@ double ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
         dealii::LA::distributed::Vector<double, MemorySpaceType> &solution,
         std::vector<Timer> &timers)
 {
-  // Update the height of the heat source. Right now this is just the
-  // maximum heat source height, which can lead to unexpected behavior for
-  // different sources with different heights.
-  double temp_height = std::numeric_limits<double>::lowest();
-  for (auto const &source : _heat_sources)
-  {
-    temp_height = std::max(temp_height, source->get_current_height(t));
-  }
-  _current_source_height = temp_height;
-
   // For very small time steps (e.g., less than 1e-4 second), using deal.II to
   // perform a forward steps becomes costly. In that case, we just peform the
   // forward euler ourselves.
@@ -880,7 +860,7 @@ ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
   if constexpr (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
   {
     return evaluate_thermal_physics_impl<dim, fe_degree, MemorySpaceType>(
-        _thermal_operator, t, _current_source_height, y, timers);
+        _thermal_operator, t, y, timers);
   }
   else
   {
@@ -890,8 +870,7 @@ ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
                                            fe_degree, MaterialStates,
                                            MemorySpaceType>(
           _thermal_operator, _fe_collection, t, _dof_handler, _heat_sources,
-          _current_source_height, _boundary, _material_properties,
-          _affine_constraints, y, timers);
+          _boundary, _material_properties, _affine_constraints, y, timers);
     }
     else
     {
@@ -899,8 +878,7 @@ ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
                                            fe_degree, MaterialStates,
                                            MemorySpaceType>(
           _thermal_operator, _fe_collection, t, _dof_handler, _heat_sources,
-          _current_source_height, _boundary, _material_properties,
-          _affine_constraints, y, timers);
+          _boundary, _material_properties, _affine_constraints, y, timers);
     }
   }
 

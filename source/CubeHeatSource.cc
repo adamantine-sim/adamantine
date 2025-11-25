@@ -49,8 +49,7 @@ void CubeHeatSource<dim>::update_time(double time)
 }
 
 template <int dim>
-double CubeHeatSource<dim>::value(dealii::Point<dim> const &point,
-                                  double const /*height*/) const
+double CubeHeatSource<dim>::value(dealii::Point<dim> const &point) const
 {
   if (_source_on)
   {
@@ -73,8 +72,7 @@ double CubeHeatSource<dim>::value(dealii::Point<dim> const &point,
 
 template <int dim>
 dealii::VectorizedArray<double> CubeHeatSource<dim>::value(
-    dealii::Point<dim, dealii::VectorizedArray<double>> const &points,
-    dealii::VectorizedArray<double> const & /*height*/) const
+    dealii::Point<dim, dealii::VectorizedArray<double>> const &points) const
 {
   dealii::VectorizedArray<double> mask = 0.;
 
@@ -106,12 +104,6 @@ dealii::VectorizedArray<double> CubeHeatSource<dim>::value(
   }
 
   return mask * _value;
-}
-
-template <int dim>
-double CubeHeatSource<dim>::get_current_height(double const /*time*/) const
-{
-  return _max_point[axis<dim>::z];
 }
 
 template <int dim>

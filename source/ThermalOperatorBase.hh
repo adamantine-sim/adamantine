@@ -81,7 +81,7 @@ public:
       std::vector<double> const &deposition_cos,
       std::vector<double> const &deposition_sin) = 0;
 
-  virtual void set_time_and_source_height(double, double) = 0;
+  virtual void set_time(double) = 0;
 };
 } // namespace adamantine
 #endif

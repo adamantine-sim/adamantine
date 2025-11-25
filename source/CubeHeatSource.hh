@@ -45,21 +45,14 @@ public:
   /**
    * Return the value of the source for a given point and time.
    */
-  double value(dealii::Point<dim> const &point,
-               double const /*height*/) const final;
+  double value(dealii::Point<dim> const &point) const final;
 
   /**
    * Same function as above but it uses vectorized data.
    */
   dealii::VectorizedArray<double>
-  value(dealii::Point<dim, dealii::VectorizedArray<double>> const &points,
-        dealii::VectorizedArray<double> const & /*height*/) const final;
-
-  /**
-   * Compute the current height of the where the heat source meets the material
-   * (i.e. the current scan path height).
-   */
-  double get_current_height(double const time) const final;
+  value(dealii::Point<dim, dealii::VectorizedArray<double>> const &points)
+      const final;
 
   dealii::BoundingBox<dim>
   get_bounding_box(double const time, double const scaling_factor) const final;

@@ -47,15 +47,14 @@ public:
    * Returns the value of an electron beam heat source at a specified point and
    * time.
    */
-  double value(dealii::Point<dim> const &point,
-               double const height) const final;
+  double value(dealii::Point<dim> const &point) const final;
 
   /**
    * Same function as above but it uses vectorized data.
    */
   dealii::VectorizedArray<double>
-  value(dealii::Point<dim, dealii::VectorizedArray<double>> const &points,
-        dealii::VectorizedArray<double> const &height) const final;
+  value(dealii::Point<dim, dealii::VectorizedArray<double>> const &points)
+      const final;
 
   dealii::BoundingBox<dim>
   get_bounding_box(double const time, double const scaling_factor) const final;

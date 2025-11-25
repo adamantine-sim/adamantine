@@ -74,28 +74,20 @@ public:
   virtual void update_time(double time) = 0;
 
   /**
-   * Compute the heat source at a given point at a given time given the current
-   * height of the object being manufactured.
+   * Compute the heat source at a given point at a given time
    */
-  virtual double value(dealii::Point<dim> const &points,
-                       double const height) const = 0;
+  virtual double value(dealii::Point<dim> const &points) const = 0;
 
   /**
    * Same function as above but it uses vectorized data.
    */
   virtual dealii::VectorizedArray<double>
-  value(dealii::Point<dim, dealii::VectorizedArray<double>> const &points,
-        dealii::VectorizedArray<double> const &height) const = 0;
+  value(dealii::Point<dim, dealii::VectorizedArray<double>> const &points)
+      const = 0;
   /**
    * Return the scan path for the heat source.
    */
   virtual ScanPath &get_scan_path();
-
-  /**
-   * Compute the current height of the where the heat source meets the material
-   * (i.e. the current scan path height).
-   */
-  virtual double get_current_height(double const time) const;
 
   /**
    * (Re)sets the BeamHeatSourceProperties member variable, necessary if the
@@ -125,12 +117,6 @@ template <int dim>
 inline ScanPath &HeatSource<dim>::get_scan_path()
 {
   return _scan_path;
-}
-
-template <int dim>
-inline double HeatSource<dim>::get_current_height(double const time) const
-{
-  return _scan_path.value(time)[2];
 }
 
 template <int dim>

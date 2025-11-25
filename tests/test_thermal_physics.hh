@@ -232,9 +232,6 @@ void thermal_2d_manufactured_solution()
 
   BOOST_TEST(time == 0.1);
 
-  BOOST_TEST(physics.get_current_source_height() == 0.0,
-             tt::tolerance(tolerance));
-
   if (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
   {
     for (unsigned int i = 0; i < solution.locally_owned_size(); ++i)
