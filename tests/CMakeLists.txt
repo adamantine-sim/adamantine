@@ -17,6 +17,7 @@ list(APPEND
      test_mechanical_operator
      test_mechanical_physics
      test_post_processor
+     test_quaternion
      test_scan_path
      test_thermal_operator
      test_thermal_operator_device
