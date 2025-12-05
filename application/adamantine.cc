@@ -462,15 +462,15 @@ int main(int argc, char *argv[])
       {
         if (n_material_states == 1)
         {
-          RUN_SOLID_DEVICE(template_parameters);
+          RUN_SOLID_HOST(template_parameters);
         }
         else if (n_material_states == 2)
         {
-          RUN_SOLID_LIQUID_DEVICE(template_parameters);
+          RUN_SOLID_LIQUID_HOST(template_parameters);
         }
         else
         {
-          RUN_SOLID_LIQUID_POWDER_DEVICE(template_parameters);
+          RUN_SOLID_LIQUID_POWDER_HOST(template_parameters);
         }
       }
     }
