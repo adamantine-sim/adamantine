@@ -72,7 +72,11 @@ get_expt_to_dof_mapping(PointsValues<dim> const &points_values,
 {
   auto [dof_indices, support_points] = get_dof_to_support_mapping(dof_handler);
 
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+  auto communicator = dof_handler.get_mpi_communicator();
+#else
   auto communicator = dof_handler.get_communicator();
+#endif
   int my_rank = dealii::Utilities::MPI::this_mpi_process(communicator);
 
   // Perform the search

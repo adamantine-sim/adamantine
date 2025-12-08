@@ -238,7 +238,11 @@ PointsValues<3> RayTracing::get_points_values()
   // need to create triangles for each face of each cell and then, ArborX will
   // perform the ray tracing on these triangles. This will simplify the current
   // code and will solve the problem of missing ray-cell intersections.
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+  auto communicator = _dof_handler.get_mpi_communicator();
+#else
   auto communicator = _dof_handler.get_communicator();
+#endif
   dealii::ArborXWrappers::DistributedTree distributed_tree(communicator,
                                                            bounding_boxes);
   RayNearestPredicate ray_nearest(_rays_current_frame);

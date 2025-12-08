@@ -194,7 +194,12 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
   _old_displacement.reinit(_dof_handler.locally_owned_dofs(),
                            locally_relevant_dofs,
-                           _dof_handler.get_communicator());
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+                           _dof_handler.get_mpi_communicator()
+#else
+                           _dof_handler.get_communicator()
+#endif
+  );
   _solution_transfer.interpolate(_old_displacement);
 
   auto n_active_cells = _dof_handler.get_triangulation().n_active_cells();
@@ -386,7 +391,12 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
   const dealii::IndexSet locally_owned_dofs = _dof_handler.locally_owned_dofs();
   _old_displacement.reinit(locally_owned_dofs, locally_relevant_dofs,
-                           _dof_handler.get_communicator());
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+                           _dof_handler.get_mpi_communicator()
+#else
+                           _dof_handler.get_communicator()
+#endif
+  );
 
   if (saved_old_displacement.size())
   {
