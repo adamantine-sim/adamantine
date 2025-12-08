@@ -238,7 +238,7 @@ evaluate_thermal_physics_impl(
   // Add source
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
       source_dev(source.get_partitioner());
-  source_dev.import(source, dealii::VectorOperation::insert);
+  source_dev.import_elements(source, dealii::VectorOperation::insert);
   value_dev += source_dev;
 
   // Multiply by the inverse of the mass matrix.
@@ -263,7 +263,7 @@ void init_dof_vector(
   for (unsigned int i = 0; i < local_size; ++i)
     vector_host.local_element(i) = value;
 
-  vector.import(vector_host, dealii::VectorOperation::insert);
+  vector.import_elements(vector_host, dealii::VectorOperation::insert);
 }
 } // namespace
 
@@ -556,7 +556,7 @@ void ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
   dealii::IndexSet rw_index_set = solution.locally_owned_elements();
   rw_index_set.add_indices(solution.get_partitioner()->ghost_indices());
   dealii::LA::ReadWriteVector<double> rw_solution(rw_index_set);
-  rw_solution.import(solution, dealii::VectorOperation::insert);
+  rw_solution.import_elements(solution, dealii::VectorOperation::insert);
 
   auto state_host = Kokkos::create_mirror_view_and_copy(
       Kokkos::HostSpace{}, _material_properties.get_state());
@@ -742,7 +742,7 @@ void ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
 
   // Communicate the results.
   solution.zero_out_ghost_values();
-  solution.import(rw_solution, dealii::VectorOperation::insert);
+  solution.import_elements(rw_solution, dealii::VectorOperation::insert);
   solution.update_ghost_values();
 }
 

@@ -184,7 +184,7 @@ void ratios()
   dealii::LA::ReadWriteVector<double> rw_vector(n_dofs);
   for (unsigned int i = 0; i < n_dofs; ++i)
     rw_vector[i] = 100000.;
-  avg_temperature.import(rw_vector, dealii::VectorOperation::insert);
+  avg_temperature.import_elements(rw_vector, dealii::VectorOperation::insert);
   mat_prop.update(dof_handler, avg_temperature);
   for (auto cell : triangulation.active_cell_iterators())
   {
@@ -310,7 +310,7 @@ void material_property_table()
       dof_handler.locally_owned_dofs());
   for (unsigned int i = 0; i < rw_vector.locally_owned_size(); ++i)
     rw_vector.local_element(i) = 15;
-  temperature.import(rw_vector, dealii::VectorOperation::insert);
+  temperature.import_elements(rw_vector, dealii::VectorOperation::insert);
   mat_prop.update(dof_handler, temperature);
 
   n = 0;
@@ -414,7 +414,7 @@ void material_property_polynomials()
       dof_handler.locally_owned_dofs());
   for (unsigned int i = 0; i < temperature.locally_owned_size(); ++i)
     rw_vector.local_element(i) = 15;
-  temperature.import(rw_vector, dealii::VectorOperation::insert);
+  temperature.import_elements(rw_vector, dealii::VectorOperation::insert);
   mat_prop.update(dof_handler, temperature);
 
   n = 0;

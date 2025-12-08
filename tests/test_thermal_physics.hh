@@ -241,7 +241,7 @@ void thermal_2d_manufactured_solution()
   {
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
         solution_host(solution.get_partitioner());
-    solution_host.import(solution, dealii::VectorOperation::insert);
+    solution_host.import_elements(solution, dealii::VectorOperation::insert);
     for (unsigned int i = 0; i < solution.size(); ++i)
       BOOST_TEST(solution_host[i] == 0.1, tt::tolerance(tolerance));
   }
@@ -376,7 +376,7 @@ void energy_conservation()
   {
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
         solution_host(solution.get_partitioner());
-    solution_host.import(solution, dealii::VectorOperation::insert);
+    solution_host.import_elements(solution, dealii::VectorOperation::insert);
     for (auto v : solution_host)
     {
       if (max < v)
@@ -493,7 +493,7 @@ void radiation_bcs()
   {
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
         solution_host(solution.get_partitioner());
-    solution_host.import(solution, dealii::VectorOperation::insert);
+    solution_host.import_elements(solution, dealii::VectorOperation::insert);
     for (auto v : solution_host)
     {
       if (max < v)
@@ -608,7 +608,7 @@ void convection_bcs()
     {
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
           solution_host(solution.get_partitioner());
-      solution_host.import(solution, dealii::VectorOperation::insert);
+      solution_host.import_elements(solution, dealii::VectorOperation::insert);
       for (unsigned int i = 0; i < solution.locally_owned_size(); ++i)
       {
         double gold_value = -1.;
