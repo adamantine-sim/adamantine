@@ -95,7 +95,8 @@ void compute_average(
 {
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       temperature_host(temperature.get_partitioner());
-  temperature_host.import(temperature, dealii::VectorOperation::insert);
+  temperature_host.import_elements(temperature,
+                                   dealii::VectorOperation::insert);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       temperature_average_host(temperature_average.get_partitioner());
   temperature_average_host = 0.;
@@ -103,8 +104,8 @@ void compute_average(
                   temperature_dof_handler, hp_fe_values, temperature_host,
                   temperature_average_host);
 
-  temperature_average.import(temperature_average_host,
-                             dealii::VectorOperation::insert);
+  temperature_average.import_elements(temperature_average_host,
+                                      dealii::VectorOperation::insert);
 }
 
 template <typename ViewType,

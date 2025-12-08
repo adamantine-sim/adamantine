@@ -151,7 +151,8 @@ void output_pvtu(
     dealii::LinearAlgebra::distributed::Vector<double,
                                                dealii::MemorySpace::Host>
         temperature_host(temperature.get_partitioner());
-    temperature_host.import(temperature, dealii::VectorOperation::insert);
+    temperature_host.import_elements(temperature,
+                                     dealii::VectorOperation::insert);
     thermal_physics->get_affine_constraints().distribute(temperature_host);
     if (mechanical_physics)
     {
@@ -404,7 +405,7 @@ void refine_and_transfer(
   else
   {
     solution_host.reinit(solution.get_partitioner());
-    solution_host.import(solution, dealii::VectorOperation::insert);
+    solution_host.import_elements(solution, dealii::VectorOperation::insert);
     // We need to apply the constraints before the mesh transfer
     thermal_physics->get_affine_constraints().distribute(solution_host);
     // We need to update the ghost values before we can do the interpolation on
@@ -448,7 +449,7 @@ void refine_and_transfer(
   {
     solution_host.reinit(solution.get_partitioner());
     solution_transfer.interpolate(solution_host);
-    solution.import(solution_host, dealii::VectorOperation::insert);
+    solution.import_elements(solution_host, dealii::VectorOperation::insert);
   }
 
   // Unpack the material state and repopulate the material state
@@ -929,7 +930,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       // Thermo-mechanical simulation
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
           temperature_host(temperature.get_partitioner());
-      temperature_host.import(temperature, dealii::VectorOperation::insert);
+      temperature_host.import_elements(temperature,
+                                       dealii::VectorOperation::insert);
       mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
                                      temperature_host,
                                      thermal_physics->get_has_melted_vector());
@@ -1259,7 +1261,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           thermal_physics->set_state_to_material_properties();
           dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
               temperature_host(temperature.get_partitioner());
-          temperature_host.import(temperature, dealii::VectorOperation::insert);
+          temperature_host.import_elements(temperature,
+                                           dealii::VectorOperation::insert);
           mechanical_physics->setup_dofs(
               thermal_physics->get_dof_handler(), temperature_host,
               thermal_physics->get_has_melted_vector());
@@ -1351,7 +1354,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     dealii::LinearAlgebra::distributed::Vector<double,
                                                dealii::MemorySpace::Host>
         temperature_host(temperature.get_partitioner());
-    temperature_host.import(temperature, dealii::VectorOperation::insert);
+    temperature_host.import_elements(temperature,
+                                     dealii::VectorOperation::insert);
     if (use_thermal_physics)
     {
       thermal_physics->get_affine_constraints().distribute(temperature_host);
@@ -2373,7 +2377,7 @@ run_ensemble(MPI_Comm const &global_communicator,
       solution_augmented_ensemble_host[member].block(0).reinit(
           solution_augmented_ensemble[member].block(0).get_partitioner());
 
-      solution_augmented_ensemble_host[member].block(0).import(
+      solution_augmented_ensemble_host[member].block(0).import_elements(
           solution_augmented_ensemble[member].block(0),
           dealii::VectorOperation::insert);
       thermal_physics_ensemble[member]->get_affine_constraints().distribute(
@@ -2382,7 +2386,7 @@ run_ensemble(MPI_Comm const &global_communicator,
       solution_augmented_ensemble_host[member].block(1).reinit(
           solution_augmented_ensemble[member].block(0).get_partitioner());
 
-      solution_augmented_ensemble_host[member].block(1).import(
+      solution_augmented_ensemble_host[member].block(1).import_elements(
           solution_augmented_ensemble[member].block(1),
           dealii::VectorOperation::insert);
     }

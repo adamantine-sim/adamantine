@@ -222,10 +222,10 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
         thermal_operator_dev.m());
     rw_vector = 0.;
     rw_vector[i] = 1.;
-    src_dev.import(rw_vector, dealii::VectorOperation::insert);
+    src_dev.import_elements(rw_vector, dealii::VectorOperation::insert);
 
     thermal_operator_dev.vmult(dst_dev, src_dev);
-    rw_vector.import(dst_dev, dealii::VectorOperation::insert);
+    rw_vector.import_elements(dst_dev, dealii::VectorOperation::insert);
     src_host = 0.;
     src_host[i] = 1.;
     sparse_matrix.vmult(dst_host, src_host);
@@ -354,15 +354,15 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
     src_host[i] = 1.;
     dst_host = 0.;
     dst_host[i] = 1.;
-    src_dev.import(src_host, dealii::VectorOperation::insert);
-    dst_dev.import(dst_host, dealii::VectorOperation::insert);
+    src_dev.import_elements(src_host, dealii::VectorOperation::insert);
+    dst_dev.import_elements(dst_host, dealii::VectorOperation::insert);
 
     thermal_operator_host.vmult_add(dst_host, src_host);
     thermal_operator_dev.vmult_add(dst_dev, src_dev);
 
     dealii::LinearAlgebra::ReadWriteVector<double> rw_vector(
         thermal_operator_dev.m());
-    rw_vector.import(dst_dev, dealii::VectorOperation::insert);
+    rw_vector.import_elements(dst_dev, dealii::VectorOperation::insert);
     for (unsigned int j = 0; j < thermal_operator_dev.m(); ++j)
     {
       double rw_value = std::abs(rw_vector[j]) > 1e-15 ? rw_vector[j] : 0.;
@@ -526,10 +526,10 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
   {
     src_host = 0.;
     src_host[i] = 1;
-    src_dev.import(src_host, dealii::VectorOperation::insert);
+    src_dev.import_elements(src_host, dealii::VectorOperation::insert);
     thermal_operator_dev.vmult(dst_dev, src_dev);
     sparse_matrix.vmult(dst_host, src_host);
-    dst_dev_to_host.import(dst_dev, dealii::VectorOperation::insert);
+    dst_dev_to_host.import_elements(dst_dev, dealii::VectorOperation::insert);
     for (unsigned int j = 0; j < thermal_operator_dev.m(); ++j)
       BOOST_TEST(dst_dev_to_host[j] == -dst_host[j]);
   }
