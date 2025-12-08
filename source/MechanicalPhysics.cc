@@ -106,11 +106,10 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
     setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   _dof_handler.distribute_dofs(_fe_collection);
-  dealii::IndexSet locally_relevant_dofs;
-  dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler,
-                                                  locally_relevant_dofs);
-  _affine_constraints.clear();
-  _affine_constraints.reinit(locally_relevant_dofs);
+  dealii::IndexSet locally_relevant_dofs =
+      dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+  dealii::IndexSet locally_owned_dofs = _dof_handler.locally_owned_dofs();
+  _affine_constraints.reinit(locally_owned_dofs, locally_relevant_dofs);
   dealii::DoFTools::make_hanging_node_constraints(_dof_handler,
                                                   _affine_constraints);
 

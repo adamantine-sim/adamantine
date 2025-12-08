@@ -109,9 +109,8 @@ BOOST_AUTO_TEST_CASE(set_vector_with_experimental_data_point_cloud)
   dof_handler.distribute_dofs(fe);
 
   auto locally_owned_dofs = dof_handler.locally_owned_dofs();
-  dealii::IndexSet locally_relevant_dofs;
-  dealii::DoFTools::extract_locally_relevant_dofs(dof_handler,
-                                                  locally_relevant_dofs);
+  dealii::IndexSet locally_relevant_dofs =
+      dealii::DoFTools::extract_locally_relevant_dofs(dof_handler);
   dealii::LinearAlgebra::distributed::Vector<double> temperature(
       locally_owned_dofs, locally_relevant_dofs, communicator);
 
