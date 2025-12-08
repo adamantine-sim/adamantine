@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE(spmv, *utf::tolerance(1e-12))
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> src_dev;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> dst_dev;
 
-  dealii::CUDAWrappers::MatrixFree<2, double> const &matrix_free =
+  dealii::Portable::MatrixFree<2, double> const &matrix_free =
       thermal_operator_dev.get_matrix_free();
   matrix_free.initialize_dof_vector(src_dev);
   matrix_free.initialize_dof_vector(dst_dev);
@@ -338,7 +338,7 @@ BOOST_AUTO_TEST_CASE(mf_spmv, *utf::tolerance(1.5e-12))
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> src_dev;
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> dst_dev;
 
-  dealii::CUDAWrappers::MatrixFree<2, double> const &matrix_free =
+  dealii::Portable::MatrixFree<2, double> const &matrix_free =
       thermal_operator_dev.get_matrix_free();
   matrix_free.initialize_dof_vector(src_dev);
   matrix_free.initialize_dof_vector(dst_dev);

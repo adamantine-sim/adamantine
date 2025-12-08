@@ -10,7 +10,7 @@
 #include <ThermalOperatorBase.hh>
 
 #include <deal.II/base/types.h>
-#include <deal.II/matrix_free/cuda_matrix_free.h>
+#include <deal.II/matrix_free/portable_matrix_free.h>
 
 namespace adamantine
 {
@@ -39,7 +39,7 @@ public:
 
   dealii::types::global_dof_index n() const override;
 
-  dealii::CUDAWrappers::MatrixFree<dim, double> const &get_matrix_free() const;
+  dealii::Portable::MatrixFree<dim, double> const &get_matrix_free() const;
 
   void vmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
              dealii::LA::distributed::Vector<double, MemorySpaceType> const
@@ -104,14 +104,14 @@ private:
   bool _adiabatic_only_bc = true;
   dealii::types::global_dof_index _m;
   unsigned int _n_owned_cells;
-  typename dealii::CUDAWrappers::MatrixFree<dim, double>::AdditionalData
+  typename dealii::Portable::MatrixFree<dim, double>::AdditionalData
       _matrix_free_data;
   /**
    * Material properties associated with the domain.
    */
   MaterialProperty<dim, n_materials, p_order, MaterialStates, MemorySpaceType>
       &_material_properties;
-  dealii::CUDAWrappers::MatrixFree<dim, double> _matrix_free;
+  dealii::Portable::MatrixFree<dim, double> _matrix_free;
   Kokkos::View<double *, kokkos_default> _liquid_ratio;
   Kokkos::View<double *, kokkos_default> _powder_ratio;
   Kokkos::View<dealii::types::material_id *, kokkos_default> _material_id;
@@ -158,7 +158,7 @@ ThermalOperatorDevice<dim, n_materials, use_table, p_order, fe_degree,
 
 template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
           typename MaterialStates, typename MemorySpaceType>
-inline dealii::CUDAWrappers::MatrixFree<dim, double> const &
+inline dealii::Portable::MatrixFree<dim, double> const &
 ThermalOperatorDevice<dim, n_materials, use_table, p_order, fe_degree,
                       MaterialStates, MemorySpaceType>::get_matrix_free() const
 {
