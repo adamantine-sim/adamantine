@@ -223,11 +223,32 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
       n_dofs);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> dst_2(
       n_dofs);
+
+  dealii::IndexSet index_set = dealii::complete_index_set(n_dofs);
+#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+  dealii::LinearAlgebra::TpetraWrappers::Vector<double,
+                                                dealii::MemorySpace::Default>
+      src_device(index_set, MPI_COMM_SELF);
+  dealii::LinearAlgebra::TpetraWrappers::Vector<double,
+                                                dealii::MemorySpace::Default>
+      dst_device(index_set, MPI_COMM_SELF);
+#else
+  dealii::TrilinosWrappers::MPI::Vector src_device(index_set, MPI_COMM_SELF);
+  dealii::TrilinosWrappers::MPI::Vector dst_device(index_set, MPI_COMM_SELF);
+#endif
+  dealii::LinearAlgebra::ReadWriteVector<double> rw_vector(index_set);
+
   for (unsigned int i = 0; i < n_dofs; ++i)
   {
     src = 0.;
     src[i] = 1;
-    mechanical_operator.system_matrix().vmult(dst_1, src);
+
+    rw_vector.import_elements(src, dealii::VectorOperation::insert);
+    src_device.import_elements(rw_vector, dealii::VectorOperation::insert);
+    mechanical_operator.system_matrix().vmult(dst_device, src_device);
+    rw_vector.import_elements(dst_device, dealii::VectorOperation::insert);
+    dst_1.import_elements(rw_vector, dealii::VectorOperation::insert);
+
     system_matrix.vmult(dst_2, src);
     for (unsigned int j = 0; j < n_dofs; ++j)
       BOOST_TEST(dst_1[j] - dst_2[j] == 0.);

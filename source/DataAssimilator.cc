@@ -11,10 +11,15 @@
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/mapping_q1.h>
 #include <deal.II/lac/block_vector.h>
+#include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/la_parallel_block_vector.h>
 #include <deal.II/lac/linear_operator_tools.h>
 #include <deal.II/lac/read_write_vector.h>
+#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+#include <deal.II/lac/trilinos_tpetra_sparse_matrix.h>
+#else
 #include <deal.II/lac/trilinos_sparse_matrix.h>
+#endif
 #include <deal.II/lac/vector_operation.h>
 
 #include <boost/algorithm/string/predicate.hpp>
@@ -552,8 +557,8 @@ void DataAssimilator::update_covariance_sparsity_pattern(
       dealii::IndexSet parallel_partitioning =
           dealii::complete_index_set(augmented_state_size);
       parallel_partitioning.compress();
-      _covariance_sparsity_pattern.reinit(parallel_partitioning, MPI_COMM_SELF);
 
+      dealii::DynamicSparsityPattern dsp(parallel_partitioning);
       // Fill in the SparsityPattern
       unsigned int const local_comm_size =
           dealii::Utilities::MPI::n_mpi_processes(_local_communicator);
@@ -576,7 +581,7 @@ void DataAssimilator::update_covariance_sparsity_pattern(
               _covariance_distance_map[std::make_pair(row, column)] =
                   support_points_per_rank[rank][i].distance(
                       support_points_per_rank[other_rank][other_i]);
-              _covariance_sparsity_pattern.add(row, column);
+              dsp.add(row, column);
             }
           }
         }
@@ -587,7 +592,7 @@ void DataAssimilator::update_covariance_sparsity_pattern(
       {
         for (unsigned int j1 = 0; j1 < augmented_state_size; ++j1)
         {
-          _covariance_sparsity_pattern.add(i1, j1);
+          dsp.add(i1, j1);
         }
       }
 
@@ -595,11 +600,12 @@ void DataAssimilator::update_covariance_sparsity_pattern(
       {
         for (unsigned int j1 = _sim_size; j1 < augmented_state_size; ++j1)
         {
-          _covariance_sparsity_pattern.add(i1, j1);
+          dsp.add(i1, j1);
         }
       }
 
-      _covariance_sparsity_pattern.compress();
+      _covariance_sparsity_pattern.reinit(parallel_partitioning,
+                                          dsp, MPI_COMM_SELF);
     }
   }
 }
@@ -680,7 +686,7 @@ double DataAssimilator::gaspari_cohn_function(double const r) const
   }
 }
 
-dealii::TrilinosWrappers::SparseMatrix
+typename DataAssimilator::TrilinosMatrixType
 DataAssimilator::calc_sample_covariance_sparse(
     std::vector<dealii::LA::distributed::BlockVector<double>> const
         &vec_ensemble) const
@@ -701,7 +707,7 @@ DataAssimilator::calc_sample_covariance_sparse(
     ++ii;
   }
 
-  dealii::TrilinosWrappers::SparseMatrix cov(_covariance_sparsity_pattern);
+  TrilinosMatrixType cov(_covariance_sparsity_pattern);
 
   unsigned int pos = 0;
   for (auto conv_iter = cov.begin(); conv_iter != cov.end(); ++conv_iter, ++pos)
@@ -740,6 +746,7 @@ DataAssimilator::calc_sample_covariance_sparse(
     conv_iter->value() = element_value * localization_scaling;
   }
 
+  cov.compress(dealii::VectorOperation::insert);
   return cov;
 }
 

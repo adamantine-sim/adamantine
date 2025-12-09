@@ -13,8 +13,13 @@
 #include <deal.II/lac/la_parallel_block_vector.h>
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/sparse_matrix.h>
+#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+#include <deal.II/lac/trilinos_tpetra_sparse_matrix.h>
+#include <deal.II/lac/trilinos_tpetra_sparsity_pattern.h>
+#else
 #include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/lac/trilinos_sparsity_pattern.h>
+#endif
 
 #include <map>
 #include <random>
@@ -173,13 +178,21 @@ private:
    */
   double gaspari_cohn_function(double const r) const;
 
+#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+  using TrilinosMatrixType =
+      dealii::LinearAlgebra::TpetraWrappers::SparseMatrix<
+          double, dealii::MemorySpace::Host>;
+#else
+  using TrilinosMatrixType = dealii::TrilinosWrappers::SparseMatrix;
+#endif
+
   /**
    * This calculates the sample covariance for an input ensemble of vectors
    * (vec_ensemble). Currently this is tied to the simulation ensemble, through
    * the use of member variables inside. If needed, the interface could be
    * redone to make it more generally applicable.
    */
-  dealii::TrilinosWrappers::SparseMatrix calc_sample_covariance_sparse(
+  TrilinosMatrixType calc_sample_covariance_sparse(
       std::vector<dealii::LA::distributed::BlockVector<double>> const
           &vec_ensemble) const;
 
@@ -228,10 +241,18 @@ private:
    */
   unsigned int _expt_size = 0;
 
+#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+  using TrilinosSparsityPattern =
+      dealii::LinearAlgebra::TpetraWrappers::SparsityPattern<
+          dealii::MemorySpace::Host>;
+#else
+  using TrilinosSparsityPattern = dealii::TrilinosWrappers::SparsityPattern;
+#endif
+
   /**
    * The sparsity pattern for the localized covariance matrix.
    */
-  dealii::TrilinosWrappers::SparsityPattern _covariance_sparsity_pattern;
+  TrilinosSparsityPattern _covariance_sparsity_pattern;
 
   /**
    * Map between the indices in the covariance matrix and the distance between
