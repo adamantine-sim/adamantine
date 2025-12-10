@@ -12,8 +12,8 @@
 #include <deal.II/base/config.h>
 #include <deal.II/base/types.h>
 #include <deal.II/fe/fe_update_flags.h>
-#include <deal.II/matrix_free/cuda_fe_evaluation.h>
-#include <deal.II/matrix_free/cuda_matrix_free.h>
+#include <deal.II/matrix_free/portable_fe_evaluation.h>
+#include <deal.II/matrix_free/portable_matrix_free.h>
 
 namespace
 {
@@ -33,11 +33,18 @@ template <int dim, int fe_degree>
 class LocalMassMatrixOperator
 {
 public:
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+  KOKKOS_FUNCTION void operator()(
+      typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
+      const dealii::Portable::DeviceVector<double> &src,
+      dealii::Portable::DeviceVector<double> dst) const;
+#else
   KOKKOS_FUNCTION void operator()(
       unsigned int const cell,
       typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
       dealii::Portable::SharedData<dim, double> *shared_data, double const *src,
       double *dst) const;
+#endif
 
   static const unsigned int n_dofs_1d = fe_degree + 1;
   static const unsigned int n_local_dofs =
@@ -47,15 +54,34 @@ public:
 };
 
 template <int dim, int fe_degree>
-KOKKOS_FUNCTION void LocalMassMatrixOperator<dim, fe_degree>::operator()(
+KOKKOS_FUNCTION void LocalMassMatrixOperator<dim, fe_degree>::
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+operator()(
+    typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
+    const dealii::Portable::DeviceVector<double> & /*src*/,
+    dealii::Portable::DeviceVector<double> dst) const
+#else
+operator()(
     unsigned int const /*cell*/,
     typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
     dealii::Portable::SharedData<dim, double> *shared_data,
     double const * /*src*/, double *dst) const
+#endif
 {
   dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
-      fe_eval(gpu_data, shared_data);
-  fe_eval.apply_for_each_quad_point(MassMatrixOperatorQuad<dim, fe_degree>());
+      fe_eval(gpu_data
+#if !DEAL_II_VERSION_GTE(9, 7, 0)
+              ,
+              shared_data
+#endif
+      );
+  MassMatrixOperatorQuad<dim, fe_degree> quad;
+#if DEAL_II_VERSION_GTE(9, 8, 0)
+  gpu_data->for_each_quad_point([&](const int &q_point)
+                                { quad(&fe_eval, q_point); });
+#else
+  fe_eval.apply_for_each_quad_point(quad);
+#endif
   fe_eval.integrate(dealii::EvaluationFlags::values);
   fe_eval.distribute_local_to_global(dst);
 }
@@ -306,8 +332,11 @@ operator()(dealii::Portable::FEEvaluation<dim, fe_degree> *fe_eval,
   double temperature = fe_eval->get_value(q_point);
 
   double state_ratios[MaterialStates::n_material_states];
-  unsigned int const pos =
-      _gpu_data->local_q_point_id(_cell, _n_q_points, q_point);
+  unsigned int const pos = _gpu_data->local_q_point_id(_cell,
+#if !DEAL_II_VERSION_GTE(9, 8, 0)
+                                                       _n_q_points,
+#endif
+                                                       q_point);
   update_state_ratios(pos, temperature, state_ratios);
   get_inv_rho_cp(pos, state_ratios, temperature);
   auto material_id = _material_id[pos];
@@ -391,11 +420,18 @@ public:
   {
   }
 
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+  KOKKOS_FUNCTION void operator()(
+      typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
+      const dealii::Portable::DeviceVector<double> &src,
+      dealii::Portable::DeviceVector<double> dst) const;
+#else
   KOKKOS_FUNCTION void operator()(
       unsigned int const cell,
       typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
       dealii::Portable::SharedData<dim, double> *shared_data, double const *src,
       double *dst) const;
+#endif
 
   static const unsigned int n_dofs_1d = fe_degree + 1;
   static const unsigned int n_local_dofs =
@@ -422,24 +458,45 @@ template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
 KOKKOS_FUNCTION void
 LocalThermalOperatorDevice<dim, n_materials, use_table, p_order, fe_degree,
                            MaterialStates>::
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+operator()(
+    typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
+    const dealii::Portable::DeviceVector<double> &src,
+    dealii::Portable::DeviceVector<double> dst) const
+#else
 operator()(
     unsigned int const cell,
     typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
     dealii::Portable::SharedData<dim, double> *shared_data, double const *src,
     double *dst) const
+#endif
 {
   dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
-      fe_eval(gpu_data, shared_data);
+      fe_eval(gpu_data
+#if !DEAL_II_VERSION_GTE(9, 7, 0)
+              ,
+              shared_data
+#endif
+      );
   fe_eval.read_dof_values(src);
   fe_eval.evaluate(dealii::EvaluationFlags::values |
                    dealii::EvaluationFlags::gradients);
 
-  fe_eval.apply_for_each_quad_point(
-      ThermalOperatorQuad<dim, n_materials, use_table, p_order, fe_degree,
-                          MaterialStates>(
-          cell, gpu_data, _cos, _sin, _powder_ratio, _liquid_ratio,
-          _material_id, _inv_rho_cp, _properties, _state_property_tables,
-          _state_property_polynomials));
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+  const int cell = fe_eval.get_current_cell_index();
+#endif
+
+  ThermalOperatorQuad<dim, n_materials, use_table, p_order, fe_degree,
+                      MaterialStates>
+      quad(cell, gpu_data, _cos, _sin, _powder_ratio, _liquid_ratio,
+           _material_id, _inv_rho_cp, _properties, _state_property_tables,
+           _state_property_polynomials);
+#if DEAL_II_VERSION_GTE(9, 8, 0)
+  gpu_data->for_each_quad_point([&](const int &q_point)
+                                { quad(&fe_eval, q_point); });
+#else
+  fe_eval.apply_for_each_quad_point(quad);
+#endif
 
   fe_eval.integrate(dealii::EvaluationFlags::gradients);
   fe_eval.distribute_local_to_global(dst);
@@ -501,8 +558,11 @@ void ThermalOperatorDevice<dim, n_materials, use_table, p_order, fe_degree,
   unsigned int const n_colors = graph.size();
   for (unsigned int color = 0; color < n_colors; ++color)
   {
-    typename dealii::Portable::MatrixFree<dim, double>::Data gpu_data =
-        _matrix_free.get_data(color);
+#if DEAL_II_VERSION_GTE(9, 8, 0)
+    auto gpu_data = _matrix_free.get_data(0, color);
+#else
+    auto gpu_data = _matrix_free.get_data(color);
+#endif
     unsigned int const n_cells = gpu_data.n_cells;
     auto gpu_data_host = dealii::Portable::copy_mf_data_to_host<dim, double>(
         gpu_data, _matrix_free_data.mapping_update_flags);
@@ -816,8 +876,11 @@ void ThermalOperatorDevice<dim, n_materials, use_table, p_order, fe_degree,
   unsigned int const n_colors = graph.size();
   for (unsigned int color = 0; color < n_colors; ++color)
   {
-    typename dealii::Portable::MatrixFree<dim, double>::Data gpu_data =
-        _matrix_free.get_data(color);
+#if DEAL_II_VERSION_GTE(9, 8, 0)
+    auto gpu_data = _matrix_free.get_data(0, color);
+#else
+    auto gpu_data = _matrix_free.get_data(color);
+#endif
     unsigned int const n_cells = gpu_data.n_cells;
     auto gpu_data_host = dealii::Portable::copy_mf_data_to_host<dim, double>(
         gpu_data, _matrix_free_data.mapping_update_flags);
