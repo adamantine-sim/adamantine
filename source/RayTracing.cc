@@ -65,9 +65,8 @@ struct AccessTraits<adamantine::RayNearestPredicate, PredicatesTag>
     auto const &origin = ray.origin;
     auto const &direction = ray.direction;
     ArborX::Experimental::Ray arborx_ray = {
-        ArborX::Point{(float)origin[0], (float)origin[1], (float)origin[2]},
-        ArborX::Experimental::Vector{(float)direction[0], (float)direction[1],
-                                     (float)direction[2]}};
+        {(float)origin[0], (float)origin[1], (float)origin[2]},
+        {(float)direction[0], (float)direction[1], (float)direction[2]}};
     // When the mesh is unstructured, bounding boxes do not tightly bound the
     // cells and so many of them overlap. A ray may hit a bounding box but may
     // missed the cell. We need to ask for more bounding boxes to increase the
