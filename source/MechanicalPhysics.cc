@@ -448,13 +448,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 #endif
   TrilinosVectorType displacement(
       locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
-  TrilinosVectorType rhs_device(
-      locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
   dealii::LinearAlgebra::ReadWriteVector<double> rw_vector(locally_owned_dofs);
-
-  rw_vector.import_elements(_mechanical_operator->rhs(),
-                            dealii::VectorOperation::insert);
-  rhs_device.import_elements(rw_vector, dealii::VectorOperation::insert);
 
   // Solve the mechanical problem assuming that the deformation is elastic
   // TODO check that we are computing only difference of the displacement
@@ -472,8 +466,8 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   dealii::TrilinosWrappers::PreconditionSSOR preconditioner;
 #endif
   preconditioner.initialize(_mechanical_operator->system_matrix());
-  cg.solve(_mechanical_operator->system_matrix(), displacement, rhs_device,
-           preconditioner);
+  cg.solve(_mechanical_operator->system_matrix(), displacement,
+           _mechanical_operator->rhs(), preconditioner);
 
   rw_vector.import_elements(displacement, dealii::VectorOperation::insert);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>

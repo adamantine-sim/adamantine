@@ -155,8 +155,8 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
   }
 
   // Assemble the rhs
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      assembled_rhs(locally_owned_dofs, locally_relevant_dofs, _communicator);
+  TrilinosVectorType assembled_rhs(locally_owned_dofs, locally_relevant_dofs,
+                                   _communicator);
   dealii::Vector<double> cell_rhs(dofs_per_cell);
   // If the list of reference temperatures is non-empty, we solve the
   // thermo-elastic problem.
