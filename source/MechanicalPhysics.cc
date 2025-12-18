@@ -447,8 +447,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   using TrilinosVectorType = dealii::TrilinosWrappers::MPI::Vector;
 #endif
   TrilinosVectorType displacement(
-      locally_owned_dofs, locally_relevant_dofs,
-      _mechanical_operator->rhs().get_mpi_communicator());
+      locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
   TrilinosVectorType rhs_device(
       locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
   dealii::LinearAlgebra::ReadWriteVector<double> rw_vector(locally_owned_dofs);
