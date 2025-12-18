@@ -13,7 +13,7 @@
 #include <deal.II/lac/la_parallel_block_vector.h>
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/sparse_matrix.h>
-#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
 #include <deal.II/lac/trilinos_tpetra_sparse_matrix.h>
 #include <deal.II/lac/trilinos_tpetra_sparsity_pattern.h>
 #else
@@ -178,7 +178,7 @@ private:
    */
   double gaspari_cohn_function(double const r) const;
 
-#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
   using TrilinosMatrixType =
       dealii::LinearAlgebra::TpetraWrappers::SparseMatrix<
           double, dealii::MemorySpace::Host>;
@@ -241,7 +241,7 @@ private:
    */
   unsigned int _expt_size = 0;
 
-#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
   using TrilinosSparsityPattern =
       dealii::LinearAlgebra::TpetraWrappers::SparsityPattern<
           dealii::MemorySpace::Host>;

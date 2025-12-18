@@ -13,7 +13,7 @@
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/solver_cg.h>
-#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
 #include <deal.II/lac/trilinos_tpetra_precondition.h>
 #else
 #include <deal.II/lac/trilinos_precondition.h>
@@ -440,7 +440,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   dealii::IndexSet locally_owned_dofs = _dof_handler.locally_owned_dofs();
   dealii::IndexSet locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
-#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
   using TrilinosVectorType = dealii::LinearAlgebra::TpetraWrappers::Vector<
       double, dealii::MemorySpace::Default>;
 #else
@@ -464,7 +464,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   dealii::SolverControl solver_control(max_iter, tol);
   dealii::SolverCG<TrilinosVectorType> cg(solver_control);
   // FIXME Use better preconditioner
-#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
   dealii::LinearAlgebra::TpetraWrappers::PreconditionSSOR<
       double, dealii::MemorySpace::Default>
       preconditioner;

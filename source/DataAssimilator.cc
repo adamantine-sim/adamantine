@@ -15,7 +15,7 @@
 #include <deal.II/lac/la_parallel_block_vector.h>
 #include <deal.II/lac/linear_operator_tools.h>
 #include <deal.II/lac/read_write_vector.h>
-#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
 #include <deal.II/lac/trilinos_tpetra_sparse_matrix.h>
 #else
 #include <deal.II/lac/trilinos_sparse_matrix.h>
@@ -604,8 +604,8 @@ void DataAssimilator::update_covariance_sparsity_pattern(
         }
       }
 
-      _covariance_sparsity_pattern.reinit(parallel_partitioning,
-                                          dsp, MPI_COMM_SELF);
+      _covariance_sparsity_pattern.reinit(parallel_partitioning, dsp,
+                                          MPI_COMM_SELF);
     }
   }
 }

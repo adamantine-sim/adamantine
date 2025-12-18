@@ -225,7 +225,7 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
       n_dofs);
 
   dealii::IndexSet index_set = dealii::complete_index_set(n_dofs);
-#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
   dealii::LinearAlgebra::TpetraWrappers::Vector<double,
                                                 dealii::MemorySpace::Default>
       src_device(index_set, MPI_COMM_SELF);

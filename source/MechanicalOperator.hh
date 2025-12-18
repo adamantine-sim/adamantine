@@ -14,7 +14,7 @@
 #include <deal.II/hp/q_collection.h>
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/la_parallel_vector.h>
-#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
 #include <deal.II/lac/trilinos_tpetra_sparse_matrix.h>
 #else
 #include <deal.II/lac/trilinos_sparse_matrix.h>
@@ -61,7 +61,7 @@ public:
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const &
   rhs() const;
 
-#ifdef DEAL_II_TRILINOS_WITH_TPETRA
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
   using TrilinosMatrixType =
       dealii::LinearAlgebra::TpetraWrappers::SparseMatrix<
           double, dealii::MemorySpace::Default>;
