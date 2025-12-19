@@ -14,7 +14,11 @@
 #include <deal.II/hp/q_collection.h>
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/la_parallel_vector.h>
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+#include <deal.II/lac/trilinos_tpetra_sparse_matrix.h>
+#else
 #include <deal.II/lac/trilinos_sparse_matrix.h>
+#endif
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -57,7 +61,15 @@ public:
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const &
   rhs() const;
 
-  dealii::TrilinosWrappers::SparseMatrix const &system_matrix() const;
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+  using TrilinosMatrixType =
+      dealii::LinearAlgebra::TpetraWrappers::SparseMatrix<
+          double, dealii::MemorySpace::Default>;
+#else
+  using TrilinosMatrixType = dealii::TrilinosWrappers::SparseMatrix;
+#endif
+
+  TrilinosMatrixType const &system_matrix() const;
 
 private:
   /**
@@ -106,7 +118,7 @@ private:
   /**
    * Matrix of the mechanical problem.
    */
-  dealii::TrilinosWrappers::SparseMatrix _system_matrix;
+  TrilinosMatrixType _system_matrix;
   /**
    * Temperature of the material.
    */
@@ -132,7 +144,8 @@ MechanicalOperator<dim, n_materials, p_order, MaterialStates,
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-inline dealii::TrilinosWrappers::SparseMatrix const &
+inline typename MechanicalOperator<dim, n_materials, p_order, MaterialStates,
+                                   MemorySpaceType>::TrilinosMatrixType const &
 MechanicalOperator<dim, n_materials, p_order, MaterialStates,
                    MemorySpaceType>::system_matrix() const
 {
