@@ -47,7 +47,10 @@ template <int dim, int fe_degree, typename MemorySpaceType,
 dealii::LA::distributed::Vector<double, MemorySpaceType>
 evaluate_thermal_physics_impl(
     std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> thermal_operator,
+    dealii::hp::FECollection<dim> const &fe_collection,
     double const t,
+    dealii::DoFHandler<dim> const &dof_handler,
+    std::vector<std::shared_ptr<HeatSource<dim>>> const &heat_sources,
     dealii::LA::distributed::Vector<double, MemorySpaceType> const &y,
     std::vector<Timer> &timers)
 {
@@ -60,6 +63,54 @@ evaluate_thermal_physics_impl(
   // Apply the Thermal Operator.
   thermal_operator->vmult_add(value, y);
 
+  // Integrate the total heat added to the system
+  dealii::hp::QCollection<dim> source_q_collection;
+  source_q_collection.push_back(dealii::QGauss<dim>(fe_degree + 1));
+  source_q_collection.push_back(dealii::QGauss<dim>(1));
+  dealii::hp::FEValues<dim> hp_fe_values(fe_collection, source_q_collection,
+                                         dealii::update_quadrature_points |
+                                             dealii::update_values |
+                                             dealii::update_JxW_values);
+  unsigned int const dofs_per_cell = fe_collection.max_dofs_per_cell();
+  unsigned int const n_q_points = source_q_collection.max_n_quadrature_points();
+  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
+  
+  double heat_added = 0.0;
+  for (auto const &cell : dealii::filter_iterators(
+           dof_handler.active_cell_iterators(),
+           dealii::IteratorFilters::LocallyOwnedCell(),
+           dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
+  {
+    hp_fe_values.reinit(cell);
+    dealii::FEValues<dim> const &fe_values =
+        hp_fe_values.get_present_fe_values();
+
+    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+    {
+      for (unsigned int q = 0; q < n_q_points; ++q)
+      {
+        double quad_pt_source = 0.;
+        dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
+        for (auto &beam : heat_sources)
+        {
+          quad_pt_source += beam->value(q_point);
+        }
+                            
+        heat_added += quad_pt_source *
+                      fe_values.shape_value(i, q) * fe_values.JxW(q);
+      }
+    }
+  }
+
+  // Perform the global sum of the heat input and print
+  auto communicator = y.get_mpi_communicator();
+  double total_heat_added = dealii::Utilities::MPI::sum(heat_added, communicator);
+  if (dealii::Utilities::MPI::this_mpi_process(communicator) == 0)
+  {
+    std::cout << "Time: " << t << " | Global Total Heat Input: "
+              << total_heat_added << " W" << std::endl;
+  }
+  
   // Multiply by the inverse of the mass matrix.
   value.scale(*thermal_operator->get_inverse_mass_matrix());
 
@@ -151,6 +202,8 @@ evaluate_thermal_physics_impl(
       adiabatic_only_bc,
       "On GPU, only adiabatic boundary conditions are currently supported.");
 
+  double heat_added = 0.0;
+
   // Loop over the locally owned cells with an active FE index of zero
   for (auto const &cell : dealii::filter_iterators(
            dof_handler.active_cell_iterators(),
@@ -170,10 +223,16 @@ evaluate_thermal_physics_impl(
         double quad_pt_source = 0.;
         dealii::Point<dim> const &q_point = fe_values.quadrature_point(q);
         for (auto &beam : heat_sources)
+        {
           quad_pt_source += beam->value(q_point);
-
+        }
+        
         cell_source[i] += inv_rho_cp * quad_pt_source *
                           fe_values.shape_value(i, q) * fe_values.JxW(q);
+                            
+        heat_added += quad_pt_source *
+                      fe_values.shape_value(i, q) * fe_values.JxW(q);
+
       }
     }
 
@@ -244,6 +303,15 @@ evaluate_thermal_physics_impl(
   // Multiply by the inverse of the mass matrix.
   value_dev.scale(*thermal_operator_dev->get_inverse_mass_matrix());
 
+  // Perform the global sum of the heat input and print
+  auto communicator = y.get_mpi_communicator();
+  double total_heat_added = dealii::Utilities::MPI::sum(heat_added, communicator);
+  if (dealii::Utilities::MPI::this_mpi_process(communicator) == 0)
+  {
+    std::cout << "Time: " << t << " | Global Total Heat Input: "
+              << total_heat_added << " W" << std::endl;
+  }
+  
   timers[evol_time_eval_th_ph].stop();
 
   return value_dev;
@@ -859,7 +927,8 @@ ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
   if constexpr (std::is_same<MemorySpaceType, dealii::MemorySpace::Host>::value)
   {
     return evaluate_thermal_physics_impl<dim, fe_degree, MemorySpaceType>(
-        _thermal_operator, t, y, timers);
+        _thermal_operator, _fe_collection, t, _dof_handler, _heat_sources,
+        y, timers);
   }
   else
   {
