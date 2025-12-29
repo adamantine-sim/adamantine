@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -176,9 +176,16 @@ void ScanPath::load_event_series_scan_path()
     segment.end_point(1) = std::stod(split_line[2]) * _distance_scaling;
     segment.end_point(2) = std::stod(split_line[3]) * _distance_scaling;
 
+    if (split_line.size() == 9)
+    {
+      segment.end_rotation.reinit(
+          std::stod(split_line[4]), std::stod(split_line[5]),
+          std::stod(split_line[6]), std::stod(split_line[7]));
+    }
+
     // Set the power modifier
     segment.power_modifier = last_power;
-    last_power = std::stod(split_line[4]);
+    last_power = std::stod(split_line.back());
 
     _segment_list.push_back(segment);
   }
