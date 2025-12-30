@@ -192,6 +192,10 @@ private:
    */
   std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
   /**
+   * This optional flag enables heat source integration to monitor total heat input
+   */  
+  bool _print_heat_input;
+  /**
    * Shared pointer to the underlying ThermalOperator.
    */
   std::shared_ptr<ThermalOperatorBase<dim, MemorySpaceType>> _thermal_operator;
