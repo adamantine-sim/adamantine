@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 202%, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -27,4 +27,13 @@ BOOST_AUTO_TEST_CASE(rotation)
 
   auto inv_rotated_p1 = quaternion.inv_rotate(rotated_p1);
   BOOST_TEST(inv_rotated_p1 == p1);
+
+  quaternion.pow(0.5);
+  quaternion *= quaternion;
+  bool equal = quaternion == adamantine::Quaternion(0.5, 0.5, 0.5, 0.5);
+  BOOST_TEST(equal);
+
+  quaternion /= quaternion;
+  equal = quaternion == adamantine::Quaternion(1., 0., 0., 0.);
+  BOOST_TEST(equal);
 }
