@@ -98,8 +98,8 @@ in `J/kg`, `radiation_temperature_infty` in kelvins, or `convection_temperature_
 ## post\_processor (required):
 * **filename\_prefix**: prefix of output files (required)
 * **time\_steps\_between\_output**: number of time steps between the fields being written to the output files (default value: 1)
-* **additional\_output\_refinement**: additional levels of refinement for the output (default: 0)
-* **output\_on\_data\_assimilation**: output fields just before and just after data assimilation (default: true, <span style="color:green">since 1.1<span>)
+* **additional\_output\_refinement**: additional levels of refinement for the output (default value: 0)
+* **output\_on\_data\_assimilation**: output fields just before and just after data assimilation (default value: true, <span style="color:green">since 1.1<span>)
 
 ## refinement (required):
 * **n\_refinements**: number of times the cells on the paths of the beams
@@ -111,6 +111,7 @@ are refined (default value: 2)
 
 ## sources (required):
 * **n\_beams**: number of heat source beams (required)
+* **print\_heat\_input**: print the total heat input absorbed by the object at each time step (default value: false, <span style="color:green">since 1.1<span>)
 * **beam\_X**: property tree for the beam with number X
 * **beam\_X.type**: type of heat source: `goldak`, `electron_beam`, or `cube` (required)
 * **beam\_X.scan\_path\_file**: scan path filename (required)
