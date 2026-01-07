@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2023, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -156,19 +156,25 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
   // Loop through the scan path segements, adding boxes inside each one
   std::vector<ScanPathSegment> segment_list = scan_path.get_segment_list();
   double segment_start_time = 0.0;
+  Quaternion segment_start_rotation = segment_list.at(0).end_rotation;
   dealii::Point<3> segment_start_point = segment_list.at(0).end_point;
+  dealii::Point<3> build_ref_segment_start_point =
+      segment_start_rotation.is_valid()
+          ? segment_start_rotation.inv_rotate(segment_start_point)
+          : segment_start_point;
   for (ScanPathSegment segment : segment_list)
   {
     // Only add material if the power is on
-    double const eps = 1.0e-12;
-    double const eps_time = 1.0e-12;
+    double const eps = 1.0e-10;
+    double const eps_time = 1.0e-10;
     if (segment.power_modifier > eps)
     {
+      Quaternion segment_end_rotation = segment.end_rotation;
       dealii::Point<3> segment_end_point = segment.end_point;
       double const segment_length =
           segment_end_point.distance(segment_start_point);
       bool in_segment = true;
-      dealii::Point<3> center = segment_start_point;
+      dealii::Point<3> center = build_ref_segment_start_point;
       double const segment_velocity =
           segment_length / (segment.end_time - segment_start_time);
 
@@ -182,48 +188,82 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
           segment_length != 0.
               ? (segment_end_point[1] - segment_start_point[1]) / segment_length
               : 0.0;
-      bool const segment_along_x = std::abs(cos) > std::abs(sin) ? true : false;
       double next_box_length = deposition_length;
 
       while (in_segment)
       {
-        double distance_to_box_center = center.distance(segment_start_point);
+        double distance_to_box_center =
+            center.distance(build_ref_segment_start_point);
         double time_to_box_center =
             segment_velocity != 0. ? distance_to_box_center / segment_velocity
                                    : 0.;
 
-        std::vector<double> box_size(dim);
-        box_size.at(axis<dim>::z) = deposition_height;
+        dealii::Point<dim> bounding_pt_a;
+        dealii::Point<dim> bounding_pt_b;
 
-        if (dim == 2)
+        if (segment_end_rotation.is_valid())
         {
-          box_size.at(axis<dim>::x) = next_box_length;
-        }
-        else
-        {
-          if (segment_along_x)
+          if constexpr (dim == 3)
           {
-            box_size.at(axis<dim>::x) = std::abs(cos) * next_box_length;
-            box_size.at(axis<dim>::y) =
-                deposition_width + std::abs(sin) * next_box_length;
+            double x_length = std::abs(cos) * next_box_length +
+                              std::abs(sin) * deposition_width;
+            double y_length = std::abs(cos) * deposition_width +
+                              std::abs(sin) * next_box_length;
+
+            dealii::Point<3> max_corner(x_length / 2., y_length / 2., 0.);
+            dealii::Point<3> min_corner(-x_length / 2., -y_length / 2.,
+                                        -deposition_height);
+
+            // We need to rotate the box to match the scan path
+            dealii::Point<3> rotated_max_corner =
+                segment_end_rotation.rotate(max_corner);
+            dealii::Point<3> rotated_min_corner =
+                segment_end_rotation.rotate(min_corner);
+
+            // After the rotation
+            dealii::Point<3> new_max_corner;
+            dealii::Point<3> new_min_corner;
+            for (int d = 0; d < 3; ++d)
+            {
+              new_max_corner[d] =
+                  std::max(rotated_max_corner[d], rotated_min_corner[d]);
+              new_min_corner[d] =
+                  std::min(rotated_max_corner[d], rotated_min_corner[d]);
+            }
+
+            bounding_pt_a = center + new_min_corner;
+            bounding_pt_b = center + new_max_corner;
           }
           else
           {
-            box_size.at(axis<dim>::x) =
-                deposition_width + std::abs(cos) * next_box_length;
-            box_size.at(axis<dim>::y) = std::abs(sin) * next_box_length;
+            ASSERT_THROW_NOT_IMPLEMENTED();
           }
         }
-
-        dealii::Point<dim> bounding_pt_a;
-        dealii::Point<dim> bounding_pt_b;
-        for (int d = 0; d < dim - 1; ++d)
+        else
         {
-          bounding_pt_a[d] = center[d] - 0.5 * box_size[d];
-          bounding_pt_b[d] = center[d] + 0.5 * box_size[d];
+          std::vector<double> box_size(dim);
+          box_size.at(axis<dim>::z) = deposition_height;
+
+          if constexpr (dim == 2)
+          {
+            box_size.at(axis<dim>::x) = next_box_length;
+          }
+          else
+          {
+            box_size.at(axis<dim>::x) = std::abs(cos) * next_box_length +
+                                        std::abs(sin) * deposition_width;
+            box_size.at(axis<dim>::y) = std::abs(cos) * deposition_width +
+                                        std::abs(sin) * next_box_length;
+          }
+
+          for (int d = 0; d < dim - 1; ++d)
+          {
+            bounding_pt_a[d] = center[d] - 0.5 * box_size[d];
+            bounding_pt_b[d] = center[d] + 0.5 * box_size[d];
+          }
+          bounding_pt_a[dim - 1] = center[dim - 1] - box_size[dim - 1];
+          bounding_pt_b[dim - 1] = center[dim - 1];
         }
-        bounding_pt_a[dim - 1] = center[dim - 1] - box_size[dim - 1];
-        bounding_pt_b[dim - 1] = center[dim - 1];
 
         std::get<tuple_box>(deposition_path)
             .push_back(std::make_pair(bounding_pt_a, bounding_pt_b));
@@ -245,18 +285,35 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
           double center_increment = deposition_length;
           if (distance_to_box_center + deposition_length > segment_length)
           {
-            center_increment = deposition_length / 2.0 +
-                               (segment_length - distance_to_box_center) / 2.0;
+            center_increment = (segment_length - distance_to_box_center);
             next_box_length = segment_length - distance_to_box_center;
           }
 
-          center[0] += cos * center_increment;
-          center[1] += sin * center_increment;
+          if (segment_end_rotation.is_valid())
+          {
+            if constexpr (dim == 3)
+            {
+              dealii::Point<3> incr(cos * center_increment,
+                                    sin * center_increment, 0);
+              dealii::Point<3> rotated_incr = segment_end_rotation.rotate(incr);
+              center += rotated_incr;
+            }
+          }
+          else
+          {
+            center[0] += cos * center_increment;
+            center[1] += sin * center_increment;
+          }
         }
       }
     }
     segment_start_point = segment.end_point;
     segment_start_time = segment.end_time;
+    segment_start_rotation = segment.end_rotation;
+    build_ref_segment_start_point =
+        segment_start_rotation.is_valid()
+            ? segment_start_rotation.inv_rotate(segment_start_point)
+            : segment_start_point;
   }
   return deposition_path;
 }

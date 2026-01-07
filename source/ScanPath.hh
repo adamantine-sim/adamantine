@@ -5,6 +5,8 @@
 #ifndef SCAN_PATH_HH
 #define SCAN_PATH_HH
 
+#include <Quaternion.hh>
+
 #include <deal.II/base/function.h>
 #include <deal.II/base/point.h>
 
@@ -42,6 +44,7 @@ struct ScanPathSegment
   double power_modifier =
       std::numeric_limits<double>::signaling_NaN(); // Dimensionless
   dealii::Point<3> end_point;                       // Unit: m
+  Quaternion end_rotation;
 };
 
 /**
@@ -78,7 +81,6 @@ public:
   /**
    * Calculate the location of the scan path at a given time for a single
    * coordinate.
-   * TODO
    */
   dealii::Point<3> value(double const time, bool const save_time = true) const;
 
