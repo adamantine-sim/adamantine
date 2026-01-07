@@ -33,7 +33,11 @@
 #include <deal.II/distributed/solution_transfer.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/grid_refinement.h>
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+#include <deal.II/lac/trilinos_tpetra_sparse_matrix.h>
+#else
 #include <deal.II/lac/trilinos_sparse_matrix.h>
+#endif
 #include <deal.II/lac/vector_operation.h>
 #include <deal.II/numerics/error_estimator.h>
 

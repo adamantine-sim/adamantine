@@ -17,6 +17,9 @@
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/hp/q_collection.h>
 #include <deal.II/lac/affine_constraints.h>
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+#include <deal.II/lac/affine_constraints.templates.h>
+#endif
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/sparsity_tools.h>
 #include <deal.II/physics/elasticity/standard_tensors.h>

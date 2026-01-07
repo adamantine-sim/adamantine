@@ -13,7 +13,11 @@
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/solver_cg.h>
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+#include <deal.II/lac/trilinos_tpetra_precondition.h>
+#else
 #include <deal.II/lac/trilinos_precondition.h>
+#endif
 #include <deal.II/numerics/vector_tools.h>
 
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -433,11 +437,24 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   CALI_MARK_BEGIN("solve mechanical system");
 #endif
 
+  dealii::IndexSet locally_owned_dofs = _dof_handler.locally_owned_dofs();
   dealii::IndexSet locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      displacement(_dof_handler.locally_owned_dofs(), locally_relevant_dofs,
-                   _mechanical_operator->rhs().get_mpi_communicator());
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+  using TrilinosVectorType = dealii::LinearAlgebra::TpetraWrappers::Vector<
+      double, dealii::MemorySpace::Default>;
+#else
+  using TrilinosVectorType = dealii::TrilinosWrappers::MPI::Vector;
+#endif
+  TrilinosVectorType displacement(
+      locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
+  TrilinosVectorType rhs_device(
+      locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
+  dealii::LinearAlgebra::ReadWriteVector<double> rw_vector(locally_owned_dofs);
+
+  rw_vector.import_elements(_mechanical_operator->rhs(),
+                            dealii::VectorOperation::insert);
+  rhs_device.import_elements(rw_vector, dealii::VectorOperation::insert);
 
   // Solve the mechanical problem assuming that the deformation is elastic
   // TODO check that we are computing only difference of the displacement
@@ -445,15 +462,25 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   unsigned int const max_iter = _dof_handler.n_dofs() / 10;
   double const tol = 1e-12 * _mechanical_operator->rhs().l2_norm();
   dealii::SolverControl solver_control(max_iter, tol);
-  dealii::SolverCG<
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
-      cg(solver_control);
+  dealii::SolverCG<TrilinosVectorType> cg(solver_control);
   // FIXME Use better preconditioner
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+  dealii::LinearAlgebra::TpetraWrappers::PreconditionSSOR<
+      double, dealii::MemorySpace::Default>
+      preconditioner;
+#else
   dealii::TrilinosWrappers::PreconditionSSOR preconditioner;
+#endif
   preconditioner.initialize(_mechanical_operator->system_matrix());
-  cg.solve(_mechanical_operator->system_matrix(), displacement,
-           _mechanical_operator->rhs(), preconditioner);
-  _affine_constraints.distribute(displacement);
+  cg.solve(_mechanical_operator->system_matrix(), displacement, rhs_device,
+           preconditioner);
+
+  rw_vector.import_elements(displacement, dealii::VectorOperation::insert);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      displacement_host(locally_owned_dofs, locally_relevant_dofs,
+                        _mechanical_operator->rhs().get_mpi_communicator());
+  displacement_host.import_elements(rw_vector, dealii::VectorOperation::insert);
+  _affine_constraints.distribute(displacement_host);
 
   // Compute the new stress assuming the deformation is elastic.
   // If the stress is under the yield criterion, the deformation is elastic and
@@ -461,9 +488,9 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   // compute the plastic deformation.
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       incremental_displacement(
-          _dof_handler.locally_owned_dofs(), locally_relevant_dofs,
+          locally_owned_dofs, locally_relevant_dofs,
           _mechanical_operator->rhs().get_mpi_communicator());
-  incremental_displacement = displacement;
+  incremental_displacement = displacement_host;
   if (_old_displacement.size() > 0)
   {
     incremental_displacement -= _old_displacement;
@@ -471,7 +498,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   incremental_displacement.update_ghost_values();
   compute_stress(incremental_displacement);
 
-  _old_displacement.swap(displacement);
+  _old_displacement.swap(displacement_host);
 
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_END("solve mechanical system");
