@@ -606,6 +606,7 @@ void DataAssimilator::update_covariance_sparsity_pattern(
 
       _covariance_sparsity_pattern.reinit(parallel_partitioning, dsp,
                                           MPI_COMM_SELF);
+      _covariance_sparsity_pattern.compress();
     }
   }
 }
