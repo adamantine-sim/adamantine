@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -110,9 +110,9 @@ public:
 
 private:
   /**
-   * Compute the norm of the stress.
+   * Compute the von Mises stress on each cell.
    */
-  dealii::Vector<double> get_stress_norm(
+  dealii::Vector<double> get_von_mises_stress(
       std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
           &stress_tensor);
   /**

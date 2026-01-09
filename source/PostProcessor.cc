@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -91,11 +91,17 @@ void PostProcessor<dim>::write_pvd() const
 }
 
 template <int dim>
-dealii::Vector<double> PostProcessor<dim>::get_stress_norm(
+dealii::Vector<double> PostProcessor<dim>::get_von_mises_stress(
     std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
         &stress_tensor)
 {
-  dealii::Vector<double> norm(
+  // TODO The stress tensor is computed at the quadrature points. We should
+  // interpolate the values at the support points of the displacement. To do
+  // that we need to create a FE_Q that uses the quadrature point as support
+  // points and then evaluate the new FE at the support points of the
+  // displacement. This means using two different DoFHandler. For simplicity, we
+  // currently just average the values on the cells.
+  dealii::Vector<double> von_mises_stress(
       _mechanical_dof_handler->get_triangulation().n_active_cells());
   unsigned int const n_quad_pts =
       stress_tensor.size() > 0 ? stress_tensor[0].size() : 0;
@@ -104,18 +110,26 @@ dealii::Vector<double> PostProcessor<dim>::get_stress_norm(
                               dealii::IteratorFilters::ActiveFEIndexEqualTo(
                                   0, /* locally owned */ true))
   {
-    dealii::SymmetricTensor<2, dim> accumulated_stress;
+    double cell_stress = 0.0;
     for (unsigned int q = 0; q < n_quad_pts; ++q)
     {
-      accumulated_stress += stress_tensor[cell_id][q];
+      auto const &tensor = stress_tensor[cell_id][q];
+      cell_stress = std::sqrt(
+          0.5 *
+          (dealii::Utilities::fixed_power<2>(tensor[0][0] - tensor[1][1]) +
+           dealii::Utilities::fixed_power<2>(tensor[1][1] - tensor[2][2]) +
+           dealii::Utilities::fixed_power<2>(tensor[2][2] - tensor[0][0]) +
+           6.0 * (dealii::Utilities::fixed_power<2>(tensor[0][1]) +
+                  dealii::Utilities::fixed_power<2>(tensor[1][2]) +
+                  dealii::Utilities::fixed_power<2>(tensor[2][1]))));
     }
 
-    norm(cell->active_cell_index()) = (accumulated_stress / n_quad_pts).norm();
+    von_mises_stress(cell->active_cell_index()) = cell_stress / n_quad_pts;
 
     ++cell_id;
   }
 
-  return norm;
+  return von_mises_stress;
 }
 
 template <int dim>
@@ -148,8 +162,8 @@ void PostProcessor<dim>::mechanical_dataout(
   _data_out.add_data_vector(*_mechanical_dof_handler, displacement, strain);
 
   // Add the stress tensor
-  dealii::Vector<double> stress_norm = get_stress_norm(stress_tensor);
-  _data_out.add_data_vector(stress_norm, "stress");
+  dealii::Vector<double> von_mises_stress = get_von_mises_stress(stress_tensor);
+  _data_out.add_data_vector(von_mises_stress, "stress");
 }
 
 template <int dim>
