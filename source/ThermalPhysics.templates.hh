@@ -1055,7 +1055,11 @@ void ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
   get_state_from_material_properties();
 
   // Deserialize the temperature
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+  dealii::SolutionTransfer<
+#else
   dealii::parallel::distributed::SolutionTransfer<
+#endif
       dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
       solution_transfer(_dof_handler);
   initialize_dof_vector(0., temperature);
@@ -1163,7 +1167,11 @@ void ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
     ghosted_temperature = temperature_host;
   }
   ghosted_temperature.update_ghost_values();
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+  dealii::SolutionTransfer<
+#else
   dealii::parallel::distributed::SolutionTransfer<
+#endif
       dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
       solution_transfer(_dof_handler);
   solution_transfer.prepare_for_serialization(ghosted_temperature);

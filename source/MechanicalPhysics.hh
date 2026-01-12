@@ -157,7 +157,11 @@ private:
    * Solution transfer object used for updating _old_displacement when the
    * triangulation is updated when adding material
    */
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+  dealii::SolutionTransfer<
+#else
   dealii::parallel::distributed::SolutionTransfer<
+#endif
       dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
       _solution_transfer;
 

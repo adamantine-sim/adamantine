@@ -336,7 +336,11 @@ void refine_and_transfer(
   thermal_physics->set_state_to_material_properties();
 
   // Transfer of the solution
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+  dealii::SolutionTransfer<
+#else
   dealii::parallel::distributed::SolutionTransfer<
+#endif
       dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
       solution_transfer(dof_handler);
 
