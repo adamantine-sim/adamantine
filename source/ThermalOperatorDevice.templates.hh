@@ -558,11 +558,7 @@ void ThermalOperatorDevice<dim, n_materials, use_table, p_order, fe_degree,
   unsigned int const n_colors = graph.size();
   for (unsigned int color = 0; color < n_colors; ++color)
   {
-#if DEAL_II_VERSION_GTE(9, 8, 0)
-    auto gpu_data = _matrix_free.get_data(0, color);
-#else
     auto gpu_data = _matrix_free.get_data(color);
-#endif
     unsigned int const n_cells = gpu_data.n_cells;
     auto gpu_data_host = dealii::Portable::copy_mf_data_to_host<dim, double>(
         gpu_data, _matrix_free_data.mapping_update_flags);
@@ -876,11 +872,7 @@ void ThermalOperatorDevice<dim, n_materials, use_table, p_order, fe_degree,
   unsigned int const n_colors = graph.size();
   for (unsigned int color = 0; color < n_colors; ++color)
   {
-#if DEAL_II_VERSION_GTE(9, 8, 0)
-    auto gpu_data = _matrix_free.get_data(0, color);
-#else
     auto gpu_data = _matrix_free.get_data(color);
-#endif
     unsigned int const n_cells = gpu_data.n_cells;
     auto gpu_data_host = dealii::Portable::copy_mf_data_to_host<dim, double>(
         gpu_data, _matrix_free_data.mapping_update_flags);
