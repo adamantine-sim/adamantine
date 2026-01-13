@@ -232,7 +232,11 @@ void MaterialProperty<dim, n_materials, p_order, MaterialStates,
 #ifdef ADAMANTINE_DEBUG
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
   {
-    Kokkos::deep_copy(_state, std::numeric_limits<double>::signaling_NaN());
+    // Using Kokkos::deep_copy here is problematic because it checks if the
+    // value is default-constructed and reading a signaling NaN causes errors in
+    // the tests due to the floating-point environment used.
+    std::fill(_state.data(), _state.data() + _state.size(),
+              std::numeric_limits<double>::signaling_NaN());
   }
 #endif
 }
