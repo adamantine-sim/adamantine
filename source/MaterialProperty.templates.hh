@@ -411,20 +411,24 @@ void MaterialProperty<dim, n_materials, p_order, MaterialStates,
         // property but it is derived from other material properties: h_rad =
         // emissitivity * stefan-boltzmann constant * (T + T_infty) (T^2 +
         // T^2_infty).
-        unsigned int const emissivity_prop =
-            static_cast<unsigned int>(StateProperty::emissivity);
-        unsigned int const radiation_heat_transfer_coef_prop =
-            static_cast<unsigned int>(
-                StateProperty::radiation_heat_transfer_coef);
         unsigned int const radiation_temperature_infty_prop =
             static_cast<unsigned int>(Property::radiation_temperature_infty);
-        double const T = temp_average_local[dof];
         double const T_infty =
             properties(material_id, radiation_temperature_infty_prop);
-        double const emissivity = property_values(emissivity_prop, dof);
-        property_values(radiation_heat_transfer_coef_prop, dof) =
-            emissivity * Constant::stefan_boltzmann * (T + T_infty) *
-            (T * T + T_infty * T_infty);
+        if (T_infty != Kokkos::Experimental::finite_max_v<double>)
+        {
+          unsigned int const emissivity_prop =
+              static_cast<unsigned int>(StateProperty::emissivity);
+          unsigned int const radiation_heat_transfer_coef_prop =
+              static_cast<unsigned int>(
+                  StateProperty::radiation_heat_transfer_coef);
+          double const T = temp_average_local[dof];
+
+          double const emissivity = property_values(emissivity_prop, dof);
+          property_values(radiation_heat_transfer_coef_prop, dof) =
+              emissivity * Constant::stefan_boltzmann * (T + T_infty) *
+              (T * T + T_infty * T_infty);
+        }
       });
 }
 
@@ -505,19 +509,24 @@ void MaterialProperty<dim, n_materials, p_order, MaterialStates,
     // but it is derived from other material properties:
     // h_rad = emissitivity * stefan-boltzmann constant * (T + T_infty) (T^2 +
     // T^2_infty).
-    unsigned int const emissivity_prop =
-        static_cast<unsigned int>(StateProperty::emissivity);
-    unsigned int const radiation_heat_transfer_coef_prop =
-        static_cast<unsigned int>(StateProperty::radiation_heat_transfer_coef);
     unsigned int const radiation_temperature_infty_prop =
         static_cast<unsigned int>(Property::radiation_temperature_infty);
-    double const T = temperature_average.local_element(dof);
     double const T_infty =
         _properties(material_id, radiation_temperature_infty_prop);
-    double const emissivity = _property_values(emissivity_prop, dof);
-    _property_values(radiation_heat_transfer_coef_prop, dof) =
-        emissivity * Constant::stefan_boltzmann * (T + T_infty) *
-        (T * T + T_infty * T_infty);
+    if (T_infty != Kokkos::Experimental::finite_max_v<double>)
+    {
+      unsigned int const emissivity_prop =
+          static_cast<unsigned int>(StateProperty::emissivity);
+      unsigned int const radiation_heat_transfer_coef_prop =
+          static_cast<unsigned int>(
+              StateProperty::radiation_heat_transfer_coef);
+      double const T = temperature_average.local_element(dof);
+
+      double const emissivity = _property_values(emissivity_prop, dof);
+      _property_values(radiation_heat_transfer_coef_prop, dof) =
+          emissivity * Constant::stefan_boltzmann * (T + T_infty) *
+          (T * T + T_infty * T_infty);
+    }
   }
 }
 
