@@ -46,7 +46,11 @@
             src     = self;
           };
 
-          stable = v100;
+          stable = v110;
+
+          v110 = callPackage ./nix/adamantine/v1.1.0.nix {
+            inherit callPackage;
+          };
 
           v100 = callPackage ./nix/adamantine/v1.0.0.nix {
             inherit callPackage;
