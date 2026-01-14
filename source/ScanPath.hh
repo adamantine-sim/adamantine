@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -90,6 +90,18 @@ public:
   double get_power_modifier(double const time) const;
 
   /**
+   * Return the rotation of the given @p point according to quaternion active at
+   * the given time.
+   */
+  dealii::Point<3> rotate(double const time,
+                          dealii::Point<3> const &point) const;
+
+  /**
+   * Return the quaternion associated with the current segment.
+   */
+  Quaternion get_current_quaternion() const;
+
+  /**
    * Return the scan path's list of segments
    */
   std::vector<ScanPathSegment> get_segment_list() const;
@@ -103,6 +115,11 @@ public:
    * Return true if we reach the end of the scan path.
    */
   bool is_finished() const;
+
+  /**
+   * Return true if the scan path includes valid rotations/quaternions.
+   */
+  bool is_five_axis() const;
 
 private:
   /**
@@ -127,6 +144,10 @@ private:
    * Flag is true if we have reached the end of _scan_path_file.
    */
   bool _scan_path_end = false;
+  /**
+   * Flag is true if quaternions were provided in _scan_path_file.
+   */
+  bool _five_axis = false;
   /**
    * Scaling factor for the distance.
    */

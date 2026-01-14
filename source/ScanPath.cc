@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -181,6 +181,9 @@ void ScanPath::load_event_series_scan_path()
       segment.end_rotation.reinit(
           std::stod(split_line[4]), std::stod(split_line[5]),
           std::stod(split_line[6]), std::stod(split_line[7]));
+
+      if (!_five_axis)
+        _five_axis = true;
     }
 
     // Set the power modifier
@@ -265,11 +268,38 @@ double ScanPath::get_power_modifier(double const time) const
   return _segment_list[current_segment].power_modifier;
 }
 
+dealii::Point<3> ScanPath::rotate(double const time,
+                                  dealii::Point<3> const &point) const
+{
+  // If the current time is after the scan path data is over, return the point
+  // unchanged
+  if (time > _segment_list.back().end_time)
+  {
+    return point;
+  }
+
+  // Get to the correct segment
+  dealii::Point<3> segment_start_point;
+  double segment_start_time = 0.0;
+  unsigned int current_segment = 0;
+  update_current_segment_info(time, false, current_segment, segment_start_point,
+                              segment_start_time);
+
+  return _segment_list[current_segment].end_rotation.rotate(point);
+}
+
+Quaternion ScanPath::get_current_quaternion() const
+{
+  return _segment_list[_old_segment].end_rotation;
+}
+
 std::vector<ScanPathSegment> ScanPath::get_segment_list() const
 {
   return _segment_list;
 }
 
 bool ScanPath::is_finished() const { return _scan_path_end; }
+
+bool ScanPath::is_five_axis() const { return _five_axis; }
 
 } // namespace adamantine
