@@ -167,8 +167,15 @@ BOOST_AUTO_TEST_CASE(read_experimental_data_ray_tracing_from_file)
   adamantine::RayTracing ray_tracing(experiment_database, dof_handler);
   ray_tracing.read_next_frame();
 
+  // Since the ArborX implementation relies on NaN comparisons here, we need to
+  // allow FE_INVALID.
+#ifndef __APPLE__
+  std::fenv_t envp;
+  std::feholdexcept(&envp);
+#endif
   // Compute the intersection points
   auto points_values = ray_tracing.get_points_values();
+  std::fesetenv(&envp);
 
   // Reference solution
   std::vector<double> values_ref = {1, 2, 3, 5};
@@ -320,9 +327,16 @@ BOOST_AUTO_TEST_CASE(project_ray_data_on_nonaligned_mesh,
   adamantine::RayTracing ray_tracing(experiment_database, dof_handler);
   ray_tracing.read_next_frame();
 
+// Since the ArborX implementation relies on NaN comparisons here, we need to
+// allow FE_INVALID.
+#ifndef __APPLE__
+  std::fenv_t envp;
+  std::feholdexcept(&envp);
+#endif
   // Compute the intersection points
   auto points_values = ray_tracing.get_points_values();
-  //
+  std::fesetenv(&envp);
+
   // Reference solution
   std::vector<double> values_ref = {4, 5, 6};
   std::vector<dealii::Point<3>> points_ref;
