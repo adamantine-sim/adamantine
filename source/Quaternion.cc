@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2025 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -51,11 +51,17 @@ bool Quaternion::is_valid() const { return _is_valid; }
 
 bool Quaternion::operator==(Quaternion const &other) const
 {
+  ASSERT(_is_valid, "");
+  ASSERT(other.is_valid(), "");
+
   return _quaternion == other._quaternion;
 }
 
 Quaternion &Quaternion::operator*=(Quaternion const &other)
 {
+  ASSERT(_is_valid, "");
+  ASSERT(other.is_valid(), "");
+
   double r = _quaternion[0];
   double i = _quaternion[1];
   double j = _quaternion[2];
@@ -77,6 +83,9 @@ Quaternion &Quaternion::operator*=(Quaternion const &other)
 
 Quaternion &Quaternion::operator/=(Quaternion const &other)
 {
+  ASSERT(_is_valid, "");
+  ASSERT(other.is_valid(), "");
+
   // Invert the other quaternion
   Quaternion inv_other(other._quaternion[0], -other._quaternion[1],
                        -other._quaternion[2], -other._quaternion[3]);
@@ -86,6 +95,8 @@ Quaternion &Quaternion::operator/=(Quaternion const &other)
 
 void Quaternion::pow(double const exp)
 {
+  ASSERT(_is_valid, "");
+
   double const partial_norm = std::sqrt(_quaternion[1] * _quaternion[1] +
                                         _quaternion[2] * _quaternion[2] +
                                         _quaternion[3] * _quaternion[3]);

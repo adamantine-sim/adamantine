@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -14,7 +14,8 @@ GoldakHeatSource<dim>::GoldakHeatSource(
     boost::property_tree::ptree const &beam_database,
     boost::optional<boost::property_tree::ptree const &> const
         &units_optional_database)
-    : HeatSource<dim>(beam_database, units_optional_database)
+    : HeatSource<dim>(beam_database, units_optional_database),
+      _five_axis(this->_scan_path.is_five_axis())
 {
 }
 
@@ -22,6 +23,7 @@ template <int dim>
 void GoldakHeatSource<dim>::update_time(double time)
 {
   dealii::Point<3> const &path = this->_scan_path.value(time);
+  _quaternion = this->_scan_path.get_current_quaternion();
   // Copy the scalar value of path to the vectorized data type
   for (unsigned int d = 0; d < 3; ++d)
   {
@@ -38,19 +40,29 @@ void GoldakHeatSource<dim>::update_time(double time)
 template <int dim>
 double GoldakHeatSource<dim>::value(dealii::Point<dim> const &point) const
 {
-  double const z = point[axis<dim>::z] - _beam_center[axis<dim>::z][0];
+  dealii::Point<dim> rotated_point;
+  if constexpr (dim == 2)
+  {
+    rotated_point = point;
+  }
+  else
+  {
+    rotated_point = _five_axis ? _quaternion.rotate(point) : point;
+  }
+
+  double const z = rotated_point[axis<dim>::z] - _beam_center[axis<dim>::z][0];
   if ((z + this->_beam.depth) < 0.)
   {
     return 0.;
   }
   else
   {
-    double xpy_squared =
-        std::pow(point[axis<dim>::x] - _beam_center[axis<dim>::x][0], 2);
+    double xpy_squared = std::pow(
+        rotated_point[axis<dim>::x] - _beam_center[axis<dim>::x][0], 2);
     if (dim == 3)
     {
-      xpy_squared +=
-          std::pow(point[axis<dim>::y] - _beam_center[axis<dim>::y][0], 2);
+      xpy_squared += std::pow(
+          rotated_point[axis<dim>::y] - _beam_center[axis<dim>::y][0], 2);
     }
 
     // Evaluating the exponential is very expensive. Return early if we know
@@ -73,7 +85,17 @@ template <int dim>
 dealii::VectorizedArray<double> GoldakHeatSource<dim>::value(
     dealii::Point<dim, dealii::VectorizedArray<double>> const &points) const
 {
-  auto const z = points[axis<dim>::z] - _beam_center[axis<dim>::z];
+  dealii::Point<dim, dealii::VectorizedArray<double>> rotated_points;
+  if constexpr (dim == 2)
+  {
+    rotated_points = points;
+  }
+  else
+  {
+    rotated_points = _five_axis ? _quaternion.rotate(points) : points;
+  }
+
+  auto const z = rotated_points[axis<dim>::z] - _beam_center[axis<dim>::z];
   auto const z_depth = z + _depth;
   dealii::VectorizedArray<double> depth_mask;
   for (unsigned int i = 0; i < depth_mask.size(); ++i)
@@ -86,11 +108,11 @@ dealii::VectorizedArray<double> GoldakHeatSource<dim>::value(
     return depth_mask;
   }
 
-  auto xpy_squared = points[axis<dim>::x] - _beam_center[axis<dim>::x];
+  auto xpy_squared = rotated_points[axis<dim>::x] - _beam_center[axis<dim>::x];
   xpy_squared *= xpy_squared;
   if constexpr (dim == 3)
   {
-    auto y_squared = points[axis<dim>::y] - _beam_center[axis<dim>::y];
+    auto y_squared = rotated_points[axis<dim>::y] - _beam_center[axis<dim>::y];
     y_squared *= y_squared;
     xpy_squared += y_squared;
   }
@@ -135,12 +157,39 @@ GoldakHeatSource<dim>::get_bounding_box(double const time,
   }
   else
   {
-    return {{{beam_center[axis<dim>::x] - scaling_factor * this->_beam.radius,
-              beam_center[axis<dim>::y] - scaling_factor * this->_beam.radius,
-              beam_center[axis<dim>::z] - scaling_factor * this->_beam.depth},
-             {beam_center[axis<dim>::x] + scaling_factor * this->_beam.radius,
-              beam_center[axis<dim>::y] + scaling_factor * this->_beam.radius,
-              beam_center[axis<dim>::z]}}};
+    dealii::Point<3> max_corner(
+        beam_center[axis<dim>::x] + scaling_factor * this->_beam.radius,
+        beam_center[axis<dim>::y] + scaling_factor * this->_beam.radius,
+        beam_center[axis<dim>::z]);
+    dealii::Point<3> min_corner(
+        beam_center[axis<dim>::x] - scaling_factor * this->_beam.radius,
+        beam_center[axis<dim>::y] - scaling_factor * this->_beam.radius,
+        beam_center[axis<dim>::z] - scaling_factor * this->_beam.depth);
+    if (this->_scan_path.is_five_axis())
+    {
+      // We need to rotate the box to match the scan path
+      dealii::Point<3> rotated_max_corner =
+          this->_scan_path.rotate(time, max_corner);
+      dealii::Point<3> rotated_min_corner =
+          this->_scan_path.rotate(time, min_corner);
+
+      // We need to recompute the min and max corners after rotation.
+      dealii::Point<3> new_max_corner;
+      dealii::Point<3> new_min_corner;
+      for (int d = 0; d < 3; ++d)
+      {
+        new_max_corner[d] =
+            std::max(rotated_max_corner[d], rotated_min_corner[d]);
+        new_min_corner[d] =
+            std::min(rotated_max_corner[d], rotated_min_corner[d]);
+      }
+
+      return {{new_min_corner, new_max_corner}};
+    }
+    else
+    {
+      return {{min_corner, max_corner}};
+    }
   }
 }
 
