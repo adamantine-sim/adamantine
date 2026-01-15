@@ -13,6 +13,8 @@
 
 #include <boost/property_tree/ptree.hpp>
 
+#include <algorithm>
+
 #include "main.cc"
 
 namespace utf = boost::unit_test;
@@ -162,4 +164,65 @@ BOOST_AUTO_TEST_CASE(gmsh)
 
   dealii::types::boundary_id const top_boundary = 1;
   check_material_id(tria, top_boundary);
+}
+
+BOOST_AUTO_TEST_CASE(stl)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+  boost::property_tree::ptree database;
+  database.put("import_mesh", false);
+  database.put("length", 12);
+  database.put("length_divisions", 4);
+  database.put("height", 4);
+  database.put("height_divisions", 2);
+  database.put("width", 6);
+  database.put("width_divisions", 5);
+  database.put("material_height", 4);
+  database.put("use_powder", true);
+  database.put("powder_layer", 2);
+  database.put("stl_filename", "Simple_3D_ring.stl");
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+
+  adamantine::Geometry<3> geometry(communicator, database,
+                                   units_optional_database);
+
+  // The STL file contains 512 triangles. The bounding box of the ring is
+  // 21x21x4.
+  auto stl_triangles = geometry.get_stl_triangles();
+  BOOST_TEST(stl_triangles.extent(0) == 512);
+  double x_min = 1000.0;
+  double x_max = -1000.0;
+  double y_min = 1000.0;
+  double y_max = -1000.0;
+  double z_min = 1000.0;
+  double z_max = -1000.0;
+  for (unsigned int i = 0; i < stl_triangles.extent(0); ++i)
+  {
+    auto t = stl_triangles(i);
+
+    x_min = std::min(t.a[0], x_min);
+    x_max = std::max(t.a[0], x_max);
+    y_min = std::min(t.a[1], y_min);
+    y_max = std::max(t.a[1], y_max);
+    z_min = std::min(t.a[2], z_min);
+    z_max = std::max(t.a[2], z_max);
+
+    x_min = std::min(t.b[0], x_min);
+    x_max = std::max(t.b[0], x_max);
+    y_min = std::min(t.b[1], y_min);
+    y_max = std::max(t.b[1], y_max);
+    z_min = std::min(t.b[2], z_min);
+    z_max = std::max(t.b[2], z_max);
+
+    x_min = std::min(t.c[0], x_min);
+    x_max = std::max(t.c[0], x_max);
+    y_min = std::min(t.c[1], y_min);
+    y_max = std::max(t.c[1], y_max);
+    z_min = std::min(t.c[2], z_min);
+    z_max = std::max(t.c[2], z_max);
+  }
+
+  BOOST_TEST(x_max - x_min == 21.0);
+  BOOST_TEST(y_max - y_min == 21.0);
+  BOOST_TEST(z_max - z_min == 4.0);
 }

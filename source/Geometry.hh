@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -8,6 +8,8 @@
 #include <deal.II/distributed/tria.h>
 
 #include <boost/property_tree/ptree.hpp>
+
+#include <ArborX_HyperTriangle.hpp>
 
 namespace adamantine
 {
@@ -31,16 +33,35 @@ public:
    */
   dealii::parallel::distributed::Triangulation<dim> &get_triangulation();
 
-private:
   /**
-   * Triangulation of the domain.
+   * Return the triangles from the STL file.
    */
-  dealii::parallel::distributed::Triangulation<dim> _triangulation;
+  Kokkos::View<ArborX::ExperimentalHyperGeometry::Triangle<3, double> *,
+               Kokkos::HostSpace>
+  get_stl_triangles();
 
+private:
   /**
    * Assign the material state to the mesh.
    */
   void assign_material_state(boost::property_tree::ptree const &database);
+
+  /**
+   *  Read the given binary STL file and apply a scaling factor to all
+   *  coordinates read from the STL file.
+   */
+  void read_stl(std::string const &filename, double const stl_scaling);
+
+  /**
+   * Triangulation of the domain.
+   */
+  dealii::parallel::distributed::Triangulation<dim> _triangulation;
+  /**
+   * View of the triangles from the STL file.
+   */
+  Kokkos::View<ArborX::ExperimentalHyperGeometry::Triangle<3, double> *,
+               Kokkos::HostSpace>
+      _stl_triangles;
 };
 
 template <int dim>
@@ -48,6 +69,14 @@ inline dealii::parallel::distributed::Triangulation<dim> &
 Geometry<dim>::get_triangulation()
 {
   return _triangulation;
+}
+
+template <int dim>
+inline Kokkos::View<ArborX::ExperimentalHyperGeometry::Triangle<3, double> *,
+                    Kokkos::HostSpace>
+Geometry<dim>::get_stl_triangles()
+{
+  return _stl_triangles;
 }
 } // namespace adamantine
 

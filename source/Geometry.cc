@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -16,8 +16,29 @@
 #include <deal.II/grid/grid_in.h>
 #include <deal.II/grid/grid_tools.h>
 
+#include <fstream>
+
 namespace adamantine
 {
+namespace
+{
+ArborX::ExperimentalHyperGeometry::Point<3, double>
+read_point(char const *facet, double const unit_scaling)
+{
+  ArborX::ExperimentalHyperGeometry::Point<3, double> vertex;
+  float value = 0;
+
+  std::memcpy(&value, facet, sizeof value);
+  vertex[0] = static_cast<double>(value) * unit_scaling;
+  std::memcpy(&value, facet + 4, sizeof value);
+  vertex[1] = static_cast<double>(value) * unit_scaling;
+  std::memcpy(&value, facet + 8, sizeof value);
+  vertex[2] = static_cast<double>(value) * unit_scaling;
+
+  return vertex;
+}
+} // namespace
+
 template <int dim>
 Geometry<dim>::Geometry(
     MPI_Comm const &communicator, boost::property_tree::ptree const &database,
@@ -153,6 +174,16 @@ Geometry<dim>::Geometry(
   }
 
   assign_material_state(database);
+
+  auto stl_filename = database.get_optional<std::string>("stl_filename");
+  if (stl_filename)
+  {
+    std::string const stl_unit =
+        units_optional_database
+            ? units_optional_database.get().get("mesh", "meter")
+            : "meter";
+    read_stl(*stl_filename, g_unit_scaling_factor[stl_unit]);
+  }
 }
 
 template <int dim>
@@ -191,6 +222,55 @@ void Geometry<dim>::assign_material_state(
       cell->set_user_index(static_cast<int>(SolidLiquidPowder::State::solid));
     }
   }
+}
+
+template <int dim>
+void Geometry<dim>::read_stl(std::string const &filename,
+                             double const stl_scaling)
+{
+  std::ifstream file(filename.c_str(), std::ios::binary);
+  ASSERT_THROW(file.good(), "Unable to open STL file: " + filename);
+
+  // Read 80 byte header
+  char header_info[80] = "";
+  file.read(header_info, 80);
+
+  // Read the number of triangles
+  unsigned int n_triangles = 0;
+  {
+    char n_tri[4];
+    file.read(n_tri, 4);
+
+    std::memcpy(&n_triangles, n_tri, sizeof n_triangles);
+  }
+
+  _stl_triangles =
+      Kokkos::View<ArborX::ExperimentalHyperGeometry::Triangle<3, double> *,
+                   Kokkos::HostSpace>(
+          Kokkos::view_alloc(Kokkos::WithoutInitializing, "stl_triangles"),
+          n_triangles);
+
+  for (unsigned int i = 0; i < n_triangles; ++i)
+  {
+    char facet[50];
+
+    // Read one 50-byte triangle
+    file.read(facet, 50);
+    // Check that we really read 50-byte
+    ASSERT_THROW(file.gcount() == 50, "Error reading triangle " +
+                                          std::to_string(i) +
+                                          " from STL file: " + filename);
+
+    // Populate each point of the triangle
+    // facet + 12 skips the triangle's unit normal
+    auto p1 = read_point(facet + 12, stl_scaling);
+    auto p2 = read_point(facet + 24, stl_scaling);
+    auto p3 = read_point(facet + 36, stl_scaling);
+
+    // Add a new triangle to the View
+    _stl_triangles(i) = {p1, p2, p3};
+  }
+  file.close();
 }
 } // namespace adamantine
 
