@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -60,6 +60,8 @@ public:
   get_bounding_box(double const time, double const scaling_factor) const final;
 
 private:
+  bool const _five_axis;
+  Quaternion _quaternion;
   dealii::Point<3, dealii::VectorizedArray<double>> _beam_center;
   dealii::VectorizedArray<double> _alpha =
       std::numeric_limits<double>::signaling_NaN();

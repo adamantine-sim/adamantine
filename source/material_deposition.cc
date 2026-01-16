@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -153,13 +153,13 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
   // PropertyTreeInput geometry.deposition_lead_time
   double lead_time = geometry_database.get<double>("deposition_lead_time");
 
-  // Loop through the scan path segements, adding boxes inside each one
+  // Loop through the scan path segments, adding boxes inside each one
   std::vector<ScanPathSegment> segment_list = scan_path.get_segment_list();
   double segment_start_time = 0.0;
   Quaternion segment_start_rotation = segment_list.at(0).end_rotation;
   dealii::Point<3> segment_start_point = segment_list.at(0).end_point;
   dealii::Point<3> build_ref_segment_start_point =
-      segment_start_rotation.is_valid()
+      scan_path.is_five_axis()
           ? segment_start_rotation.inv_rotate(segment_start_point)
           : segment_start_point;
   for (ScanPathSegment segment : segment_list)
@@ -171,6 +171,10 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
     {
       Quaternion segment_end_rotation = segment.end_rotation;
       dealii::Point<3> segment_end_point = segment.end_point;
+      dealii::Point<3> build_ref_segment_end_point =
+          scan_path.is_five_axis()
+              ? segment_end_rotation.inv_rotate(segment_end_point)
+              : segment_end_point;
       double const segment_length =
           segment_end_point.distance(segment_start_point);
       bool in_segment = true;
@@ -220,7 +224,7 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
             dealii::Point<3> rotated_min_corner =
                 segment_end_rotation.rotate(min_corner);
 
-            // After the rotation
+            // We need to recompute the min and max corners after rotation.
             dealii::Point<3> new_max_corner;
             dealii::Point<3> new_min_corner;
             for (int d = 0; d < 3; ++d)
@@ -293,10 +297,11 @@ deposition_along_scan_path(boost::property_tree::ptree const &geometry_database,
           {
             if constexpr (dim == 3)
             {
-              dealii::Point<3> incr(cos * center_increment,
-                                    sin * center_increment, 0);
-              dealii::Point<3> rotated_incr = segment_end_rotation.rotate(incr);
-              center += rotated_incr;
+              dealii::Point<3> incr_direction = build_ref_segment_end_point;
+              incr_direction -= center;
+              incr_direction /= incr_direction.norm();
+              dealii::Point<3> incr = center_increment * incr_direction;
+              center += incr;
             }
           }
           else

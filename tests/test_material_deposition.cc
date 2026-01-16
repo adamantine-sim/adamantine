@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -732,15 +732,15 @@ BOOST_AUTO_TEST_CASE(deposition_quaternion_straight_line, *utf::tolerance(1e-9))
   ref_bounding_boxes.emplace_back(std::make_pair(
       dealii::Point<3>(-0.1, -0.05, -0.05), dealii::Point<3>(0.0, 0.05, 0.05)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.1, -0.05, -0.15), dealii::Point<3>(0.0, 0.05, -0.05)));
+      dealii::Point<3>(-0.1, -0.05, 0.05), dealii::Point<3>(0.0, 0.05, 0.15)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.1, -0.05, -0.25), dealii::Point<3>(0.0, 0.05, -0.15)));
+      dealii::Point<3>(-0.1, -0.05, 0.15), dealii::Point<3>(0.0, 0.05, 0.25)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.1, -0.05, -0.35), dealii::Point<3>(0.0, 0.05, -0.25)));
+      dealii::Point<3>(-0.1, -0.05, 0.25), dealii::Point<3>(0.0, 0.05, 0.35)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.1, -0.05, -0.45), dealii::Point<3>(0.0, 0.05, -0.35)));
+      dealii::Point<3>(-0.1, -0.05, 0.35), dealii::Point<3>(0.0, 0.05, 0.45)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.1, -0.05, -0.55), dealii::Point<3>(0.0, 0.05, -0.45)));
+      dealii::Point<3>(-0.1, -0.05, 0.45), dealii::Point<3>(0.0, 0.05, 0.55)));
 
   // Rotation of pi/2 along x axis: (sqrt(2)/2, sqrt(2)/2, 0, 0)
   ref_bounding_boxes.emplace_back(std::make_pair(
@@ -790,15 +790,15 @@ BOOST_AUTO_TEST_CASE(deposition_quaternion_straight_line, *utf::tolerance(1e-9))
   ref_bounding_boxes.emplace_back(std::make_pair(
       dealii::Point<3>(-0.05, 0.0, -0.05), dealii::Point<3>(0.05, 0.1, 0.05)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.05, 0.0, 0.05), dealii::Point<3>(0.05, 0.1, 0.15)));
+      dealii::Point<3>(-0.05, 0.0, -0.15), dealii::Point<3>(0.05, 0.1, -0.05)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.05, 0.0, 0.15), dealii::Point<3>(0.05, 0.1, 0.25)));
+      dealii::Point<3>(-0.05, 0.0, -0.25), dealii::Point<3>(0.05, 0.1, -0.15)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.05, 0.0, 0.25), dealii::Point<3>(0.05, 0.1, 0.35)));
+      dealii::Point<3>(-0.05, 0.0, -0.35), dealii::Point<3>(0.05, 0.1, -0.25)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.05, 0.0, 0.35), dealii::Point<3>(0.05, 0.1, 0.45)));
+      dealii::Point<3>(-0.05, 0.0, -0.45), dealii::Point<3>(0.05, 0.1, -0.35)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.05, 0.0, 0.45), dealii::Point<3>(0.05, 0.1, 0.55)));
+      dealii::Point<3>(-0.05, 0.0, -0.55), dealii::Point<3>(0.05, 0.1, -0.45)));
 
 
   // Deposition in y = x direction
@@ -840,58 +840,58 @@ BOOST_AUTO_TEST_CASE(deposition_quaternion_straight_line, *utf::tolerance(1e-9))
       dealii::Point<3>(-0.1, -length, -length), 
       dealii::Point<3>(0.0, length, length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.1, 0.0, -2.0 * length), 
-      dealii::Point<3>(0.0, 2.0 * length, 0.0)));
+      dealii::Point<3>(-0.1, 0.0, 0.0), 
+      dealii::Point<3>(0.0, 2.0 * length, 2.0 * length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.1, length, -3.0 * length), 
-      dealii::Point<3>(0.0, 3.0 * length, -length)));
+      dealii::Point<3>(-0.1, length, length), 
+      dealii::Point<3>(0.0, 3.0 * length, 3.0 * length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.1, 2.0 * length, -4.0 * length), 
-      dealii::Point<3>(0.0, 4.0 * length, -2.0 * length)));
+      dealii::Point<3>(-0.1, 2.0 * length, 2.0 * length), 
+      dealii::Point<3>(0.0, 4.0 * length, 4.0 * length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.1, 3.0 * length, -5.0 * length), 
-      dealii::Point<3>(0.0, 5.0 * length, -3.0 * length)));
+      dealii::Point<3>(-0.1, 3.0 * length, 3.0 * length), 
+      dealii::Point<3>(0.0, 5.0 * length, 5.0 * length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.1, 4.0 * length, -6.0 * length), 
-      dealii::Point<3>(0.0, 6.0 * length, -4.0 * length)));
+      dealii::Point<3>(-0.1, 4.0 * length, 4.0 * length), 
+      dealii::Point<3>(0.0, 6.0 * length, 6.0 * length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.1, 5.0 * length, -7.0 * length), 
-      dealii::Point<3>(0.0, 7.0 * length, -5.0 * length)));
+      dealii::Point<3>(-0.1, 5.0 * length, 5.0 * length), 
+      dealii::Point<3>(0.0, 7.0 * length, 7.0 * length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.1, 6.0 * length, -8.0 * length), 
-      dealii::Point<3>(0.0, 8.0 * length, -6.0 * length)));
+      dealii::Point<3>(-0.1, 6.0 * length, 6.0 * length), 
+      dealii::Point<3>(0.0, 8.0 * length, 8.0 * length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(-0.1, 6.0 * length + offset_1, -7.0 * length - offset_2), 
-      dealii::Point<3>(0.0, 7.0 * length + offset_2, -6.0 * length - offset_1)));
+      dealii::Point<3>(-0.1, 6.0 * length + offset_1, 6.0 * length + offset_1), 
+      dealii::Point<3>(0.0, 7.0 * length + offset_2, 7.0 * length + offset_2)));
 
   // Rotation of pi/2 along x axis: (sqrt(2)/2, sqrt(2)/2, 0, 0)
   ref_bounding_boxes.emplace_back(std::make_pair(
       dealii::Point<3>(-length, 0.0, -length), 
       dealii::Point<3>(length, 0.1, length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(0.0, 0.0, 0), 
-      dealii::Point<3>(2.0 * length, 0.1, 2.0 * length)));
+      dealii::Point<3>(0.0, 0.0, -2.0 * length), 
+      dealii::Point<3>(2.0 * length, 0.1, 0.0)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(length, 0.0, length), 
-      dealii::Point<3>(3.0 * length, 0.1, 3.0 * length)));
+      dealii::Point<3>(length, 0.0, -3.0 * length), 
+      dealii::Point<3>(3.0 * length, 0.1, -length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(2.0 * length, 0.0, 2.0 * length), 
-      dealii::Point<3>(4.0 * length, 0.1, 4.0 * length)));
+      dealii::Point<3>(2.0 * length, 0.0, -4.0 * length), 
+      dealii::Point<3>(4.0 * length, 0.1, -2.0 * length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(3.0 * length, 0.0, 3.0 * length), 
-      dealii::Point<3>(5.0 * length, 0.1, 5.0 * length)));
+      dealii::Point<3>(3.0 * length, 0.0, -5.0 * length), 
+      dealii::Point<3>(5.0 * length, 0.1, -3.0 * length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(4.0 * length, 0.0, 4.0 * length), 
-      dealii::Point<3>(6.0 * length, 0.1, 6.0 * length)));
+      dealii::Point<3>(4.0 * length, 0.0, -6.0 * length), 
+      dealii::Point<3>(6.0 * length, 0.1, -4.0 * length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(5.0 * length, 0.0, 5.0 * length), 
-      dealii::Point<3>(7.0 * length, 0.1, 7.0 * length)));
+      dealii::Point<3>(5.0 * length, 0.0, -7.0 * length), 
+      dealii::Point<3>(7.0 * length, 0.1, -5.0 * length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(6.0 * length, 0.0, 6.0 * length), 
-      dealii::Point<3>(8.0 * length, 0.1, 8.0 * length)));
+      dealii::Point<3>(6.0 * length, 0.0, -8.0 * length), 
+      dealii::Point<3>(8.0 * length, 0.1, -6.0 * length)));
   ref_bounding_boxes.emplace_back(std::make_pair(
-      dealii::Point<3>(6.0 * length + offset_1, 0.0, 6.0 * length + offset_1), 
-      dealii::Point<3>(7.0 * length + offset_2, 0.1, 7.0 * length + offset_2)));
+      dealii::Point<3>(6.0 * length + offset_1, 0.0, -7.0 * length - offset_2), 
+      dealii::Point<3>(7.0 * length + offset_2, 0.1, -6.0 * length - offset_1)));
   // clang-format on
 
   BOOST_TEST(bounding_boxes.size() == ref_bounding_boxes.size());
