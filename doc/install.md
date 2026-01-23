@@ -14,7 +14,9 @@ Installing *adamantine* requires:
 * Boost: 1.70.0 or later
 * ArborX: 1.4.1 or later
 * Trilinos: 14.4.0 or later
-* deal.II: 9.5 for the 1.0 release and 9.6 for the development code on master
+* deal.II: 
+  - 9.5 for the 1.0 release 
+  - 9.6 for the 1.1 release and the development code on master
 
 You need to compile ArborX with MPI support and deal.II with MPI, p4est, ArborX, and Trilinos support. If you want to use Exodus file, you also need Trilinos with SEACAS support.
 *adamantine* also optionally supports profiling through [Caliper](https://github.com/llnl/Caliper).
@@ -50,17 +52,17 @@ You can pull the [Docker](https://en.wikipedia.org/wiki/Docker_(software)) image
 ``` bash
 docker pull rombur/adamantine:latest
 ```
-The 1.0 release version is available using:
+The release versions are also available. To get the `1.1` release, use:
 ``` bash
-docker pull rombur/adamantine:1.0
+docker pull rombur/adamantine:1.1
 ```
-To start an interactive container use:
+To start an interactive container, use:
 ``` bash
 docker run --rm -it rombur/adamantine:latest bash
 ```
 or
 ``` bash
-docker run --rm -it rombur/adamantine:1.0 bash
+docker run --rm -it rombur/adamantine:1.1 bash
 ```
 
 You will find *adamantine* in `/home/adamantine/bin`. More `docker run` options 
