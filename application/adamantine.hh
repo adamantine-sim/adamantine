@@ -552,6 +552,7 @@ compute_cells_to_refine(
 
   // Build the bounding boxes associated with the locally owned cells
   std::vector<dealii::BoundingBox<dim>> cell_bounding_boxes;
+  cell_bounding_boxes.reserve(triangulation.n_active_cells());
   for (auto const &cell : triangulation.active_cell_iterators() |
                               dealii::IteratorFilters::LocallyOwnedCell())
   {
@@ -561,6 +562,7 @@ compute_cells_to_refine(
 
   double const bounding_box_scaling = 2.0;
   std::vector<dealii::BoundingBox<dim>> heat_source_bounding_boxes;
+  heat_source_bounding_boxes.reserve(n_time_steps * heat_sources.size());
   for (unsigned int i = 0; i < n_time_steps; ++i)
   {
     double const current_time = time + static_cast<double>(i) /
