@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -517,8 +517,6 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 {
   dealii::hp::FEValues<dim> displacement_hp_fe_values(
       _fe_collection, _q_collection, dealii::update_gradients);
-  unsigned int const dofs_per_cell = _fe_collection.max_dofs_per_cell();
-  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
   unsigned int const n_q_points = _q_collection.max_n_quadrature_points();
   std::vector<dealii::SymmetricTensor<2, dim>> strain_tensor(n_q_points);
   const dealii::FEValuesExtractors::Vector displacement_extr(0);
@@ -535,7 +533,6 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       // once.
       displacement_hp_fe_values.reinit(cell);
       auto const &fe_values = displacement_hp_fe_values.get_present_fe_values();
-      cell->get_dof_indices(local_dof_indices);
 
       fe_values[displacement_extr].get_function_symmetric_gradients(
           displacement, strain_tensor);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -106,26 +106,26 @@ dealii::Vector<double> PostProcessor<dim>::get_von_mises_stress(
   unsigned int const n_quad_pts =
       stress_tensor.size() > 0 ? stress_tensor[0].size() : 0;
   unsigned int cell_id = 0;
-  for (auto const &cell : _mechanical_dof_handler->active_cell_iterators() |
-                              dealii::IteratorFilters::ActiveFEIndexEqualTo(
-                                  0, /* locally owned */ true))
+  for (auto const &cell : _mechanical_dof_handler->active_cell_iterators())
   {
-    double cell_stress = 0.0;
-    for (unsigned int q = 0; q < n_quad_pts; ++q)
+    if (cell->is_locally_owned() && cell->active_fe_index() == 0)
     {
-      auto const &tensor = stress_tensor[cell_id][q];
-      cell_stress = std::sqrt(
-          0.5 *
-          (dealii::Utilities::fixed_power<2>(tensor[0][0] - tensor[1][1]) +
-           dealii::Utilities::fixed_power<2>(tensor[1][1] - tensor[2][2]) +
-           dealii::Utilities::fixed_power<2>(tensor[2][2] - tensor[0][0]) +
-           6.0 * (dealii::Utilities::fixed_power<2>(tensor[0][1]) +
-                  dealii::Utilities::fixed_power<2>(tensor[1][2]) +
-                  dealii::Utilities::fixed_power<2>(tensor[2][1]))));
+      double cell_stress = 0.0;
+      for (unsigned int q = 0; q < n_quad_pts; ++q)
+      {
+        auto const &tensor = stress_tensor[cell_id][q];
+        cell_stress += std::sqrt(
+            0.5 *
+            (dealii::Utilities::fixed_power<2>(tensor[0][0] - tensor[1][1]) +
+             dealii::Utilities::fixed_power<2>(tensor[1][1] - tensor[2][2]) +
+             dealii::Utilities::fixed_power<2>(tensor[2][2] - tensor[0][0]) +
+             6.0 * (dealii::Utilities::fixed_power<2>(tensor[0][1]) +
+                    dealii::Utilities::fixed_power<2>(tensor[1][2]) +
+                    dealii::Utilities::fixed_power<2>(tensor[2][1]))));
+      }
+
+      von_mises_stress(cell->active_cell_index()) = cell_stress / n_quad_pts;
     }
-
-    von_mises_stress(cell->active_cell_index()) = cell_stress / n_quad_pts;
-
     ++cell_id;
   }
 
