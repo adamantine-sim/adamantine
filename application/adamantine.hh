@@ -552,7 +552,7 @@ compute_cells_to_refine(
 
   // Build the bounding boxes associated with the locally owned cells
   std::vector<dealii::BoundingBox<dim>> cell_bounding_boxes;
-  cell_bounding_boxes.reserve(triangulation.n_active_cells());
+  cell_bounding_boxes.reserve(triangulation.n_locally_owned_active_cells());
   for (auto const &cell : triangulation.active_cell_iterators() |
                               dealii::IteratorFilters::LocallyOwnedCell())
   {
