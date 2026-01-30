@@ -990,6 +990,10 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       database.get_child("time_stepping");
   // PropertyTreeInput time_stepping.time_step
   double time_step = time_stepping_database.get<double>("time_step");
+  // PropertyTreeInput time_stepping.mechanical_time_step_factor
+  unsigned int const mechanical_time_step_factor =
+      time_stepping_database.get<unsigned int>("mechanical_time_step_factor",
+                                               1);
   // PropertyTreeInput time_stepping.scan_path_for_duration
   bool const scan_path_for_duration =
       time_stepping_database.get("scan_path_for_duration", false);
@@ -1261,23 +1265,29 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // Solve the (thermo-)mechanical problem
     if (use_mechanical_physics)
     {
-      if (use_thermal_physics)
+      // Solve if the time step is a multipe of mechanical_time_step_factor or
+      // if we will output the results.
+      if ((n_time_step % mechanical_time_step_factor == 0) ||
+          (n_time_step % time_steps_output == 0))
       {
-        // Update the material state
-        thermal_physics->set_state_to_material_properties();
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-            temperature_host(temperature.get_partitioner());
-        temperature_host.import_elements(temperature,
-                                         dealii::VectorOperation::insert);
-        mechanical_physics->setup_dofs(
-            thermal_physics->get_dof_handler(), temperature_host,
-            thermal_physics->get_has_melted_vector());
+        if (use_thermal_physics)
+        {
+          // Update the material state
+          thermal_physics->set_state_to_material_properties();
+          dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+              temperature_host(temperature.get_partitioner());
+          temperature_host.import_elements(temperature,
+                                           dealii::VectorOperation::insert);
+          mechanical_physics->setup_dofs(
+              thermal_physics->get_dof_handler(), temperature_host,
+              thermal_physics->get_has_melted_vector());
+        }
+        else
+        {
+          mechanical_physics->setup_dofs();
+        }
+        displacement = mechanical_physics->solve();
       }
-      else
-      {
-        mechanical_physics->setup_dofs();
-      }
-      displacement = mechanical_physics->solve();
     }
 
     timers[adamantine::evol_time].stop();
