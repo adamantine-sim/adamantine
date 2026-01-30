@@ -110,9 +110,13 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
     setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces,
                bool const fe_indices_have_changed)
 {
-  dealii::IndexSet old_locally_owned_dofs = _dof_handler.locally_owned_dofs();
-  dealii::IndexSet old_locally_relevant_dofs =
-      dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+  dealii::IndexSet const old_locally_owned_dofs =
+      !_dof_handler.has_active_dofs() ? dealii::IndexSet{}
+                                      : _dof_handler.locally_owned_dofs();
+  dealii::IndexSet const old_locally_relevant_dofs =
+      !_dof_handler.has_active_dofs()
+          ? dealii::IndexSet{}
+          : dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
 
   _dof_handler.distribute_dofs(_fe_collection);
   dealii::IndexSet locally_relevant_dofs =
@@ -412,7 +416,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 #if DEAL_II_VERSION_GTE(9, 7, 0)
                                          _dof_handler.get_mpi_communicator()
 #else
-                                          _dof_handler.get_communicator()
+                                         _dof_handler.get_communicator()
 #endif
       );
 
