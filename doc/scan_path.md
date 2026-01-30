@@ -39,3 +39,22 @@ position of the line.
 
 An example of such a file can be found
 [here](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/scan_path_event_series.inp).
+
+### Five axis
+Since version 1.2, the event series format also supports 5-axis builds. The
+first segment is a point, then the rest are lines.
+The column descriptions are:
+* Column 1: segment endtime
+* Columns 2 to 4: (x,y,z) coordinates in units of m. This is the ending
+position of the line in the rotated reference frame.
+* Columns 5 to 8: (r,i,j,k) quaternion of the rotation. This is the rotation
+performed to go from the build reference frame to the rotated reference frame.
+* Column 9: the coefficient for the nominal power. Usually this is either
+0 or 1, but sometimes intermediate values are used when turning a corner.
+
+Rotation is only supported while the heat source is inactive. If the heat source
+is active, the segment's quaternion must remain identical to that of the
+previous segment.
+
+An example of such a file can be found
+[here](https://github.com/adamantine-sim/adamantine/blob/master/tests/data/scan_path_5_axis.txt)
