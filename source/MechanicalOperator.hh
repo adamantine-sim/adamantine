@@ -47,7 +47,8 @@ public:
               dealii::AffineConstraints<double> const &affine_constraints,
               dealii::hp::QCollection<dim> const &quad,
               std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
-                  std::vector<std::shared_ptr<BodyForce<dim>>>());
+                  std::vector<std::shared_ptr<BodyForce<dim>>>(),
+              bool const discretization_has_changed = true);
 
   /**
    * Update the DoFHandler used by ThermalPhysics and update the temperature.
@@ -78,7 +79,8 @@ private:
    * convenient for testing.
    */
   void assemble_system(
-      std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces);
+      std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces,
+      bool const discretization_has_changed);
 
   /**
    * MPI communicator.

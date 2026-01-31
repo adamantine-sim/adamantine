@@ -107,8 +107,17 @@ template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
                        MemorySpaceType>::
-    setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+    setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces,
+               bool const fe_indices_have_changed)
 {
+  dealii::IndexSet const old_locally_owned_dofs =
+      !_dof_handler.has_active_dofs() ? dealii::IndexSet{}
+                                      : _dof_handler.locally_owned_dofs();
+  dealii::IndexSet const old_locally_relevant_dofs =
+      !_dof_handler.has_active_dofs()
+          ? dealii::IndexSet{}
+          : dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+
   _dof_handler.distribute_dofs(_fe_collection);
   dealii::IndexSet locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
@@ -129,8 +138,19 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       _dof_handler, boundary_function_map, _affine_constraints);
   _affine_constraints.close();
 
+  bool const discretization_has_changed = dealii::Utilities::MPI::logical_or(
+      fe_indices_have_changed ||
+          (locally_owned_dofs != old_locally_owned_dofs) ||
+          (locally_relevant_dofs != old_locally_relevant_dofs),
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+      _dof_handler.get_mpi_communicator()
+#else
+      _dof_handler.get_communicator()
+#endif
+  );
+
   _mechanical_operator->reinit(_dof_handler, _affine_constraints, _q_collection,
-                               body_forces);
+                               body_forces, discretization_has_changed);
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -323,6 +343,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   }
 
   // Now we can update the fe indices and the plastic variables.
+  bool fe_indices_have_changed = false;
   for (auto const &cell : _dof_handler.active_cell_iterators())
   {
     if (cell->is_locally_owned())
@@ -372,6 +393,8 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
         tmp_back_stress.push_back(
             std::vector<dealii::SymmetricTensor<2, dim>>(n_quad_pts));
       }
+      if (current_fe_index != cell->active_fe_index())
+        fe_indices_have_changed = true;
     }
     else
     {
@@ -388,7 +411,16 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   _stress.swap(tmp_stress);
   _back_stress.swap(tmp_back_stress);
 
-  setup_dofs(body_forces);
+  fe_indices_have_changed =
+      dealii::Utilities::MPI::logical_or(fe_indices_have_changed,
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+                                         _dof_handler.get_mpi_communicator()
+#else
+                                         _dof_handler.get_communicator()
+#endif
+      );
+
+  setup_dofs(body_forces, fe_indices_have_changed);
 
   // Update _old_displacement if necessary
   const dealii::IndexSet locally_relevant_dofs =

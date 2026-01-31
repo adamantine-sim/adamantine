@@ -38,7 +38,8 @@ public:
    */
   void
   setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
-                 std::vector<std::shared_ptr<BodyForce<dim>>>());
+                 std::vector<std::shared_ptr<BodyForce<dim>>>(),
+             bool const fe_indices_have_changed = true);
 
   /**
    * Same as above when solving a thermo-mechanical problem.
