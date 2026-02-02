@@ -79,7 +79,8 @@ private:
    * convenient for testing.
    */
   void assemble_system(
-      std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces);
+      std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces,
+      bool const discretization_has_changed);
 
   /**
    * MPI communicator.
@@ -131,12 +132,6 @@ private:
    * that has melted.
    */
   std::vector<bool> _has_melted;
-
-  /**
-   * Indicates whether the discretization has changed since the last time the
-   * matrix was assembled.
-   */
-  bool _discretization_has_changed = true;
 };
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,

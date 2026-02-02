@@ -57,8 +57,7 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
   _dof_handler = &dof_handler;
   _affine_constraints = &affine_constraints;
   _q_collection = &q_collection;
-  _discretization_has_changed = discretization_has_changed;
-  assemble_system(body_forces);
+  assemble_system(body_forces, discretization_has_changed);
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -81,7 +80,8 @@ template <int dim, int n_materials, int p_order, typename MaterialStates,
 void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
                         MemorySpaceType>::
     assemble_system(
-        std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+        std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces,
+        bool const discretization_has_changed)
 {
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_BEGIN("assemble mechanical system");
@@ -101,7 +101,7 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
       _dof_handler->get_fe_collection().max_dofs_per_cell();
   std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
 
-  if (_discretization_has_changed)
+  if (discretization_has_changed)
   {
     dealii::DynamicSparsityPattern dsp(locally_relevant_dofs);
     dealii::DoFTools::make_sparsity_pattern(*_dof_handler, dsp,
@@ -160,7 +160,6 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
           cell_matrix, local_dof_indices, _system_matrix);
     }
   }
-  _discretization_has_changed = false;
 
   // Assemble the rhs
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
