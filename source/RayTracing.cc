@@ -13,8 +13,8 @@
 #include <fstream>
 #include <regex>
 
+#include <ArborX_Config.hpp>
 #include <ArborX_Ray.hpp>
-#include <ArborX_Version.hpp>
 
 namespace adamantine
 {
@@ -73,19 +73,9 @@ struct AccessTraits<adamantine::RayNearestPredicate, PredicatesTag>
     auto const &ray = ray_nearest.get(i);
     auto const &origin = ray.origin;
     auto const &direction = ray.direction;
-#if defined(ARBORX_VERSION_MAJOR) &&                                           \
-    (ARBORX_VERSION_MAJOR * 1000 + ARBORX_VERSION_MINOR * 100 +                \
-     ARBORX_VERSION_PATCH) >= 2099
-    ArborX::Experimental::Ray<double> arborx_ray = {
-        {origin[0], origin[1], origin[2]},
-        { direction[0],
-          direction[1],
-          direction[2] }};
-#else
     ArborX::Experimental::Ray arborx_ray = {
         {(float)origin[0], (float)origin[1], (float)origin[2]},
         {(float)direction[0], (float)direction[1], (float)direction[2]}};
-#endif
     // When the mesh is unstructured, bounding boxes do not tightly bound the
     // cells and so many of them overlap. A ray may hit a bounding box but may
     // missed the cell. We need to ask for more bounding boxes to increase the
@@ -227,7 +217,7 @@ PointsValues<3> RayTracing::get_points_values()
 
   // Create the bounding boxes associated to the locally owned cells with FE
   // index = 0
-  std::vector<dealii::BoundingBox<dim>> bounding_boxes;
+  std::vector<dealii::BoundingBox<dim, float>> bounding_boxes;
   std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>
       cell_iterators;
   for (auto const &cell : dealii::filter_iterators(
@@ -235,8 +225,14 @@ PointsValues<3> RayTracing::get_points_values()
            dealii::IteratorFilters::LocallyOwnedCell(),
            dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
   {
-    bounding_boxes.push_back(cell->bounding_box());
-    cell_iterators.push_back(cell);
+    auto const &boundary_points = cell->bounding_box().get_boundary_points();
+    auto const &point_a = boundary_points.first;
+    auto const &point_b = boundary_points.second;
+    bounding_boxes.emplace_back(std::make_pair(
+        dealii::Point<3, float>((float)point_a[0], (float)point_a[1],
+                                (float)point_a[2]),
+        dealii::Point<3, float>((float)point_b[0], (float)point_b[1],
+                                (float)point_b[2])));
   }
 
   // Use ArborX to find where the rays intersect the activated cells. All the
