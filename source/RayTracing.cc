@@ -14,6 +14,7 @@
 #include <regex>
 
 #include <ArborX_Ray.hpp>
+#include <ArborX_Version.hpp>
 
 namespace adamantine
 {
@@ -41,6 +42,10 @@ public:
    */
   Ray<3> const &get(unsigned int i) const { return _rays[i]; }
 
+#if ARBORX_VERSION_MAJOR >= 2
+  static constexpr bool is_nearest = true;
+#endif
+
 private:
   std::vector<Ray<3>> _rays;
 };
@@ -49,7 +54,11 @@ private:
 namespace ArborX
 {
 template <>
+#if ARBORX_VERSION_MAJOR >= 2
+struct AccessTraits<adamantine::RayNearestPredicate>
+#else
 struct AccessTraits<adamantine::RayNearestPredicate, PredicatesTag>
+#endif
 {
   using memory_space = Kokkos::HostSpace;
 
@@ -64,9 +73,19 @@ struct AccessTraits<adamantine::RayNearestPredicate, PredicatesTag>
     auto const &ray = ray_nearest.get(i);
     auto const &origin = ray.origin;
     auto const &direction = ray.direction;
+#if defined(ARBORX_VERSION_MAJOR) &&                                           \
+    (ARBORX_VERSION_MAJOR * 1000 + ARBORX_VERSION_MINOR * 100 +                \
+     ARBORX_VERSION_PATCH) >= 2099
+    ArborX::Experimental::Ray<double> arborx_ray = {
+        {origin[0], origin[1], origin[2]},
+        { direction[0],
+          direction[1],
+          direction[2] }};
+#else
     ArborX::Experimental::Ray arborx_ray = {
         {(float)origin[0], (float)origin[1], (float)origin[2]},
         {(float)direction[0], (float)direction[1], (float)direction[2]}};
+#endif
     // When the mesh is unstructured, bounding boxes do not tightly bound the
     // cells and so many of them overlap. A ray may hit a bounding box but may
     // missed the cell. We need to ask for more bounding boxes to increase the
