@@ -233,6 +233,7 @@ PointsValues<3> RayTracing::get_points_values()
                                 (float)point_a[2]),
         dealii::Point<3, float>((float)point_b[0], (float)point_b[1],
                                 (float)point_b[2])));
+    cell_iterators.push_back(cell);
   }
 
   // Use ArborX to find where the rays intersect the activated cells. All the
