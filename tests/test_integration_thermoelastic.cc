@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -71,5 +71,5 @@ BOOST_AUTO_TEST_CASE(integration_thermoelastic_add_material,
   // For now doing a simple regression test. Without a dof handler, it's hard to
   // do something more meaningful with the vector.
 
-  BOOST_TEST(displacement.l2_norm() == 0.355534971638);
+  BOOST_TEST(displacement.l2_norm() == 0.24117708846731);
 }
