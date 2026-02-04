@@ -225,7 +225,7 @@ PointsValues<3> RayTracing::get_points_values()
            dealii::IteratorFilters::LocallyOwnedCell(),
            dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
   {
-    auto const &boundary_points = cell->bounding_box().get_boundary_points();
+    auto const boundary_points = cell->bounding_box().get_boundary_points();
     auto const &point_a = boundary_points.first;
     auto const &point_b = boundary_points.second;
     bounding_boxes.emplace_back(std::make_pair(
