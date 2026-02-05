@@ -13,6 +13,7 @@
 #include <fstream>
 #include <regex>
 
+#include <ArborX_Config.hpp>
 #include <ArborX_Ray.hpp>
 
 namespace adamantine
@@ -41,6 +42,10 @@ public:
    */
   Ray<3> const &get(unsigned int i) const { return _rays[i]; }
 
+#if ARBORX_VERSION_MAJOR >= 2
+  static constexpr bool is_nearest = true;
+#endif
+
 private:
   std::vector<Ray<3>> _rays;
 };
@@ -49,7 +54,11 @@ private:
 namespace ArborX
 {
 template <>
+#if ARBORX_VERSION_MAJOR >= 2
+struct AccessTraits<adamantine::RayNearestPredicate>
+#else
 struct AccessTraits<adamantine::RayNearestPredicate, PredicatesTag>
+#endif
 {
   using memory_space = Kokkos::HostSpace;
 
@@ -208,7 +217,7 @@ PointsValues<3> RayTracing::get_points_values()
 
   // Create the bounding boxes associated to the locally owned cells with FE
   // index = 0
-  std::vector<dealii::BoundingBox<dim>> bounding_boxes;
+  std::vector<dealii::BoundingBox<dim, float>> bounding_boxes;
   std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>
       cell_iterators;
   for (auto const &cell : dealii::filter_iterators(
@@ -216,7 +225,14 @@ PointsValues<3> RayTracing::get_points_values()
            dealii::IteratorFilters::LocallyOwnedCell(),
            dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
   {
-    bounding_boxes.push_back(cell->bounding_box());
+    auto const boundary_points = cell->bounding_box().get_boundary_points();
+    auto const &point_a = boundary_points.first;
+    auto const &point_b = boundary_points.second;
+    bounding_boxes.emplace_back(std::make_pair(
+        dealii::Point<3, float>((float)point_a[0], (float)point_a[1],
+                                (float)point_a[2]),
+        dealii::Point<3, float>((float)point_b[0], (float)point_b[1],
+                                (float)point_b[2])));
     cell_iterators.push_back(cell);
   }
 

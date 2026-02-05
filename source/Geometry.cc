@@ -18,14 +18,23 @@
 
 #include <fstream>
 
+#include <ArborX_Config.hpp>
+
 namespace adamantine
 {
 namespace
 {
-ArborX::ExperimentalHyperGeometry::Point<3, double>
-read_point(char const *facet, double const unit_scaling)
+#if ARBORX_VERSION_MAJOR >= 2
+using Point = ArborX::Point<3, double>;
+using Triangle = ArborX::Triangle<3, double>;
+#else
+using Point = ArborX::ExperimentalHyperGeometry::Point<3, double>;
+using Triangle = ArborX::ExperimentalHyperGeometry::Triangle<3, double>;
+#endif
+
+Point read_point(char const *facet, double const unit_scaling)
 {
-  ArborX::ExperimentalHyperGeometry::Point<3, double> vertex;
+  Point vertex;
   float value = 0;
 
   std::memcpy(&value, facet, sizeof value);
@@ -244,11 +253,9 @@ void Geometry<dim>::read_stl(std::string const &filename,
     std::memcpy(&n_triangles, n_tri, sizeof n_triangles);
   }
 
-  _stl_triangles =
-      Kokkos::View<ArborX::ExperimentalHyperGeometry::Triangle<3, double> *,
-                   Kokkos::HostSpace>(
-          Kokkos::view_alloc(Kokkos::WithoutInitializing, "stl_triangles"),
-          n_triangles);
+  _stl_triangles = Kokkos::View<Triangle *, Kokkos::HostSpace>(
+      Kokkos::view_alloc(Kokkos::WithoutInitializing, "stl_triangles"),
+      n_triangles);
 
   for (unsigned int i = 0; i < n_triangles; ++i)
   {

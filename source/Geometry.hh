@@ -9,7 +9,12 @@
 
 #include <boost/property_tree/ptree.hpp>
 
+#include <ArborX_Config.hpp>
+#if ARBORX_VERSION_MAJOR >= 2
+#include <ArborX_Triangle.hpp>
+#else
 #include <ArborX_HyperTriangle.hpp>
+#endif
 
 namespace adamantine
 {
@@ -19,6 +24,14 @@ namespace adamantine
 template <int dim>
 class Geometry
 {
+#if ARBORX_VERSION_MAJOR >= 2
+  using Point = ArborX::Point<3, double>;
+  using Triangle = ArborX::Triangle<3, double>;
+#else
+  using Point = ArborX::ExperimentalHyperGeometry::Point<3, double>;
+  using Triangle = ArborX::ExperimentalHyperGeometry::Triangle<3, double>;
+#endif
+
 public:
   /**
    * Constructor.
@@ -36,9 +49,7 @@ public:
   /**
    * Return the triangles from the STL file.
    */
-  Kokkos::View<ArborX::ExperimentalHyperGeometry::Triangle<3, double> *,
-               Kokkos::HostSpace>
-  get_stl_triangles();
+  Kokkos::View<Triangle *, Kokkos::HostSpace> get_stl_triangles();
 
 private:
   /**
@@ -59,9 +70,7 @@ private:
   /**
    * View of the triangles from the STL file.
    */
-  Kokkos::View<ArborX::ExperimentalHyperGeometry::Triangle<3, double> *,
-               Kokkos::HostSpace>
-      _stl_triangles;
+  Kokkos::View<Triangle *, Kokkos::HostSpace> _stl_triangles;
 };
 
 template <int dim>
@@ -72,8 +81,7 @@ Geometry<dim>::get_triangulation()
 }
 
 template <int dim>
-inline Kokkos::View<ArborX::ExperimentalHyperGeometry::Triangle<3, double> *,
-                    Kokkos::HostSpace>
+inline Kokkos::View<typename Geometry<dim>::Triangle *, Kokkos::HostSpace>
 Geometry<dim>::get_stl_triangles()
 {
   return _stl_triangles;
