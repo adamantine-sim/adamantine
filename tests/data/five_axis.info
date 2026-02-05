@@ -13,7 +13,7 @@ geometry
   deposition_length 0.0003
   deposition_height 0.00025
   deposition_width 0.0003
-  deposition_lead_time 0.0005
+  deposition_lead_time 0.03
   material_height 0.75e-3
 }
 

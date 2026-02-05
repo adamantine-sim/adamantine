@@ -10,7 +10,7 @@ geometry
   width_divisions  3
   material_deposition true
   material_deposition_method scan_paths
-  deposition_length 2.0e-3
+  deposition_length 0.3e-3
   deposition_height 2.0e-3
   deposition_width 2.0e-3
   deposition_lead_time 1.0e0
