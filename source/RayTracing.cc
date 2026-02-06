@@ -1,4 +1,4 @@
-/* Copyright (c) 2023 - 2024, the adamantine authors.
+/* Copyright (c) 2023 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -8,13 +8,13 @@
 #include <deal.II/arborx/distributed_tree.h>
 #include <deal.II/grid/filtered_iterator.h>
 
+#include <ArborX_Config.hpp>
+#include <ArborX_Ray.hpp>
+
 #include <Kokkos_Core.hpp>
 
 #include <fstream>
 #include <regex>
-
-#include <ArborX_Config.hpp>
-#include <ArborX_Ray.hpp>
 
 namespace adamantine
 {

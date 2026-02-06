@@ -16,9 +16,9 @@
 #include <deal.II/grid/grid_in.h>
 #include <deal.II/grid/grid_tools.h>
 
-#include <fstream>
-
 #include <ArborX_Config.hpp>
+
+#include <fstream>
 
 namespace adamantine
 {

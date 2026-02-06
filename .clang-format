@@ -15,8 +15,10 @@ IncludeCategories:
     Priority: 400
   - Regex: "caliper*"
     Priority: 500
-  - Regex: "Kokkos*"
+  - Regex: "ArborX*"
     Priority: 600
+  - Regex: "Kokkos*"
+    Priority: 700
   - Regex: "<[a-z_]+>"
     Priority: 1000
 ...
