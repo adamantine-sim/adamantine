@@ -6,15 +6,19 @@
 #define GEOMETRY_HH
 
 #include <deal.II/distributed/tria.h>
+#include <deal.II/dofs/dof_handler.h>
 
 #include <boost/property_tree/ptree.hpp>
 
+#include <ArborX.hpp>
 #include <ArborX_Config.hpp>
 #if ARBORX_VERSION_MAJOR >= 2
 #include <ArborX_Triangle.hpp>
 #else
 #include <ArborX_HyperTriangle.hpp>
 #endif
+
+#include <memory>
 
 namespace adamantine
 {
@@ -51,6 +55,18 @@ public:
    */
   Kokkos::View<Triangle *, Kokkos::HostSpace> get_stl_triangles();
 
+#if ARBORX_VERSION_MAJOR >= 2
+  /**
+   * Return true if a cell is fully included inside the domain defined by the
+   * STL. Return false if the cell is outside the domain or if it intersects it.
+   *
+   * @note This function assumes that the STL triangle normals are all pointing
+   * outwards from the enclosed volume.
+   */
+  bool is_within_stl(
+      typename dealii::DoFHandler<dim>::active_cell_iterator const &cell) const;
+#endif
+
 private:
   /**
    * Assign the material state to the mesh.
@@ -71,6 +87,13 @@ private:
    * View of the triangles from the STL file.
    */
   Kokkos::View<Triangle *, Kokkos::HostSpace> _stl_triangles;
+
+#if ARBORX_VERSION_MAJOR >= 2
+  /**
+   * BVH tree with STL triangles as leaf nodes.
+   */
+  std::unique_ptr<ArborX::BVH<Kokkos::HostSpace, Triangle>> _bvh;
+#endif
 };
 
 template <int dim>
