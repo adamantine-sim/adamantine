@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -8,8 +8,10 @@
 #include <MaterialStates.hh>
 #include <types.hh>
 
+#include <deal.II/fe/fe_q.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/grid_tools.h>
+#include <deal.II/numerics/data_out.h>
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -166,7 +168,7 @@ BOOST_AUTO_TEST_CASE(gmsh)
   check_material_id(tria, top_boundary);
 }
 
-BOOST_AUTO_TEST_CASE(stl)
+BOOST_AUTO_TEST_CASE(read_stl)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
   boost::property_tree::ptree database;
@@ -226,3 +228,65 @@ BOOST_AUTO_TEST_CASE(stl)
   BOOST_TEST(y_max - y_min == 21.0);
   BOOST_TEST(z_max - z_min == 4.0);
 }
+
+#if ARBORX_VERSION_MAJOR >= 2
+BOOST_AUTO_TEST_CASE(within_stl)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+  boost::property_tree::ptree database;
+  database.put("import_mesh", false);
+  database.put("length", 40);
+  database.put("length_divisions", 80);
+  database.put("height", 4);
+  database.put("height_divisions", 4);
+  database.put("width", 10);
+  database.put("width_divisions", 40);
+  database.put("material_height", 4);
+  database.put("use_powder", true);
+  database.put("powder_layer", 2);
+  database.put("stl_filename", "Simple_3D_ring.stl");
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+
+  adamantine::Geometry<3> geometry(communicator, database,
+                                   units_optional_database);
+
+  dealii::FE_Q<3> fe(1);
+  dealii::DoFHandler<3> dof_handler(geometry.get_triangulation());
+  dof_handler.distribute_dofs(fe);
+
+  std::vector<double> cells_within_vec;
+  for (auto const &cell : dof_handler.active_cell_iterators())
+  {
+    bool within = geometry.is_within_stl(cell);
+    cells_within_vec.push_back(within);
+  }
+
+  // Uncommenting the code below allows to visualize the cells that are within
+  // the STL and to write the gold solution.
+  /*
+  dealii::Vector<double> cells_within(cells_within_vec.size());
+  for (unsigned int i = 0; i < cells_within_vec.size(); ++i)
+    cells_within[i] = cells_within_vec[i];
+
+  dealii::DataOut<3> data_out;
+  data_out.attach_dof_handler(dof_handler);
+  data_out.add_data_vector(cells_within, "within");
+  data_out.build_patches();
+  std::ofstream output("cells_within.vtu");
+  data_out.write_vtu(output);
+
+  std::ofstream gold_file_writer("within_stl_gold.txt");
+  for (auto const value : cells_within_vec)
+    gold_file_writer << value << " ";
+  gold_file_writer.close();
+  */
+
+  std::ifstream gold_file("within_stl_gold.txt");
+  for (unsigned int i = 0; i < cells_within_vec.size(); ++i)
+  {
+    double gold_value = -1.;
+    gold_file >> gold_value;
+    BOOST_TEST(cells_within_vec[i] == gold_value);
+  }
+}
+#endif
