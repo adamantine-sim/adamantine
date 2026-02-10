@@ -55,8 +55,7 @@ struct InsideCallBack
   {
     auto p = ArborX::getGeometry(predicate);
 #if ARBORX_VERSION_MINOR * 100 + ARBORX_VERSION_PATCH >= 99
-    auto a = ArborX::Experimental::closestPoint(
-        p, Triangle{value.a, value.b, value.c});
+    auto a = ArborX::Experimental::closestPoint(p, value);
 #else
     auto a = ArborX::Details::Dispatch::distance<
         ArborX::GeometryTraits::PointTag, ArborX::GeometryTraits::TriangleTag,
