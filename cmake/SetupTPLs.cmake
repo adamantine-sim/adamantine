@@ -14,6 +14,7 @@ set(Boost_COMPONENTS
 find_package(Boost 1.70.0 REQUIRED COMPONENTS ${Boost_COMPONENTS})
 
 #### Adiak ###################################################################
+option(ADAMANTINE_ENABLE_ADIAK "Build with Adiak support" OFF)
 if (ADAMANTINE_ENABLE_ADIAK)
   find_package(adiak REQUIRED PATHS ${ADIAK_DIR})
   add_compile_definitions(ADAMANTINE_WITH_ADIAK)
@@ -21,6 +22,7 @@ if (ADAMANTINE_ENABLE_ADIAK)
 endif()
 
 #### Caliper #################################################################
+option(ADAMANTINE_ENABLE_CALIPER "Build with Caliper support" OFF)
 if (ADAMANTINE_ENABLE_CALIPER)
   find_package(caliper REQUIRED PATHS ${CALIPER_DIR})
   add_compile_definitions(ADAMANTINE_WITH_CALIPER)
