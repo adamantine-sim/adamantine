@@ -252,11 +252,9 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
 
         for (auto const i : fe_values.dof_indices())
         {
-          auto local_rhs = 0.;
-          auto fe_val = fe_values[displacements].gradient(i, q_point);
-          for (auto c = 0; c < dim; ++c)
-            local_rhs += fe_val[c][c];
-          cell_rhs(i) += local_rhs * B * fe_values.JxW(q_point);
+          cell_rhs(i) +=
+              dealii::trace(fe_values[displacements].gradient(i, q_point)) * B *
+              fe_values.JxW(q_point);
         }
       }
 
