@@ -80,35 +80,37 @@ namespace
 template <int dim>
 struct ScratchData
 {
-  ScratchData(const dealii::FEValues<dim> &displacement_hp_fe_values,
-              const dealii::FEValues<dim> &temperature_hp_fe_values)
-      : displacement_hp_fe_values(displacement_hp_fe_values.get_mapping(),
-                                  displacement_hp_fe_values.get_fe(),
-                                  displacement_hp_fe_values.get_quadrature(),
-                                  displacement_hp_fe_values.get_update_flags()),
-        temperature_hp_fe_values(temperature_hp_fe_values.get_mapping(),
-                                 temperature_hp_fe_values.get_fe(),
-                                 temperature_hp_fe_values.get_quadrature(),
-                                 temperature_hp_fe_values.get_update_flags())
+  ScratchData(const dealii::hp::FEValues<dim> &displacement_hp_fe_values,
+              const dealii::hp::FEValues<dim> &temperature_hp_fe_values)
+      : displacement_hp_fe_values(
+            displacement_hp_fe_values.get_mapping_collection(),
+            displacement_hp_fe_values.get_fe_collection(),
+            displacement_hp_fe_values.get_quadrature_collection(),
+            displacement_hp_fe_values.get_update_flags()),
+        temperature_hp_fe_values(
+            temperature_hp_fe_values.get_mapping_collection(),
+            temperature_hp_fe_values.get_fe_collection(),
+            temperature_hp_fe_values.get_quadrature_collection(),
+            temperature_hp_fe_values.get_update_flags())
   {
   }
 
   ScratchData(const ScratchData<dim> &scratch_data)
       : displacement_hp_fe_values(
-            scratch_data.displacement_hp_fe_values.get_mapping(),
-            scratch_data.displacement_hp_fe_values.get_fe(),
-            scratch_data.displacement_hp_fe_values.get_quadrature(),
+            scratch_data.displacement_hp_fe_values.get_mapping_collection(),
+            scratch_data.displacement_hp_fe_values.get_fe_collection(),
+            scratch_data.displacement_hp_fe_values.get_quadrature_collection(),
             scratch_data.displacement_hp_fe_values.get_update_flags()),
         temperature_hp_fe_values(
-            scratch_data.temperature_hp_fe_values.get_mapping(),
-            scratch_data.temperature_hp_fe_values.get_fe(),
-            scratch_data.temperature_hp_fe_values.get_quadrature(),
+            scratch_data.temperature_hp_fe_values.get_mapping_collection(),
+            scratch_data.temperature_hp_fe_values.get_fe_collection(),
+            scratch_data.temperature_hp_fe_values.get_quadrature_collection(),
             scratch_data.temperature_hp_fe_values.get_update_flags())
   {
   }
 
-  dealii::FEValues<dim> displacement_hp_fe_values;
-  dealii::FEValues<dim> temperature_hp_fe_values;
+  dealii::hp::FEValues<dim> displacement_hp_fe_values;
+  dealii::hp::FEValues<dim> temperature_hp_fe_values;
 };
 
 struct CopyData
@@ -152,8 +154,8 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
 
   _system_matrix.reinit(locally_owned_dofs, dsp, _communicator);
 
-  dealii::FEValues<dim> displacement_hp_fe_values(
-      _dof_handler->get_fe_collection()[0], _q_collection[0],
+  dealii::hp::FEValues<dim> displacement_hp_fe_values(
+      _dof_handler->get_fe_collection(), *_q_collection,
       dealii::update_values | dealii::update_gradients |
           dealii::update_JxW_values);
 
@@ -269,7 +271,7 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
               ? _reference_temperatures[temperature_cell->material_id()]
               : initial_temperature;
 
-      dealii::FEValues<dim> &displacement_hp_fe_values =
+      dealii::hp::FEValues<dim> &displacement_hp_fe_values =
           scratch_data.displacement_hp_fe_values;
       displacement_hp_fe_values.reinit(cell);
       auto const &fe_values = displacement_hp_fe_values.get_present_fe_values();
@@ -281,7 +283,7 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
       double const mu = this->_material_properties.get_mechanical_property(
           cell, StateProperty::lame_second_parameter);
 
-      dealii::FEValues<dim> &temperature_hp_fe_values =
+      dealii::hp::FEValues<dim> &temperature_hp_fe_values =
           scratch_data.temperature_hp_fe_values;
       temperature_hp_fe_values.reinit(temperature_cell);
       auto &temperature_fe_values =
@@ -327,12 +329,8 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
         typename dealii::DoFHandler<dim>::active_cell_iterator>
         end(filter, _dof_handler->end());
 
-    dealii::FEValues<dim> displacement_hp_fe_values(
-        _dof_handler->get_fe_collection()[0], _q_collection[0],
-        dealii::update_values | dealii::update_gradients |
-            dealii::update_JxW_values);
-    dealii::FEValues<dim> temperature_hp_fe_values(
-        _thermal_dof_handler->get_fe_collection()[0], _q_collection[0],
+    dealii::hp::FEValues<dim> temperature_hp_fe_values(
+        _thermal_dof_handler->get_fe_collection(), *_q_collection,
         dealii::update_values);
 
     ScratchData<dim> scratch_data(displacement_hp_fe_values,
