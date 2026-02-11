@@ -54,8 +54,8 @@ struct InsideCallBack
                                   const OutputFunctor &out) const
   {
     auto p = ArborX::getGeometry(predicate);
-#if ARBORX_VERSION_MINOR > 0
-    auto a = ArborX::Experimental::closestPoint(p, value.a, value.b, value.c);
+#if ARBORX_VERSION_MINOR * 100 + ARBORX_VERSION_PATCH >= 99
+    auto a = ArborX::Experimental::closestPoint(p, value);
 #else
     auto a = ArborX::Details::Dispatch::distance<
         ArborX::GeometryTraits::PointTag, ArborX::GeometryTraits::TriangleTag,
