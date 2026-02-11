@@ -45,6 +45,7 @@ add_custom_target(indent
   COMMAND ./indent
 )
 
+option(ADAMANTINE_ENABLE_DOCUMENTATION "Build documentation" OFF)
 if (ADAMANTINE_ENABLE_DOCUMENTATION)
     add_subdirectory(doc)
 endif()
