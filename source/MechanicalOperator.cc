@@ -248,14 +248,13 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
           delta_T += temperature_fe_values.shape_value(j, q_point) *
                      _temperature(temperature_local_dof_indices[j]);
         }
-        auto B = dealii::Physics::Elasticity::StandardTensors<dim>::I;
-        B *= (3. * lambda + 2 * mu) * alpha * delta_T;
+        auto const B = (3. * lambda + 2 * mu) * alpha * delta_T;
 
         for (auto const i : fe_values.dof_indices())
         {
-          cell_rhs(i) += dealii::scalar_product(
-                             B, fe_values[displacements].gradient(i, q_point)) *
-                         fe_values.JxW(q_point);
+          cell_rhs(i) +=
+              dealii::trace(fe_values[displacements].gradient(i, q_point)) * B *
+              fe_values.JxW(q_point);
         }
       }
 
