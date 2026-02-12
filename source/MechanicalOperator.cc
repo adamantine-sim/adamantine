@@ -52,12 +52,13 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
     reinit(dealii::DoFHandler<dim> const &dof_handler,
            dealii::AffineConstraints<double> const &affine_constraints,
            dealii::hp::QCollection<dim> const &q_collection,
-           std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+           std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces,
+           bool const discretization_has_changed)
 {
   _dof_handler = &dof_handler;
   _affine_constraints = &affine_constraints;
   _q_collection = &q_collection;
-  assemble_system(body_forces);
+  assemble_system(body_forces, discretization_has_changed);
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -135,7 +136,8 @@ template <int dim, int n_materials, int p_order, typename MaterialStates,
 void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
                         MemorySpaceType>::
     assemble_system(
-        std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+        std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces,
+        bool const discretization_has_changed)
 {
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_BEGIN("assemble mechanical system");
@@ -146,68 +148,73 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
   auto locally_owned_dofs = _dof_handler->locally_owned_dofs();
   auto locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(*_dof_handler);
-  dealii::DynamicSparsityPattern dsp(locally_relevant_dofs);
-  dealii::DoFTools::make_sparsity_pattern(*_dof_handler, dsp,
-                                          *_affine_constraints, false);
-  dealii::SparsityTools::distribute_sparsity_pattern(
-      dsp, locally_owned_dofs, _communicator, locally_relevant_dofs);
-
-  _system_matrix.reinit(locally_owned_dofs, dsp, _communicator);
 
   dealii::hp::FEValues<dim> displacement_hp_fe_values(
       _dof_handler->get_fe_collection(), *_q_collection,
       dealii::update_values | dealii::update_gradients |
           dealii::update_JxW_values);
-
   unsigned int const dofs_per_cell =
       _dof_handler->get_fe_collection().max_dofs_per_cell();
-  dealii::FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
   std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
 
-  // Loop over the locally owned cells that are not FE_Nothing and assemble the
-  // sparse matrix and the right-hand-side
-  for (auto const &cell : _dof_handler->active_cell_iterators() |
-                              dealii::IteratorFilters::ActiveFEIndexEqualTo(
-                                  0, /* locally owned */ true))
+  if (discretization_has_changed)
   {
-    displacement_hp_fe_values.reinit(cell);
-    auto const &fe_values = displacement_hp_fe_values.get_present_fe_values();
-    auto const &fe = fe_values.get_fe();
+    dealii::DynamicSparsityPattern dsp(locally_relevant_dofs);
+    dealii::DoFTools::make_sparsity_pattern(*_dof_handler, dsp,
+                                            *_affine_constraints, false);
+    dealii::SparsityTools::distribute_sparsity_pattern(
+        dsp, locally_owned_dofs, _communicator, locally_relevant_dofs);
 
-    // Assemble the local martrix
-    cell_matrix = 0;
-    double const lambda = this->_material_properties.get_mechanical_property(
-        cell, StateProperty::lame_first_parameter);
-    double const mu = this->_material_properties.get_mechanical_property(
-        cell, StateProperty::lame_second_parameter);
-    for (auto const i : fe_values.dof_indices())
+    _system_matrix.reinit(locally_owned_dofs, dsp, _communicator);
+
+    dealii::FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
+
+    // Loop over the locally owned cells that are not FE_Nothing and assemble
+    // the sparse matrix and the right-hand-side
+    for (auto const &cell : _dof_handler->active_cell_iterators() |
+                                dealii::IteratorFilters::ActiveFEIndexEqualTo(
+                                    0, /* locally owned */ true))
     {
-      auto const component_i = fe.system_to_component_index(i).first;
-      for (auto const j : fe_values.dof_indices())
+      displacement_hp_fe_values.reinit(cell);
+      auto const &fe_values = displacement_hp_fe_values.get_present_fe_values();
+      auto const &fe = fe_values.get_fe();
+
+      // Assemble the local martrix
+      cell_matrix = 0;
+      double const lambda = this->_material_properties.get_mechanical_property(
+          cell, StateProperty::lame_first_parameter);
+      double const mu = this->_material_properties.get_mechanical_property(
+          cell, StateProperty::lame_second_parameter);
+      for (auto const i : fe_values.dof_indices())
       {
-        auto const component_j = fe.system_to_component_index(j).first;
-        for (auto const q_point : fe_values.quadrature_point_indices())
+        auto const component_i = fe.system_to_component_index(i).first;
+        for (auto const j : fe_values.dof_indices())
         {
-          cell_matrix(i, j) +=
-              // FIXME We should be able to use the following formulation but
-              // the result is different. We need to understand why.
-              // ((lambda + mu) * fe_values.shape_grad(i, q_point)[component_i]
-              // * fe_values.shape_grad(j, q_point)[component_j] +
-              ((fe_values.shape_grad(i, q_point)[component_i] *
-                fe_values.shape_grad(j, q_point)[component_j] * lambda) +
-               (fe_values.shape_grad(i, q_point)[component_j] *
-                fe_values.shape_grad(j, q_point)[component_i] * mu) +
-               ((component_i == component_j)
-                    ? mu * fe_values.shape_grad(i, q_point) *
-                          fe_values.shape_grad(j, q_point)
-                    : 0.)) *
-              fe_values.JxW(q_point);
+          auto const component_j = fe.system_to_component_index(j).first;
+          for (auto const q_point : fe_values.quadrature_point_indices())
+          {
+            cell_matrix(i, j) +=
+                // FIXME We should be able to use the following formulation but
+                // the result is different. We need to understand why.
+                // ((lambda + mu) * fe_values.shape_grad(i,
+                // q_point)[component_i]
+                // * fe_values.shape_grad(j, q_point)[component_j] +
+                ((fe_values.shape_grad(i, q_point)[component_i] *
+                  fe_values.shape_grad(j, q_point)[component_j] * lambda) +
+                 (fe_values.shape_grad(i, q_point)[component_j] *
+                  fe_values.shape_grad(j, q_point)[component_i] * mu) +
+                 ((component_i == component_j)
+                      ? mu * fe_values.shape_grad(i, q_point) *
+                            fe_values.shape_grad(j, q_point)
+                      : 0.)) *
+                fe_values.JxW(q_point);
+          }
         }
       }
+      cell->get_dof_indices(local_dof_indices);
+      _affine_constraints->distribute_local_to_global(
+          cell_matrix, local_dof_indices, _system_matrix);
     }
-    cell->get_dof_indices(local_dof_indices);
-    _affine_constraints->distribute_local_to_global(
-        cell_matrix, local_dof_indices, _system_matrix);
   }
 
   // Assemble the rhs
