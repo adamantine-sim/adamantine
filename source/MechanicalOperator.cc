@@ -31,57 +31,13 @@
 
 namespace adamantine
 {
-template <int dim, int n_materials, int p_order, typename MaterialStates,
-          typename MemorySpaceType>
-MechanicalOperator<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
-    MechanicalOperator(
-        MPI_Comm const &communicator,
-        MaterialProperty<dim, n_materials, p_order, MaterialStates,
-                         MemorySpaceType> &material_properties,
-        std::vector<double> const &reference_temperatures)
-    : _communicator(communicator),
-      _reference_temperatures(reference_temperatures),
-      _material_properties(material_properties)
-{
-}
-
-template <int dim, int n_materials, int p_order, typename MaterialStates,
-          typename MemorySpaceType>
-void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
-                        MemorySpaceType>::
-    reinit(dealii::DoFHandler<dim> const &dof_handler,
-           dealii::AffineConstraints<double> const &affine_constraints,
-           dealii::hp::QCollection<dim> const &q_collection,
-           std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
-{
-  _dof_handler = &dof_handler;
-  _affine_constraints = &affine_constraints;
-  _q_collection = &q_collection;
-  assemble_system(body_forces);
-}
-
-template <int dim, int n_materials, int p_order, typename MaterialStates,
-          typename MemorySpaceType>
-void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
-                        MemorySpaceType>::
-    update_temperature(
-        dealii::DoFHandler<dim> const &thermal_dof_handler,
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &temperature,
-        std::vector<bool> const &has_melted)
-{
-  _thermal_dof_handler = &thermal_dof_handler;
-  _temperature = temperature;
-  _has_melted = has_melted;
-}
-
 namespace
 {
 template <int dim>
 struct ScratchData
 {
-  ScratchData(const dealii::hp::FEValues<dim> &displacement_hp_fe_values,
-              const dealii::hp::FEValues<dim> &temperature_hp_fe_values)
+  ScratchData(dealii::hp::FEValues<dim> const &displacement_hp_fe_values,
+              dealii::hp::FEValues<dim> const &temperature_hp_fe_values)
       : displacement_hp_fe_values(
             displacement_hp_fe_values.get_mapping_collection(),
             displacement_hp_fe_values.get_fe_collection(),
@@ -95,7 +51,7 @@ struct ScratchData
   {
   }
 
-  ScratchData(const ScratchData<dim> &scratch_data)
+  ScratchData(ScratchData<dim> const &scratch_data)
       : displacement_hp_fe_values(
             scratch_data.displacement_hp_fe_values.get_mapping_collection(),
             scratch_data.displacement_hp_fe_values.get_fe_collection(),
@@ -132,13 +88,56 @@ struct CopyData
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
+MechanicalOperator<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
+    MechanicalOperator(
+        MPI_Comm const &communicator,
+        MaterialProperty<dim, n_materials, p_order, MaterialStates,
+                         MemorySpaceType> &material_properties,
+        std::vector<double> const &reference_temperatures)
+    : _communicator(communicator),
+      _reference_temperatures(reference_temperatures),
+      _material_properties(material_properties)
+{
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
                         MemorySpaceType>::
-    assemble_system(
-        std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+    reinit(dealii::DoFHandler<dim> const &dof_handler,
+           dealii::AffineConstraints<double> const &affine_constraints,
+           dealii::hp::QCollection<dim> const &q_collection,
+           std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+{
+  _dof_handler = &dof_handler;
+  _affine_constraints = &affine_constraints;
+  _q_collection = &q_collection;
+  assemble_matrix();
+  assemble_rhs(body_forces);
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
+                        MemorySpaceType>::
+    update_temperature(
+        dealii::DoFHandler<dim> const &thermal_dof_handler,
+        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+            &temperature,
+        std::vector<bool> const &has_melted)
+{
+  _thermal_dof_handler = &thermal_dof_handler;
+  _temperature = temperature;
+  _has_melted = has_melted;
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
+                        MemorySpaceType>::assemble_matrix()
 {
 #ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_BEGIN("assemble mechanical system");
+  CALI_MARK_BEGIN("assemble mechanical matrix");
 #endif
 
   // Create the sparsity pattern. Since we use a Trilinos matrix we don't need
@@ -210,10 +209,36 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
         cell_matrix, local_dof_indices, _system_matrix);
   }
 
-  // Assemble the rhs
+  _system_matrix.compress(dealii::VectorOperation::add);
+
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("assemble mechanical matrix");
+#endif
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
+                        MemorySpaceType>::
+    assemble_rhs(
+        std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+{
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("assemble mechanical rhs");
+#endif
+
+  auto locally_owned_dofs = _dof_handler->locally_owned_dofs();
+  auto locally_relevant_dofs =
+      dealii::DoFTools::extract_locally_relevant_dofs(*_dof_handler);
+  unsigned int const dofs_per_cell =
+      _dof_handler->get_fe_collection().max_dofs_per_cell();
+  dealii::hp::FEValues<dim> displacement_hp_fe_values(
+      _dof_handler->get_fe_collection(), *_q_collection,
+      dealii::update_values | dealii::update_gradients |
+          dealii::update_JxW_values);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       assembled_rhs(locally_owned_dofs, locally_relevant_dofs, _communicator);
-  dealii::Vector<double> cell_rhs(dofs_per_cell);
+  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
   // If the list of reference temperatures is non-empty, we solve the
   // thermo-elastic problem.
   if (_reference_temperatures.size() > 0)
@@ -341,9 +366,11 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
                                   dealii::MeshWorker::assemble_own_cells);
   }
 
-  // Add gravitational body force
+  // Add gravitational body force if present
   if (body_forces.size())
   {
+    dealii::Vector<double> cell_rhs(dofs_per_cell);
+
     for (auto const &cell : _dof_handler->active_cell_iterators() |
                                 dealii::IteratorFilters::ActiveFEIndexEqualTo(
                                     0, /* locally owned */ true))
@@ -374,8 +401,6 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
           cell_rhs, local_dof_indices, assembled_rhs);
     }
   }
-
-  _system_matrix.compress(dealii::VectorOperation::add);
   assembled_rhs.compress(dealii::VectorOperation::add);
 
   // When solving the system, we don't want ghost entries
@@ -383,7 +408,7 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
   _system_rhs = assembled_rhs;
 
 #ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_END("assemble mechanical system");
+  CALI_MARK_END("assemble mechanical rhs");
 #endif
 }
 } // namespace adamantine

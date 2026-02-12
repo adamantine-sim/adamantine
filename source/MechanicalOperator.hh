@@ -73,12 +73,17 @@ public:
 
 private:
   /**
-   * Assemble the matrix and the right-hand-side.
+   * Assemble the sparse matrix of the system.
    * @note The 2D case does not represent any physical model but it is
    * convenient for testing.
    */
-  void assemble_system(
-      std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces);
+  void assemble_matrix();
+
+  /**
+   * Assemble the right-hand-side.
+   */
+  void
+  assemble_rhs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces);
 
   /**
    * MPI communicator.
