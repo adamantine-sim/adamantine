@@ -1,10 +1,11 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
 #ifndef MATERIAL_DEPOSITION_HH
 #define MATERIAL_DEPOSITION_HH
 
+#include <Geometry.hh>
 #include <HeatSource.hh>
 
 #include <deal.II/base/bounding_box.h>
@@ -60,7 +61,7 @@ merge_deposition_paths(
 template <int dim>
 std::vector<std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>
 get_elements_to_activate(
-    dealii::DoFHandler<dim> const &dof_handler,
+    Geometry<dim> const &geometry, dealii::DoFHandler<dim> const &dof_handler,
     std::vector<dealii::BoundingBox<dim>> const &material_deposition_boxes);
 } // namespace adamantine
 

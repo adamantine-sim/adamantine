@@ -168,8 +168,8 @@ BOOST_AUTO_TEST_CASE(get_elements_to_activate_2d,
   bounding_boxes.emplace_back(
       std::make_pair(dealii::Point<2>(4.5, 4.5), dealii::Point<2>(5.5, 5.5)));
 
-  auto elements_to_activate =
-      adamantine::get_elements_to_activate(dof_handler, bounding_boxes);
+  auto elements_to_activate = adamantine::get_elements_to_activate(
+      geometry, dof_handler, bounding_boxes);
 
   BOOST_TEST(elements_to_activate.size() == bounding_boxes.size());
 
@@ -231,8 +231,8 @@ BOOST_AUTO_TEST_CASE(get_elements_to_activate_3d,
   bounding_boxes.emplace_back(std::make_pair(dealii::Point<3>(4.5, 4.5, 4.5),
                                              dealii::Point<3>(5.5, 5.5, 5.5)));
 
-  auto elements_to_activate =
-      adamantine::get_elements_to_activate(dof_handler, bounding_boxes);
+  auto elements_to_activate = adamantine::get_elements_to_activate(
+      geometry, dof_handler, bounding_boxes);
 
   BOOST_TEST(elements_to_activate.size() == bounding_boxes.size());
 
@@ -358,7 +358,7 @@ BOOST_AUTO_TEST_CASE(material_deposition)
     if (activation_start < activation_end)
     {
       auto elements_to_activate = adamantine::get_elements_to_activate(
-          dof_handler, material_deposition_boxes);
+          geometry, dof_handler, material_deposition_boxes);
 
       std::vector<bool> has_melted(deposition_cos.size(), false);
 

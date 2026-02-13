@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -1140,7 +1140,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           // activation_end.
           timers[adamantine::add_material_search].start();
           auto elements_to_activate = adamantine::get_elements_to_activate(
-              thermal_physics->get_dof_handler(), material_deposition_boxes);
+              geometry, thermal_physics->get_dof_handler(),
+              material_deposition_boxes);
           timers[adamantine::add_material_search].stop();
 
           // For now assume that all deposited material has never been melted
@@ -2007,6 +2008,7 @@ run_ensemble(MPI_Comm const &global_communicator,
           // activation_end.
           timers[adamantine::add_material_search].start();
           auto elements_to_activate = adamantine::get_elements_to_activate(
+              *geometry_ensemble[member],
               thermal_physics_ensemble[member]->get_dof_handler(),
               material_deposition_boxes);
           timers[adamantine::add_material_search].stop();

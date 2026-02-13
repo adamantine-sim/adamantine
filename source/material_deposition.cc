@@ -374,7 +374,7 @@ merge_deposition_paths(
 template <int dim>
 std::vector<std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>>
 get_elements_to_activate(
-    dealii::DoFHandler<dim> const &dof_handler,
+    Geometry<dim> const &geometry, dealii::DoFHandler<dim> const &dof_handler,
     std::vector<dealii::BoundingBox<dim>> const &material_deposition_boxes)
 {
   // Exit early if we can
@@ -387,13 +387,32 @@ get_elements_to_activate(
   std::vector<dealii::BoundingBox<dim>> bounding_boxes;
   std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>
       cell_iterators;
-  for (auto const &cell : dealii::filter_iterators(
-           dof_handler.active_cell_iterators(),
-           dealii::IteratorFilters::LocallyOwnedCell(),
-           dealii::IteratorFilters::ActiveFEIndexEqualTo(1)))
+#if ARBORX_VERSION_MAJOR >= 2
+  if (geometry.use_stl())
   {
-    bounding_boxes.push_back(cell->bounding_box());
-    cell_iterators.push_back(cell);
+    for (auto const &cell : dealii::filter_iterators(
+             dof_handler.active_cell_iterators(),
+             dealii::IteratorFilters::LocallyOwnedCell(),
+             dealii::IteratorFilters::ActiveFEIndexEqualTo(1)))
+    {
+      if (geometry.is_within_stl(cell))
+      {
+        bounding_boxes.push_back(cell->bounding_box());
+        cell_iterators.push_back(cell);
+      }
+    }
+  }
+  else
+#endif
+  {
+    for (auto const &cell : dealii::filter_iterators(
+             dof_handler.active_cell_iterators(),
+             dealii::IteratorFilters::LocallyOwnedCell(),
+             dealii::IteratorFilters::ActiveFEIndexEqualTo(1)))
+    {
+      bounding_boxes.push_back(cell->bounding_box());
+      cell_iterators.push_back(cell);
+    }
   }
 
   // Perform the search
@@ -442,12 +461,12 @@ read_material_deposition(boost::property_tree::ptree const &geometry_database);
 template std::vector<
     std::vector<typename dealii::DoFHandler<2>::active_cell_iterator>>
 get_elements_to_activate(
-    dealii::DoFHandler<2> const &dof_handler,
+    Geometry<2> const &geometry, dealii::DoFHandler<2> const &dof_handler,
     std::vector<dealii::BoundingBox<2>> const &material_deposition_boxes);
 template std::vector<
     std::vector<typename dealii::DoFHandler<3>::active_cell_iterator>>
 get_elements_to_activate(
-    dealii::DoFHandler<3> const &dof_handler,
+    Geometry<3> const &geometry, dealii::DoFHandler<3> const &dof_handler,
     std::vector<dealii::BoundingBox<3>> const &material_deposition_boxes);
 
 template std::tuple<std::vector<dealii::BoundingBox<2, double>>,
