@@ -136,6 +136,31 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
+                       MemorySpaceType>::
+    update_rhs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+{
+  _mechanical_operator->assemble_rhs(body_forces);
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
+                       MemorySpaceType>::
+    update_rhs(
+        dealii::DoFHandler<dim> const &thermal_dof_handler,
+        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+            &temperature,
+        std::vector<bool> const &has_melted,
+        std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
+{
+  _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
+                                           has_melted);
+  _mechanical_operator->assemble_rhs(body_forces);
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
                        MemorySpaceType>::prepare_transfer_mpi()
 {
   _old_displacement.update_ghost_values();

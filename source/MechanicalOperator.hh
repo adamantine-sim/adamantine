@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -34,6 +34,14 @@ template <int dim, int n_materials, int p_order, typename MaterialStates,
 class MechanicalOperator
 {
 public:
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+  using TrilinosMatrixType =
+      dealii::LinearAlgebra::TpetraWrappers::SparseMatrix<
+          double, dealii::MemorySpace::Default>;
+#else
+  using TrilinosMatrixType = dealii::TrilinosWrappers::SparseMatrix;
+#endif
+
   /**
    * Constructor. If the initial temperature is negative, the simulation is
    * mechanical only. Otherwise, we solve a thermo-mechanical problem.
@@ -58,17 +66,21 @@ public:
           &temperature,
       std::vector<bool> const &has_melted);
 
+  /**
+   * Assemble the right-hand-side.
+   */
+  void
+  assemble_rhs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces);
+
+  /**
+   * Return the right-hand-side.
+   */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const &
   rhs() const;
 
-#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
-  using TrilinosMatrixType =
-      dealii::LinearAlgebra::TpetraWrappers::SparseMatrix<
-          double, dealii::MemorySpace::Default>;
-#else
-  using TrilinosMatrixType = dealii::TrilinosWrappers::SparseMatrix;
-#endif
-
+  /**
+   * Return the matrix of the system.
+   */
   TrilinosMatrixType const &system_matrix() const;
 
 private:
@@ -78,12 +90,6 @@ private:
    * convenient for testing.
    */
   void assemble_matrix();
-
-  /**
-   * Assemble the right-hand-side.
-   */
-  void
-  assemble_rhs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces);
 
   /**
    * MPI communicator.
