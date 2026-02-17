@@ -611,8 +611,8 @@ compute_cells_to_refine(
     }
   }
 
-  ArborX::BVH<Kokkos::HostSpace, ArborX::Box> tree(
-      Kokkos::DefaultHostExecutionSpace{}, heat_source_bounding_boxes);
+  ArborX::BVH<Kokkos::HostSpace> tree(Kokkos::DefaultHostExecutionSpace{},
+                                      heat_source_bounding_boxes);
 
   // Build the bounding boxes associated with the locally owned cells
   int const n = triangulation.n_locally_owned_active_cells();
