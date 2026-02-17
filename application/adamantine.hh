@@ -570,7 +570,7 @@ ArborX::Box to_arborx_box(dealii::BoundingBox<dim> dealii_box)
     arborx_min[i] = min_corner[i];
     arborx_max[i] = max_corner[i];
   }
-  for (int i = 0; i < 3; ++i)
+  for (int i = dim; i < 3; ++i)
   {
     arborx_min[i] = 0.;
     arborx_max[i] = 0.;
