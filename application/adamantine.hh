@@ -537,6 +537,44 @@ void refine_and_transfer(
   }
 }
 
+class IntersectionCallback
+{
+  Kokkos::View<bool *, Kokkos::HostSpace> cell;
+
+public:
+  IntersectionCallback(const Kokkos::View<bool *, Kokkos::HostSpace> &cell)
+      : cell(cell)
+  {
+  }
+
+  template <typename Query, typename Value>
+  KOKKOS_FUNCTION auto operator()(Query const &predicate, Value const &) const
+  {
+    int i = getData(predicate);
+    cell[i] = true;
+    return ArborX::CallbackTreeTraversalControl::early_exit;
+  }
+};
+
+template <int dim>
+ArborX::ExperimentalHyperGeometry::Box<dim, double>
+to_arborx_box(dealii::BoundingBox<dim> dealii_box)
+{
+  const auto boundary_points = dealii_box.get_boundary_points();
+  const auto min_corner = boundary_points.first;
+  const auto max_corner = boundary_points.second;
+
+  ArborX::ExperimentalHyperGeometry::Point<dim, double> arborx_min;
+  ArborX::ExperimentalHyperGeometry::Point<dim, double> arborx_max;
+  for (int i = 0; i < dim; ++i)
+  {
+    arborx_min[i] = min_corner[i];
+    arborx_max[i] = max_corner[i];
+  }
+
+  return {arborx_min, arborx_max};
+}
+
 template <int dim>
 std::vector<typename dealii::parallel::distributed::Triangulation<
     dim>::active_cell_iterator>
@@ -550,19 +588,12 @@ compute_cells_to_refine(
   // Compute the position of the beams between time and next_refinement_time and
   // create a list of cells that will intersect the beam.
 
-  // Build the bounding boxes associated with the locally owned cells
-  std::vector<dealii::BoundingBox<dim>> cell_bounding_boxes;
-  cell_bounding_boxes.reserve(triangulation.n_locally_owned_active_cells());
-  for (auto const &cell : triangulation.active_cell_iterators() |
-                              dealii::IteratorFilters::LocallyOwnedCell())
-  {
-    cell_bounding_boxes.push_back(cell->bounding_box());
-  }
-  dealii::ArborXWrappers::BVH bvh(cell_bounding_boxes);
-
   double const bounding_box_scaling = 2.0;
-  std::vector<dealii::BoundingBox<dim>> heat_source_bounding_boxes;
-  heat_source_bounding_boxes.reserve(n_time_steps * heat_sources.size());
+  const int n_heat_sources = heat_sources.size();
+  Kokkos::View<ArborX::ExperimentalHyperGeometry::Box<dim, double> *,
+               Kokkos::HostSpace>
+      heat_source_bounding_boxes("heat_source_bounding_boxes",
+                                 n_time_steps * n_heat_sources);
   for (unsigned int i = 0; i < n_time_steps; ++i)
   {
     double const current_time = time + static_cast<double>(i) /
@@ -570,23 +601,40 @@ compute_cells_to_refine(
                                            (next_refinement_time - time);
 
     // Build the bounding boxes associated with the heat sources
-    for (auto &beam : heat_sources)
+    for (int beam_idx = 0; beam_idx < n_heat_sources; ++beam_idx)
     {
-      heat_source_bounding_boxes.push_back(
-          beam->get_bounding_box(current_time, bounding_box_scaling));
+      heat_source_bounding_boxes[i * n_heat_sources + beam_idx] =
+          to_arborx_box(heat_sources[beam_idx]->get_bounding_box(
+              current_time, bounding_box_scaling));
     }
   }
 
-  // Perform the search with ArborX. Since we are only interested in locally
-  // owned cells, we use BVH.
-  dealii::ArborXWrappers::BoundingBoxIntersectPredicate bb_intersect(
-      heat_source_bounding_boxes);
-  auto [indices, offset] = bvh.query(bb_intersect);
+  ArborX::BVH<Kokkos::HostSpace,
+              ArborX::ExperimentalHyperGeometry::Box<dim, double>>
+      tree(Kokkos::DefaultHostExecutionSpace{}, heat_source_bounding_boxes);
 
-  // Put the indices into a set to get rid of the duplicates and to make it
-  // easier to check if the indices are found.
-  std::unordered_set<int> indices_to_refine;
-  indices_to_refine.insert(indices.begin(), indices.end());
+  // Build the bounding boxes associated with the locally owned cells
+  int const n = triangulation.n_locally_owned_active_cells();
+  Kokkos::View<decltype(ArborX::attach(
+                   ArborX::intersects(
+                       ArborX::ExperimentalHyperGeometry::Box<dim, double>{}),
+                   int{})) *,
+               Kokkos::HostSpace>
+      queries(Kokkos::view_alloc(Kokkos::WithoutInitializing, "queries"), n);
+  int i = 0;
+  for (auto const &cell : triangulation.active_cell_iterators() |
+                              dealii::IteratorFilters::LocallyOwnedCell())
+  {
+    queries(i) = ArborX::attach(
+        ArborX::intersects(to_arborx_box(cell->bounding_box())), i);
+    ++i;
+  }
+  KOKKOS_ASSERT(i == n);
+
+  Kokkos::View<bool *, Kokkos::HostSpace> cell_intersects("cell_intersects", n);
+
+  tree.query(Kokkos::DefaultHostExecutionSpace{}, queries,
+             IntersectionCallback{cell_intersects});
 
   std::vector<typename dealii::parallel::distributed::Triangulation<
       dim>::active_cell_iterator>
@@ -595,7 +643,7 @@ compute_cells_to_refine(
   for (auto const &cell : triangulation.active_cell_iterators() |
                               dealii::IteratorFilters::LocallyOwnedCell())
   {
-    if (indices_to_refine.count(cell_index))
+    if (cell_intersects(cell_index))
     {
       cells_to_refine.push_back(cell);
     }
