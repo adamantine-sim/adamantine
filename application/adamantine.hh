@@ -557,14 +557,19 @@ public:
 };
 
 template <int dim>
-ArborX::Box to_arborx_box(dealii::BoundingBox<dim> dealii_box)
+auto to_arborx_box(dealii::BoundingBox<dim> dealii_box)
 {
   const auto boundary_points = dealii_box.get_boundary_points();
   const auto min_corner = boundary_points.first;
   const auto max_corner = boundary_points.second;
 
+#if ARBORX_VERSION_MAJOR >= 2
+  ArborX::Point<3, double> arborx_min;
+  ArborX::Point<3, double> arborx_max;
+#else
   ArborX::Point arborx_min;
   ArborX::Point arborx_max;
+#endif
   for (int i = 0; i < dim; ++i)
   {
     arborx_min[i] = min_corner[i];
@@ -576,7 +581,7 @@ ArborX::Box to_arborx_box(dealii::BoundingBox<dim> dealii_box)
     arborx_max[i] = 0.;
   }
 
-  return {arborx_min, arborx_max};
+  return ArborX::Box{arborx_min, arborx_max};
 }
 
 template <int dim>
@@ -594,7 +599,12 @@ compute_cells_to_refine(
 
   double const bounding_box_scaling = 2.0;
   const int n_heat_sources = heat_sources.size();
-  Kokkos::View<ArborX::Box *, Kokkos::HostSpace> heat_source_bounding_boxes(
+#if ARBORX_VERSION_MAJOR >= 2
+  using Box = ArborX::Box<3, double>;
+#else
+  using Box = ArborX::Box;
+#endif
+  Kokkos::View<Box *, Kokkos::HostSpace> heat_source_bounding_boxes(
       "heat_source_bounding_boxes", n_time_steps * n_heat_sources);
   for (unsigned int i = 0; i < n_time_steps; ++i)
   {
@@ -611,13 +621,17 @@ compute_cells_to_refine(
     }
   }
 
+#if ARBORX_VERSION_MAJOR >= 2
+  ArborX::BVH<Kokkos::HostSpace, Box> tree(Kokkos::DefaultHostExecutionSpace{},
+                                           heat_source_bounding_boxes);
+#else
   ArborX::BVH<Kokkos::HostSpace> tree(Kokkos::DefaultHostExecutionSpace{},
                                       heat_source_bounding_boxes);
+#endif
 
   // Build the bounding boxes associated with the locally owned cells
   int const n = triangulation.n_locally_owned_active_cells();
-  Kokkos::View<decltype(ArborX::attach(ArborX::intersects(ArborX::Box{}),
-                                       int{})) *,
+  Kokkos::View<decltype(ArborX::attach(ArborX::intersects(Box{}), int{})) *,
                Kokkos::HostSpace>
       queries(Kokkos::view_alloc(Kokkos::WithoutInitializing, "queries"), n);
   int i = 0;
