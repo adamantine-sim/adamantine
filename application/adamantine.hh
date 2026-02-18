@@ -557,7 +557,7 @@ public:
 };
 
 template <int dim>
-auto to_arborx_box(dealii::BoundingBox<dim> dealii_box)
+auto to_arborx_box(dealii::BoundingBox<dim> const &dealii_box)
 {
   const auto boundary_points = dealii_box.get_boundary_points();
   const auto min_corner = boundary_points.first;
