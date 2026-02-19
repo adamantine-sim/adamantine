@@ -46,6 +46,11 @@ public:
                &units_optional_database);
 
   /**
+   * Return true if the file is defined by an STL file and false otherwise.
+   */
+  bool use_stl() const;
+
+  /**
    * Return the underlying Triangulation.
    */
   dealii::parallel::distributed::Triangulation<dim> &get_triangulation();
@@ -80,6 +85,10 @@ private:
   void read_stl(std::string const &filename, double const stl_scaling);
 
   /**
+   * Flag is true if the domain is defined by a STL file.
+   */
+  bool _use_stl = false;
+  /**
    * Triangulation of the domain.
    */
   dealii::parallel::distributed::Triangulation<dim> _triangulation;
@@ -95,6 +104,12 @@ private:
   std::unique_ptr<ArborX::BVH<Kokkos::HostSpace, Triangle>> _bvh;
 #endif
 };
+
+template <int dim>
+inline bool Geometry<dim>::use_stl() const
+{
+  return _use_stl;
+}
 
 template <int dim>
 inline dealii::parallel::distributed::Triangulation<dim> &

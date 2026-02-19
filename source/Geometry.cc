@@ -215,6 +215,7 @@ Geometry<dim>::Geometry(
   auto stl_filename = database.get_optional<std::string>("stl_filename");
   if (stl_filename)
   {
+    _use_stl = true;
     std::string const stl_unit =
         units_optional_database
             ? units_optional_database.get().get("mesh", "meter")
