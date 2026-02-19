@@ -1032,6 +1032,8 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         communicator, microstructure_filename);
   }
 
+  bool rebuild_mechanical_matrix = true;
+
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_CXX_MARK_LOOP_BEGIN(main_loop_id, "main_loop");
 #endif
@@ -1054,6 +1056,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
                   temperature, heat_sources, time, next_refinement_time,
                   time_steps_refinement, refinement_database);
       timers[adamantine::refine].stop();
+      rebuild_mechanical_matrix = true;
       if ((rank == 0) && (verbose_output == true))
       {
         std::cout << "n_time_step: " << n_time_step << " time: " << time
@@ -1175,6 +1178,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           if (use_mechanical_physics)
           {
             mechanical_physics->complete_transfer_mpi();
+            rebuild_mechanical_matrix = true;
           }
 
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -1279,13 +1283,31 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
               temperature_host(temperature.get_partitioner());
           temperature_host.import_elements(temperature,
                                            dealii::VectorOperation::insert);
-          mechanical_physics->setup_dofs(
-              thermal_physics->get_dof_handler(), temperature_host,
-              thermal_physics->get_has_melted_vector());
+          if (rebuild_mechanical_matrix)
+          {
+            mechanical_physics->setup_dofs(
+                thermal_physics->get_dof_handler(), temperature_host,
+                thermal_physics->get_has_melted_vector());
+            rebuild_mechanical_matrix = false;
+          }
+          else
+          {
+            mechanical_physics->update_rhs(
+                thermal_physics->get_dof_handler(), temperature_host,
+                thermal_physics->get_has_melted_vector());
+          }
         }
         else
         {
-          mechanical_physics->setup_dofs();
+          if (rebuild_mechanical_matrix)
+          {
+            mechanical_physics->setup_dofs();
+            rebuild_mechanical_matrix = false;
+          }
+          else
+          {
+            mechanical_physics->update_rhs();
+          }
         }
         displacement = mechanical_physics->solve();
       }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -44,6 +44,24 @@ public:
    * Same as above when solving a thermo-mechanical problem.
    */
   void setup_dofs(
+      dealii::DoFHandler<dim> const &thermal_dof_handler,
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+          &temperature,
+      std::vector<bool> const &has_melted,
+      std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
+          std::vector<std::shared_ptr<BodyForce<dim>>>());
+
+  /**
+   * Recompute the right-hand-side.
+   */
+  void
+  update_rhs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
+                 std::vector<std::shared_ptr<BodyForce<dim>>>());
+
+  /**
+   * Same as above when solving a thermo-mechanical problem
+   */
+  void update_rhs(
       dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &temperature,
