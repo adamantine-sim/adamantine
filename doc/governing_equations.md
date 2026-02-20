@@ -26,7 +26,7 @@ $$
 \rho(T) C_p(T) \frac{\partial T}{\partial t} - \nabla \cdot \left(k\nabla T\right) = Q,
 $$  
 
-where $$\rho$$ is the mass density, $$C_p$$ is the specific heat, $$T$$, is the
+where $$\rho$$ is the mass density, $$C_p$$ is the specific heat, $$T$$ is the
 temperature, $$k$$ is the thermal conductivity, and $$Q$$ is the volumetric heat
 source.
 
@@ -58,7 +58,7 @@ h(T) =
   }
 $$
 
-Since we only care about $$\frac{\partial h{T}}{\partial t}$$, we have:
+Since we only care about $$\frac{\partial h(T)}{\partial t}$$, we have:
 
 $$
 \frac{\partial h(T)}{\partial t} =
