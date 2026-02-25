@@ -264,15 +264,9 @@ BOOST_AUTO_TEST_CASE(within_stl)
   MPI_Comm communicator = MPI_COMM_WORLD;
   boost::property_tree::ptree database;
   database.put("import_mesh", false);
-  database.put("length", 40);
-  database.put("length_divisions", 80);
-  database.put("height", 4);
+  database.put("length_divisions", 42);
+  database.put("width_divisions", 42);
   database.put("height_divisions", 4);
-  database.put("width", 10);
-  database.put("width_divisions", 40);
-  database.put("material_height", 4);
-  database.put("use_powder", true);
-  database.put("powder_layer", 2);
   database.put("stl_filename", "Simple_3D_ring.stl");
   boost::optional<boost::property_tree::ptree const &> units_optional_database;
 
