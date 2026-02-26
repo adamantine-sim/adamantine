@@ -86,6 +86,21 @@ Geometry<dim>::Geometry(
   // PropertyTreeInput geometry.import_mesh
   bool import_mesh = database.get<bool>("import_mesh");
 
+  auto stl_filename = database.get_optional<std::string>("stl_filename");
+  if (stl_filename)
+  {
+    _use_stl = true;
+    std::string const stl_unit =
+        units_optional_database
+            ? units_optional_database.get().get("mesh", "meter")
+            : "meter";
+    read_stl(*stl_filename, g_unit_scaling_factor[stl_unit]);
+#if ARBORX_VERSION_MAJOR >= 2
+    _bvh = std::make_unique<ArborX::BVH<Kokkos::HostSpace, Triangle>>(
+        Kokkos::DefaultHostExecutionSpace{}, _stl_triangles);
+#endif
+  }
+
   if (import_mesh == true)
   {
     // PropertyTreeInput geometry.mesh_file
@@ -181,23 +196,57 @@ Geometry<dim>::Geometry(
 
     dealii::Point<dim> p1;
     dealii::Point<dim> p2;
-    // PropertyTreeInput geometry.length
-    p2[axis<dim>::x] = database.get<double>("length");
-    // PropertyTreeInput geometry.length_origin
-    p1[axis<dim>::x] = database.get("length_origin", 0.0);
-    // PropertyTreeInput geometry.height
-    p2[axis<dim>::z] = database.get<double>("height");
-    // PropertyTreeInput geometry.height_origin
-    p1[axis<dim>::z] = database.get("height_origin", 0.0);
-    if (dim == 3)
+    if (stl_filename)
     {
-      // PropertyTreeInput geometry.width
-      p2[axis<dim>::y] = database.get<double>("width");
-      // PropertyTreeInput geometry.width_origin
-      p1[axis<dim>::y] = database.get("width_origin", 0.0);
-    }
+      double x_min = std::numeric_limits<double>::max();
+      double x_max = -std::numeric_limits<double>::max();
+      double y_min = std::numeric_limits<double>::max();
+      double y_max = -std::numeric_limits<double>::max();
+      double z_min = std::numeric_limits<double>::max();
+      double z_max = -std::numeric_limits<double>::max();
+      for (unsigned int i = 0; i < _stl_triangles.extent(0); ++i)
+      {
+        auto t = _stl_triangles(i);
+        x_min = std::min({x_min, t.a[0], t.b[0], t.c[0]});
+        x_max = std::max({x_max, t.a[0], t.b[0], t.c[0]});
+        y_min = std::min({y_min, t.a[1], t.b[1], t.c[1]});
+        y_max = std::max({y_max, t.a[1], t.b[1], t.c[1]});
+        z_min = std::min({z_min, t.a[2], t.b[2], t.c[2]});
+        z_max = std::max({z_max, t.a[2], t.b[2], t.c[2]});
+      }
 
-    p2 = p2 + p1;
+      p1[axis<dim>::x] = x_min;
+      p2[axis<dim>::x] = x_max;
+      p1[axis<dim>::z] = z_min;
+      p2[axis<dim>::z] = z_max;
+      // STL files always contain 3D data but the code is instantiated for dim =
+      // 2 and dim = 3.
+      if constexpr (dim == 3)
+      {
+        p1[axis<dim>::y] = y_min;
+        p2[axis<dim>::y] = y_max;
+      }
+    }
+    else
+    {
+      // PropertyTreeInput geometry.length
+      p2[axis<dim>::x] = database.get<double>("length");
+      // PropertyTreeInput geometry.length_origin
+      p1[axis<dim>::x] = database.get("length_origin", 0.0);
+      // PropertyTreeInput geometry.height
+      p2[axis<dim>::z] = database.get<double>("height");
+      // PropertyTreeInput geometry.height_origin
+      p1[axis<dim>::z] = database.get("height_origin", 0.0);
+      if (dim == 3)
+      {
+        // PropertyTreeInput geometry.width
+        p2[axis<dim>::y] = database.get<double>("width");
+        // PropertyTreeInput geometry.width_origin
+        p1[axis<dim>::y] = database.get("width_origin", 0.0);
+      }
+
+      p2 = p2 + p1;
+    }
 
     // For now we assume that the geometry is very simple.
     dealii::GridGenerator::subdivided_hyper_rectangle(
@@ -211,21 +260,6 @@ Geometry<dim>::Geometry(
   }
 
   assign_material_state(database);
-
-  auto stl_filename = database.get_optional<std::string>("stl_filename");
-  if (stl_filename)
-  {
-    _use_stl = true;
-    std::string const stl_unit =
-        units_optional_database
-            ? units_optional_database.get().get("mesh", "meter")
-            : "meter";
-    read_stl(*stl_filename, g_unit_scaling_factor[stl_unit]);
-#if ARBORX_VERSION_MAJOR >= 2
-    _bvh = std::make_unique<ArborX::BVH<Kokkos::HostSpace, Triangle>>(
-        Kokkos::DefaultHostExecutionSpace{}, _stl_triangles);
-#endif
-  }
 }
 
 #if ARBORX_VERSION_MAJOR >= 2
