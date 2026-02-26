@@ -39,6 +39,6 @@ Adamantine is a thermomechanical code for additive manufacturing, leveraging dea
 ## Workflow Instructions for Gemini
 - **Research**: When investigating bugs, check `source/` for implementation and `tests/` for reproduction cases.
 - **Execution**: 
-    - Always verify changes by running `ctest`.
+    - Always verify changes by compiling (e.g., `ninja`) and running `ctest`.
     - Always run `./indent` after modifying C++ files.
     - If adding a new source file, ensure it is added to the appropriate `CMakeLists.txt` in `source/` or `application/`.
