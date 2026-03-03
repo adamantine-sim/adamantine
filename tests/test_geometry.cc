@@ -229,21 +229,44 @@ BOOST_AUTO_TEST_CASE(read_stl)
   BOOST_TEST(z_max - z_min == 4.0);
 }
 
+BOOST_AUTO_TEST_CASE(geometry_stl_mesh, *utf::tolerance(1e-12))
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+  boost::property_tree::ptree database;
+  database.put("import_mesh", false);
+  database.put("length_divisions", 4);
+  database.put("height_divisions", 2);
+  database.put("width_divisions", 5);
+  database.put("stl_filename", "Simple_3D_ring.stl");
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+
+  adamantine::Geometry<3> geometry(communicator, database,
+                                   units_optional_database);
+  dealii::parallel::distributed::Triangulation<3> const &tria =
+      geometry.get_triangulation();
+
+  auto bounding_box = dealii::GridTools::compute_bounding_box(tria);
+
+  BOOST_TEST(bounding_box.get_boundary_points().second(0) -
+                 bounding_box.get_boundary_points().first(0) ==
+             21.0);
+  BOOST_TEST(bounding_box.get_boundary_points().second(1) -
+                 bounding_box.get_boundary_points().first(1) ==
+             21.0);
+  BOOST_TEST(bounding_box.get_boundary_points().second(2) -
+                 bounding_box.get_boundary_points().first(2) ==
+             4.0);
+}
+
 #if ARBORX_VERSION_MAJOR >= 2
 BOOST_AUTO_TEST_CASE(within_stl)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
   boost::property_tree::ptree database;
   database.put("import_mesh", false);
-  database.put("length", 40);
-  database.put("length_divisions", 80);
-  database.put("height", 4);
+  database.put("length_divisions", 42);
+  database.put("width_divisions", 42);
   database.put("height_divisions", 4);
-  database.put("width", 10);
-  database.put("width_divisions", 40);
-  database.put("material_height", 4);
-  database.put("use_powder", true);
-  database.put("powder_layer", 2);
   database.put("stl_filename", "Simple_3D_ring.stl");
   boost::optional<boost::property_tree::ptree const &> units_optional_database;
 
