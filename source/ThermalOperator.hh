@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -163,6 +163,10 @@ private:
    */
   bool _adiabatic_only_bc = true;
   /**
+   * Flag set to true if at least one heat source is on at the current time.
+   */
+  bool _heat_sources_on = true;
+  /**
    * Boundary ids associated to the domain.
    */
   Boundary _boundary;
@@ -294,8 +298,13 @@ template <int dim, int n_materials, bool use_table, int p_order, int fe_degree,
 inline void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
                             MaterialStates, MemorySpaceType>::set_time(double t)
 {
+  _heat_sources_on = false;
   for (auto &beam : _heat_sources)
+  {
     beam->update_time(t);
+    if (beam->is_source_on())
+      _heat_sources_on = true;
+  }
 }
 } // namespace adamantine
 

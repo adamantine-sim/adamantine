@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -74,6 +74,11 @@ public:
   virtual void update_time(double time) = 0;
 
   /**
+   * Return true if the heat source is on.
+   */
+  virtual bool is_source_on() const;
+
+  /**
    * Compute the heat source at a given point at a given time
    */
   virtual double value(dealii::Point<dim> const &points) const = 0;
@@ -103,15 +108,24 @@ public:
 
 protected:
   /**
+   * Flag is true if the power is on. It is false otherwise.
+   */
+  bool _source_on = false;
+  /**
    * Structure of the physical properties of the beam heat source.
    */
   BeamHeatSourceProperties _beam;
-
   /**
    * The scan path for the heat source.
    */
   ScanPath _scan_path;
 };
+
+template <int dim>
+inline bool HeatSource<dim>::is_source_on() const
+{
+  return _source_on;
+}
 
 template <int dim>
 inline ScanPath &HeatSource<dim>::get_scan_path()

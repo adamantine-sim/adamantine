@@ -67,7 +67,11 @@ private:
       std::numeric_limits<double>::signaling_NaN();
   dealii::VectorizedArray<double> _depth =
       std::numeric_limits<double>::signaling_NaN();
+  dealii::VectorizedArray<double> _inv_depth_squared =
+      std::numeric_limits<double>::signaling_NaN();
   dealii::VectorizedArray<double> _radius_squared =
+      std::numeric_limits<double>::signaling_NaN();
+  dealii::VectorizedArray<double> _inv_radius_squared =
       std::numeric_limits<double>::signaling_NaN();
   double const _pi_over_3_to_1p5 = std::pow(dealii::numbers::PI / 3.0, 1.5);
 };

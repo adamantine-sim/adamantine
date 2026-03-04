@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -489,6 +489,10 @@ void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
   std::pair<unsigned int, unsigned int> cell_subrange =
       data.create_cell_subrange_hp_by_index(cell_range, 0);
 
+  auto const integration_flags =
+      _heat_sources_on
+          ? dealii::EvaluationFlags::values | dealii::EvaluationFlags::gradients
+          : dealii::EvaluationFlags::gradients;
   dealii::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double> fe_eval(data);
   std::array<dealii::VectorizedArray<double>, MaterialStates::n_material_states>
       state_ratios;
@@ -518,10 +522,10 @@ void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
     {
       auto temperature = fe_eval.get_value(q);
       // Precompute the powers of temperature.
-      for (unsigned int i = 0; i <= p_order; ++i)
+      temperature_powers[0] = 1.0;
+      for (unsigned int i = 1; i <= p_order; ++i)
       {
-        // FIXME Need to cast i to double due to a limitation in deal.II 9.5
-        temperature_powers[i] = std::pow(temperature, static_cast<double>(i));
+        temperature_powers[i] = temperature_powers[i - 1] * temperature;
       }
 
       // Calculate the local material properties
@@ -591,20 +595,22 @@ void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
       fe_eval.submit_gradient(-inv_rho_cp * th_conductivity_grad, q);
 
       // Compute source term
-      dealii::Point<dim, dealii::VectorizedArray<double>> const &q_point =
-          fe_eval.quadrature_point(q);
+      if (_heat_sources_on)
+      {
+        dealii::Point<dim, dealii::VectorizedArray<double>> const &q_point =
+            fe_eval.quadrature_point(q);
 
-      dealii::VectorizedArray<double> quad_pt_source = 0.0;
-      for (auto &beam : _heat_sources)
-        quad_pt_source += beam->value(q_point);
+        dealii::VectorizedArray<double> quad_pt_source = 0.0;
+        for (auto &beam : _heat_sources)
+          quad_pt_source += beam->value(q_point);
 
-      quad_pt_source *= inv_rho_cp;
+        quad_pt_source *= inv_rho_cp;
 
-      fe_eval.submit_value(quad_pt_source, q);
+        fe_eval.submit_value(quad_pt_source, q);
+      }
     }
     // Sum over the quadrature points.
-    fe_eval.integrate(dealii::EvaluationFlags::values |
-                      dealii::EvaluationFlags::gradients);
+    fe_eval.integrate(integration_flags);
     fe_eval.distribute_local_to_global(dst);
   }
 }
@@ -685,10 +691,10 @@ void ThermalOperator<dim, n_materials, use_table, p_order, fe_degree,
     {
       auto temperature = fe_face_eval.get_value(q);
       // Precompute the powers of temperature.
-      for (unsigned int i = 0; i <= p_order; ++i)
+      temperature_powers[0] = 1.0;
+      for (unsigned int i = 1; i <= p_order; ++i)
       {
-        // FIXME Need to cast i to double due to a limitation in deal.II 9.5
-        temperature_powers[i] = std::pow(temperature, static_cast<double>(i));
+        temperature_powers[i] = temperature_powers[i - 1] * temperature;
       }
 
       // Compute the local_properties

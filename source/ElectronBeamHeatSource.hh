@@ -67,7 +67,11 @@ private:
       std::numeric_limits<double>::signaling_NaN();
   dealii::VectorizedArray<double> _depth =
       std::numeric_limits<double>::signaling_NaN();
+  dealii::VectorizedArray<double> _inv_depth =
+      std::numeric_limits<double>::signaling_NaN();
   dealii::VectorizedArray<double> _radius_squared =
+      std::numeric_limits<double>::signaling_NaN();
+  dealii::VectorizedArray<double> _inv_radius_squared =
       std::numeric_limits<double>::signaling_NaN();
   double const _log_01 = std::log(0.1);
 };

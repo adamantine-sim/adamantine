@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -58,7 +58,6 @@ public:
   get_bounding_box(double const time, double const scaling_factor) const final;
 
 private:
-  bool _source_on = false;
   double _start_time;
   double _end_time;
   double _value;

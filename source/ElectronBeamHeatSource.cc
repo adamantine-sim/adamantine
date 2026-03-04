@@ -6,6 +6,8 @@
 #include <instantiation.hh>
 #include <types.hh>
 
+#include <deal.II/base/utilities.h>
+
 namespace adamantine
 {
 
@@ -22,6 +24,9 @@ ElectronBeamHeatSource<dim>::ElectronBeamHeatSource(
 template <int dim>
 void ElectronBeamHeatSource<dim>::update_time(double time)
 {
+  double const segment_power_modifier =
+      this->_scan_path.get_power_modifier(time);
+  this->_source_on = (segment_power_modifier > 0.0);
   dealii::Point<3> const &path = this->_scan_path.value(time);
   _quaternion = this->_scan_path.get_current_quaternion();
   // Copy the scalar value of path to the vectorized data type
@@ -29,13 +34,14 @@ void ElectronBeamHeatSource<dim>::update_time(double time)
   {
     _beam_center(d) = path(d);
   }
-  double segment_power_modifier = this->_scan_path.get_power_modifier(time);
   _alpha =
       -this->_beam.absorption_efficiency * this->_beam.max_power *
       segment_power_modifier * _log_01 /
       (dealii::numbers::PI * this->_beam.radius_squared * this->_beam.depth);
   _depth = this->_beam.depth;
+  _inv_depth = 1.0 / _depth;
   _radius_squared = this->_beam.radius_squared;
+  _inv_radius_squared = 1.0 / _radius_squared;
 }
 
 template <int dim>
@@ -52,34 +58,34 @@ double ElectronBeamHeatSource<dim>::value(dealii::Point<dim> const &point) const
   }
 
   double const z = rotated_point[axis<dim>::z] - _beam_center[axis<dim>::z][0];
-  if ((z + this->_beam.depth) < 0.)
+  if ((z + _depth[0]) < 0.)
   {
     return 0.;
   }
   else
   {
-    double const distribution_z = -3. * std::pow(z / this->_beam.depth, 2) -
-                                  2. * (z / this->_beam.depth) + 1.;
+    double const z_rel = z * _inv_depth[0];
+    double const distribution_z =
+        -3. * dealii::Utilities::fixed_power<2>(z_rel) - 2. * z_rel + 1.;
 
-    double xpy_squared = std::pow(
-        rotated_point[axis<dim>::x] - _beam_center[axis<dim>::x][0], 2);
+    double xpy_squared = dealii::Utilities::fixed_power<2>(
+        rotated_point[axis<dim>::x] - _beam_center[axis<dim>::x][0]);
     if constexpr (dim == 3)
     {
-      xpy_squared += std::pow(
-          rotated_point[axis<dim>::y] - _beam_center[axis<dim>::y][0], 2);
+      xpy_squared += dealii::Utilities::fixed_power<2>(
+          rotated_point[axis<dim>::y] - _beam_center[axis<dim>::y][0]);
     }
 
     // Evaluating the exponential is very expensive. Return early if we know
     // that the heat source will be small.
-    if (xpy_squared > 5. * this->_beam.radius_squared)
+    if (xpy_squared > 5. * _radius_squared[0])
     {
       return 0.;
     }
 
     // Electron beam heat source equation
     double heat_source =
-        _alpha[0] *
-        std::exp(_log_01 * xpy_squared / this->_beam.radius_squared) *
+        _alpha[0] * std::exp(_log_01 * xpy_squared * _inv_radius_squared[0]) *
         distribution_z;
 
     return heat_source;
@@ -113,12 +119,12 @@ dealii::VectorizedArray<double> ElectronBeamHeatSource<dim>::value(
     return depth_mask;
   }
 
-  auto xpy_squared = rotated_points[axis<dim>::x] - _beam_center[axis<dim>::x];
-  xpy_squared *= xpy_squared;
+  auto xpy_squared = dealii::Utilities::fixed_power<2>(
+      rotated_points[axis<dim>::x] - _beam_center[axis<dim>::x]);
   if constexpr (dim == 3)
   {
-    auto y_squared = rotated_points[axis<dim>::y] - _beam_center[axis<dim>::y];
-    y_squared *= y_squared;
+    auto const y_squared = dealii::Utilities::fixed_power<2>(
+        rotated_points[axis<dim>::y] - _beam_center[axis<dim>::y]);
     xpy_squared += y_squared;
   }
 
@@ -138,15 +144,16 @@ dealii::VectorizedArray<double> ElectronBeamHeatSource<dim>::value(
 
   dealii::VectorizedArray<double> minus_three = -3.;
   dealii::VectorizedArray<double> one = 1.;
-  dealii::VectorizedArray<double> z_rel = z / _depth;
-  dealii::VectorizedArray<double> distribution_z = z_rel * z_rel;
+  dealii::VectorizedArray<double> z_rel = z * _inv_depth;
+  dealii::VectorizedArray<double> distribution_z =
+      dealii::Utilities::fixed_power<2>(z_rel);
   distribution_z *= minus_three;
   distribution_z -= z_rel;
   distribution_z -= z_rel;
   distribution_z += one;
 
   dealii::VectorizedArray<double> exponent = _log_01 * xpy_squared;
-  exponent /= _radius_squared;
+  exponent *= _inv_radius_squared;
   return depth_mask * _alpha * std::exp(exponent) * distribution_z;
 }
 
