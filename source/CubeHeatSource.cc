@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -45,13 +45,13 @@ CubeHeatSource<dim>::CubeHeatSource(
 template <int dim>
 void CubeHeatSource<dim>::update_time(double time)
 {
-  _source_on = ((time > _start_time) && (time < _end_time));
+  this->_source_on = ((time > _start_time) && (time < _end_time));
 }
 
 template <int dim>
 double CubeHeatSource<dim>::value(dealii::Point<dim> const &point) const
 {
-  if (_source_on)
+  if (this->_source_on)
   {
     bool in_source = true;
     for (int i = 0; i < dim; ++i)
@@ -76,7 +76,7 @@ dealii::VectorizedArray<double> CubeHeatSource<dim>::value(
 {
   dealii::VectorizedArray<double> mask = 0.;
 
-  if (_source_on)
+  if (this->_source_on)
   {
     for (unsigned int j = 0; j < points[0].size(); ++j)
     {

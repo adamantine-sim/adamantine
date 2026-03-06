@@ -6,6 +6,8 @@
 #include <instantiation.hh>
 #include <types.hh>
 
+#include <deal.II/base/utilities.h>
+
 namespace adamantine
 {
 
@@ -22,6 +24,9 @@ GoldakHeatSource<dim>::GoldakHeatSource(
 template <int dim>
 void GoldakHeatSource<dim>::update_time(double time)
 {
+  double const segment_power_modifier =
+      this->_scan_path.get_power_modifier(time);
+  this->_source_on = (segment_power_modifier > 0.0);
   dealii::Point<3> const &path = this->_scan_path.value(time);
   _quaternion = this->_scan_path.get_current_quaternion();
   // Copy the scalar value of path to the vectorized data type
@@ -29,12 +34,13 @@ void GoldakHeatSource<dim>::update_time(double time)
   {
     _beam_center(d) = path(d);
   }
-  double segment_power_modifier = this->_scan_path.get_power_modifier(time);
-  _alpha = 2.0 * this->_beam.absorption_efficiency * this->_beam.max_power *
-           segment_power_modifier /
-           (this->_beam.radius_squared * this->_beam.depth * _pi_over_3_to_1p5);
   _depth = this->_beam.depth;
   _radius_squared = this->_beam.radius_squared;
+  _alpha = 2.0 * this->_beam.absorption_efficiency * this->_beam.max_power *
+           segment_power_modifier /
+           (_radius_squared * _depth * _pi_over_3_to_1p5);
+  _inv_radius_squared = 1.0 / _radius_squared;
+  _inv_depth_squared = 1.0 / dealii::Utilities::fixed_power<2>(_depth);
 }
 
 template <int dim>
@@ -51,18 +57,18 @@ double GoldakHeatSource<dim>::value(dealii::Point<dim> const &point) const
   }
 
   double const z = rotated_point[axis<dim>::z] - _beam_center[axis<dim>::z][0];
-  if ((z + this->_beam.depth) < 0.)
+  if ((z + _depth[0]) < 0.)
   {
     return 0.;
   }
   else
   {
-    double xpy_squared = std::pow(
-        rotated_point[axis<dim>::x] - _beam_center[axis<dim>::x][0], 2);
+    double xpy_squared = dealii::Utilities::fixed_power<2>(
+        rotated_point[axis<dim>::x] - _beam_center[axis<dim>::x][0]);
     if (dim == 3)
     {
-      xpy_squared += std::pow(
-          rotated_point[axis<dim>::y] - _beam_center[axis<dim>::y][0], 2);
+      xpy_squared += dealii::Utilities::fixed_power<2>(
+          rotated_point[axis<dim>::y] - _beam_center[axis<dim>::y][0]);
     }
 
     // Evaluating the exponential is very expensive. Return early if we know
@@ -74,8 +80,9 @@ double GoldakHeatSource<dim>::value(dealii::Point<dim> const &point) const
 
     // Goldak heat source equation
     double heat_source =
-        _alpha[0] * std::exp(-3.0 * xpy_squared / this->_beam.radius_squared +
-                             -3.0 * std::pow(z / this->_beam.depth, 2));
+        _alpha[0] * std::exp(-3.0 * xpy_squared * _inv_radius_squared[0] +
+                             -3.0 * dealii::Utilities::fixed_power<2>(z) *
+                                 _inv_depth_squared[0]);
 
     return heat_source;
   }
@@ -108,12 +115,12 @@ dealii::VectorizedArray<double> GoldakHeatSource<dim>::value(
     return depth_mask;
   }
 
-  auto xpy_squared = rotated_points[axis<dim>::x] - _beam_center[axis<dim>::x];
-  xpy_squared *= xpy_squared;
+  auto xpy_squared = dealii::Utilities::fixed_power<2>(
+      rotated_points[axis<dim>::x] - _beam_center[axis<dim>::x]);
   if constexpr (dim == 3)
   {
-    auto y_squared = rotated_points[axis<dim>::y] - _beam_center[axis<dim>::y];
-    y_squared *= y_squared;
+    auto const y_squared = dealii::Utilities::fixed_power<2>(
+        rotated_points[axis<dim>::y] - _beam_center[axis<dim>::y]);
     xpy_squared += y_squared;
   }
 
@@ -134,10 +141,8 @@ dealii::VectorizedArray<double> GoldakHeatSource<dim>::value(
   // Goldak heat source equation:
   // alpha * exp(-3*(xpy_squared/radius_squared + (z/depth)^2))
   dealii::VectorizedArray<double> minus_three = -3.;
-  xpy_squared /= _radius_squared;
-  auto exponent = z / _depth;
-  exponent *= exponent;
-  exponent += xpy_squared;
+  auto exponent = dealii::Utilities::fixed_power<2>(z) * _inv_depth_squared;
+  exponent += xpy_squared * _inv_radius_squared;
   exponent *= minus_three;
   return depth_mask * _alpha * std::exp(exponent);
 }
