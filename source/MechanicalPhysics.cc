@@ -13,11 +13,6 @@
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/solver_cg.h>
-#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
-#include <deal.II/lac/trilinos_tpetra_precondition.h>
-#else
-#include <deal.II/lac/trilinos_precondition.h>
-#endif
 #include <deal.II/numerics/vector_tools.h>
 
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -488,17 +483,8 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   double const tol = 1e-12 * _mechanical_operator->rhs().l2_norm();
   dealii::SolverControl solver_control(max_iter, tol);
   dealii::SolverCG<TrilinosVectorType> cg(solver_control);
-  // FIXME Use better preconditioner
-#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
-  dealii::LinearAlgebra::TpetraWrappers::PreconditionSSOR<
-      double, dealii::MemorySpace::Default>
-      preconditioner;
-#else
-  dealii::TrilinosWrappers::PreconditionSSOR preconditioner;
-#endif
-  preconditioner.initialize(_mechanical_operator->system_matrix());
   cg.solve(_mechanical_operator->system_matrix(), displacement, rhs_device,
-           preconditioner);
+           _mechanical_operator->preconditioner());
 
   rw_vector.import_elements(displacement, dealii::VectorOperation::insert);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>

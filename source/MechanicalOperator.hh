@@ -15,8 +15,10 @@
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+#include <deal.II/lac/trilinos_tpetra_precondition.h>
 #include <deal.II/lac/trilinos_tpetra_sparse_matrix.h>
 #else
+#include <deal.II/lac/trilinos_precondition.h>
 #include <deal.II/lac/trilinos_sparse_matrix.h>
 #endif
 
@@ -38,8 +40,12 @@ public:
   using TrilinosMatrixType =
       dealii::LinearAlgebra::TpetraWrappers::SparseMatrix<
           double, dealii::MemorySpace::Default>;
+  using TrilinosPreconditionerType =
+      dealii::LinearAlgebra::TpetraWrappers::PreconditionSSOR<
+          double, dealii::MemorySpace::Default>;
 #else
   using TrilinosMatrixType = dealii::TrilinosWrappers::SparseMatrix;
+  using TrilinosPreconditionerType = dealii::TrilinosWrappers::PreconditionSSOR;
 #endif
 
   /**
@@ -82,6 +88,11 @@ public:
    * Return the matrix of the system.
    */
   TrilinosMatrixType const &system_matrix() const;
+
+  /**
+   * Return the preconditioner for the system matrix.
+   */
+  TrilinosPreconditionerType const &preconditioner() const;
 
 private:
   /**
@@ -131,6 +142,10 @@ private:
    */
   TrilinosMatrixType _system_matrix;
   /**
+   * Preconditioner associated with the system matrix
+   */
+  TrilinosPreconditionerType _preconditioner;
+  /**
    * Temperature of the material.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -161,6 +176,17 @@ MechanicalOperator<dim, n_materials, p_order, MaterialStates,
                    MemorySpaceType>::system_matrix() const
 {
   return _system_matrix;
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+inline typename MechanicalOperator<
+    dim, n_materials, p_order, MaterialStates,
+    MemorySpaceType>::TrilinosPreconditionerType const &
+MechanicalOperator<dim, n_materials, p_order, MaterialStates,
+                   MemorySpaceType>::preconditioner() const
+{
+  return _preconditioner;
 }
 } // namespace adamantine
 #endif

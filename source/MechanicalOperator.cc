@@ -210,6 +210,8 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
   }
 
   _system_matrix.compress(dealii::VectorOperation::add);
+  _preconditioner.clear();
+  _preconditioner.initialize(_system_matrix);
 
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_END("assemble mechanical matrix");
