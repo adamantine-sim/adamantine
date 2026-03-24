@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -56,7 +56,7 @@ public:
                  &units_optional_database)
       : _beam(beam_database, units_optional_database),
         // PropertyTreeInput sources.beam_X.scan_path_file
-        // PropertyTreeInput sources.beam_X.scan_path_format
+        // PropertyTreeInput sources.beam_X.scan_path_file_format
         _scan_path(beam_database.get<std::string>("scan_path_file"),
                    beam_database.get<std::string>("scan_path_file_format"),
                    units_optional_database)

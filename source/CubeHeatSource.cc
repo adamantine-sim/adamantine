@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2020 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -20,7 +20,7 @@ CubeHeatSource<dim>::CubeHeatSource(
   if (units_optional_database)
   {
     auto const &database = units_optional_database.get();
-    // PropertyTreeInput units.scan_path_distance
+    // PropertyTreeInput units.heat_source.dimension
     std::string unit = database.get("heat_source.dimension", "meter");
     dimension_scaling = g_unit_scaling_factor[unit];
     // PropertyTreeInput units.heat_source.power
