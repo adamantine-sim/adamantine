@@ -36,7 +36,7 @@ PostProcessor<dim>::PostProcessor(MPI_Comm const &communicator,
     _mechanical_dof_handler = &dof_handler;
   }
 
-  // PropertyTreeInput post_processor.file_name
+  // PropertyTreeInput post_processor.filename_prefix
   _filename_prefix = database.get<std::string>("filename_prefix");
   if (ensemble_member_index >= 0)
   {

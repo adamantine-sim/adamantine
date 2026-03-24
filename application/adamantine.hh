@@ -1501,10 +1501,10 @@ run_ensemble(MPI_Comm const &global_communicator,
   bool const verbose_output = database.get("verbose_output", false);
 
   // ------ Get finite element implementation parameters -----
-  // PropertyTreeInput discretization.fe_degree
+  // PropertyTreeInput discretization.thermal.fe_degree
   unsigned int const fe_degree =
       discretization_database.get<unsigned int>("thermal.fe_degree");
-  // PropertyTreeInput discretization.quadrature
+  // PropertyTreeInput discretization.thermal.quadrature
   std::string quadrature_type =
       discretization_database.get("thermal.quadrature", "gauss");
   std::transform(quadrature_type.begin(), quadrature_type.end(),
@@ -1723,7 +1723,7 @@ run_ensemble(MPI_Comm const &global_communicator,
 
   // PostProcessor for outputting the experimental data
   boost::property_tree::ptree post_processor_expt_database;
-  // PropertyTreeInput post_processor.file_name
+  // PropertyTreeInput post_processor.filename_prefix
   std::string expt_file_prefix =
       post_processor_database.get<std::string>("filename_prefix") + ".expt";
   post_processor_expt_database.put("filename_prefix", expt_file_prefix);
