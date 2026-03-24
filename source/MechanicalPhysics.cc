@@ -127,6 +127,47 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   }
   dealii::VectorTools::interpolate_boundary_values(
       _dof_handler, boundary_function_map, _affine_constraints);
+  if (boundary_ids.size() == 0)
+  {
+    unsigned int rank = dealii::Utilities::MPI::this_mpi_process(
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+        _dof_handler.get_mpi_communicator()
+#else
+        _dof_handler.get_communicator()
+#endif
+    );
+    if (rank == 0)
+    {
+      bool constraints_found = false;
+      for (auto const &cell : _dof_handler.active_cell_iterators() |
+                                  dealii::IteratorFilters::ActiveFEIndexEqualTo(
+                                      0, /* locally owned */ true))
+      {
+        for (const unsigned int face : cell->face_indices())
+          if (cell->at_boundary(face))
+          {
+            const dealii::FiniteElement<dim> &fe = cell->get_fe();
+
+            const unsigned int dofs_per_face = fe.n_dofs_per_face(face);
+            std::vector<dealii::types::global_dof_index> face_dof_indices(
+                dofs_per_face);
+            cell->face(face)->get_dof_indices(face_dof_indices,
+                                              cell->active_fe_index());
+
+            std::array<unsigned int, dim> boundary_dofs;
+            for (unsigned int i = 0; i < dofs_per_face; ++i)
+              boundary_dofs[fe.face_system_to_component_index(i, face).first] =
+                  face_dof_indices[i];
+            for (int i = 0; i < dim; ++i)
+              _affine_constraints.add_line(boundary_dofs[i]);
+            constraints_found = true;
+            break;
+          }
+        if (constraints_found)
+          break;
+      }
+    }
+  }
   _affine_constraints.close();
 
   _mechanical_operator->reinit(_dof_handler, _affine_constraints, _q_collection,
