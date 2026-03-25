@@ -86,6 +86,7 @@ void validate_input_database(boost::property_tree::ptree &database)
     }
   };
   auto const boundary_database = database.get_child("boundary");
+  bool clamped_boundary = false;
   for (auto const &child_pair : boundary_database)
   {
     size_t pos_str = 0;
@@ -113,6 +114,9 @@ void validate_input_database(boost::property_tree::ptree &database)
     parse_boundary_type(boundary_type_str, line_boundary_type, thermal_bc,
                         mechanical_bc);
 
+    if (line_boundary_type & BoundaryType::clamped)
+      clamped_boundary = true;
+
     if (use_thermal_physics)
     {
       ASSERT_THROW(thermal_bc, "Missing thermal boundary condition.");
@@ -121,6 +125,11 @@ void validate_input_database(boost::property_tree::ptree &database)
     {
       ASSERT_THROW(mechanical_bc, "Missing mechanical boundary condition.");
     }
+  }
+  if (use_mechanical_physics)
+  {
+    ASSERT_THROW(clamped_boundary,
+                 "At least one boundary needs to be clamped!");
   }
 
   // Tree: discretization.thermal

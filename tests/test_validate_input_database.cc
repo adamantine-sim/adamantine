@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   boost::property_tree::ptree database;
 
   // Start with a valid set of bare-bones inputs
-  database.put("boundary.type", "adiabatic,traction_free");
+  database.put("boundary.type", "adiabatic,clamped");
   database.put("discretization.thermal.fe_degree", "1");
   database.put("geometry.dim", "3");
   database.put("discretization.thermal.quadrature", "gauss");
@@ -121,6 +121,9 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.get_child("boundary").erase("type");
   database.put("boundary.type", "adiabatic,traction_free");
+  BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
+  database.put("boundary.boundary_1.type", "adiabatic,clamped");
+  validate_input_database(database);
 
   // Invalid fe degree
   database.get_child("discretization").erase("thermal.fe_degree");
@@ -347,7 +350,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
       .get_child("solid")
       .erase("radiation_temperature_infty");
   database.get_child("boundary").erase("type");
-  database.put("boundary.type", "adiabatic,traction_free");
+  database.put("boundary.type", "adiabatic,clamped");
 
   // Invalid memory space
   database.erase("memory_space");
@@ -365,7 +368,7 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.put("physics.mechanical", false);
 
-  // No physics is enable
+  // No physics is enabled
   BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
   database.get_child("physics").erase("thermal");
   database.put("physics.thermal", true);
