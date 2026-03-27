@@ -41,11 +41,11 @@ public:
       dealii::LinearAlgebra::TpetraWrappers::SparseMatrix<
           double, dealii::MemorySpace::Default>;
   using TrilinosPreconditionerType =
-      dealii::LinearAlgebra::TpetraWrappers::PreconditionSSOR<
+      dealii::LinearAlgebra::TpetraWrappers::PreconditionAMGMueLu<
           double, dealii::MemorySpace::Default>;
 #else
   using TrilinosMatrixType = dealii::TrilinosWrappers::SparseMatrix;
-  using TrilinosPreconditionerType = dealii::TrilinosWrappers::PreconditionSSOR;
+  using TrilinosPreconditionerType = dealii::TrilinosWrappers::PreconditionAMG;
 #endif
 
   /**
