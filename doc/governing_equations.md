@@ -307,7 +307,7 @@ We implement the radial return algorithm for $$J_2$$ theory with a linear combin
     \gamma_{n+1} = \gamma_{n} + (1-a) H \Delta\eta \zeta_{n+1}
     $$
     
-    where $$\kappa_{n}$$ is plastic internal variable, $$H$$ is generalized plastic modulus, and $$a$$ is coefficient between 0 (no isotropic hardening) and 1 (no kinematic hardening).
+    where $$\kappa_{n}$$ is the plastic internal variable, $$H$$ is the generalized plastic modulus, and $$a$$ is a coefficient between 0 (no isotropic hardening) and 1 (no kinematic hardening).
 
 ### Thermoelastoplasticity
 The thermoelastoplastic model implemented is the union of the thermoelastic model
