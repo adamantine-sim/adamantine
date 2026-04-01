@@ -288,7 +288,7 @@ We implement the radial return algorithm for $$J_2$$ theory with a linear combin
     - If $$\chi > \kappa_{n}$$, set 
 
     $$
-    n_{n+1} = \frac{\xi_{n+1}^{tr}}{\chi},
+    \zeta_{n+1} = \frac{\xi_{n+1}^{tr}}{\chi},
     $$
     
     $$
@@ -296,7 +296,7 @@ We implement the radial return algorithm for $$J_2$$ theory with a linear combin
     $$
     
     $$
-    \sigma_{n+1} = \sigma_{n+1}^{tr} - 2 \mu \Delta \eta n_{n+1},
+    \sigma_{n+1} = \sigma_{n+1}^{tr} - 2 \mu \Delta \eta \zeta_{n+1},
     $$
     
     $$
@@ -304,7 +304,7 @@ We implement the radial return algorithm for $$J_2$$ theory with a linear combin
     $$  
     
     $$
-    \gamma_{n+1} = \gamma_{n} + (1-a) H \Delta\eta n_{n+1}
+    \gamma_{n+1} = \gamma_{n} + (1-a) H \Delta\eta \zeta_{n+1}
     $$
     
     where $$\kappa_{n}$$ is plastic internal variable, $$H$$ is generalized plastic modulus, and $$a$$ is coefficient between 0 (no isotropic hardening) and 1 (no kinematic hardening).
