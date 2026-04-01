@@ -274,10 +274,10 @@ We implement the radial return algorithm for $$J_2$$ theory with a linear combin
     \xi_{n+1}^{tr} = s_{n+1}^{tr} - \gamma_{n}
     $$
     
-    where the subscript $$n$$ indicates the $$n$$ time step, the superscript $$tr$$
+    where the subscript $$n$$ indicates the $$n^{th}$$ time step, the superscript $$tr$$
     indicates trial, $$c^e$$ is the tensor of elastic moduli, $$\Delta \varepsilon$$
     is the incremental strain, $$p$$ is the mean normal stress, $$s$$ is the
-    deviatoric stress tensord, and $$\gamma_{n}$$ is the back stress tensor.
+    deviatoric stress tensor, and $$\gamma_{n}$$ is the back stress tensor.
 
  2. Compute 
     $$
