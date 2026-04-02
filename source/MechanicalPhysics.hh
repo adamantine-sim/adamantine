@@ -143,7 +143,8 @@ private:
   /**
    * Pointer to the MechanicalOperatorDevice
    */
-  std::unique_ptr<MechanicalOperatorDevice<dim, n_materials, p_order, MaterialStates>>
+  std::unique_ptr<
+      MechanicalOperatorDevice<dim, n_materials, p_order, MaterialStates>>
       _mechanical_operator;
   std::unique_ptr<MechanicalOperator<dim, n_materials, p_order, MaterialStates,
                                      MemorySpaceType>>

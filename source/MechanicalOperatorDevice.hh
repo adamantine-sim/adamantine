@@ -26,18 +26,20 @@ public:
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints);
 
-  void vmult(dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> &dst,
-             dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> const
-                 &src) const;
+  void vmult(dealii::LA::distributed::Vector<double,
+                                             dealii::MemorySpace::Default> &dst,
+             dealii::LA::distributed::Vector<
+                 double, dealii::MemorySpace::Default> const &src) const;
 
   void vmult_add(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> &dst,
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> const &src)
-      const;
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
+          &dst,
+      dealii::LA::distributed::Vector<
+          double, dealii::MemorySpace::Default> const &src) const;
 
   void initialize_dof_vector(
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> &vector)
-      const;
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
+          &vector) const;
 
   dealii::Portable::MatrixFree<dim, double> const &get_matrix_free() const;
 
@@ -45,8 +47,8 @@ private:
   using kokkos_default = dealii::MemorySpace::Default::kokkos_space;
 
   MPI_Comm const &_communicator;
-  MaterialProperty<dim, n_materials, p_order, MaterialStates, dealii::MemorySpace::Host>
-      &_material_properties;
+  MaterialProperty<dim, n_materials, p_order, MaterialStates,
+                   dealii::MemorySpace::Host> &_material_properties;
 
   typename dealii::Portable::MatrixFree<dim, double>::AdditionalData
       _matrix_free_data;
@@ -63,7 +65,8 @@ private:
 
 template <int dim, int n_materials, int p_order, typename MaterialStates>
 inline dealii::Portable::MatrixFree<dim, double> const &
-MechanicalOperatorDevice<dim, n_materials, p_order, MaterialStates>::get_matrix_free() const
+MechanicalOperatorDevice<dim, n_materials, p_order,
+                         MaterialStates>::get_matrix_free() const
 {
   return _matrix_free;
 }
