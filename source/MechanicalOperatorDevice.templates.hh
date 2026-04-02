@@ -16,57 +16,6 @@
 
 namespace adamantine
 {
-
-template <int dim, int fe_degree>
-class MechanicalQuad
-{
-public:
-  using kokkos_default = dealii::MemorySpace::Default::kokkos_space;
-
-  KOKKOS_FUNCTION MechanicalQuad(
-      unsigned int cell,
-      typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
-      Kokkos::View<double *, kokkos_default> lambda,
-      Kokkos::View<double *, kokkos_default> mu)
-      : _cell(cell), _gpu_data(gpu_data), _lambda(lambda), _mu(mu)
-  {
-  }
-  
-  KOKKOS_FUNCTION void operator()(dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, dim, double> *fe_eval,
-                                   int const q_point) const
-  {   
-    auto const grad_u = fe_eval->get_gradient(q_point);
-    auto const eps = (grad_u + dealii::transpose(grad_u)) * 0.5;
-    double const trace_eps = dealii::trace(eps);
-
-    unsigned int const pos = _gpu_data->local_q_point_id(_cell,
-#if !DEAL_II_VERSION_GTE(9, 8, 0)
-                                                         fe_eval->n_q_points,
-#endif
-                                                         q_point);
-
-    double const lambda = _lambda(pos);
-    double const mu = _mu(pos);
-
-    dealii::Tensor<2, dim, double> stress;
-    for (unsigned int i = 0; i < dim; ++i)
-      for (unsigned int j = 0; j < dim; ++j)
-      {
-        stress[i][j] = 2.0 * mu * eps[i][j];
-        if (i == j)
-          stress[i][j] += lambda * trace_eps;
-      }
-
-    fe_eval->submit_gradient(stress, q_point);
-  }
-
-private:
-  unsigned int _cell;
-  typename dealii::Portable::MatrixFree<dim, double>::Data const *_gpu_data;
-  Kokkos::View<double *, kokkos_default> _lambda;
-  Kokkos::View<double *, kokkos_default> _mu;
-};
-
 // Small wrapper functor type expected by MatrixFree::cell_loop
 template <int dim, int fe_degree>
 class LocalMechanicalOperatorDevice
@@ -95,12 +44,28 @@ public:
 
   const int cell = fe_eval.get_current_cell_index();
   
-  MechanicalQuad<dim, fe_degree> quad(cell, gpu_data, _lambda, _mu);
-#if DEAL_II_VERSION_GTE(9, 8, 0)
-  gpu_data->for_each_quad_point([&](const int &q_point) { quad(&fe_eval, q_point); });
-#else
-  fe_eval.apply_for_each_quad_point(quad);
-#endif
+  gpu_data->for_each_quad_point([&](const int &q_point) { 
+ auto const grad_u = fe_eval.get_gradient(q_point);
+    auto const eps = (grad_u + dealii::transpose(grad_u)) * 0.5;
+    double const trace_eps = dealii::trace(eps);
+
+    unsigned int const pos = gpu_data->local_q_point_id(cell,
+                                                         q_point);
+
+    double const lambda = _lambda(pos);
+    double const mu = _mu(pos);
+
+    dealii::Tensor<2, dim, double> stress;
+    for (unsigned int i = 0; i < dim; ++i)
+      for (unsigned int j = 0; j < dim; ++j)
+      {
+        stress[i][j] = 2.0 * mu * eps[i][j];
+        if (i == j)
+          stress[i][j] += lambda * trace_eps;
+      }
+
+    fe_eval.submit_gradient(stress, q_point);
+  });
   
   fe_eval.integrate(dealii::EvaluationFlags::gradients);
   fe_eval.distribute_local_to_global(dst);
