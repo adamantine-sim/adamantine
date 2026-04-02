@@ -12,6 +12,7 @@
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/lac/la_parallel_vector.h>
+#include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/numerics/vector_tools.h>
 
@@ -68,7 +69,13 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
   }
 
   // Create the mechanical operator
-  _mechanical_operator =
+  if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
+    _mechanical_operator = std::make_unique<
+        MechanicalOperatorDevice<dim, 1, n_materials, p_order, MaterialStates>>(
+        communicator, _material_properties);
+  else
+    Kokkos::abort("Not implemented");
+  _mechanical_operator_host =
       std::make_unique<MechanicalOperator<dim, n_materials, p_order,
                                           MaterialStates, MemorySpaceType>>(
           communicator, _material_properties, reference_temperatures);
@@ -124,8 +131,9 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       _dof_handler, boundary_function_map, _affine_constraints);
   _affine_constraints.close();
 
-  _mechanical_operator->reinit(_dof_handler, _affine_constraints, _q_collection,
-                               body_forces);
+  _mechanical_operator->reinit(_dof_handler, _affine_constraints);
+  _mechanical_operator_host->reinit(_dof_handler, _affine_constraints,
+                                    _q_collection, body_forces);
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -134,7 +142,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
                        MemorySpaceType>::
     update_rhs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
-  _mechanical_operator->assemble_rhs(body_forces);
+  _mechanical_operator_host->assemble_rhs(body_forces);
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -148,9 +156,9 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
         std::vector<bool> const &has_melted,
         std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
-  _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
-                                           has_melted);
-  _mechanical_operator->assemble_rhs(body_forces);
+  _mechanical_operator_host->update_temperature(thermal_dof_handler,
+                                                temperature, has_melted);
+  _mechanical_operator_host->assemble_rhs(body_forces);
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -288,8 +296,9 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
         std::vector<bool> const &has_melted,
         std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
-  _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
-                                           has_melted);
+  _mechanical_operator_host->update_temperature(thermal_dof_handler,
+                                                temperature, has_melted);
+
   // Update the active fe indices, the plastic variables, and the displacement.
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
   unsigned int cell_id = 0;
@@ -466,13 +475,17 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 #else
   using TrilinosVectorType = dealii::TrilinosWrappers::MPI::Vector;
 #endif
-  TrilinosVectorType displacement(
-      locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
-  TrilinosVectorType rhs_device(
-      locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
+  dealii::LinearAlgebra::distributed::Vector<double,
+                                             dealii::MemorySpace::Default>
+      displacement(locally_owned_dofs,
+                   _mechanical_operator_host->rhs().get_mpi_communicator());
+  dealii::LinearAlgebra::distributed::Vector<double,
+                                             dealii::MemorySpace::Default>
+      rhs_device(locally_owned_dofs,
+                 _mechanical_operator_host->rhs().get_mpi_communicator());
   dealii::LinearAlgebra::ReadWriteVector<double> rw_vector(locally_owned_dofs);
 
-  rw_vector.import_elements(_mechanical_operator->rhs(),
+  rw_vector.import_elements(_mechanical_operator_host->rhs(),
                             dealii::VectorOperation::insert);
   rhs_device.import_elements(rw_vector, dealii::VectorOperation::insert);
 
@@ -480,16 +493,19 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   // TODO check that we are computing only difference of the displacement
   // compared to the previous time step!!
   unsigned int const max_iter = _dof_handler.n_dofs() / 10;
-  double const tol = 1e-12 * _mechanical_operator->rhs().l2_norm();
+  double const tol = 1e-12 * _mechanical_operator_host->rhs().l2_norm();
   dealii::SolverControl solver_control(max_iter, tol);
-  dealii::SolverCG<TrilinosVectorType> cg(solver_control);
-  cg.solve(_mechanical_operator->system_matrix(), displacement, rhs_device,
-           _mechanical_operator->preconditioner());
+  dealii::SolverCG<dealii::LinearAlgebra::distributed::Vector<
+      double, dealii::MemorySpace::Default>>
+      cg(solver_control);
+  cg.solve(*_mechanical_operator, displacement, rhs_device,
+           dealii::PreconditionIdentity{});
 
   rw_vector.import_elements(displacement, dealii::VectorOperation::insert);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      displacement_host(locally_owned_dofs, locally_relevant_dofs,
-                        _mechanical_operator->rhs().get_mpi_communicator());
+      displacement_host(
+          locally_owned_dofs, locally_relevant_dofs,
+          _mechanical_operator_host->rhs().get_mpi_communicator());
   displacement_host.import_elements(rw_vector, dealii::VectorOperation::insert);
   _affine_constraints.distribute(displacement_host);
 
@@ -500,7 +516,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       incremental_displacement(
           locally_owned_dofs, locally_relevant_dofs,
-          _mechanical_operator->rhs().get_mpi_communicator());
+          _mechanical_operator_host->rhs().get_mpi_communicator());
   incremental_displacement = displacement_host;
   if (_old_displacement.size() > 0)
   {
