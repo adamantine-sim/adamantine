@@ -9,35 +9,34 @@
 #include <MaterialProperty.hh>
 
 #include <deal.II/base/types.h>
+#include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/portable_matrix_free.h>
 
 namespace adamantine
 {
-template <int dim, int n_materials, int p_order, typename MaterialStates,
-          typename MemorySpaceType>
+template <int dim, int n_materials, int p_order, typename MaterialStates>
 class MechanicalOperatorDevice
 {
 public:
   MechanicalOperatorDevice(
       MPI_Comm const &communicator,
       MaterialProperty<dim, n_materials, p_order, MaterialStates,
-                       MemorySpaceType> &material_properties);
+                       dealii::MemorySpace::Host> &material_properties);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
-              dealii::AffineConstraints<double> const &affine_constraints,
-              dealii::hp::QCollection<dim> const &q_collection);
+              dealii::AffineConstraints<double> const &affine_constraints);
 
-  void vmult(dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
-             dealii::LA::distributed::Vector<double, MemorySpaceType> const
+  void vmult(dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> &dst,
+             dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> const
                  &src) const;
 
   void vmult_add(
-      dealii::LA::distributed::Vector<double, MemorySpaceType> &dst,
-      dealii::LA::distributed::Vector<double, MemorySpaceType> const &src)
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> &dst,
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> const &src)
       const;
 
   void initialize_dof_vector(
-      dealii::LA::distributed::Vector<double, MemorySpaceType> &vector)
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> &vector)
       const;
 
   dealii::Portable::MatrixFree<dim, double> const &get_matrix_free() const;
@@ -46,8 +45,7 @@ private:
   using kokkos_default = dealii::MemorySpace::Default::kokkos_space;
 
   MPI_Comm const &_communicator;
-  MaterialProperty<dim, n_materials, p_order, MaterialStates,
-                   MemorySpaceType>
+  MaterialProperty<dim, n_materials, p_order, MaterialStates, dealii::MemorySpace::Host>
       &_material_properties;
 
   typename dealii::Portable::MatrixFree<dim, double>::AdditionalData
@@ -63,17 +61,15 @@ private:
   unsigned int _n_owned_cells = 0;
 };
 
-template <int dim, int n_materials, int p_order, typename MaterialStates,
-          typename MemorySpaceType>
+template <int dim, int n_materials, int p_order, typename MaterialStates>
 inline dealii::Portable::MatrixFree<dim, double> const &
-MechanicalOperatorDevice<dim, n_materials, p_order, MaterialStates,
-                         MemorySpaceType>::get_matrix_free() const
+MechanicalOperatorDevice<dim, n_materials, p_order, MaterialStates>::get_matrix_free() const
 {
   return _matrix_free;
 }
 
-#include <MechanicalOperatorDevice.templates.hh>
-
 } // namespace adamantine
+
+#include <MechanicalOperatorDevice.templates.hh>
 
 #endif
