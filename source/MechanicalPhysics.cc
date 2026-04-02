@@ -74,6 +74,8 @@ if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
       std::make_unique<MechanicalOperatorDevice<dim, n_materials, p_order,
                                           MaterialStates>>(
           communicator, _material_properties);
+else
+  Kokkos::abort("Not implemented");
  _mechanical_operator_host =
       std::make_unique<MechanicalOperator<dim, n_materials, p_order,
                                           MaterialStates, MemorySpaceType>>(
