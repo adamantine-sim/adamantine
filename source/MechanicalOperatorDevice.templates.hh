@@ -76,11 +76,11 @@ private:
   Kokkos::View<double *, kokkos_default> _mu;
 };
 
-template <int dim, int n_materials, int fe_degree, typename MaterialStates>
-MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
+template <int dim, int fe_degree, int n_materials, int p_order, typename MaterialStates>
+MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStates>::
     MechanicalOperatorDevice(
         MPI_Comm const &communicator,
-        MaterialProperty<dim, n_materials, fe_degree, MaterialStates,
+        MaterialProperty<dim, n_materials, p_order, MaterialStates,
                          dealii::MemorySpace::Host> &material_properties)
     : _communicator(communicator), _material_properties(material_properties)
 {
@@ -89,8 +89,8 @@ MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
   //    dealii::MatrixFree<dim, double>::AdditionalData::partition_color;
 }
 
-template <int dim, int n_materials, int fe_degree, typename MaterialStates>
-void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
+template <int dim, int fe_degree, int n_materials, int p_order, typename MaterialStates>
+void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStates>::
     reinit(dealii::DoFHandler<dim> const &dof_handler,
            dealii::AffineConstraints<double> const &affine_constraints)
 {
@@ -176,8 +176,8 @@ void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
   Kokkos::deep_copy(_mu, mu_host_view);
 }
 
-template <int dim, int n_materials, int fe_degree, typename MaterialStates>
-void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
+template <int dim, int fe_degree, int n_materials, int p_order, typename MaterialStates>
+void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStates>::
     vmult(dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
               &dst,
           dealii::LA::distributed::Vector<
@@ -187,8 +187,8 @@ void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
   vmult_add(dst, src);
 }
 
-template <int dim, int n_materials, int fe_degree, typename MaterialStates>
-void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
+template <int dim, int fe_degree, int n_materials, int p_order, typename MaterialStates>
+void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStates>::
     vmult_add(
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
             &dst,
@@ -200,8 +200,8 @@ void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
   _matrix_free.copy_constrained_values(src, dst);
 }
 
-template <int dim, int n_materials, int fe_degree, typename MaterialStates>
-void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
+template <int dim, int fe_degree, int n_materials, int p_order, typename MaterialStates>
+void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStates>::
     initialize_dof_vector(
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
             &vector) const

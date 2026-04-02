@@ -71,7 +71,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
   // Create the mechanical operator
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
     _mechanical_operator = std::make_unique<
-        MechanicalOperatorDevice<dim, n_materials, p_order, MaterialStates>>(
+        MechanicalOperatorDevice<dim, 1, n_materials, p_order, MaterialStates>>(
         communicator, _material_properties);
   else
     Kokkos::abort("Not implemented");
