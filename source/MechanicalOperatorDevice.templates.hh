@@ -21,13 +21,12 @@ template <int dim, int fe_degree>
 class LocalMechanicalOperatorDevice
 {
 public:
- static const unsigned int n_q_points =
+  static const unsigned int n_q_points =
       dealii::Utilities::pow(fe_degree + 1, dim);
 
   using kokkos_default = dealii::MemorySpace::Default::kokkos_space;
-  LocalMechanicalOperatorDevice(
-      Kokkos::View<double *, kokkos_default> lambda,
-      Kokkos::View<double *, kokkos_default> mu)
+  LocalMechanicalOperatorDevice(Kokkos::View<double *, kokkos_default> lambda,
+                                Kokkos::View<double *, kokkos_default> mu)
       : _lambda(lambda), _mu(mu)
   {
   }
@@ -37,38 +36,39 @@ public:
       const dealii::Portable::DeviceVector<double> &src,
       dealii::Portable::DeviceVector<double> dst) const
   {
-  dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, dim, double>
-      fe_eval(gpu_data);
-  fe_eval.read_dof_values(src);
-  fe_eval.evaluate(dealii::EvaluationFlags::gradients);
+    dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, dim, double>
+        fe_eval(gpu_data);
+    fe_eval.read_dof_values(src);
+    fe_eval.evaluate(dealii::EvaluationFlags::gradients);
 
-  const int cell = fe_eval.get_current_cell_index();
-  
-  gpu_data->for_each_quad_point([&](const int &q_point) { 
- auto const grad_u = fe_eval.get_gradient(q_point);
-    auto const eps = (grad_u + dealii::transpose(grad_u)) * 0.5;
-    double const trace_eps = dealii::trace(eps);
+    const int cell = fe_eval.get_current_cell_index();
 
-    unsigned int const pos = gpu_data->local_q_point_id(cell,
-                                                         q_point);
+    gpu_data->for_each_quad_point(
+        [&](const int &q_point)
+        {
+          auto const grad_u = fe_eval.get_gradient(q_point);
+          auto const eps = (grad_u + dealii::transpose(grad_u)) * 0.5;
+          double const trace_eps = dealii::trace(eps);
 
-    double const lambda = _lambda(pos);
-    double const mu = _mu(pos);
+          unsigned int const pos = gpu_data->local_q_point_id(cell, q_point);
 
-    dealii::Tensor<2, dim, double> stress;
-    for (unsigned int i = 0; i < dim; ++i)
-      for (unsigned int j = 0; j < dim; ++j)
-      {
-        stress[i][j] = 2.0 * mu * eps[i][j];
-        if (i == j)
-          stress[i][j] += lambda * trace_eps;
-      }
+          double const lambda = _lambda(pos);
+          double const mu = _mu(pos);
 
-    fe_eval.submit_gradient(stress, q_point);
-  });
-  
-  fe_eval.integrate(dealii::EvaluationFlags::gradients);
-  fe_eval.distribute_local_to_global(dst);
+          dealii::Tensor<2, dim, double> stress;
+          for (unsigned int i = 0; i < dim; ++i)
+            for (unsigned int j = 0; j < dim; ++j)
+            {
+              stress[i][j] = 2.0 * mu * eps[i][j];
+              if (i == j)
+                stress[i][j] += lambda * trace_eps;
+            }
+
+          fe_eval.submit_gradient(stress, q_point);
+        });
+
+    fe_eval.integrate(dealii::EvaluationFlags::gradients);
+    fe_eval.distribute_local_to_global(dst);
   }
 
 private:
@@ -77,7 +77,8 @@ private:
 };
 
 template <int dim, int n_materials, int fe_degree, typename MaterialStates>
-MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::MechanicalOperatorDevice(
+MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
+    MechanicalOperatorDevice(
         MPI_Comm const &communicator,
         MaterialProperty<dim, n_materials, fe_degree, MaterialStates,
                          dealii::MemorySpace::Host> &material_properties)
@@ -89,17 +90,19 @@ MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::Mechanica
 }
 
 template <int dim, int n_materials, int fe_degree, typename MaterialStates>
-void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::reinit(dealii::DoFHandler<dim> const &dof_handler,
+void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
+    reinit(dealii::DoFHandler<dim> const &dof_handler,
            dealii::AffineConstraints<double> const &affine_constraints)
 {
   dealii::IteratorFilters::ActiveFEIndexEqualTo filter(0, true);
   _matrix_free.reinit(dealii::StaticMappingQ1<dim>::mapping, dof_handler,
-                      affine_constraints, dealii::QGauss<1>(fe_degree+1), filter,
-                      _matrix_free_data);
+                      affine_constraints, dealii::QGauss<1>(fe_degree + 1),
+                      filter, _matrix_free_data);
 
-  _n_owned_cells = dynamic_cast<dealii::parallel::DistributedTriangulationBase<dim> const *>(&
-                          dof_handler.get_triangulation())
-                          ->n_locally_owned_active_cells();
+  _n_owned_cells =
+      dynamic_cast<dealii::parallel::DistributedTriangulationBase<dim> const *>(
+          &dof_handler.get_triangulation())
+          ->n_locally_owned_active_cells();
 
   // Build mapping between cells and mf positions
   _cell_it_to_mf_pos.clear();
@@ -156,13 +159,14 @@ void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::rein
 
   using kokkos_default = dealii::MemorySpace::Default::kokkos_space;
   _lambda = Kokkos::View<double *, kokkos_default>(
-      Kokkos::view_alloc("mech_lambda", Kokkos::WithoutInitializing),
-      n_coefs);
+      Kokkos::view_alloc("mech_lambda", Kokkos::WithoutInitializing), n_coefs);
   _mu = Kokkos::View<double *, kokkos_default>(
       Kokkos::view_alloc("mech_mu", Kokkos::WithoutInitializing), n_coefs);
 
-  auto lambda_host_view = Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _lambda);
-  auto mu_host_view = Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _mu);
+  auto lambda_host_view =
+      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _lambda);
+  auto mu_host_view =
+      Kokkos::create_mirror_view(Kokkos::WithoutInitializing, _mu);
   for (unsigned int i = 0; i < n_coefs; ++i)
   {
     lambda_host_view(i) = lambda_host[i];
@@ -174,18 +178,22 @@ void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::rein
 
 template <int dim, int n_materials, int fe_degree, typename MaterialStates>
 void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
-    vmult(dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> &dst,
-          dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> const &src)
-    const
+    vmult(dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
+              &dst,
+          dealii::LA::distributed::Vector<
+              double, dealii::MemorySpace::Default> const &src) const
 {
   dst = 0.;
   vmult_add(dst, src);
 }
 
 template <int dim, int n_materials, int fe_degree, typename MaterialStates>
-void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::vmult_add(dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> &dst,
-              dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> const &src)
-    const
+void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
+    vmult_add(
+        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
+            &dst,
+        dealii::LA::distributed::Vector<
+            double, dealii::MemorySpace::Default> const &src) const
 {
   LocalMechanicalOperatorDevice<dim, fe_degree> local_operator(_lambda, _mu);
   _matrix_free.cell_loop(local_operator, src, dst);
@@ -193,9 +201,10 @@ void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::vmul
 }
 
 template <int dim, int n_materials, int fe_degree, typename MaterialStates>
-void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::initialize_dof_vector(
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> &vector)
-    const
+void MechanicalOperatorDevice<dim, n_materials, fe_degree, MaterialStates>::
+    initialize_dof_vector(
+        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
+            &vector) const
 {
   _matrix_free.initialize_dof_vector(vector);
 }
