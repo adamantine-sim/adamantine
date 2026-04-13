@@ -8,7 +8,7 @@ nav_order: 7
 If you use this software for an academic publication please consider citing the
 following reference
 ```
-@article{adamantine-2021,
+@article{adamantine-2024,
   author  = {Bruno Turcksin and Stephen DeWitt},
   title   = {Adamantine 1.0: A Thermomechanical Simulator for Additive Manufacturing},
   journal = {Journal of Open Source Software},
