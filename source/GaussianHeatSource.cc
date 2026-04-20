@@ -34,7 +34,9 @@ void GaussianHeatSource<dim>::update_time(double time)
   _quaternion = this->_scan_path.get_current_quaternion();
 
   for (unsigned int d = 0; d < 3; ++d)
+  {
     _beam_center(d) = path(d);
+  }
 
   _depth = this->_beam.depth;
   _radius_squared = this->_beam.radius_squared;
@@ -69,7 +71,8 @@ double GaussianHeatSource<dim>::value(dealii::Point<dim> const &point) const
   }
 
   double const z = rotated_point[axis<dim>::z] - _beam_center[axis<dim>::z][0];
-  if ((z + _depth[0]) < 0.)
+
+  if (z > 0. || z < -_depth[0])
   {
     return 0.;
   }
@@ -86,16 +89,12 @@ double GaussianHeatSource<dim>::value(dealii::Point<dim> const &point) const
   {
     return 0.;
   }
-  if (std::abs(z) > 5. * _depth[0])
-  {
-    return 0.;
-  }
 
   double const radial_component =
       std::exp(-2.0 * xpy_squared / _radius_squared[0]);
 
   double const depth_component =
-      std::exp(-3.0 * std::pow(std::abs(z) / _depth[0], _k));
+      std::exp(-3.0 * std::pow(std::abs(z / _depth[0]), _k));
 
   return _alpha[0] * radial_component * depth_component;
 }
@@ -115,12 +114,11 @@ dealii::VectorizedArray<double> GaussianHeatSource<dim>::value(
   }
 
   auto const z = rotated_points[axis<dim>::z] - _beam_center[axis<dim>::z];
-  auto const z_depth = z + _depth;
 
   dealii::VectorizedArray<double> depth_mask;
   for (unsigned int i = 0; i < depth_mask.size(); ++i)
   {
-    depth_mask[i] = z_depth[i] < 0. ? 0. : 1.;
+    depth_mask[i] = (z[i] > 0. || z[i] < -_depth[i]) ? 0. : 1.;
   }
   if (depth_mask.sum() == 0)
   {
