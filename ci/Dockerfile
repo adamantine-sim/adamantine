@@ -17,6 +17,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
       python3-dev \
       git \
       lcov \
+      sundials \
       zlib1g-dev \
       libopenblas-dev \
       libdw-dev \
@@ -336,6 +337,7 @@ RUN export DEAL_II_VERSION=9.6.2 && \
         -DDEAL_II_WITH_64BIT_INDICES=ON \
         -DDEAL_II_WITH_COMPLEX_VALUES=OFF \
         -DDEAL_II_WITH_MPI=ON \
+        -DDEAL_II_WITH_SUNDIALS=ON \
         -DDEAL_II_WITH_P4EST=ON \
         -DP4EST_DIR=${P4EST_DIR} \
         -DDEAL_II_WITH_ARBORX=ON \
