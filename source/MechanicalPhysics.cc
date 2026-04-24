@@ -420,8 +420,12 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
                                          _dof_handler.get_communicator()
 #endif
       );
+  // If we do not need to rebuild the matrix. Update the rhs and exit.
   if (!rebuild_matrix)
+  {
+    update_rhs(body_forces);
     return;
+  }
 
   _plastic_internal_variable.swap(tmp_plastic_internal_variable);
   _stress.swap(tmp_stress);

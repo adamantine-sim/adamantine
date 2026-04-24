@@ -942,9 +942,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           temperature_host(temperature.get_partitioner());
       temperature_host.import_elements(temperature,
                                        dealii::VectorOperation::insert);
-      mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
-                                     temperature_host,
-                                     thermal_physics->get_has_melted_vector());
+      mechanical_physics->setup_dofs(
+          thermal_physics->get_dof_handler(), temperature_host,
+          thermal_physics->get_has_melted_vector(), true);
     }
     else
     {
@@ -1285,14 +1285,17 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
               temperature_host(temperature.get_partitioner());
           temperature_host.import_elements(temperature,
                                            dealii::VectorOperation::insert);
-          // We need to rebuild the matrix if the mesh has changed or if the
-          // material changed phases. We pass the information about the mesh to
-          // setup_dofs.
+          // We need to rebuild the matrix if the mesh has changed, material was
+          // deposited or if the material changed phases. We pass the
+          // information about the mesh to setup_dofs.
           mechanical_physics->setup_dofs(
               thermal_physics->get_dof_handler(), temperature_host,
-              thermal_physics->get_has_melted_vector(), rebuild_matrix);
+              thermal_physics->get_has_melted_vector(),
+              rebuild_mechanical_matrix);
+          // We only output the number of dofs if the mesh was modified or if
+          // material was deposited.
           if ((rank == 0) && (verbose_output == true) &&
-              (rebuild_matrix == true))
+              (rebuild_mechanical_matrix == true))
           {
             std::cout << "n_time_step: " << n_time_step << " time: " << time
                       << " n_dofs (mechanical): "
