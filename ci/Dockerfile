@@ -17,7 +17,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
       python3-dev \
       git \
       lcov \
-      sundials \
+      libsundials-dev \
       zlib1g-dev \
       libopenblas-dev \
       libdw-dev \
@@ -125,7 +125,7 @@ RUN export P4EST_VERSION=2.3.3 && \
     wget --quiet ${P4EST_URL} --output-document=${P4EST_ARCHIVE} && \
     mkdir -p ${P4EST_SOURCE_DIR} && \
     cd ${P4EST_SOURCE_DIR} && \
-    wget --quiet https://raw.githubusercontent.com/dealii/dealii/master/doc/external-libs/p4est-setup.sh && \
+    wget --quiet https://dealii.org/current/external-libs/p4est-setup.sh && \
     bash ./p4est-setup.sh ${P4EST_ARCHIVE} ${P4EST_INSTALL_DIR} && \
     rm -rf ${P4EST_ARCHIVE} && \
     rm -rf ${P4EST_BUILD_DIR} && \
