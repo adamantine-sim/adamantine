@@ -1070,7 +1070,11 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     // time and the time match should match exactly but don't because of
     // floating point accuracy.
     timers[adamantine::add_material_activate].start();
-    if (time > activation_time_end)
+    double const time_step_tol = time_step * 1e-6;
+    // The condition is written in such a way that it avoids the subtraction of
+    // a large number (activation_time_end) with a much smaller one
+    // (time_step_tol).
+    if (time - activation_time_end > -time_step_tol)
     {
       // If we use scan_path_for_duration, we may need to read the scan path
       // file once again.
@@ -1117,14 +1121,12 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
         }
       }
 
-      double const eps = time_step / 1e10;
-
       auto activation_start =
           std::lower_bound(deposition_times.begin(), deposition_times.end(),
-                           time - eps) -
+                           time - time_step_tol) -
           deposition_times.begin();
       activation_time_end =
-          std::min(time + std::max(activation_time, time_step), duration) - eps;
+          std::min(time + std::max(activation_time, time_step), duration);
       auto activation_end =
           std::lower_bound(deposition_times.begin(), deposition_times.end(),
                            activation_time_end) -
@@ -1948,7 +1950,8 @@ run_ensemble(MPI_Comm const &global_communicator,
     // time and the time match should match exactly but don't because of
     // floating point accuracy.
     timers[adamantine::add_material_activate].start();
-    if (time > activation_time_end)
+    double const time_step_tol = time_step * 1e-6;
+    if (time - activation_time_end > -time_step_tol)
     {
       // If we use scan_path_for_duration, we may need to read the scan path
       // file once again.
@@ -2005,13 +2008,12 @@ run_ensemble(MPI_Comm const &global_communicator,
         }
       }
 
-      double const eps = time_step / 1e10;
       auto activation_start =
           std::lower_bound(deposition_times.begin(), deposition_times.end(),
-                           time - eps) -
+                           time - time_step_tol) -
           deposition_times.begin();
       activation_time_end =
-          std::min(time + std::max(activation_time, time_step), duration) - eps;
+          std::min(time + std::max(activation_time, time_step), duration);
       auto activation_end =
           std::lower_bound(deposition_times.begin(), deposition_times.end(),
                            activation_time_end) -
