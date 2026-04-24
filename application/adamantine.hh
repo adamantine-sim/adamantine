@@ -1060,7 +1060,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       if ((rank == 0) && (verbose_output == true))
       {
         std::cout << "n_time_step: " << n_time_step << " time: " << time
-                  << " n_dofs after mesh refinement: "
+                  << " n_dofs (thermal) after mesh refinement: "
                   << thermal_physics->get_dof_handler().n_dofs() << std::endl;
       }
     }
@@ -1193,7 +1193,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           (activation_end - activation_start > 0) && use_thermal_physics)
       {
         std::cout << "n_time_step: " << n_time_step << " time: " << time
-                  << " n_dofs after cell activation: "
+                  << " n_dofs (thermal) after cell activation: "
                   << thermal_physics->get_dof_handler().n_dofs() << std::endl;
       }
     }
@@ -1291,6 +1291,14 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           mechanical_physics->setup_dofs(
               thermal_physics->get_dof_handler(), temperature_host,
               thermal_physics->get_has_melted_vector(), rebuild_matrix);
+          if ((rank == 0) && (verbose_output == true) &&
+              (rebuild_matrix == true))
+          {
+            std::cout << "n_time_step: " << n_time_step << " time: " << time
+                      << " n_dofs (mechanical): "
+                      << mechanical_physics->get_dof_handler().n_dofs()
+                      << std::endl;
+          }
           rebuild_mechanical_matrix = false;
         }
         else
@@ -1298,6 +1306,13 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           if (rebuild_mechanical_matrix)
           {
             mechanical_physics->setup_dofs();
+            if ((rank == 0) && (verbose_output == true))
+            {
+              std::cout << "n_time_step: " << n_time_step << " time: " << time
+                        << " n_dofs (mechanical): "
+                        << mechanical_physics->get_dof_handler().n_dofs()
+                        << std::endl;
+            }
             rebuild_mechanical_matrix = false;
           }
           else
@@ -1934,7 +1949,7 @@ run_ensemble(MPI_Comm const &global_communicator,
       if ((global_rank == 0) && (verbose_output == true))
       {
         std::cout << "n_time_step: " << n_time_step << " time: " << time
-                  << " n_dofs: "
+                  << " n_dofs (thermal) after mesh refinement: "
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
       }
@@ -2070,7 +2085,7 @@ run_ensemble(MPI_Comm const &global_communicator,
           (activation_end - activation_start > 0))
       {
         std::cout << "n_time_step: " << n_time_step << " time: " << time
-                  << " n_dofs after cell activation: "
+                  << " n_dofs (thermal) after cell activation: "
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
       }
