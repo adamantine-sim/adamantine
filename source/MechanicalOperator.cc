@@ -34,10 +34,11 @@ namespace adamantine
 namespace
 {
 template <int dim>
-struct ScratchData
+struct ScratchDataRightHandSide
 {
-  ScratchData(dealii::hp::FEValues<dim> const &displacement_hp_fe_values,
-              dealii::hp::FEValues<dim> const &temperature_hp_fe_values)
+  ScratchDataRightHandSide(
+      dealii::hp::FEValues<dim> const &displacement_hp_fe_values,
+      dealii::hp::FEValues<dim> const &temperature_hp_fe_values)
       : displacement_hp_fe_values(
             displacement_hp_fe_values.get_mapping_collection(),
             displacement_hp_fe_values.get_fe_collection(),
@@ -51,7 +52,7 @@ struct ScratchData
   {
   }
 
-  ScratchData(ScratchData<dim> const &scratch_data)
+  ScratchDataRightHandSide(ScratchDataRightHandSide<dim> const &scratch_data)
       : displacement_hp_fe_values(
             scratch_data.displacement_hp_fe_values.get_mapping_collection(),
             scratch_data.displacement_hp_fe_values.get_fe_collection(),
@@ -69,21 +70,66 @@ struct ScratchData
   dealii::hp::FEValues<dim> temperature_hp_fe_values;
 };
 
-struct CopyData
+struct CopyDataRightHandSide
 {
+  CopyDataRightHandSide(unsigned int dofs_per_cell)
+  {
+    cell_rhs.reinit(dofs_per_cell);
+    local_dof_indices.resize(dofs_per_cell);
+  }
   dealii::Vector<double> cell_rhs;
   std::vector<dealii::types::global_dof_index> local_dof_indices;
 
   template <class Iterator>
-  void reinit(const Iterator &cell, unsigned int dofs_per_cell)
+  void reinit(const Iterator &cell)
   {
-    cell_rhs.reinit(dofs_per_cell);
     cell_rhs = 0.;
-
-    local_dof_indices.resize(dofs_per_cell);
     cell->get_dof_indices(local_dof_indices);
   }
 };
+
+template <int dim>
+struct ScratchDataMatrix
+{
+  ScratchDataMatrix(dealii::hp::FEValues<dim> const &displacement_hp_fe_values)
+      : displacement_hp_fe_values(
+            displacement_hp_fe_values.get_mapping_collection(),
+            displacement_hp_fe_values.get_fe_collection(),
+            displacement_hp_fe_values.get_quadrature_collection(),
+            displacement_hp_fe_values.get_update_flags())
+  {
+  }
+
+  ScratchDataMatrix(ScratchDataMatrix<dim> const &scratch_data)
+      : displacement_hp_fe_values(
+            scratch_data.displacement_hp_fe_values.get_mapping_collection(),
+            scratch_data.displacement_hp_fe_values.get_fe_collection(),
+            scratch_data.displacement_hp_fe_values.get_quadrature_collection(),
+            scratch_data.displacement_hp_fe_values.get_update_flags())
+  {
+  }
+
+  dealii::hp::FEValues<dim> displacement_hp_fe_values;
+};
+
+struct CopyDataMatrix
+{
+  CopyDataMatrix(unsigned int dofs_per_cell)
+  {
+    cell_matrix.reinit(dofs_per_cell, dofs_per_cell);
+    local_dof_indices.resize(dofs_per_cell);
+  }
+  dealii::FullMatrix<double> cell_matrix;
+  std::vector<dealii::types::global_dof_index> local_dof_indices;
+
+  template <class Iterator>
+  void reinit(const Iterator &cell)
+  {
+    cell_matrix = 0.;
+    cell->get_dof_indices(local_dof_indices);
+  }
+};
+
 } // namespace
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -160,21 +206,22 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
 
   unsigned int const dofs_per_cell =
       _dof_handler->get_fe_collection().max_dofs_per_cell();
-  dealii::FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
-  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
 
   // Loop over the locally owned cells that are not FE_Nothing and assemble the
   // sparse matrix and the right-hand-side
-  for (auto const &cell : _dof_handler->active_cell_iterators() |
-                              dealii::IteratorFilters::ActiveFEIndexEqualTo(
-                                  0, /* locally owned */ true))
+  auto cell_worker =
+      [&](const typename dealii::DoFHandler<dim>::active_cell_iterator &cell,
+          ScratchDataMatrix<dim> &scratch_data, CopyDataMatrix &copy_data)
   {
+    dealii::hp::FEValues<dim> &displacement_hp_fe_values =
+        scratch_data.displacement_hp_fe_values;
     displacement_hp_fe_values.reinit(cell);
     auto const &fe_values = displacement_hp_fe_values.get_present_fe_values();
     auto const &fe = fe_values.get_fe();
 
     // Assemble the local martrix
-    cell_matrix = 0;
+    copy_data.reinit(cell);
+    dealii::FullMatrix<double> &cell_matrix = copy_data.cell_matrix;
     double const lambda = this->_material_properties.get_mechanical_property(
         cell, StateProperty::lame_first_parameter);
     double const mu = this->_material_properties.get_mechanical_property(
@@ -204,10 +251,29 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
         }
       }
     }
-    cell->get_dof_indices(local_dof_indices);
+  };
+
+  auto copier = [&](const CopyDataMatrix &cd)
+  {
     _affine_constraints->distribute_local_to_global(
-        cell_matrix, local_dof_indices, _system_matrix);
-  }
+        cd.cell_matrix, cd.local_dof_indices, _system_matrix);
+  };
+
+  dealii::IteratorFilters::ActiveFEIndexEqualTo filter(
+      0,
+      /* locally owned */ true);
+  dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>
+      begin(filter, _dof_handler->begin_active());
+  dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>
+      end(filter, _dof_handler->end());
+
+  ScratchDataMatrix<dim> scratch_data(displacement_hp_fe_values);
+
+  dealii::MeshWorker::mesh_loop(begin, end, cell_worker, copier, scratch_data,
+                                CopyDataMatrix(dofs_per_cell),
+                                dealii::MeshWorker::assemble_own_cells);
 
   _system_matrix.compress(dealii::VectorOperation::add);
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -289,7 +355,8 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
 
     auto cell_worker =
         [&](const typename dealii::DoFHandler<dim>::active_cell_iterator &cell,
-            ScratchData<dim> &scratch_data, CopyData &copy_data)
+            ScratchDataRightHandSide<dim> &scratch_data,
+            CopyDataRightHandSide &copy_data)
     {
       // Get the temperature cell associated to the mechanical cell
       dealii::TriaIterator<dealii::DoFCellAccessor<dim, dim, false>>
@@ -323,7 +390,7 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
           temperature_hp_fe_values.get_present_fe_values();
       temperature_cell->get_dof_indices(temperature_local_dof_indices);
 
-      copy_data.reinit(cell, dofs_per_cell);
+      copy_data.reinit(cell);
       dealii::Vector<double> &cell_rhs = copy_data.cell_rhs;
 
       dealii::FEValuesExtractors::Vector const displacements(0);
@@ -347,14 +414,14 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
       }
     };
 
-    auto copier = [&](const CopyData &cd)
+    auto copier = [&](const CopyDataRightHandSide &cd)
     {
       _affine_constraints->distribute_local_to_global(
           cd.cell_rhs, cd.local_dof_indices, assembled_rhs);
     };
 
     dealii::IteratorFilters::ActiveFEIndexEqualTo filter(
-        0, /* locally owned*/ true);
+        0, /* locally owned */ true);
     dealii::FilteredIterator<
         typename dealii::DoFHandler<dim>::active_cell_iterator>
         begin(filter, _dof_handler->begin_active());
@@ -366,11 +433,11 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
         _thermal_dof_handler->get_fe_collection(), *_q_collection,
         dealii::update_values);
 
-    ScratchData<dim> scratch_data(displacement_hp_fe_values,
-                                  temperature_hp_fe_values);
+    ScratchDataRightHandSide<dim> scratch_data(displacement_hp_fe_values,
+                                               temperature_hp_fe_values);
 
     dealii::MeshWorker::mesh_loop(begin, end, cell_worker, copier, scratch_data,
-                                  CopyData(),
+                                  CopyDataRightHandSide(dofs_per_cell),
                                   dealii::MeshWorker::assemble_own_cells);
   }
 
