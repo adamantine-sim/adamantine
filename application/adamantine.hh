@@ -1285,19 +1285,13 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
               temperature_host(temperature.get_partitioner());
           temperature_host.import_elements(temperature,
                                            dealii::VectorOperation::insert);
-          if (rebuild_mechanical_matrix)
-          {
-            mechanical_physics->setup_dofs(
-                thermal_physics->get_dof_handler(), temperature_host,
-                thermal_physics->get_has_melted_vector());
-            rebuild_mechanical_matrix = false;
-          }
-          else
-          {
-            mechanical_physics->update_rhs(
-                thermal_physics->get_dof_handler(), temperature_host,
-                thermal_physics->get_has_melted_vector());
-          }
+          // We need to rebuild the matrix if the mesh has changed or if the
+          // material changed phases. We pass the information about the mesh to
+          // setup_dofs.
+          mechanical_physics->setup_dofs(
+              thermal_physics->get_dof_handler(), temperature_host,
+              thermal_physics->get_has_melted_vector(), rebuild_matrix);
+          rebuild_mechanical_matrix = false;
         }
         else
         {
