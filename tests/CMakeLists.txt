@@ -32,7 +32,6 @@ list(APPEND
      MPI_UNIT_TESTS
      test_integration_2d
      test_integration_2d_device
-     test_integration_3d
      test_integration_3d_amr
      test_integration_3d_amr_device
      test_integration_da_augmented
@@ -43,6 +42,13 @@ list(APPEND
      test_ensemble_management
     )
 
+# test_integration_3d is very slow in debug mode. We just test with three cores
+# in that case.
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
+  adamantine_ADD_BOOST_TEST(test_integration_3d 3)
+else()
+  adamantine_ADD_BOOST_TEST(test_integration_3d 1 2)
+endif()
 # test_integration_da is a special test that we need to test with more
 # processors than the others
 adamantine_ADD_BOOST_TEST(test_integration_da 1 2 3 6)
