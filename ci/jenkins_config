@@ -33,7 +33,7 @@ pipeline {
               dir('build') {
                 sh '''#!/bin/bash
                   cmake \
-                  -D CMAKE_BUILD_TYPE=Debug \
+                  -D CMAKE_BUILD_TYPE=Release \
                   -D ADAMANTINE_ENABLE_TESTS=ON \
                   -DADAMANTINE_ENABLE_ADIAK=ON \
                   -DADAMANTINE_ENABLE_CALIPER=ON \
