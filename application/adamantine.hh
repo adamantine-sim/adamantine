@@ -942,9 +942,9 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           temperature_host(temperature.get_partitioner());
       temperature_host.import_elements(temperature,
                                        dealii::VectorOperation::insert);
-      mechanical_physics->setup_dofs(thermal_physics->get_dof_handler(),
-                                     temperature_host,
-                                     thermal_physics->get_has_melted_vector());
+      mechanical_physics->setup_dofs(
+          thermal_physics->get_dof_handler(), temperature_host,
+          thermal_physics->get_has_melted_vector(), true);
     }
     else
     {
@@ -1060,7 +1060,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
       if ((rank == 0) && (verbose_output == true))
       {
         std::cout << "n_time_step: " << n_time_step << " time: " << time
-                  << " n_dofs after mesh refinement: "
+                  << " n_dofs (thermal) after mesh refinement: "
                   << thermal_physics->get_dof_handler().n_dofs() << std::endl;
       }
     }
@@ -1193,7 +1193,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
           (activation_end - activation_start > 0) && use_thermal_physics)
       {
         std::cout << "n_time_step: " << n_time_step << " time: " << time
-                  << " n_dofs after cell activation: "
+                  << " n_dofs (thermal) after cell activation: "
                   << thermal_physics->get_dof_handler().n_dofs() << std::endl;
       }
     }
@@ -1285,25 +1285,37 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
               temperature_host(temperature.get_partitioner());
           temperature_host.import_elements(temperature,
                                            dealii::VectorOperation::insert);
-          if (rebuild_mechanical_matrix)
+          // We need to rebuild the matrix if the mesh has changed, material was
+          // deposited or if the material changed phases. We pass the
+          // information about the mesh to setup_dofs.
+          mechanical_physics->setup_dofs(
+              thermal_physics->get_dof_handler(), temperature_host,
+              thermal_physics->get_has_melted_vector(),
+              rebuild_mechanical_matrix);
+          // We only output the number of dofs if the mesh was modified or if
+          // material was deposited.
+          if ((rank == 0) && (verbose_output == true) &&
+              (rebuild_mechanical_matrix == true))
           {
-            mechanical_physics->setup_dofs(
-                thermal_physics->get_dof_handler(), temperature_host,
-                thermal_physics->get_has_melted_vector());
-            rebuild_mechanical_matrix = false;
+            std::cout << "n_time_step: " << n_time_step << " time: " << time
+                      << " n_dofs (mechanical): "
+                      << mechanical_physics->get_dof_handler().n_dofs()
+                      << std::endl;
           }
-          else
-          {
-            mechanical_physics->update_rhs(
-                thermal_physics->get_dof_handler(), temperature_host,
-                thermal_physics->get_has_melted_vector());
-          }
+          rebuild_mechanical_matrix = false;
         }
         else
         {
           if (rebuild_mechanical_matrix)
           {
             mechanical_physics->setup_dofs();
+            if ((rank == 0) && (verbose_output == true))
+            {
+              std::cout << "n_time_step: " << n_time_step << " time: " << time
+                        << " n_dofs (mechanical): "
+                        << mechanical_physics->get_dof_handler().n_dofs()
+                        << std::endl;
+            }
             rebuild_mechanical_matrix = false;
           }
           else
@@ -1940,7 +1952,7 @@ run_ensemble(MPI_Comm const &global_communicator,
       if ((global_rank == 0) && (verbose_output == true))
       {
         std::cout << "n_time_step: " << n_time_step << " time: " << time
-                  << " n_dofs: "
+                  << " n_dofs (thermal) after mesh refinement: "
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
       }
@@ -2076,7 +2088,7 @@ run_ensemble(MPI_Comm const &global_communicator,
           (activation_end - activation_start > 0))
       {
         std::cout << "n_time_step: " << n_time_step << " time: " << time
-                  << " n_dofs after cell activation: "
+                  << " n_dofs (thermal) after cell activation: "
                   << thermal_physics_ensemble[0]->get_dof_handler().n_dofs()
                   << std::endl;
       }

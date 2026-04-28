@@ -285,7 +285,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
         dealii::DoFHandler<dim> const &thermal_dof_handler,
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
             &temperature,
-        std::vector<bool> const &has_melted,
+        std::vector<bool> const &has_melted, bool rebuild_matrix,
         std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
@@ -379,10 +379,16 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
               std::vector<dealii::SymmetricTensor<2, dim>>(n_quad_pts));
 
           cell->set_active_fe_index(updated_fe_index);
+          rebuild_matrix = true;
         }
       }
       else
       {
+        if (current_fe_index == 0)
+        {
+          rebuild_matrix = true;
+        }
+
         // The cell is liquid. We don't need to save the plastic variables.
         cell->set_active_fe_index(1);
         tmp_plastic_internal_variable.push_back(std::vector<double>(
@@ -404,6 +410,23 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
     }
     ++cell_id;
   }
+
+  // Check if we need to rebuild the matrix
+  rebuild_matrix =
+      dealii::Utilities::MPI::logical_or(rebuild_matrix,
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+                                         _dof_handler.get_mpi_communicator()
+#else
+                                         _dof_handler.get_communicator()
+#endif
+      );
+  // If we do not need to rebuild the matrix. Update the rhs and exit.
+  if (!rebuild_matrix)
+  {
+    update_rhs(body_forces);
+    return;
+  }
+
   _plastic_internal_variable.swap(tmp_plastic_internal_variable);
   _stress.swap(tmp_stress);
   _back_stress.swap(tmp_back_stress);

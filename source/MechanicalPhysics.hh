@@ -47,7 +47,7 @@ public:
       dealii::DoFHandler<dim> const &thermal_dof_handler,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
           &temperature,
-      std::vector<bool> const &has_melted,
+      std::vector<bool> const &has_melted, bool rebuild_matrix,
       std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
           std::vector<std::shared_ptr<BodyForce<dim>>>());
 
