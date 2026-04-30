@@ -17,6 +17,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
       python3-dev \
       git \
       lcov \
+      libsundials-dev \
       zlib1g-dev \
       libopenblas-dev \
       libdw-dev \
@@ -124,7 +125,7 @@ RUN export P4EST_VERSION=2.3.3 && \
     wget --quiet ${P4EST_URL} --output-document=${P4EST_ARCHIVE} && \
     mkdir -p ${P4EST_SOURCE_DIR} && \
     cd ${P4EST_SOURCE_DIR} && \
-    wget --quiet https://raw.githubusercontent.com/dealii/dealii/master/doc/external-libs/p4est-setup.sh && \
+    wget --quiet https://dealii.org/current/external-libs/p4est-setup.sh && \
     bash ./p4est-setup.sh ${P4EST_ARCHIVE} ${P4EST_INSTALL_DIR} && \
     rm -rf ${P4EST_ARCHIVE} && \
     rm -rf ${P4EST_BUILD_DIR} && \
@@ -336,6 +337,7 @@ RUN export DEAL_II_VERSION=9.6.2 && \
         -DDEAL_II_WITH_64BIT_INDICES=ON \
         -DDEAL_II_WITH_COMPLEX_VALUES=OFF \
         -DDEAL_II_WITH_MPI=ON \
+        -DDEAL_II_WITH_SUNDIALS=ON \
         -DDEAL_II_WITH_P4EST=ON \
         -DP4EST_DIR=${P4EST_DIR} \
         -DDEAL_II_WITH_ARBORX=ON \
