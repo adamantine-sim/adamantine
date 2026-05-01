@@ -110,7 +110,6 @@ void test()
   for (auto &cell : tria.active_cell_iterators())
     if (cell->is_locally_owned())
     {
-      cell->set_refine_flag();
       for (unsigned int i = 0; i < n_q_points; ++i)
       {
         BOOST_TEST(cell_quad_point_values_final[cell->active_cell_index()][i] ==
