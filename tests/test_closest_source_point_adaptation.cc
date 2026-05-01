@@ -18,6 +18,9 @@
 
 #include "main.cc"
 
+// Check that ClosestSourcePointAdaption can be used with dealii::CellDataTransfer
+// In particular, check that we get obtain the same qudratire point values when we first refine and then coarsen the mesh.
+
 template <int dim, int spacedim>
 void test()
 {
@@ -54,7 +57,7 @@ void test()
   dealii::parallel::distributed::CellDataTransfer<
       dim, spacedim, std::vector<std::vector<double>>>
       cell_data_transfer(
-          tria, false,
+          tria, /* transfer_variable_size_data */ false,
           [&](const typename dealii::Triangulation<dim, spacedim>::cell_iterator
                   &parent,
               const std::vector<double> parent_values)
