@@ -19,7 +19,7 @@
 #include "main.cc"
 
 // Check that ClosestSourcePointAdaption can be used with dealii::CellDataTransfer
-// In particular, check that we get obtain the same qudratire point values when we first refine and then coarsen the mesh.
+// In particular, check that we get obtain the same quadrature point values when we first refine and then coarsen the mesh.
 
 template <int dim, int spacedim>
 void test()
