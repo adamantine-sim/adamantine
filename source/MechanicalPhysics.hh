@@ -6,6 +6,7 @@
 #define MECHANICAL_PHYSICS_HH
 
 #include <Boundary.hh>
+#include <ClosestSourcePointAdaptation.hh>
 #include <Geometry.hh>
 #include <MechanicalOperator.hh>
 
@@ -182,6 +183,13 @@ private:
 #endif
       dim, dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>>
       _solution_transfer;
+
+  /**
+   * Object used for interpolating to and from the closest quadrature point in
+   * the cell data transfer object.
+   */
+  adamantine::ClosestQuadPointAdaptation<dim, dim, double>
+      _closest_quad_point_adaptation;
 
   /**
    * Cell data transfer object used for updating _plastic_internal_variable,

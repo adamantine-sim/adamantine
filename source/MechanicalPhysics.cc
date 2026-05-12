@@ -34,9 +34,22 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
       _material_properties(material_properties),
       _dof_handler(_geometry.get_triangulation()),
       _solution_transfer(_dof_handler),
+      _closest_quad_point_adaptation(dealii::QGauss<dim>(fe_degree + 1)),
       _cell_data_transfer(
           dynamic_cast<const dealii::parallel::distributed::Triangulation<dim>
-                           &>(_dof_handler.get_triangulation()))
+                           &>(_dof_handler.get_triangulation()),
+          /* transfer_variable_size_data */ false,
+          [&](const typename dealii::Triangulation<dim>::cell_iterator &parent,
+              const std::vector<double> parent_values)
+          {
+            return _closest_quad_point_adaptation.coarse_to_fine(parent,
+                                                                 parent_values);
+          },
+          [&](const typename dealii::Triangulation<dim>::cell_iterator &parent,
+              const std::vector<std::vector<double>> child_values) {
+            return _closest_quad_point_adaptation.fine_to_coarse(parent,
+                                                                 child_values);
+          })
 {
   // Create the FECollection
   _fe_collection.push_back(
