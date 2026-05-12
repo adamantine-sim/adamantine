@@ -208,7 +208,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
               _back_stress[cell_id][quad].access_raw_entry(i);
         }
       }
-      _data_to_transfer.push_back(std::move(cell_data));
+      _data_to_transfer.push_back(cell_data);
     }
     else
     {
