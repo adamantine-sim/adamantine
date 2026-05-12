@@ -188,7 +188,7 @@ private:
    * Object used for interpolating to and from the closest quadrature point in
    * the cell data transfer object.
    */
-  adamantine::ClosestQuadPointAdaptation<dim, dim, double>
+  adamantine::ClosestQuadPointAdaptation<dim, dim, std::vector<double>>
       _closest_quad_point_adaptation;
 
   /**
@@ -197,13 +197,13 @@ private:
    * material
    */
   dealii::parallel::distributed::CellDataTransfer<
-      dim, dim, std::vector<std::vector<double>>>
+      dim, dim, std::vector<std::vector<std::vector<double>>>>
       _cell_data_transfer;
 
   /**
    * Temporary storaged used by _cell_data_transfer
    */
-  std::vector<std::vector<double>> _data_to_transfer;
+  std::vector<std::vector<std::vector<double>>> _data_to_transfer;
 };
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
