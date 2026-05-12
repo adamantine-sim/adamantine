@@ -6,6 +6,7 @@
 #define MECHANICAL_PHYSICS_HH
 
 #include <Boundary.hh>
+#include <ClosestSourcePointAdaptation.hh>
 #include <Geometry.hh>
 #include <MechanicalOperator.hh>
 
@@ -184,18 +185,25 @@ private:
       _solution_transfer;
 
   /**
+   * Object used for interpolating to and from the closest quadrature point in
+   * the cell data transfer object.
+   */
+  adamantine::ClosestQuadPointAdaptation<dim, dim, std::vector<double>>
+      _closest_quad_point_adaptation;
+
+  /**
    * Cell data transfer object used for updating _plastic_internal_variable,
    * _stress, and _back_stress when the triangulation is updated when adding
    * material
    */
   dealii::parallel::distributed::CellDataTransfer<
-      dim, dim, std::vector<std::vector<double>>>
+      dim, dim, std::vector<std::vector<std::vector<double>>>>
       _cell_data_transfer;
 
   /**
    * Temporary storaged used by _cell_data_transfer
    */
-  std::vector<std::vector<double>> _data_to_transfer;
+  std::vector<std::vector<std::vector<double>>> _data_to_transfer;
 };
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
