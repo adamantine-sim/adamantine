@@ -46,7 +46,7 @@ stdenv.mkDerivation rec {
     "-DDEAL_II_WITH_P4EST=ON"
     "-DDEAL_II_WITH_ARBORX=ON"
     "-DDEAL_II_WITH_SUNDIALS=ON"
-    "-DSUNDIALS_DIR=$(nix eval --raw nixpkgs#sundials.outPath)"
+    "-DSUNDIALS_DIR=${sundials}"
     "-DDEAL_II_WITH_TRILINOS=ON"
     "-DDEAL_II_TRILINOS_WITH_SEACAS=OFF"
     "-DDEAL_II_COMPONENT_EXAMPLES=OFF"
