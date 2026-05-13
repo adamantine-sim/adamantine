@@ -55,7 +55,7 @@ pipeline {
         stage('CUDA') {
           agent {
             docker {
-              image "rrombur/adamantine-stack:26.05.0"
+              image "rombur/adamantine-stack:26.05.0"
                 alwaysPull true
                 label 'nvidia-docker && ampere'
             }
