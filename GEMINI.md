@@ -5,6 +5,8 @@ This document provides foundational mandates for development within the Adamanti
 ## Project Overview
 Adamantine is a thermomechanical code for additive manufacturing, leveraging deal.II, ArborX, Trilinos, and Kokkos. It is a high-performance C++ project with support for GPU acceleration (via Kokkos) and distributed memory parallelism (via deal.II/MPI).
 
+Online documentation can be found on the [project website](https://adamantine-sim.github.io/adamantine).
+
 ## Tech Stack
 - **Language**: C++17 or later.
 - **Build System**: CMake (minimum version 3.15).
