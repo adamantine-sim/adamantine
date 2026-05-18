@@ -6,7 +6,7 @@ nav_order: 6
 
 # Changelog
 
-## [Version 1.1](https://github.com/adamantine-sim/adamantine/tree/release/1.1) (2025-01-23)
+## [Version 1.1](https://github.com/adamantine-sim/adamantine/tree/release/1.1) (2026-01-23)
 
 ### General Enhancements
  - Add capability to read updates to the scan path during a simulation: https://github.com/adamantine-sim/adamantine/pull/291 and https://github.com/adamantine-sim/adamantine/pull/294 
