@@ -501,41 +501,57 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   rhs_device.import_elements(rw_vector, dealii::VectorOperation::insert);
 
   double const tol = 1e-12 * _mechanical_operator->rhs().l2_norm();
-  typename dealii::SUNDIALS::KINSOL<TrilinosVectorType>::AdditionalData
-      additional_data;
-  additional_data.function_tolerance = tol;
-  dealii::SUNDIALS::KINSOL<TrilinosVectorType> nonlinear_solver(
-      additional_data);
-
-  nonlinear_solver.reinit_vector = [&](TrilinosVectorType &x)
-  { x.reinit(locally_owned_dofs, mpi_communicator); };
-
-  nonlinear_solver.residual = [&](const TrilinosVectorType &evaluation_point,
-                                  TrilinosVectorType &residual)
+  bool enable_nonlinear = true;
+  if (enable_nonlinear)
   {
-    _mechanical_operator->system_matrix().vmult(residual, evaluation_point);
-    residual -= rhs_device;
-  };
+    typename dealii::SUNDIALS::KINSOL<TrilinosVectorType>::AdditionalData
+        additional_data(dealii::SUNDIALS::KINSOL<
+                        TrilinosVectorType>::AdditionalData::picard);
+    additional_data.function_tolerance = tol;
+    dealii::SUNDIALS::KINSOL<TrilinosVectorType> nonlinear_solver(
+        additional_data);
 
-  nonlinear_solver.setup_jacobian =
-      [&](const TrilinosVectorType & /*current_u*/,
-          const TrilinosVectorType & /*current_f*/) {};
+    nonlinear_solver.reinit_vector = [&](TrilinosVectorType &x)
+    { x.reinit(locally_owned_dofs, mpi_communicator); };
 
-  nonlinear_solver.solve_with_jacobian = [&](const TrilinosVectorType &rhs,
-                                             TrilinosVectorType &dst,
-                                             const double tolerance)
+    nonlinear_solver.residual = [&](const TrilinosVectorType &evaluation_point,
+                                    TrilinosVectorType &residual)
+    {
+      _mechanical_operator->system_matrix().vmult(residual, evaluation_point);
+      residual -= rhs_device;
+    };
+
+    nonlinear_solver.setup_jacobian =
+        [&](const TrilinosVectorType & /*current_u*/,
+            const TrilinosVectorType & /*current_f*/) {};
+
+    nonlinear_solver.solve_with_jacobian = [&](const TrilinosVectorType &rhs,
+                                               TrilinosVectorType &dst,
+                                               const double tolerance)
+    {
+      // Solve the mechanical problem assuming that the deformation is elastic
+      // TODO check that we are computing only difference of the displacement
+      // compared to the previous time step!!
+      unsigned int const max_iter = _dof_handler.n_dofs() / 10;
+      dealii::SolverControl solver_control(max_iter, tolerance);
+      dealii::SolverCG<TrilinosVectorType> cg(solver_control);
+      cg.solve(_mechanical_operator->system_matrix(), dst, rhs,
+               _mechanical_operator->preconditioner());
+    };
+
+    nonlinear_solver.solve(displacement);
+  }
+  else
   {
     // Solve the mechanical problem assuming that the deformation is elastic
     // TODO check that we are computing only difference of the displacement
     // compared to the previous time step!!
     unsigned int const max_iter = _dof_handler.n_dofs() / 10;
-    dealii::SolverControl solver_control(max_iter, tolerance);
+    dealii::SolverControl solver_control(max_iter, tol);
     dealii::SolverCG<TrilinosVectorType> cg(solver_control);
-    cg.solve(_mechanical_operator->system_matrix(), dst, rhs,
+    cg.solve(_mechanical_operator->system_matrix(), displacement, rhs_device,
              _mechanical_operator->preconditioner());
-  };
-
-  nonlinear_solver.solve(displacement);
+  }
 
   rw_vector.import_elements(displacement, dealii::VectorOperation::insert);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
