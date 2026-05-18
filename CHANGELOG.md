@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.1](https://github.com/adamantine-sim/adamantine/tree/release/1.1) (2025-01-23)
+## [1.1](https://github.com/adamantine-sim/adamantine/tree/release/1.1) (2026-01-23)
 
 
 ### General Enhancements
