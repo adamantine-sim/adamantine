@@ -97,9 +97,10 @@ public:
                           dealii::Point<3> const &point) const;
 
   /**
-   * Return the quaternion associated with the current segment.
+   * Return the quaternion at the given @p time. The quaternion is interpolated
+   * linearly (Slerp) between the start and the end of the segment.
    */
-  Quaternion get_current_quaternion() const;
+  Quaternion get_quaternion(double const time) const;
 
   /**
    * Return the scan path's list of segments
@@ -138,7 +139,8 @@ private:
   void update_current_segment_info(double time, bool save_segment,
                                    unsigned int &current_segment,
                                    dealii::Point<3> &segment_start_point,
-                                   double &segment_start_time) const;
+                                   double &segment_start_time,
+                                   Quaternion &segment_start_rotation) const;
 
   /**
    * Flag is true if we have reached the end of _scan_path_file.

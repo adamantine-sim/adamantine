@@ -196,7 +196,8 @@ void ScanPath::load_event_series_scan_path()
 
 void ScanPath::update_current_segment_info(
     double time, bool save_segment, unsigned int &current_segment,
-    dealii::Point<3> &segment_start_point, double &segment_start_time) const
+    dealii::Point<3> &segment_start_point, double &segment_start_time,
+    Quaternion &segment_start_rotation) const
 {
   // Get to the correct segment
   current_segment = _old_segment;
@@ -204,16 +205,18 @@ void ScanPath::update_current_segment_info(
   {
     ++current_segment;
   }
-  // Update the start position and time for the current segment
+  // Update the start position, time, and rotation for the current segment
   if (current_segment > 0)
   {
     segment_start_time = _segment_list[current_segment - 1].end_time;
     segment_start_point = _segment_list[current_segment - 1].end_point;
+    segment_start_rotation = _segment_list[current_segment - 1].end_rotation;
   }
   else
   {
     segment_start_time = 0.0;
     segment_start_point = _segment_list[current_segment].end_point;
+    segment_start_rotation = _segment_list[current_segment].end_rotation;
   }
 
   if (save_segment)
@@ -237,9 +240,11 @@ dealii::Point<3> ScanPath::value(double const time, bool save_segment) const
   // Get to the correct segment
   dealii::Point<3> segment_start_point;
   double segment_start_time = 0.0;
+  Quaternion segment_start_rotation;
   unsigned int current_segment = 0;
   update_current_segment_info(time, save_segment, current_segment,
-                              segment_start_point, segment_start_time);
+                              segment_start_point, segment_start_time,
+                              segment_start_rotation);
 
   // Calculate the position in the direction given by "component"
   dealii::Point<3> position =
@@ -261,9 +266,10 @@ double ScanPath::get_power_modifier(double const time) const
   // Get to the correct segment
   dealii::Point<3> segment_start_point;
   double segment_start_time = 0.0;
+  Quaternion segment_start_rotation;
   unsigned int current_segment = 0;
   update_current_segment_info(time, true, current_segment, segment_start_point,
-                              segment_start_time);
+                              segment_start_time, segment_start_rotation);
 
   return _segment_list[current_segment].power_modifier;
 }
@@ -278,19 +284,52 @@ dealii::Point<3> ScanPath::rotate(double const time,
     return point;
   }
 
+  return get_quaternion(time).rotate(point);
+}
+
+Quaternion ScanPath::get_quaternion(double const time) const
+{
+  if (!_five_axis)
+  {
+    return Quaternion(1.0, 0.0, 0.0, 0.0);
+  }
+
+  // If the current time is after the scan path data is over, return the
+  // end rotation.
+  if (time > _segment_list.back().end_time)
+  {
+    return _segment_list.back().end_rotation;
+  }
+
   // Get to the correct segment
   dealii::Point<3> segment_start_point;
   double segment_start_time = 0.0;
+  Quaternion segment_start_rotation;
   unsigned int current_segment = 0;
   update_current_segment_info(time, false, current_segment, segment_start_point,
-                              segment_start_time);
+                              segment_start_time, segment_start_rotation);
 
-  return _segment_list[current_segment].end_rotation.rotate(point);
-}
+  // If the start and end rotation are the same, return the start rotation
+  if (segment_start_rotation == _segment_list[current_segment].end_rotation)
+  {
+    return segment_start_rotation;
+  }
 
-Quaternion ScanPath::get_current_quaternion() const
-{
-  return _segment_list[_old_segment].end_rotation;
+  // Compute the interpolated rotation
+  double const duration =
+      _segment_list[current_segment].end_time - segment_start_time;
+  if (duration < 1e-12)
+  {
+    return _segment_list[current_segment].end_rotation;
+  }
+
+  Quaternion interpolated_rotation =
+      _segment_list[current_segment].end_rotation;
+  interpolated_rotation /= segment_start_rotation;
+  interpolated_rotation.pow((time - segment_start_time) / duration);
+  interpolated_rotation *= segment_start_rotation;
+
+  return interpolated_rotation;
 }
 
 std::vector<ScanPathSegment> ScanPath::get_segment_list() const
