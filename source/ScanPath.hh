@@ -90,13 +90,6 @@ public:
   double get_power_modifier(double const time) const;
 
   /**
-   * Return the rotation of the given @p point according to quaternion active at
-   * the given time.
-   */
-  dealii::Point<3> rotate(double const time,
-                          dealii::Point<3> const &point) const;
-
-  /**
    * Return the quaternion at the given @p time. The quaternion is interpolated
    * linearly (Slerp) between the start and the end of the segment.
    */

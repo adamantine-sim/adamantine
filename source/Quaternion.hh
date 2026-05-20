@@ -94,19 +94,29 @@ public:
   void pow(double const exp);
 
   /**
+   * Update the cached rotation matrices derived from the current quaternion.
+   *
+   * This function must be called after any arithmetic operations modify the
+   * quaternion to ensure that subsequent calls to rotate() or inv_rotate() use
+   * updated data.
+   */
+  void build_rotation_matrices();
+
+  /**
    * Compute the dot product of two quaternions.
    */
   friend double dot_product(Quaternion const &p, Quaternion const &q);
 
 private:
   /**
-   * Build the different rotation matrices.
+   * Multiply the quaternion with an unpacked quaternion.
    */
-  void build_rotation_matrices();
+  void mult(double const other_r, double const other_i, double const other_j,
+            double const other_k);
 
   /**
-   * Flag is false if the default constructor was called and reinit() has not
-   * been called yet.
+   * Flag is false if the default constructor was called and reinit() has
+   * not been called yet.
    */
   bool _is_valid = false;
   /**
