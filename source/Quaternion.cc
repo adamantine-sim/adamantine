@@ -52,32 +52,19 @@ bool Quaternion::is_valid() const { return _is_valid; }
 
 bool Quaternion::operator==(Quaternion const &other) const
 {
-  ASSERT(_is_valid, "");
-  ASSERT(other.is_valid(), "");
+  ASSERT(_is_valid, "Quaternion is not initialized");
+  ASSERT(other.is_valid(), "Quaternion is not initialized");
 
   return _quaternion == other._quaternion;
 }
 
 Quaternion &Quaternion::operator*=(Quaternion const &other)
 {
-  ASSERT(_is_valid, "");
-  ASSERT(other.is_valid(), "");
+  ASSERT(_is_valid, "Quaternion is not initialized");
+  ASSERT(other.is_valid(), "Quaternion is not initialized");
 
-  double r = _quaternion[0];
-  double i = _quaternion[1];
-  double j = _quaternion[2];
-  double k = _quaternion[3];
-  double other_r = other._quaternion[0];
-  double other_i = other._quaternion[1];
-  double other_j = other._quaternion[2];
-  double other_k = other._quaternion[3];
-
-  _quaternion[0] = r * other_r - i * other_i - j * other_j - k * other_k;
-  _quaternion[1] = r * other_i + i * other_r + j * other_k - k * other_j;
-  _quaternion[2] = r * other_j - i * other_k + j * other_r + k * other_i;
-  _quaternion[3] = r * other_k + i * other_j - j * other_i + k * other_r;
-
-  build_rotation_matrices();
+  mult(other._quaternion[0], other._quaternion[1], other._quaternion[2],
+       other._quaternion[3]);
 
   return *this;
 }
@@ -89,26 +76,24 @@ Quaternion &Quaternion::operator*=(double const &scalar)
     _quaternion[i] *= scalar;
   }
 
-  build_rotation_matrices();
-
   return *this;
 }
 
 Quaternion &Quaternion::operator/=(Quaternion const &other)
 {
-  ASSERT(_is_valid, "");
-  ASSERT(other.is_valid(), "");
+  ASSERT(_is_valid, "Quaternion is not initialized");
+  ASSERT(other.is_valid(), "Quaternion is not initialized");
 
-  // Invert the other quaternion
-  Quaternion inv_other(other._quaternion[0], -other._quaternion[1],
-                       -other._quaternion[2], -other._quaternion[3]);
+  // Multiply by the inverse of the other quaternion
+  mult(other._quaternion[0], -other._quaternion[1], -other._quaternion[2],
+       -other._quaternion[3]);
 
-  return (*this) *= inv_other;
+  return *this;
 }
 
 void Quaternion::pow(double const exp)
 {
-  ASSERT(_is_valid, "");
+  ASSERT(_is_valid, "Quaternion is not initialized");
 
   double const partial_norm = std::sqrt(_quaternion[1] * _quaternion[1] +
                                         _quaternion[2] * _quaternion[2] +
@@ -122,8 +107,6 @@ void Quaternion::pow(double const exp)
   _quaternion[1] = unit_vector[0] * std::sin(exp * theta);
   _quaternion[2] = unit_vector[1] * std::sin(exp * theta);
   _quaternion[3] = unit_vector[2] * std::sin(exp * theta);
-
-  build_rotation_matrices();
 }
 
 void Quaternion::build_rotation_matrices()
@@ -174,6 +157,20 @@ void Quaternion::build_rotation_matrices()
       _vec_inv_rotation_matrix[i][j] = _inv_rotation_matrix[i][j];
     }
   }
+}
+
+void Quaternion::mult(double const other_r, double const other_i,
+                      double const other_j, double const other_k)
+{
+  double r = _quaternion[0];
+  double i = _quaternion[1];
+  double j = _quaternion[2];
+  double k = _quaternion[3];
+
+  _quaternion[0] = r * other_r - i * other_i - j * other_j - k * other_k;
+  _quaternion[1] = r * other_i + i * other_r + j * other_k - k * other_j;
+  _quaternion[2] = r * other_j - i * other_k + j * other_r + k * other_i;
+  _quaternion[3] = r * other_k + i * other_j - j * other_i + k * other_r;
 }
 
 double dot_product(Quaternion const &p, Quaternion const &q)
