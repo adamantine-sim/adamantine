@@ -325,6 +325,15 @@ Quaternion ScanPath::get_quaternion(double const time) const
 
   Quaternion interpolated_rotation =
       _segment_list[current_segment].end_rotation;
+
+  // If the dot product of the initial quaternion and the final rotation is
+  // negative, slerp will take the long way instead of the short path. In that
+  // case, we need to negate one of the quaternion.
+  if (dot_product(segment_start_rotation, interpolated_rotation) < 0.)
+  {
+    interpolated_rotation *= -1.;
+  }
+
   interpolated_rotation /= segment_start_rotation;
   interpolated_rotation.pow((time - segment_start_time) / duration);
   interpolated_rotation *= segment_start_rotation;
