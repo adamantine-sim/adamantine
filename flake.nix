@@ -27,6 +27,7 @@
         adiak   = callPackage ./nix/dependencies/adiak   {};
         caliper = callPackage ./nix/dependencies/caliper {};
         arborx  = callPackage ./nix/dependencies/arborx  {};
+        sundials-mpi = callPackage ./nix/dependencies/sundials-mpi {};
 
         dealii = let
           versions = rec {
