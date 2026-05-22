@@ -8,7 +8,7 @@ usemathjax: true
 
 # Scan path
 *adamantine* supports two kinds of scan path input: the `segment` format and the
-`event` format.
+`event_series` format.
 
 ## Segment format
 After the self-explainatory tree-line header, the column descriptions are:
