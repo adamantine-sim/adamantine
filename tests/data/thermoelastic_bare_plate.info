@@ -123,7 +123,7 @@ time_stepping
   method forward_euler ; Possibilities: forward_euler, rk_third_order,
                         ; rk_fourth_order
   duration 4.0e0 ; [s]
-  time_step 4.0e-3 ; [s]
+  time_step 1.0e-3 ; [s]
 }
 
 post_processor
