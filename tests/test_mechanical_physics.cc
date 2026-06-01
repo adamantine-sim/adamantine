@@ -238,7 +238,8 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   adamantine::MechanicalPhysics<3, 1, 4, adamantine::SolidLiquidPowder,
                                 dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, boundary,
-                         material_properties, empty_vector);
+                         material_properties, empty_vector,
+                         /* use_linear_model*/ false);
   std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
   auto gravity_force = std::make_shared<adamantine::GravityForce<
       3, 1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
@@ -316,7 +317,8 @@ BOOST_AUTO_TEST_CASE(fe_nothing)
   adamantine::MechanicalPhysics<3, 1, 2, adamantine::SolidLiquidPowder,
                                 dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, boundary,
-                         material_properties, empty_vector);
+                         material_properties, empty_vector,
+                         /* use_linear_model*/ false);
   std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
   auto gravity_force = std::make_shared<adamantine::GravityForce<
       3, 1, 2, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
@@ -488,7 +490,8 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
   adamantine::MechanicalPhysics<3, -1, 3, adamantine::SolidLiquidPowder,
                                 dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, boundary,
-                         material_properties, initial_temperature);
+                         material_properties, initial_temperature,
+                         /* use_linear_model*/ false);
 
   boost::property_tree::ptree post_processor_database;
   post_processor_database.put("filename_prefix", "mech_phys_test");
@@ -604,7 +607,8 @@ BOOST_AUTO_TEST_CASE(elastoplastic)
   adamantine::MechanicalPhysics<3, 1, 4, adamantine::SolidLiquidPowder,
                                 dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, boundary,
-                         material_properties, empty_vector);
+                         material_properties, empty_vector,
+                         /* use_linear_model*/ false);
   std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
   auto gravity_force = std::make_shared<adamantine::GravityForce<
       3, 1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
