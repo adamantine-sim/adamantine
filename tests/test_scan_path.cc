@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2021, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -101,6 +101,55 @@ BOOST_AUTO_TEST_CASE(scan_path_location, *utf::tolerance(1e-10))
   BOOST_TEST(p3[2] == std::numeric_limits<double>::lowest());
   double power = scan_path.get_power_modifier(time);
   BOOST_TEST(power == 0.0);
+}
+
+BOOST_AUTO_TEST_CASE(five_axis, *utf::tolerance(1e-9))
+{
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  ScanPath scan_path("scan_path_arcs.txt", "event_series",
+                     units_optional_database);
+
+  double time = 0.5;
+  auto p = scan_path.value(time);
+  auto rotated_p = scan_path.rotate(time, p);
+  BOOST_TEST(rotated_p[0] == 0.2222222222);
+  BOOST_TEST(rotated_p[1] == 0.0);
+  BOOST_TEST(rotated_p[2] == 0.0);
+
+  time = 1.0;
+  p = scan_path.value(time);
+  rotated_p = scan_path.rotate(time, p);
+  BOOST_TEST(rotated_p[0] == 0.5);
+  BOOST_TEST(rotated_p[1] == 0.0);
+  BOOST_TEST(rotated_p[2] == 0.0);
+
+  time = 1.5;
+  p = scan_path.value(time);
+  rotated_p = scan_path.rotate(time, p);
+  BOOST_TEST(rotated_p[0] == 0.35355339059327373);
+  BOOST_TEST(rotated_p[1] == 0.0);
+  BOOST_TEST(rotated_p[2] == -0.35355339059327373);
+
+  time = 2.0;
+  p = scan_path.value(time);
+  rotated_p = scan_path.rotate(time, p);
+  BOOST_TEST(rotated_p[0] == 0.0);
+  BOOST_TEST(rotated_p[1] == 0.0);
+  BOOST_TEST(rotated_p[2] == -0.5);
+
+  time = 2.5;
+  p = scan_path.value(time);
+  rotated_p = scan_path.rotate(time, p);
+  BOOST_TEST(rotated_p[0] == 0.5);
+  BOOST_TEST(rotated_p[1] == 0.25);
+  BOOST_TEST(rotated_p[2] == -0.5);
+
+  time = 3.0;
+  p = scan_path.value(time);
+  rotated_p = scan_path.rotate(time, p);
+  BOOST_TEST(rotated_p[0] == 1.0);
+  BOOST_TEST(rotated_p[1] == 0.0);
+  BOOST_TEST(rotated_p[2] == 0.0);
 }
 
 } // namespace adamantine

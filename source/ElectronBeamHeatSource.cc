@@ -28,7 +28,7 @@ void ElectronBeamHeatSource<dim>::update_time(double time)
       this->_scan_path.get_power_modifier(time);
   this->_source_on = (segment_power_modifier > 0.0);
   dealii::Point<3> const &path = this->_scan_path.value(time);
-  _quaternion = this->_scan_path.get_current_quaternion();
+  _quaternion = this->_scan_path.get_quaternion(time);
   // Copy the scalar value of path to the vectorized data type
   for (unsigned int d = 0; d < 3; ++d)
   {

@@ -8,6 +8,7 @@
 #include <deal.II/base/signaling_nan.h>
 
 #include <cmath>
+#include <numeric>
 
 namespace adamantine
 {
@@ -75,6 +76,18 @@ Quaternion &Quaternion::operator*=(Quaternion const &other)
   _quaternion[1] = r * other_i + i * other_r + j * other_k - k * other_j;
   _quaternion[2] = r * other_j - i * other_k + j * other_r + k * other_i;
   _quaternion[3] = r * other_k + i * other_j - j * other_i + k * other_r;
+
+  build_rotation_matrices();
+
+  return *this;
+}
+
+Quaternion &Quaternion::operator*=(double const &scalar)
+{
+  for (int i = 0; i < 4; ++i)
+  {
+    _quaternion[i] *= scalar;
+  }
 
   build_rotation_matrices();
 
@@ -161,5 +174,11 @@ void Quaternion::build_rotation_matrices()
       _vec_inv_rotation_matrix[i][j] = _inv_rotation_matrix[i][j];
     }
   }
+}
+
+double dot_product(Quaternion const &p, Quaternion const &q)
+{
+  return std::inner_product(p._quaternion.begin(), p._quaternion.end(),
+                            q._quaternion.begin(), 0.);
 }
 } // namespace adamantine

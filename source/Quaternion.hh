@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2025 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -78,6 +78,11 @@ public:
   Quaternion &operator*=(Quaternion const &other);
 
   /**
+   * Multiply the quaternion with a scalar.
+   */
+  Quaternion &operator*=(double const &scalar);
+
+  /**
    * Multiply the quaternions using the inverse of @p other.
    */
   Quaternion &operator/=(Quaternion const &other);
@@ -87,6 +92,11 @@ public:
    * one, this corresponds to a partial rotation.
    */
   void pow(double const exp);
+
+  /**
+   * Compute the dot product of two quaternions.
+   */
+  friend double dot_product(Quaternion const &p, Quaternion const &q);
 
 private:
   /**
