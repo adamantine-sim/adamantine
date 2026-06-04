@@ -13,6 +13,7 @@
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/solver_cg.h>
+#include <deal.II/lac/solver_gmres.h>
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/sundials/kinsol.h>
 
@@ -473,6 +474,43 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   }
 }
 
+template <class ResidualFunctor, class VectorType>
+class JacobiFreeApproximation
+{
+public:
+  JacobiFreeApproximation(const ResidualFunctor &residual_functor)
+      : _residual_functor(residual_functor)
+  {
+  }
+
+  void update(const VectorType &evaluation_point)
+  {
+    _tmp = evaluation_point;
+    _evaluation_point = evaluation_point;
+    double norm = evaluation_point.l2_norm();
+    _epsilon = std::sqrt((1 + norm) * std::numeric_limits<double>::epsilon());
+  }
+
+  void vmult(VectorType &dst, const VectorType &src) const
+  {
+    // dst = (_residual(_evaluation_point + _epsilon * src) -
+    // _residual(evaluation_point))/_epsilon;
+    _tmp = src;
+    _tmp *= _epsilon;
+    _tmp += _evaluation_point;
+    _residual_functor(_tmp, dst);
+    _residual_functor(_evaluation_point, _tmp);
+    dst -= _tmp;
+    dst /= _epsilon;
+  }
+
+private:
+  const ResidualFunctor &_residual_functor;
+  VectorType _evaluation_point;
+  mutable VectorType _tmp;
+  double _epsilon;
+};
+
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -526,16 +564,31 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
     nonlinear_solver.reinit_vector = [&](TrilinosVectorType &x)
     { x.reinit(locally_owned_dofs, mpi_communicator); };
 
-    nonlinear_solver.residual = [&](const TrilinosVectorType &evaluation_point,
-                                    TrilinosVectorType &residual)
+    auto residual = [&](const TrilinosVectorType &evaluation_point,
+                        TrilinosVectorType &residual)
     {
       _mechanical_operator->system_matrix().vmult(residual, evaluation_point);
       residual -= rhs_device;
     };
 
+    nonlinear_solver.residual = residual;
+
+    JacobiFreeApproximation<decltype(residual), TrilinosVectorType>
+        jacobi_free_approximation(residual);
+
     nonlinear_solver.setup_jacobian =
-        [&](const TrilinosVectorType & /*current_u*/,
-            const TrilinosVectorType & /*current_f*/) {};
+        [&](const TrilinosVectorType &current_u,
+            const TrilinosVectorType & /*current_f*/)
+    { jacobi_free_approximation.update(current_u); };
+
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+    dealii::LinearAlgebra::TpetraWrappers::PreconditionIdentity<
+        double, dealii::MemorySpace::Default>
+        preconditioner;
+#else
+    dealii::TrilinosWrappers::PreconditionIdentity preconditioner;
+#endif
+    preconditioner.initialize(_mechanical_operator->system_matrix());
 
     nonlinear_solver.solve_with_jacobian = [&](const TrilinosVectorType &rhs,
                                                TrilinosVectorType &dst,
@@ -546,9 +599,8 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       // compared to the previous time step!!
       unsigned int const max_iter = _dof_handler.n_dofs() / 10;
       dealii::SolverControl solver_control(max_iter, tolerance);
-      dealii::SolverCG<TrilinosVectorType> cg(solver_control);
-      cg.solve(_mechanical_operator->system_matrix(), dst, rhs,
-               _mechanical_operator->preconditioner());
+      dealii::SolverGMRES<TrilinosVectorType> cg(solver_control);
+      cg.solve(jacobi_free_approximation, dst, rhs, preconditioner);
     };
 
     nonlinear_solver.solve(displacement);

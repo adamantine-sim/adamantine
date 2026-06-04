@@ -490,8 +490,7 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
   adamantine::MechanicalPhysics<3, -1, 3, adamantine::SolidLiquidPowder,
                                 dealii::MemorySpace::Host>
       mechanical_physics(communicator, fe_degree, geometry, boundary,
-                         material_properties, initial_temperature,
-                         /* use_linear_model*/ false);
+                         material_properties, initial_temperature);
 
   boost::property_tree::ptree post_processor_database;
   post_processor_database.put("filename_prefix", "mech_phys_test");
