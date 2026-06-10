@@ -27,6 +27,7 @@
 #include <deal.II/arborx/bvh.h>
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/mpi.h>
+#include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/base/types.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
