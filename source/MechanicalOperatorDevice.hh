@@ -14,7 +14,8 @@
 
 namespace adamantine
 {
-template <int dim, int fe_degree, int n_materials, int p_order, typename MaterialStates>
+template <int dim, int fe_degree, int n_materials, int p_order,
+          typename MaterialStates>
 class MechanicalOperatorDevice
 {
 public:
@@ -63,7 +64,8 @@ private:
   unsigned int _n_owned_cells = 0;
 };
 
-template <int dim, int fe_degree, int n_materials, int p_order, typename MaterialStates>
+template <int dim, int fe_degree, int n_materials, int p_order,
+          typename MaterialStates>
 inline dealii::Portable::MatrixFree<dim, double> const &
 MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order,
                          MaterialStates>::get_matrix_free() const
