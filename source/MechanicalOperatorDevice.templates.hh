@@ -14,6 +14,8 @@
 #include <deal.II/matrix_free/portable_fe_evaluation.h>
 #include <deal.II/matrix_free/portable_matrix_free.h>
 
+#include <cstdlib>
+
 namespace adamantine
 {
 // Small wrapper functor type expected by MatrixFree::cell_loop
@@ -38,34 +40,51 @@ public:
   {
     dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, dim, double>
         fe_eval(gpu_data);
+
+    // Read DOF values from src and evaluate gradients before per-qp loop
     fe_eval.read_dof_values(src);
-    fe_eval.evaluate(dealii::EvaluationFlags::gradients);
+    fe_eval.evaluate(dealii::EvaluationFlags::values |
+                     dealii::EvaluationFlags::gradients);
 
-    const int cell = fe_eval.get_current_cell_index();
+    // Quad-point functor style: let the MF/portable API handle per-cell reinit
+    auto quad =
+        [&](dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, dim,
+                                           double> *fe,
+            int const q_point)
+    {
+      const int cell = fe->get_current_cell_index();
+      auto const grad_u = fe->get_gradient(q_point);
+      auto const eps = (grad_u + dealii::transpose(grad_u)) * 0.5;
+      double const trace_eps = dealii::trace(eps);
 
-    gpu_data->for_each_quad_point(
-        [&](const int &q_point)
+#if !DEAL_II_VERSION_GTE(9, 8, 0)
+      unsigned int const pos =
+          gpu_data->local_q_point_id(cell, n_q_points, q_point);
+#else
+      unsigned int const pos = gpu_data->local_q_point_id(cell, q_point);
+#endif
+
+      double const lambda = _lambda(pos);
+      double const mu = _mu(pos);
+
+      dealii::Tensor<2, dim, double> stress;
+      for (unsigned int i = 0; i < dim; ++i)
+        for (unsigned int j = 0; j < dim; ++j)
         {
-          auto const grad_u = fe_eval.get_gradient(q_point);
-          auto const eps = (grad_u + dealii::transpose(grad_u)) * 0.5;
-          double const trace_eps = dealii::trace(eps);
+          stress[i][j] = 2.0 * mu * eps[i][j];
+          if (i == j)
+            stress[i][j] += lambda * trace_eps;
+        }
 
-          unsigned int const pos = gpu_data->local_q_point_id(cell, q_point);
+      fe->submit_gradient(stress, q_point);
+    };
 
-          double const lambda = _lambda(pos);
-          double const mu = _mu(pos);
-
-          dealii::Tensor<2, dim, double> stress;
-          for (unsigned int i = 0; i < dim; ++i)
-            for (unsigned int j = 0; j < dim; ++j)
-            {
-              stress[i][j] = 2.0 * mu * eps[i][j];
-              if (i == j)
-                stress[i][j] += lambda * trace_eps;
-            }
-
-          fe_eval.submit_gradient(stress, q_point);
-        });
+#if DEAL_II_VERSION_GTE(9, 8, 0)
+    gpu_data->for_each_quad_point([&](const int &q_point)
+                                  { quad(&fe_eval, q_point); });
+#else
+    fe_eval.apply_for_each_quad_point(quad);
+#endif
 
     fe_eval.integrate(dealii::EvaluationFlags::gradients);
     fe_eval.distribute_local_to_global(dst);
@@ -76,7 +95,8 @@ private:
   Kokkos::View<double *, kokkos_default> _mu;
 };
 
-template <int dim, int fe_degree, int n_materials, int p_order, typename MaterialStates>
+template <int dim, int fe_degree, int n_materials, int p_order,
+          typename MaterialStates>
 MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStates>::
     MechanicalOperatorDevice(
         MPI_Comm const &communicator,
@@ -84,13 +104,18 @@ MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStates>::
                          dealii::MemorySpace::Host> &material_properties)
     : _communicator(communicator), _material_properties(material_properties)
 {
-  _matrix_free_data.mapping_update_flags = dealii::update_gradients;
+  // Need quadrature point indexing, gradients and JxW values
+  _matrix_free_data.mapping_update_flags =
+      dealii::update_values | dealii::update_gradients |
+      dealii::update_JxW_values | dealii::update_quadrature_points;
   //_matrix_free_data.tasks_parallel_scheme =
   //    dealii::MatrixFree<dim, double>::AdditionalData::partition_color;
 }
 
-template <int dim, int fe_degree, int n_materials, int p_order, typename MaterialStates>
-void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStates>::
+template <int dim, int fe_degree, int n_materials, int p_order,
+          typename MaterialStates>
+void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order,
+                              MaterialStates>::
     reinit(dealii::DoFHandler<dim> const &dof_handler,
            dealii::AffineConstraints<double> const &affine_constraints)
 {
@@ -128,6 +153,7 @@ void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStat
             gpu_data_host.local_q_point_id(cell_id, n_q_points_per_cell, i);
         quad_pos[i] = pos;
       }
+      // Use the DoFHandler cell iterator as the stable key (matches Thermal)
       _cell_it_to_mf_pos[cell] = quad_pos;
     }
   }
@@ -142,16 +168,17 @@ void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStat
            dealii::IteratorFilters::LocallyOwnedCell(),
            dealii::IteratorFilters::ActiveFEIndexEqualTo(0)))
   {
-    // Cast to triangulation cell to obtain material id
-    typename dealii::Triangulation<dim>::active_cell_iterator cell_tria(cell);
-    double const lambda_val = _material_properties.get_cell_value(
-        cell_tria, StateProperty::lame_first_parameter);
-    double const mu_val = _material_properties.get_cell_value(
-        cell_tria, StateProperty::lame_second_parameter);
+    // Use the DoFHandler cell iterator directly to query mechanical properties
+    double const lambda_val = _material_properties.get_mechanical_property(
+        typename dealii::Triangulation<dim>::active_cell_iterator(cell),
+        StateProperty::lame_first_parameter);
+    double const mu_val = _material_properties.get_mechanical_property(
+        typename dealii::Triangulation<dim>::active_cell_iterator(cell),
+        StateProperty::lame_second_parameter);
 
     for (unsigned int i = 0; i < n_q_points_per_cell; ++i)
     {
-      unsigned int const pos = _cell_it_to_mf_pos[cell][i];
+      unsigned int const pos = _cell_it_to_mf_pos.at(cell)[i];
       lambda_host[pos] = lambda_val;
       mu_host[pos] = mu_val;
     }
@@ -176,8 +203,10 @@ void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStat
   Kokkos::deep_copy(_mu, mu_host_view);
 }
 
-template <int dim, int fe_degree, int n_materials, int p_order, typename MaterialStates>
-void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStates>::
+template <int dim, int fe_degree, int n_materials, int p_order,
+          typename MaterialStates>
+void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order,
+                              MaterialStates>::
     vmult(dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
               &dst,
           dealii::LA::distributed::Vector<
@@ -187,8 +216,10 @@ void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStat
   vmult_add(dst, src);
 }
 
-template <int dim, int fe_degree, int n_materials, int p_order, typename MaterialStates>
-void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStates>::
+template <int dim, int fe_degree, int n_materials, int p_order,
+          typename MaterialStates>
+void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order,
+                              MaterialStates>::
     vmult_add(
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
             &dst,
@@ -196,12 +227,16 @@ void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStat
             double, dealii::MemorySpace::Default> const &src) const
 {
   LocalMechanicalOperatorDevice<dim, fe_degree> local_operator(_lambda, _mu);
+  // Use cell_loop; MatrixFree will dispatch appropriately when vectors are
+  // initialized with the MatrixFree partitioner via initialize_dof_vector.
   _matrix_free.cell_loop(local_operator, src, dst);
   _matrix_free.copy_constrained_values(src, dst);
 }
 
-template <int dim, int fe_degree, int n_materials, int p_order, typename MaterialStates>
-void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order, MaterialStates>::
+template <int dim, int fe_degree, int n_materials, int p_order,
+          typename MaterialStates>
+void MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order,
+                              MaterialStates>::
     initialize_dof_vector(
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
             &vector) const
