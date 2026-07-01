@@ -1,4 +1,4 @@
-![image](doc/logo/adamantine_wordmark_with_bg.png)
+![image](doc/logo/Adamantine-wordmark.png)
 
 `adamantine` is a thermomechanical code for additive manufacturing. It is based
 on [deal.II](https://www.dealii.org),
