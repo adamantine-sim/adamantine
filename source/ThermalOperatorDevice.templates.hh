@@ -10,6 +10,7 @@
 #include <types.hh>
 
 #include <deal.II/base/config.h>
+#include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/types.h>
 #include <deal.II/fe/fe_update_flags.h>
 #include <deal.II/matrix_free/portable_fe_evaluation.h>

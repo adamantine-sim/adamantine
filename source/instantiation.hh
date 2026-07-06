@@ -4,6 +4,8 @@
 
 #include <boost/preprocessor/seq/for_each_product.hpp>
 
+#include <deal.II/base/quadrature_lib.h>
+
 // clang-format off
 #define ADAMANTINE_DIM (2)(3)
 #define ADAMANTINE_USE_TABLE (true)(false)
