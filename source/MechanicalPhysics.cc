@@ -618,9 +618,9 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
           _plastic_internal_variable[cell_id][q] +=
               iso_hardening_coef * plastic_modulus * plastic_strain_increment;
           // Update back stress
-          _back_stress[cell_id][q] += (1. - iso_hardening_coef) *
-                                      plastic_modulus * plastic_modulus *
-                                      plastic_flow_direction;
+          _back_stress[cell_id][q] +=
+              (1. - iso_hardening_coef) * plastic_modulus *
+              plastic_strain_increment * plastic_flow_direction;
         }
       }
     }
