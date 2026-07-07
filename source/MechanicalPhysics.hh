@@ -30,7 +30,8 @@ public:
                     Geometry<dim> &geometry, Boundary const &boundary,
                     MaterialProperty<dim, n_materials, p_order, MaterialStates,
                                      MemorySpaceType> &material_properties,
-                    std::vector<double> const &initial_temperatures);
+                    std::vector<double> const &initial_temperatures,
+                    bool use_linear_model = true);
 
   /**
    * Setup the DoFHandler, the AffineConstraints, and the
@@ -196,6 +197,11 @@ private:
    * Temporary storaged used by _cell_data_transfer
    */
   std::vector<std::vector<double>> _data_to_transfer;
+
+  /**
+   * Whether to use a linear constitutive model.
+   */
+  bool _use_linear_model;
 };
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
