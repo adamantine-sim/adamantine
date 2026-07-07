@@ -111,42 +111,48 @@ BOOST_AUTO_TEST_CASE(five_axis, *utf::tolerance(1e-9))
 
   double time = 0.5;
   auto p = scan_path.value(time);
-  auto rotated_p = scan_path.rotate(time, p);
+  auto quaternion = scan_path.get_quaternion(time);
+  auto rotated_p = quaternion.rotate(p);
   BOOST_TEST(rotated_p[0] == 0.2222222222);
   BOOST_TEST(rotated_p[1] == 0.0);
   BOOST_TEST(rotated_p[2] == 0.0);
 
   time = 1.0;
   p = scan_path.value(time);
-  rotated_p = scan_path.rotate(time, p);
+  quaternion = scan_path.get_quaternion(time);
+  rotated_p = quaternion.rotate(p);
   BOOST_TEST(rotated_p[0] == 0.5);
   BOOST_TEST(rotated_p[1] == 0.0);
   BOOST_TEST(rotated_p[2] == 0.0);
 
   time = 1.5;
   p = scan_path.value(time);
-  rotated_p = scan_path.rotate(time, p);
+  quaternion = scan_path.get_quaternion(time);
+  rotated_p = quaternion.rotate(p);
   BOOST_TEST(rotated_p[0] == 0.35355339059327373);
   BOOST_TEST(rotated_p[1] == 0.0);
   BOOST_TEST(rotated_p[2] == -0.35355339059327373);
 
   time = 2.0;
   p = scan_path.value(time);
-  rotated_p = scan_path.rotate(time, p);
+  quaternion = scan_path.get_quaternion(time);
+  rotated_p = quaternion.rotate(p);
   BOOST_TEST(rotated_p[0] == 0.0);
   BOOST_TEST(rotated_p[1] == 0.0);
   BOOST_TEST(rotated_p[2] == -0.5);
 
   time = 2.5;
   p = scan_path.value(time);
-  rotated_p = scan_path.rotate(time, p);
+  quaternion = scan_path.get_quaternion(time);
+  rotated_p = quaternion.rotate(p);
   BOOST_TEST(rotated_p[0] == 0.5);
   BOOST_TEST(rotated_p[1] == 0.25);
   BOOST_TEST(rotated_p[2] == -0.5);
 
   time = 3.0;
   p = scan_path.value(time);
-  rotated_p = scan_path.rotate(time, p);
+  quaternion = scan_path.get_quaternion(time);
+  rotated_p = quaternion.rotate(p);
   BOOST_TEST(rotated_p[0] == 1.0);
   BOOST_TEST(rotated_p[1] == 0.0);
   BOOST_TEST(rotated_p[2] == 0.0);
