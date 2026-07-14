@@ -21,7 +21,7 @@ pipeline {
           agent {
             docker {
               image "rombur/adamantine-stack:no_gpu-latest"
-                alwaysPull true
+                alwaysPull false
                 label 'nvidia-docker || rocm-docker'
             }
           }
@@ -56,7 +56,7 @@ pipeline {
           agent {
             docker {
               image "rombur/adamantine-stack:latest"
-                alwaysPull true
+                alwaysPull false
                 label 'nvidia-docker && ampere'
             }
           }
