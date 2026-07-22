@@ -1,6 +1,5 @@
 ---
 layout: default
-parent: Home
 title: Heat Equation
 nav_exclude: true
 usemathjax: true
