@@ -1,11 +1,13 @@
 ---
 layout: page
 title: Run
-nav_order: 3
+nav_order: 4
 has_children: true
 ---
 
 # Run
+
+For a first run using the prebuilt Docker image, follow the [newcomer quickstart]({{site.baseurl}}/doc/quickstart). The commands below describe running a locally built executable.
 After compiling *adamantine*, you can run a simulation using
 ```bash
 mpirun -n 2 ./adamantine --input-file=input.info

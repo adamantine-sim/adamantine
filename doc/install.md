@@ -1,12 +1,67 @@
 ---
 layout: page
 title: Installation
-nav_order: 2
+nav_order: 3
 ---
 
 # Installation
 
-## Manual Installation
+## Docker
+You can pull the [Docker](https://en.wikipedia.org/wiki/Docker_(software)) image containing the version of *adamantine* on master using:
+``` bash
+docker pull rombur/adamantine:latest
+```
+The release versions are also available. To get the `1.1` release, use:
+``` bash
+docker pull rombur/adamantine:1.1
+```
+To start an interactive container, use:
+``` bash
+docker run --rm -it rombur/adamantine:latest bash
+```
+or
+``` bash
+docker run --rm -it rombur/adamantine:1.1 bash
+```
+
+You will find *adamantine* in `/home/adamantine/bin`. More `docker run` options 
+can be found in the Docker [documentation](https://docs.docker.com/reference/cli/docker/container/run/).
+
+There are two methods to move file to/from the Docker container:
+1. Mount a volume using the option `-v`. You launch the container using:
+``` bash
+docker run --rm -it -v /path/to/computer/folder:/path/to/image/folder rombur/adamantine:1.0 bash
+```
+Every file in `/path/to/computer/folder` (resp. `/path/to/image/folder`) will 
+be visible in `/path/to/image/folder` (resp. `/path/to/computer/folder`). Note
+that any file created inside the Docker container is created as *root* not as
+a regular user. To run as you current host user, use `--user "$(id -u):$(id
+-g)`.
+2. Use `docker cp` to copy the files (see
+   [here](https://docs.docker.com/reference/cli/docker/container/cp/)).
+
+The Docker images cannot use GPUs.
+
+## NIX
+You can use [NIX](https://nixos.org) to install the development version and the
+latest release of *adamantine*. You need to enable [Flakes](https://nixos.wiki/wiki/Flakes). 
+To get a shell with adamantine temporarily installed, run:
+``` bash
+nix shell github:adamantine-sim/adamantine
+```
+
+To install this permanently, run:
+``` bash
+nix profile install github:adamantine-sim/adamantine
+```
+
+To get the latest stable release, use:
+``` bash
+nix shell github:adamantine-sim/adamantine#adamantine.versions.stable
+```
+Additional documentation can be found [here](https://github.com/adamantine-sim/adamantine/blob/master/NIX.md).
+
+## Build from source
 Installing *adamantine* requires:
 * MPI
 * A compiler that support C++17
@@ -46,57 +101,3 @@ The list of configuration options is:
 * CMAKE\_BUILD\_TYPE=Debug/Release
 * CALIPER\_DIR=/path/to/caliper (only if you enabled CALIPER)
 * DEAL\_II\_DIR=/path/to/dealii
-
-## Docker
-You can pull the [Docker](https://en.wikipedia.org/wiki/Docker_(software)) image containing the version of *adamantine* on master using:
-``` bash
-docker pull rombur/adamantine:latest
-```
-The release versions are also available. To get the `1.1` release, use:
-``` bash
-docker pull rombur/adamantine:1.1
-```
-To start an interactive container, use:
-``` bash
-docker run --rm -it rombur/adamantine:latest bash
-```
-or
-``` bash
-docker run --rm -it rombur/adamantine:1.1 bash
-```
-
-You will find *adamantine* in `/home/adamantine/bin`. More `docker run` options 
-can be found in the Docker [documentation](https://docs.docker.com/reference/cli/docker/container/run/).
-
-There are two methods to move file to/from the Docker container:
-1. Mount a volume using the option `-v`. You launch the container using:
-``` bash
-docker run --rm -it -v /path/to/computer/folder:/path/to/image/folder rombur/adamantine:1.0 bash
-```
-Every file in `/path/to/computer/folder` (resp. `/path/to/image/folder`) will 
-be visible in `/path/to/image/folder` (resp. `/path/to/computer/folder`). Note
-that any file created inside the Docker container is created as *root* not as
-a regular user. 
-2. Use `docker cp` to copy the files (see
-   [here](https://docs.docker.com/reference/cli/docker/container/cp/)).
-
-The Docker images cannot use GPUs.
-
-## NIX
-You can use [NIX](https://nixos.org) to install the development version and the
-latest release of *adamantine*. You need to enable [Flakes](https://nixos.wiki/wiki/Flakes). 
-To get a shell with adamantine temporarily installed, run:
-``` bash
-nix shell github:adamantine-sim/adamantine
-```
-
-To install this permanently, run:
-``` bash
-nix profile install github:adamantine-sim/adamantine
-```
-
-To get the latest stable release, use:
-``` bash
-nix shell github:adamantine-sim/adamantine#adamantine.versions.stable
-```
-Additional documentation can be found [here](https://github.com/adamantine-sim/adamantine/blob/master/NIX.md).
