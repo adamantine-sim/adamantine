@@ -274,19 +274,6 @@ double ScanPath::get_power_modifier(double const time) const
   return _segment_list[current_segment].power_modifier;
 }
 
-dealii::Point<3> ScanPath::rotate(double const time,
-                                  dealii::Point<3> const &point) const
-{
-  // If the current time is after the scan path data is over, return the point
-  // unchanged
-  if (time > _segment_list.back().end_time)
-  {
-    return point;
-  }
-
-  return get_quaternion(time).rotate(point);
-}
-
 Quaternion ScanPath::get_quaternion(double const time) const
 {
   if (!_five_axis)
@@ -337,6 +324,7 @@ Quaternion ScanPath::get_quaternion(double const time) const
   interpolated_rotation /= segment_start_rotation;
   interpolated_rotation.pow((time - segment_start_time) / duration);
   interpolated_rotation *= segment_start_rotation;
+  interpolated_rotation.build_rotation_matrices();
 
   return interpolated_rotation;
 }

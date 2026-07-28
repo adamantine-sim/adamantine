@@ -173,10 +173,9 @@ GoldakHeatSource<dim>::get_bounding_box(double const time,
     if (this->_scan_path.is_five_axis())
     {
       // We need to rotate the box to match the scan path
-      dealii::Point<3> rotated_max_corner =
-          this->_scan_path.rotate(time, max_corner);
-      dealii::Point<3> rotated_min_corner =
-          this->_scan_path.rotate(time, min_corner);
+      Quaternion quaternion = this->_scan_path.get_quaternion(time);
+      dealii::Point<3> rotated_max_corner = quaternion.rotate(max_corner);
+      dealii::Point<3> rotated_min_corner = quaternion.rotate(min_corner);
 
       // We need to recompute the min and max corners after rotation.
       dealii::Point<3> new_max_corner;
