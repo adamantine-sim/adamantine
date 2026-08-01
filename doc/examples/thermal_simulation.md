@@ -482,7 +482,7 @@ Below are snapshots of the temperature at different times:
  </div>
  <div class="column">
    <img src="https://github.com/adamantine-sim/website-assets/blob/master/examples/demo_316/demo_316_5.png?raw=true" style="width:100%">
-   Temperature at t = 20e-4s
+   Temperature at t = 30e-4s
  </div>
 </div> 
 
