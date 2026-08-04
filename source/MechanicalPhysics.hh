@@ -9,6 +9,7 @@
 #include <ClosestSourcePointAdaptation.hh>
 #include <Geometry.hh>
 #include <MechanicalOperator.hh>
+#include <MechanicalOperatorDevice.hh>
 
 #include <deal.II/base/function_parser.h>
 #include <deal.II/base/quadrature_lib.h>
@@ -297,6 +298,9 @@ private:
   std::unique_ptr<MechanicalOperator<dim, n_materials, p_order, MaterialStates,
                                      MemorySpaceType>>
       _mechanical_operator;
+  std::unique_ptr<
+      MechanicalOperatorDevice<dim, 1, n_materials, p_order, MaterialStates>>
+      _mechanical_operator_device;
   /**
    * Reference temperature for each material followed by the initial
    * temperature of the substrate. An empty vector denotes a mechanical-only
