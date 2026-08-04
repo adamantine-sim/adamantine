@@ -483,6 +483,11 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
                                              dealii::MemorySpace::Default>
       rhs_device(locally_owned_dofs,
                  _mechanical_operator_host->rhs().get_mpi_communicator());
+
+  // Initialize vectors with the MatrixFree partitioner
+  _mechanical_operator->initialize_dof_vector(displacement);
+  _mechanical_operator->initialize_dof_vector(rhs_device);
+
   dealii::LinearAlgebra::ReadWriteVector<double> rw_vector(locally_owned_dofs);
 
   rw_vector.import_elements(_mechanical_operator_host->rhs(),
@@ -492,7 +497,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   // Solve the mechanical problem assuming that the deformation is elastic
   // TODO check that we are computing only difference of the displacement
   // compared to the previous time step!!
-  unsigned int const max_iter = _dof_handler.n_dofs() / 10;
+  unsigned int const max_iter = _dof_handler.n_dofs();
   double const tol = 1e-12 * _mechanical_operator_host->rhs().l2_norm();
   dealii::SolverControl solver_control(max_iter, tol);
   dealii::SolverCG<dealii::LinearAlgebra::distributed::Vector<
@@ -508,6 +513,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
           _mechanical_operator_host->rhs().get_mpi_communicator());
   displacement_host.import_elements(rw_vector, dealii::VectorOperation::insert);
   _affine_constraints.distribute(displacement_host);
+  displacement_host.update_ghost_values();
 
   // Compute the new stress assuming the deformation is elastic.
   // If the stress is under the yield criterion, the deformation is elastic and
