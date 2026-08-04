@@ -10,6 +10,7 @@
 
 #include <deal.II/base/aligned_vector.h>
 #include <deal.II/base/index_set.h>
+#include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/types.h>
 #include <deal.II/base/vectorization.h>
 #include <deal.II/dofs/dof_tools.h>
