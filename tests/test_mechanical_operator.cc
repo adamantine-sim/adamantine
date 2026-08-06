@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -7,6 +7,7 @@
 #include <Geometry.hh>
 #include <MechanicalOperator.hh>
 
+#include <deal.II/base/function.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_nothing.h>
@@ -19,9 +20,30 @@
 
 #include <boost/property_tree/ptree.hpp>
 
+#include <algorithm>
+
 #include "main.cc"
 
 namespace utf = boost::unit_test;
+
+template <int dim>
+class AffineDisplacement : public dealii::Function<dim>
+{
+public:
+  explicit AffineDisplacement(unsigned int component)
+      : dealii::Function<dim>(dim), _component(component)
+  {
+  }
+
+  double value(dealii::Point<dim> const &point,
+               unsigned int component = 0) const override
+  {
+    return component == _component ? point[0] : 0.;
+  }
+
+private:
+  unsigned int _component;
+};
 
 template <int dim>
 void right_hand_side(const std::vector<dealii::Point<dim>> &points,
@@ -76,6 +98,7 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
   material_database.put("n_materials", 1);
   double const lame_first = 2.;
   double const lame_second = 3.;
+  material_database.put("material_0.solid.density", 1.);
   material_database.put("material_0.solid.lame_first_parameter", lame_first);
   material_database.put("material_0.solid.lame_second_parameter", lame_second);
   adamantine::MaterialProperty<dim, 1, 4, adamantine::SolidLiquidPowder,
@@ -253,6 +276,28 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
     for (unsigned int j = 0; j < n_dofs; ++j)
       BOOST_TEST(dst_1[j] - dst_2[j] == 0.);
   }
+
+  // Linear displacement: u = (x, 0, 0) gives
+  // a(u,u) = (lambda + 2 mu) |Omega|.
+  dealii::VectorTools::interpolate(dof_handler, AffineDisplacement<dim>(0),
+                                   src);
+  affine_constraints.distribute(src);
+  rw_vector.import_elements(src, dealii::VectorOperation::insert);
+  src_device.import_elements(rw_vector, dealii::VectorOperation::insert);
+  mechanical_operator.system_matrix().vmult(dst_device, src_device);
+  rw_vector.import_elements(dst_device, dealii::VectorOperation::insert);
+  dst_1.import_elements(rw_vector, dealii::VectorOperation::insert);
+  double constexpr volume = 6. * 6. * 6.;
+  double const elastic_energy = src * dst_1;
+  BOOST_TEST(elastic_energy == (lame_first + 2. * lame_second) * volume);
+
+  // The virtual field v = (0, 0, x) gives the exact gravity work
+  // integral_Omega rho g . v = -rho g |Omega| L / 2.
+  dealii::VectorTools::interpolate(dof_handler, AffineDisplacement<dim>(2),
+                                   src);
+  affine_constraints.distribute(src);
+  double const gravity_work = src * mechanical_operator.rhs();
+  BOOST_TEST(gravity_work == -9.80665 * volume * 6. / 2.);
 }
 
 BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
@@ -285,8 +330,11 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
   material_database.put("n_materials", 1);
   double const lame_first = 2.;
   double const lame_second = 3.;
+  double const thermal_expansion = 0.25;
   material_database.put("material_0.solid.lame_first_parameter", lame_first);
   material_database.put("material_0.solid.lame_second_parameter", lame_second);
+  material_database.put("material_0.solid.thermal_expansion_coef",
+                        thermal_expansion);
   adamantine::MaterialProperty<dim, -1, 4, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
@@ -324,7 +372,7 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
       thermal_dof_handler.locally_owned_dofs(), communicator);
   temperature = 1.;
   // Create the MechanicalOperator
-  std::vector<double> reference_temperatures = {0.0, 0.0};
+  std::vector<double> reference_temperatures = {2.0, 0.0};
   adamantine::MechanicalOperator<dim, -1, 4, adamantine::SolidLiquidPowder,
                                  dealii::MemorySpace::Host>
       mechanical_operator(communicator, material_properties,
@@ -341,5 +389,27 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
                              mechanical_affine_constraints,
                              mechanical_q_collection, body_forces);
 
-  // TODO Need to check the result
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      virtual_displacement(mechanical_dof_handler.locally_owned_dofs(),
+                           communicator);
+  dealii::VectorTools::interpolate(
+      mechanical_dof_handler, AffineDisplacement<dim>(0), virtual_displacement);
+  mechanical_affine_constraints.distribute(virtual_displacement);
+
+  // The thermoelastic weak form gives
+  // l(v) = integral_Omega div(v) beta (T-T_ref), with
+  // beta = (3 lambda + 2 mu) alpha. For v = (x,0,0), div(v) = 1.
+  double constexpr volume = 6. * 6. * 6.;
+  double const beta = (3. * lame_first + 2. * lame_second) * thermal_expansion;
+  double virtual_work = virtual_displacement * mechanical_operator.rhs();
+  BOOST_TEST(virtual_work == beta * volume);
+
+  // Once a cell has melted, its reference temperature changes from the initial
+  // substrate temperature to the material-specific reference temperature.
+  std::fill(has_melted.begin(), has_melted.end(), true);
+  mechanical_operator.update_temperature(thermal_dof_handler, temperature,
+                                         has_melted);
+  mechanical_operator.assemble_rhs({});
+  virtual_work = virtual_displacement * mechanical_operator.rhs();
+  BOOST_TEST(virtual_work == -beta * volume);
 }
