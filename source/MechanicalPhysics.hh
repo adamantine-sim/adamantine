@@ -147,6 +147,25 @@ private:
                                      MemorySpaceType>>
       _mechanical_operator;
   /**
+   * Reference temperature for each material followed by the initial
+   * temperature of the substrate. An empty vector denotes a mechanical-only
+   * simulation.
+   */
+  std::vector<double> _reference_temperatures;
+  /**
+   * Non-owning pointer to the thermal DoFHandler.
+   */
+  dealii::DoFHandler<dim> const *_thermal_dof_handler = nullptr;
+  /**
+   * Current temperature field.
+   */
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      _temperature;
+  /**
+   * Indicator for cells that have melted at least once.
+   */
+  std::vector<bool> _has_melted;
+  /**
    * Whether to include a gravitional body force in the calculation.
    */
   bool _include_gravity;
@@ -161,6 +180,11 @@ private:
    * Plastic internal variable related to the strain
    */
   std::vector<std::vector<double>> _plastic_internal_variable;
+
+  /**
+   * Hydrostatic thermal stress at the previous mechanical solve.
+   */
+  std::vector<std::vector<double>> _thermal_stress;
 
   /**
    * Stress tensor at each (cell, quadrature point).
@@ -193,8 +217,8 @@ private:
 
   /**
    * Cell data transfer object used for updating _plastic_internal_variable,
-   * _stress, and _back_stress when the triangulation is updated when adding
-   * material
+   * _thermal_stress, _stress, and _back_stress when the triangulation is
+   * updated when adding material
    */
   dealii::parallel::distributed::CellDataTransfer<
       dim, dim, std::vector<std::vector<std::vector<double>>>>

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -32,6 +32,7 @@
 #include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/numerics/vector_tools.h>
 
+#include <cmath>
 #include <fstream>
 #include <iostream>
 
@@ -366,16 +367,18 @@ public:
 namespace utf = boost::unit_test;
 
 /*
- * This test case uses the analytic solution for the displacement around a
- * spherical inclusion as a test case. As a result of the boundary conditions
- * (fixed on one face) and the need to keep the test computationally
- * inexpensive, a loose tolerance has been chosen. Also for simplicity, the
- * analytic solution is being calculated externally and the values at only two
- * points are being checked.
+ * This test uses Eshelby's analytical solution for a spherical inclusion with
+ * uniform isotropic eigenstrain. For equal elastic properties inside and
+ * outside the sphere, u = A r inside and u = A a^3 r/|r|^3 outside, where
+ * A = 3 K alpha DeltaT / (3 K + 4 mu).
  *
- int constexpr dim = 3;* Less than 5% deviation from analytic solution achieved
- with
- * refinement_cyles=5.
+ * Reference: J. D. Eshelby, "The Determination of the Elastic Field of an
+ * Ellipsoidal Inclusion, and Related Problems", Proc. Royal Soc. A 241
+ * (1957), 376-396, DOI: 10.1098/rspa.1957.0133.
+ *
+ * The finite domain is clamped on one face and kept deliberately coarse, so
+ * the two sampled displacements use a loose tolerance. Less than 5% deviation
+ * is obtained with five refinement cycles.
  */
 template <unsigned int dim>
 std::vector<dealii::Vector<double>>
@@ -556,21 +559,19 @@ BOOST_AUTO_TEST_CASE(thermoelastic_eshelby, *utf::tolerance(0.16))
   }
 }
 
-BOOST_AUTO_TEST_CASE(elastoplastic)
+BOOST_AUTO_TEST_CASE(elastoplastic_radial_return)
 {
   MPI_Comm communicator = MPI_COMM_WORLD;
 
-  // Geometry database
   boost::property_tree::ptree geometry_database;
   geometry_database.put("import_mesh", false);
-  geometry_database.put("length", 12);
-  geometry_database.put("length_divisions", 6);
-  geometry_database.put("height", 6);
-  geometry_database.put("height_divisions", 3);
-  geometry_database.put("width", 6);
-  geometry_database.put("width_divisions", 3);
+  geometry_database.put("length", 1.);
+  geometry_database.put("length_divisions", 2);
+  geometry_database.put("height", 1.);
+  geometry_database.put("height_divisions", 2);
+  geometry_database.put("width", 1.);
+  geometry_database.put("width_divisions", 2);
   boost::optional<boost::property_tree::ptree const &> units_optional_database;
-  // Build Geometry
   adamantine::Geometry<3> geometry(communicator, geometry_database,
                                    units_optional_database);
   auto const &triangulation = geometry.get_triangulation();
@@ -580,43 +581,89 @@ BOOST_AUTO_TEST_CASE(elastoplastic)
     cell->set_user_index(
         static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
   }
-  // Create the MaterialProperty
+
+  double constexpr mu = 3.;
+  double constexpr plastic_modulus = 1.5;
+  double constexpr isotropic_hardening = 0.25;
   boost::property_tree::ptree material_database;
   material_database.put("property_format", "polynomial");
   material_database.put("n_materials", 1);
-  material_database.put("material_0.solid.density", 1.);
   material_database.put("material_0.solid.lame_first_parameter", 2.);
-  material_database.put("material_0.solid.lame_second_parameter", 3.);
-  material_database.put("material_0.solid.plastic_modulus", 1.5);
-  material_database.put("material_0.solid.isotropic_hardening", 0.5);
-  material_database.put("material_0.solid.elastic_limit", 0.1);
+  material_database.put("material_0.solid.lame_second_parameter", mu);
+  material_database.put("material_0.solid.plastic_modulus", plastic_modulus);
+  material_database.put("material_0.solid.isotropic_hardening",
+                        isotropic_hardening);
+  material_database.put("material_0.solid.elastic_limit", 0.);
   adamantine::MaterialProperty<3, 1, 4, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
-  // Create the Boundary
+
   boost::property_tree::ptree boundary_database;
-  boundary_database.put("boundary_4.type", "clamped");
+  for (unsigned int id = 0; id < 6; ++id)
+    boundary_database.put("boundary_" + std::to_string(id) + ".type",
+                          "clamped");
   adamantine::Boundary boundary(
       boundary_database, geometry.get_triangulation().get_boundary_ids());
-  // Build MechanicalPhysics
-  unsigned int const fe_degree = 1;
-  std::vector<double> empty_vector;
+
+  std::vector<double> no_reference_temperatures;
   adamantine::MechanicalPhysics<3, 1, 4, adamantine::SolidLiquidPowder,
                                 dealii::MemorySpace::Host>
-      mechanical_physics(communicator, fe_degree, geometry, boundary,
-                         material_properties, empty_vector);
-  std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
-  auto gravity_force = std::make_shared<adamantine::GravityForce<
-      3, 1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
-      material_properties);
-  body_forces.push_back(gravity_force);
-  mechanical_physics.setup_dofs(body_forces);
-  mechanical_physics.solve();
-  [[maybe_unused]] auto stress_tensor = mechanical_physics.get_stress_tensor();
-  // TODO check stress tensor
-}
+      mechanical_physics(communicator, 1, geometry, boundary,
+                         material_properties, no_reference_temperatures);
+  mechanical_physics.setup_dofs();
 
-// TODO thermo-elasto-plastic problem
+  // The documented elastic branch is chi <= kappa. In particular, chi =
+  // kappa = 0 must not enter the plastic branch and form the undefined 0/0
+  // flow direction.
+  mechanical_physics.solve();
+  auto &stress = mechanical_physics.get_stress_tensor();
+  for (auto const &cell_stress : stress)
+    for (auto const &value : cell_stress)
+    {
+      BOOST_CHECK_SMALL(value.norm(), 1.e-14);
+      for (unsigned int i = 0; i < value.n_independent_components; ++i)
+        BOOST_TEST(std::isfinite(value.access_raw_entry(i)));
+    }
+
+  // Combined isotropic-kinematic hardening radial return, following R. I.
+  // Borja, Plasticity: Modeling & Computation, Springer, 2013, Chapter 3,
+  // DOI: 10.1007/978-3-642-38547-6.
+  dealii::SymmetricTensor<2, 3> trial_stress;
+  trial_stress[0][0] = 1.;
+  trial_stress[1][1] = -1.;
+  double const trial_norm = trial_stress.norm();
+  auto const flow_direction = trial_stress / trial_norm;
+  for (auto &cell_stress : stress)
+    for (auto &value : cell_stress)
+      value = trial_stress;
+
+  mechanical_physics.solve();
+  double const plastic_increment_1 = trial_norm / (2. * mu + plastic_modulus);
+  double const returned_stress_norm =
+      trial_norm - 2. * mu * plastic_increment_1;
+  auto const expected_stress_1 = returned_stress_norm * flow_direction;
+  for (auto const &cell_stress : stress)
+    for (auto const &value : cell_stress)
+      BOOST_CHECK_SMALL((value - expected_stress_1).norm(), 1.e-12);
+
+  // A second collinear increment exercises the stored back stress. This is a
+  // regression for accidentally multiplying the kinematic update by H twice
+  // and omitting Delta eta.
+  double constexpr stress_increment = 0.2;
+  for (auto &cell_stress : stress)
+    for (auto &value : cell_stress)
+      value += stress_increment * flow_direction;
+
+  mechanical_physics.solve();
+  double const plastic_increment_2 =
+      stress_increment / (2. * mu + plastic_modulus);
+  double const expected_stress_norm =
+      returned_stress_norm + stress_increment - 2. * mu * plastic_increment_2;
+  auto const expected_stress_2 = expected_stress_norm * flow_direction;
+  for (auto const &cell_stress : stress)
+    for (auto const &value : cell_stress)
+      BOOST_CHECK_SMALL((value - expected_stress_2).norm(), 1.e-12);
+}
 
 BOOST_AUTO_TEST_CASE(cell_data_transfer_refine_coarsen)
 {
@@ -725,4 +772,93 @@ BOOST_AUTO_TEST_CASE(cell_data_transfer_refine_coarsen)
       }
     }
   }
+}
+
+BOOST_AUTO_TEST_CASE(thermoelastic_stress_uniform_heating)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 1.);
+  geometry_database.put("length_divisions", 2);
+  geometry_database.put("height", 1.);
+  geometry_database.put("height_divisions", 2);
+  geometry_database.put("width", 1.);
+  geometry_database.put("width_divisions", 2);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<3> geometry(communicator, geometry_database,
+                                   units_optional_database);
+  auto const &triangulation = geometry.get_triangulation();
+  for (auto cell : triangulation.cell_iterators())
+  {
+    cell->set_material_id(0);
+    cell->set_user_index(
+        static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
+  }
+
+  double constexpr lambda = 2.;
+  double constexpr mu = 3.;
+  double constexpr alpha = 0.01;
+  boost::property_tree::ptree material_database;
+  material_database.put("property_format", "polynomial");
+  material_database.put("n_materials", 1);
+  material_database.put("material_0.solid.lame_first_parameter", lambda);
+  material_database.put("material_0.solid.lame_second_parameter", mu);
+  material_database.put("material_0.solid.thermal_expansion_coef", alpha);
+  adamantine::MaterialProperty<3, 1, 4, adamantine::SolidLiquidPowder,
+                               dealii::MemorySpace::Host>
+      material_properties(communicator, triangulation, material_database);
+
+  boost::property_tree::ptree boundary_database;
+  for (unsigned int id = 0; id < 6; ++id)
+    boundary_database.put("boundary_" + std::to_string(id) + ".type",
+                          "clamped");
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
+
+  dealii::hp::FECollection<3> thermal_fe_collection;
+  thermal_fe_collection.push_back(dealii::FE_Q<3>(1));
+  thermal_fe_collection.push_back(dealii::FE_Nothing<3>());
+  dealii::DoFHandler<3> thermal_dof_handler(geometry.get_triangulation());
+  thermal_dof_handler.distribute_dofs(thermal_fe_collection);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      temperature(thermal_dof_handler.locally_owned_dofs(), communicator);
+  temperature = 350.;
+
+  // For an unmelted substrate the last entry is the reference temperature.
+  std::vector<double> reference_temperatures = {1000., 300.};
+  std::vector<bool> has_melted(triangulation.n_active_cells(), false);
+  adamantine::MechanicalPhysics<3, 1, 4, adamantine::SolidLiquidPowder,
+                                dealii::MemorySpace::Host>
+      mechanical_physics(communicator, 1, geometry, boundary,
+                         material_properties, reference_temperatures);
+  mechanical_physics.setup_dofs(thermal_dof_handler, temperature, has_melted,
+                                true);
+  auto displacement = mechanical_physics.solve();
+  BOOST_CHECK_SMALL(displacement.l2_norm(), 1.e-12);
+
+  // A uniformly heated, fully constrained isotropic solid has u = 0 and
+  // sigma = -(3 lambda + 2 mu) alpha (T-T_ref) I. See Y. C. Fung and
+  // Pin Tong, Classical and Computational Solid Mechanics, World Scientific,
+  // 2001, Chapter 14, DOI: 10.1142/4362.
+  auto check_stress = [&](double temperature_value)
+  {
+    double const expected_normal_stress =
+        -(3. * lambda + 2. * mu) * alpha * (temperature_value - 300.);
+    auto const expected_stress =
+        expected_normal_stress * dealii::unit_symmetric_tensor<3>();
+    for (auto const &cell_stress : mechanical_physics.get_stress_tensor())
+      for (auto const &value : cell_stress)
+        BOOST_CHECK_SMALL((value - expected_stress).norm(), 1.e-12);
+  };
+  check_stress(350.);
+
+  // Updating the temperature must apply only the thermal stress increment, not
+  // the total thermal stress a second time.
+  temperature = 360.;
+  mechanical_physics.update_rhs(thermal_dof_handler, temperature, has_melted);
+  displacement = mechanical_physics.solve();
+  BOOST_CHECK_SMALL(displacement.l2_norm(), 1.e-12);
+  check_stress(360.);
 }
