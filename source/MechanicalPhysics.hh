@@ -188,7 +188,7 @@ private:
    * Object used for interpolating to and from the closest quadrature point in
    * the cell data transfer object.
    */
-  adamantine::ClosestQuadPointAdaptation<dim, dim, std::vector<double>>
+  ClosestQuadPointAdaptation<dim, dim, std::vector<double>>
       _closest_quad_point_adaptation;
 
   /**
