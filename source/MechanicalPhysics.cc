@@ -13,7 +13,9 @@
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/solver_cg.h>
+#include <deal.II/lac/solver_gmres.h>
 #include <deal.II/numerics/vector_tools.h>
+#include <deal.II/sundials/kinsol.h>
 
 #ifdef ADAMANTINE_WITH_CALIPER
 #include <caliper/cali.h>
@@ -29,14 +31,16 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
         Geometry<dim> &geometry, Boundary const &boundary,
         MaterialProperty<dim, n_materials, p_order, MaterialStates,
                          MemorySpaceType> &material_properties,
-        std::vector<double> const &reference_temperatures)
+        std::vector<double> const &reference_temperatures,
+        bool use_linear_model)
     : _geometry(geometry), _boundary(boundary),
       _material_properties(material_properties),
       _dof_handler(_geometry.get_triangulation()),
       _solution_transfer(_dof_handler),
       _cell_data_transfer(
           dynamic_cast<const dealii::parallel::distributed::Triangulation<dim>
-                           &>(_dof_handler.get_triangulation()))
+                           &>(_dof_handler.get_triangulation())),
+      _use_linear_model(use_linear_model)
 {
   // Create the FECollection
   _fe_collection.push_back(
@@ -470,6 +474,43 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   }
 }
 
+template <class ResidualFunctor, class VectorType>
+class JacobiFreeApproximation
+{
+public:
+  JacobiFreeApproximation(const ResidualFunctor &residual_functor)
+      : _residual_functor(residual_functor)
+  {
+  }
+
+  void update(const VectorType &evaluation_point)
+  {
+    _tmp = evaluation_point;
+    _evaluation_point = evaluation_point;
+    double norm = evaluation_point.l2_norm();
+    _epsilon = std::sqrt((1 + norm) * std::numeric_limits<double>::epsilon());
+  }
+
+  void vmult(VectorType &dst, const VectorType &src) const
+  {
+    // dst = (_residual(_evaluation_point + _epsilon * src) -
+    // _residual(evaluation_point))/_epsilon;
+    _tmp = src;
+    _tmp *= _epsilon;
+    _tmp += _evaluation_point;
+    _residual_functor(_tmp, dst);
+    _residual_functor(_evaluation_point, _tmp);
+    dst -= _tmp;
+    dst /= _epsilon;
+  }
+
+private:
+  const ResidualFunctor &_residual_functor;
+  VectorType _evaluation_point;
+  mutable VectorType _tmp;
+  double _epsilon;
+};
+
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -489,30 +530,86 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 #else
   using TrilinosVectorType = dealii::TrilinosWrappers::MPI::Vector;
 #endif
-  TrilinosVectorType displacement(
-      locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
-  TrilinosVectorType rhs_device(
-      locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
+  const auto &mpi_communicator =
+      _mechanical_operator->rhs().get_mpi_communicator();
+  TrilinosVectorType displacement(locally_owned_dofs, mpi_communicator);
+  TrilinosVectorType rhs_device(locally_owned_dofs, mpi_communicator);
   dealii::LinearAlgebra::ReadWriteVector<double> rw_vector(locally_owned_dofs);
 
   rw_vector.import_elements(_mechanical_operator->rhs(),
                             dealii::VectorOperation::insert);
   rhs_device.import_elements(rw_vector, dealii::VectorOperation::insert);
 
-  // Solve the mechanical problem assuming that the deformation is elastic
-  // TODO check that we are computing only difference of the displacement
-  // compared to the previous time step!!
-  unsigned int const max_iter = _dof_handler.n_dofs() / 10;
   double const tol = 1e-12 * _mechanical_operator->rhs().l2_norm();
-  dealii::SolverControl solver_control(max_iter, tol);
-  dealii::SolverCG<TrilinosVectorType> cg(solver_control);
-  cg.solve(_mechanical_operator->system_matrix(), displacement, rhs_device,
-           _mechanical_operator->preconditioner());
+  if (_use_linear_model)
+  {
+    // Solve the mechanical problem assuming that the deformation is elastic
+    // TODO check that we are computing only difference of the displacement
+    // compared to the previous time step!!
+    unsigned int const max_iter = _dof_handler.n_dofs() / 10;
+    dealii::SolverControl solver_control(max_iter, tol);
+    dealii::SolverCG<TrilinosVectorType> cg(solver_control);
+    cg.solve(_mechanical_operator->system_matrix(), displacement, rhs_device,
+             _mechanical_operator->preconditioner());
+  }
+  else
+  {
+    typename dealii::SUNDIALS::KINSOL<TrilinosVectorType>::AdditionalData
+        additional_data(dealii::SUNDIALS::KINSOL<
+                        TrilinosVectorType>::AdditionalData::picard);
+    additional_data.function_tolerance = tol;
+    dealii::SUNDIALS::KINSOL<TrilinosVectorType> nonlinear_solver(
+        additional_data);
+
+    nonlinear_solver.reinit_vector = [&](TrilinosVectorType &x)
+    { x.reinit(locally_owned_dofs, mpi_communicator); };
+
+    auto residual = [&](const TrilinosVectorType &evaluation_point,
+                        TrilinosVectorType &residual)
+    {
+      _mechanical_operator->system_matrix().vmult(residual, evaluation_point);
+      residual -= rhs_device;
+    };
+
+    nonlinear_solver.residual = residual;
+
+    JacobiFreeApproximation<decltype(residual), TrilinosVectorType>
+        jacobi_free_approximation(residual);
+
+    nonlinear_solver.setup_jacobian =
+        [&](const TrilinosVectorType &current_u,
+            const TrilinosVectorType & /*current_f*/)
+    { jacobi_free_approximation.update(current_u); };
+
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+    dealii::LinearAlgebra::TpetraWrappers::PreconditionIdentity<
+        double, dealii::MemorySpace::Default>
+        preconditioner;
+#else
+    dealii::TrilinosWrappers::PreconditionIdentity preconditioner;
+#endif
+    preconditioner.initialize(_mechanical_operator->system_matrix());
+
+    nonlinear_solver.solve_with_jacobian = [&](const TrilinosVectorType &rhs,
+                                               TrilinosVectorType &dst,
+                                               const double tolerance)
+    {
+      // Solve the mechanical problem assuming that the deformation is elastic
+      // TODO check that we are computing only difference of the displacement
+      // compared to the previous time step!!
+      unsigned int const max_iter = _dof_handler.n_dofs() / 10;
+      dealii::SolverControl solver_control(max_iter, tolerance);
+      dealii::SolverGMRES<TrilinosVectorType> cg(solver_control);
+      cg.solve(jacobi_free_approximation, dst, rhs, preconditioner);
+    };
+
+    nonlinear_solver.solve(displacement);
+  }
 
   rw_vector.import_elements(displacement, dealii::VectorOperation::insert);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       displacement_host(locally_owned_dofs, locally_relevant_dofs,
-                        _mechanical_operator->rhs().get_mpi_communicator());
+                        mpi_communicator);
   displacement_host.import_elements(rw_vector, dealii::VectorOperation::insert);
   _affine_constraints.distribute(displacement_host);
 
@@ -521,9 +618,8 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   // we are done. Otherwise we need to use the radial return algorithm to
   // compute the plastic deformation.
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      incremental_displacement(
-          locally_owned_dofs, locally_relevant_dofs,
-          _mechanical_operator->rhs().get_mpi_communicator());
+      incremental_displacement(locally_owned_dofs, locally_relevant_dofs,
+                               mpi_communicator);
   incremental_displacement = displacement_host;
   if (_old_displacement.size() > 0)
   {
