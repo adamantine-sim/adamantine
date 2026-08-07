@@ -709,11 +709,12 @@ BOOST_AUTO_TEST_CASE(cell_data_transfer_refine_coarsen)
 
   // Stress values on every cell/quadrature point should be recovered exactly
   // (up to floating-point round-off) after the refine-then-coarsen round trip.
-  double const tolerance = 1e-10;
   for (unsigned int cell_id = 0; cell_id < final_stress.size(); ++cell_id)
   {
     for (unsigned int q = 0; q < final_stress[cell_id].size(); ++q)
     {
+      double const tolerance = 1e-10 * initial_stress_copy[cell_id][q].norm();
+
       for (unsigned int i = 0;
            i < dealii::SymmetricTensor<2, 3>::n_independent_components; ++i)
       {
