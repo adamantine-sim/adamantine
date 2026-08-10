@@ -34,9 +34,23 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
       _material_properties(material_properties),
       _dof_handler(_geometry.get_triangulation()),
       _solution_transfer(_dof_handler),
+      _closest_quad_point_adaptation(dealii::QGauss<dim>(fe_degree + 1)),
       _cell_data_transfer(
           dynamic_cast<const dealii::parallel::distributed::Triangulation<dim>
-                           &>(_dof_handler.get_triangulation()))
+                           &>(_dof_handler.get_triangulation()),
+          /* transfer_variable_size_data */ false,
+          [&](const typename dealii::Triangulation<dim>::cell_iterator &parent,
+              const std::vector<std::vector<double>> &parent_values)
+          {
+            return _closest_quad_point_adaptation.coarse_to_fine(parent,
+                                                                 parent_values);
+          },
+          [&](const typename dealii::Triangulation<dim>::cell_iterator &parent,
+              const std::vector<std::vector<std::vector<double>>> &child_values)
+          {
+            return _closest_quad_point_adaptation.fine_to_coarse(parent,
+                                                                 child_values);
+          })
 {
   // Create the FECollection
   _fe_collection.push_back(
@@ -169,34 +183,32 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 
   unsigned int const n_doubles_per_quad =
       n_doubles_per_quad_plastic + n_doubles_per_quad_stress * 2;
-  std::vector<double> dummy_cell_data(n_quad_pts * n_doubles_per_quad,
-                                      std::numeric_limits<double>::infinity());
-
+  std::vector<std::vector<double>> dummy_cell_data(
+      n_quad_pts, std::vector<double>(n_doubles_per_quad,
+                                      std::numeric_limits<double>::infinity()));
+  std::vector<std::vector<double>> cell_data = dummy_cell_data;
   unsigned int cell_id = 0;
   for (auto const &cell : _dof_handler.active_cell_iterators())
   {
     if (cell->is_locally_owned())
     {
-      std::vector<double> cell_data(n_quad_pts * n_doubles_per_quad);
-      unsigned int const stress_offset =
-          n_quad_pts * n_doubles_per_quad_plastic;
+      unsigned int const stress_offset = n_doubles_per_quad_plastic;
       unsigned int const back_stress_offset =
-          n_quad_pts * (n_doubles_per_quad_plastic + n_doubles_per_quad_stress);
-
-      std::copy(_plastic_internal_variable[cell_id].begin(),
-                _plastic_internal_variable[cell_id].end(), cell_data.begin());
+          n_doubles_per_quad_plastic + n_doubles_per_quad_stress;
 
       for (unsigned int quad = 0; quad < n_quad_pts; ++quad)
       {
+        std::vector<double> &cell_data_quad = cell_data[quad];
+        cell_data_quad[0] = _plastic_internal_variable[cell_id][quad];
         for (unsigned int i = 0; i < n_doubles_per_quad_stress; ++i)
         {
-          cell_data[stress_offset + quad * n_doubles_per_quad_stress + i] =
+          cell_data_quad[stress_offset + i] =
               _stress[cell_id][quad].access_raw_entry(i);
-          cell_data[back_stress_offset + quad * n_doubles_per_quad_stress + i] =
+          cell_data_quad[back_stress_offset + i] =
               _back_stress[cell_id][quad].access_raw_entry(i);
         }
       }
-      _data_to_transfer.push_back(std::move(cell_data));
+      _data_to_transfer.push_back(cell_data);
     }
     else
     {
@@ -242,8 +254,9 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 
   unsigned int const n_doubles_per_quad =
       n_doubles_per_quad_plastic + n_doubles_per_quad_stress * 2;
-  std::vector<std::vector<double>> data_to_unpack(
-      n_active_cells, std::vector<double>(n_doubles_per_quad * n_quad_pts));
+  std::vector<std::vector<std::vector<double>>> data_to_unpack(
+      n_active_cells, std::vector<std::vector<double>>(
+                          n_quad_pts, std::vector<double>(n_doubles_per_quad)));
   _cell_data_transfer.unpack(data_to_unpack);
 
   unsigned int cell_id = 0;
@@ -251,25 +264,20 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   {
     if (cell->is_locally_owned())
     {
-      unsigned int const stress_offset =
-          n_quad_pts * n_doubles_per_quad_plastic;
+      unsigned int const stress_offset = n_doubles_per_quad_plastic;
       unsigned int const back_stress_offset =
-          n_quad_pts * (n_doubles_per_quad_plastic + n_doubles_per_quad_stress);
-
-      std::copy(data_to_unpack[cell_id].begin(),
-                data_to_unpack[cell_id].begin() + stress_offset,
-                _plastic_internal_variable[cell_id].begin());
+          n_doubles_per_quad_plastic + n_doubles_per_quad_stress;
 
       for (unsigned int quad = 0; quad < n_quad_pts; ++quad)
       {
+        _plastic_internal_variable[cell_id][quad] =
+            data_to_unpack[cell_id][quad][0];
         for (unsigned int i = 0; i < n_doubles_per_quad_stress; ++i)
         {
           _stress[cell_id][quad].access_raw_entry(i) =
-              data_to_unpack[cell_id][stress_offset +
-                                      quad * n_doubles_per_quad_stress + i];
+              data_to_unpack[cell_id][quad][stress_offset + i];
           _back_stress[cell_id][quad].access_raw_entry(i) =
-              data_to_unpack[cell_id][back_stress_offset +
-                                      quad * n_doubles_per_quad_stress + i];
+              data_to_unpack[cell_id][quad][back_stress_offset + i];
         }
       }
     }

@@ -617,3 +617,112 @@ BOOST_AUTO_TEST_CASE(elastoplastic)
 }
 
 // TODO thermo-elasto-plastic problem
+
+BOOST_AUTO_TEST_CASE(cell_data_transfer_refine_coarsen)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  // Geometry database
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 12);
+  geometry_database.put("length_divisions", 6);
+  geometry_database.put("height", 6);
+  geometry_database.put("height_divisions", 3);
+  geometry_database.put("width", 6);
+  geometry_database.put("width_divisions", 3);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  // Build Geometry
+  adamantine::Geometry<3> geometry(communicator, geometry_database,
+                                   units_optional_database);
+  auto &triangulation = geometry.get_triangulation();
+  for (auto cell : triangulation.cell_iterators())
+  {
+    cell->set_material_id(0);
+    cell->set_user_index(
+        static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
+  }
+  // Create the MaterialProperty
+  boost::property_tree::ptree material_database;
+  material_database.put("property_format", "polynomial");
+  material_database.put("n_materials", 1);
+  material_database.put("material_0.solid.density", 1.);
+  material_database.put("material_0.solid.lame_first_parameter", 2.);
+  material_database.put("material_0.solid.lame_second_parameter", 3.);
+  material_database.put("material_0.solid.elastic_limit", 0.1);
+  adamantine::MaterialProperty<3, 1, 4, adamantine::SolidLiquidPowder,
+                               dealii::MemorySpace::Host>
+      material_properties(communicator, triangulation, material_database);
+  // Create the Boundary
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("boundary_4.type", "clamped");
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
+  // Build MechanicalPhysics
+  unsigned int const fe_degree = 1;
+  std::vector<double> empty_vector;
+  adamantine::MechanicalPhysics<3, 1, 4, adamantine::SolidLiquidPowder,
+                                dealii::MemorySpace::Host>
+      mechanical_physics(communicator, fe_degree, geometry, boundary,
+                         material_properties, empty_vector);
+  std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
+  auto gravity_force = std::make_shared<adamantine::GravityForce<
+      3, 1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
+      material_properties);
+  body_forces.push_back(gravity_force);
+  mechanical_physics.setup_dofs(body_forces);
+  mechanical_physics.solve();
+
+  // Record initial stress values before any mesh adaptation
+  std::vector<std::vector<dealii::SymmetricTensor<2, 3>>> initial_stress_copy =
+      mechanical_physics.get_stress_tensor();
+
+  // --- Refine one cell per processor ---
+  for (auto const &cell :
+       dealii::filter_iterators(triangulation.active_cell_iterators(),
+                                dealii::IteratorFilters::LocallyOwnedCell()))
+  {
+    cell->set_refine_flag();
+    break;
+  }
+  mechanical_physics.prepare_transfer_mpi();
+  triangulation.execute_coarsening_and_refinement();
+  mechanical_physics.complete_transfer_mpi();
+  mechanical_physics.setup_dofs(body_forces);
+
+  // --- Coarsen back: flag all refined children ---
+  for (auto const &cell :
+       dealii::filter_iterators(triangulation.active_cell_iterators(),
+                                dealii::IteratorFilters::LocallyOwnedCell()))
+  {
+    if (cell->level() > 0)
+      cell->set_coarsen_flag();
+  }
+  mechanical_physics.prepare_transfer_mpi();
+  triangulation.execute_coarsening_and_refinement();
+  mechanical_physics.complete_transfer_mpi();
+  mechanical_physics.setup_dofs(body_forces);
+
+  // The mesh should be back to its original size
+  auto const &final_stress = mechanical_physics.get_stress_tensor();
+  BOOST_TEST(final_stress.size() == initial_stress_copy.size());
+
+  // Stress values on every cell/quadrature point should be recovered exactly
+  // (up to floating-point round-off) after the refine-then-coarsen round trip.
+  for (unsigned int cell_id = 0; cell_id < final_stress.size(); ++cell_id)
+  {
+    for (unsigned int q = 0; q < final_stress[cell_id].size(); ++q)
+    {
+      double const tolerance = 1e-10 * initial_stress_copy[cell_id][q].norm();
+
+      for (unsigned int i = 0;
+           i < dealii::SymmetricTensor<2, 3>::n_independent_components; ++i)
+      {
+        BOOST_CHECK_SMALL(
+            final_stress[cell_id][q].access_raw_entry(i) -
+                initial_stress_copy[cell_id][q].access_raw_entry(i),
+            tolerance);
+      }
+    }
+  }
+}
