@@ -9,6 +9,7 @@
 #include <utils.hh>
 
 #include <deal.II/base/vectorization.h>
+#include <deal.II/base/quadrature_lib.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/portable_fe_evaluation.h>

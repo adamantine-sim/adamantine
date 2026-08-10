@@ -5,5 +5,5 @@
 #include <MechanicalOperatorDevice.templates.hh>
 #include <instantiation.hh>
 
-INSTANTIATE_DIM_DEGREE(MechanicalOperatorDevice)
+INSTANTIATE_FEDEGREE_DIM_NMAT_PORDER_MATERIALSTATES(MechanicalOperatorDevice)
 
