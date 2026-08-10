@@ -23,6 +23,14 @@
   BOOST_PP_SEQ_FOR_EACH_PRODUCT(ADAMANTINE_D, ((NAME))(ADAMANTINE_DIM))
 
 // Instantiation of the class for:
+// - dim = 2 and 3
+// - p_order = 0 to 4
+#define ADAMANTINE_D_P(z, SEQ)                                                   \
+  template class adamantine::BOOST_PP_SEQ_ELEM(0, SEQ)<BOOST_PP_SEQ_ELEM(1, SEQ), BOOST_PP_SEQ_ELEM(2, SEQ)>;
+#define INSTANTIATE_DIM_DEGREE(NAME) \
+  BOOST_PP_SEQ_FOR_EACH_PRODUCT(ADAMANTINE_D_P, ((NAME))(ADAMANTINE_DIM)(ADAMANTINE_P_ORDER))
+
+// Instantiation of the class for:
 //   - dim = 2 and 3
 //   - n_materials = -1 and 1
 //   - p_order = 0 to 4

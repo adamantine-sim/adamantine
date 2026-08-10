@@ -75,6 +75,4 @@ MechanicalOperatorDevice<dim, fe_degree, n_materials, p_order,
 
 } // namespace adamantine
 
-#include <MechanicalOperatorDevice.templates.hh>
-
 #endif
