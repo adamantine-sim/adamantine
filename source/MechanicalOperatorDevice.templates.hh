@@ -26,6 +26,11 @@ public:
   static const unsigned int n_q_points =
       dealii::Utilities::pow(fe_degree + 1, dim);
 
+#if !DEAL_II_VERSION_GTE(9,8,0)
+  static const unsigned int n_local_dofs =
+      dealii::Utilities::pow(fe_degree + 1, dim);
+#endif
+
   using kokkos_default = dealii::MemorySpace::Default::kokkos_space;
   LocalMechanicalOperatorDevice(Kokkos::View<double *, kokkos_default> lambda,
                                 Kokkos::View<double *, kokkos_default> mu)
@@ -33,13 +38,26 @@ public:
   {
   }
 
+#if DEAL_II_VERSION_GTE(9, 7, 0)
   KOKKOS_FUNCTION void operator()(
       typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
       const dealii::Portable::DeviceVector<double> &src,
       dealii::Portable::DeviceVector<double> dst) const
+#else
+  KOKKOS_FUNCTION void operator()(
+      unsigned int const /*cell*/,
+      typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
+      dealii::Portable::SharedData<dim, double> *shared_data, double const *src,
+      double *dst) const
+#endif
   {
-    dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, dim, double>
-        fe_eval(gpu_data);
+  dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, 1, double>
+      fe_eval(gpu_data
+#if !DEAL_II_VERSION_GTE(9, 7, 0)
+              ,
+              shared_data
+#endif
+      );
 
     // Read DOF values from src and evaluate gradients before per-qp loop
     fe_eval.read_dof_values(src);
