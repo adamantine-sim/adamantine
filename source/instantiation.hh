@@ -28,13 +28,14 @@
 //   - n_materials = -1 and 1
 //   - p_order = 0 to 4
 //   - material_state = Solid, SolidLiquid, and SolidLiquidPowder
-#define ADAMANTINE_D_F_N_P_M(z, SEQ)                                        \
+#define ADAMANTINE_D_F_N_P_M(z, SEQ)                                           \
   template class adamantine::BOOST_PP_SEQ_ELEM(                                \
       0, SEQ)<BOOST_PP_SEQ_ELEM(1, SEQ), BOOST_PP_SEQ_ELEM(2, SEQ),            \
-              BOOST_PP_SEQ_ELEM(3, SEQ), BOOST_PP_SEQ_ELEM(4, SEQ), BOOST_PP_SEQ_ELEM(5, SEQ)>;
-#define INSTANTIATE_FEDEGREE_DIM_NMAT_PORDER_MATERIALSTATES(NAME)                  \
+              BOOST_PP_SEQ_ELEM(3, SEQ), BOOST_PP_SEQ_ELEM(4, SEQ),            \
+              BOOST_PP_SEQ_ELEM(5, SEQ)>;
+#define INSTANTIATE_FEDEGREE_DIM_NMAT_PORDER_MATERIALSTATES(NAME)              \
   BOOST_PP_SEQ_FOR_EACH_PRODUCT(                                               \
-      ADAMANTINE_D_F_N_P_M,                                                 \
+      ADAMANTINE_D_F_N_P_M,                                                    \
       ((NAME))(                                                                \
           ADAMANTINE_DIM)(ADAMANTINE_FE_DEGREE)(ADAMANTINE_N_MATERIALS)(ADAMANTINE_P_ORDER)(ADAMANTINE_MATERIAL_STATE))
 

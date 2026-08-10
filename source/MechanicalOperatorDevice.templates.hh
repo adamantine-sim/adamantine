@@ -8,8 +8,8 @@
 #include <MechanicalOperatorDevice.hh>
 #include <utils.hh>
 
-#include <deal.II/base/vectorization.h>
 #include <deal.II/base/quadrature_lib.h>
+#include <deal.II/base/vectorization.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/portable_fe_evaluation.h>
@@ -39,9 +39,8 @@ public:
       const dealii::Portable::DeviceVector<double> &src,
       dealii::Portable::DeviceVector<double> dst) const
   {
-  dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, dim, double>
-      fe_eval(gpu_data
-      );
+    dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, dim, double>
+        fe_eval(gpu_data);
 
     // Read DOF values from src and evaluate gradients before per-qp loop
     fe_eval.read_dof_values(src);

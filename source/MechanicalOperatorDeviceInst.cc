@@ -6,4 +6,3 @@
 #include <instantiation.hh>
 
 INSTANTIATE_FEDEGREE_DIM_NMAT_PORDER_MATERIALSTATES(MechanicalOperatorDevice)
-
