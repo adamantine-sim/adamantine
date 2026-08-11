@@ -235,10 +235,6 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
         for (auto const q_point : fe_values.quadrature_point_indices())
         {
           cell_matrix(i, j) +=
-              // FIXME We should be able to use the following formulation but
-              // the result is different. We need to understand why.
-              // ((lambda + mu) * fe_values.shape_grad(i, q_point)[component_i]
-              // * fe_values.shape_grad(j, q_point)[component_j] +
               ((fe_values.shape_grad(i, q_point)[component_i] *
                 fe_values.shape_grad(j, q_point)[component_j] * lambda) +
                (fe_values.shape_grad(i, q_point)[component_j] *
