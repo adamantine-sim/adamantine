@@ -7,6 +7,7 @@
 
 #include <BodyForce.hh>
 #include <MaterialProperty.hh>
+#include <MechanicalOperatorDeviceBase.hh>
 
 #include <deal.II/base/types.h>
 #include <deal.II/matrix_free/matrix_free.h>
@@ -16,7 +17,9 @@ namespace adamantine
 {
 template <int dim, int fe_degree, int n_materials, int p_order,
           typename MaterialStates>
-class MechanicalOperatorDevice
+class MechanicalOperatorDevice final
+    : public MechanicalOperatorDeviceBase<dim, n_materials, p_order,
+                                          MaterialStates>
 {
 public:
   MechanicalOperatorDevice(
@@ -24,23 +27,25 @@ public:
       MaterialProperty<dim, n_materials, p_order, MaterialStates,
                        dealii::MemorySpace::Host> &material_properties);
 
-  void reinit(dealii::DoFHandler<dim> const &dof_handler,
-              dealii::AffineConstraints<double> const &affine_constraints);
+  void
+  reinit(dealii::DoFHandler<dim> const &dof_handler,
+         dealii::AffineConstraints<double> const &affine_constraints) override;
 
-  void vmult(dealii::LA::distributed::Vector<double,
-                                             dealii::MemorySpace::Default> &dst,
-             dealii::LA::distributed::Vector<
-                 double, dealii::MemorySpace::Default> const &src) const;
+  void
+  vmult(dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
+            &dst,
+        dealii::LA::distributed::Vector<
+            double, dealii::MemorySpace::Default> const &src) const override;
 
   void vmult_add(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
           &dst,
       dealii::LA::distributed::Vector<
-          double, dealii::MemorySpace::Default> const &src) const;
+          double, dealii::MemorySpace::Default> const &src) const override;
 
   void initialize_dof_vector(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
-          &vector) const;
+          &vector) const override;
 
 private:
   using kokkos_default = dealii::MemorySpace::Default::kokkos_space;

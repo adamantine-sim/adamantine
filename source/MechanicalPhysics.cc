@@ -70,9 +70,33 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
 
   // Create the mechanical operator
   if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
-    _mechanical_operator = std::make_unique<
-        MechanicalOperatorDevice<dim, 1, n_materials, p_order, MaterialStates>>(
-        communicator, _material_properties);
+    if (fe_degree == 1)
+      _mechanical_operator =
+          std::make_unique<MechanicalOperatorDevice<dim, 1, n_materials,
+                                                    p_order, MaterialStates>>(
+              communicator, _material_properties);
+    else if (fe_degree == 2)
+      _mechanical_operator =
+          std::make_unique<MechanicalOperatorDevice<dim, 2, n_materials,
+                                                    p_order, MaterialStates>>(
+              communicator, _material_properties);
+    else if (fe_degree == 3)
+      _mechanical_operator =
+          std::make_unique<MechanicalOperatorDevice<dim, 3, n_materials,
+                                                    p_order, MaterialStates>>(
+              communicator, _material_properties);
+    else if (fe_degree == 4)
+      _mechanical_operator =
+          std::make_unique<MechanicalOperatorDevice<dim, 4, n_materials,
+                                                    p_order, MaterialStates>>(
+              communicator, _material_properties);
+    else if (fe_degree == 5)
+      _mechanical_operator =
+          std::make_unique<MechanicalOperatorDevice<dim, 5, n_materials,
+                                                    p_order, MaterialStates>>(
+              communicator, _material_properties);
+    else
+      Kokkos::abort("Not implemented");
   else
     Kokkos::abort("Not implemented");
   _mechanical_operator_host =
