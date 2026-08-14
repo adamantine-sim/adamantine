@@ -862,3 +862,131 @@ BOOST_AUTO_TEST_CASE(thermoelastic_stress_uniform_heating)
   BOOST_CHECK_SMALL(displacement.l2_norm(), 1.e-12);
   check_stress(360.);
 }
+
+BOOST_AUTO_TEST_CASE(thermoelastoplastic_radial_return)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 1.);
+  geometry_database.put("length_divisions", 2);
+  geometry_database.put("height", 1.);
+  geometry_database.put("height_divisions", 2);
+  geometry_database.put("width", 1.);
+  geometry_database.put("width_divisions", 2);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<3> geometry(communicator, geometry_database,
+                                   units_optional_database);
+  auto const &triangulation = geometry.get_triangulation();
+  for (auto cell : triangulation.cell_iterators())
+  {
+    cell->set_material_id(0);
+    cell->set_user_index(
+        static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
+  }
+
+  double constexpr lambda = 2.;
+  double constexpr mu = 3.;
+  double constexpr alpha = 0.01;
+  double constexpr plastic_modulus = 1.5;
+  double constexpr isotropic_hardening = 0.25;
+  boost::property_tree::ptree material_database;
+  material_database.put("property_format", "polynomial");
+  material_database.put("n_materials", 1);
+  material_database.put("material_0.solid.lame_first_parameter", lambda);
+  material_database.put("material_0.solid.lame_second_parameter", mu);
+  material_database.put("material_0.solid.thermal_expansion_coef", alpha);
+  material_database.put("material_0.solid.plastic_modulus", plastic_modulus);
+  material_database.put("material_0.solid.isotropic_hardening",
+                        isotropic_hardening);
+  material_database.put("material_0.solid.elastic_limit", 0.);
+  adamantine::MaterialProperty<3, 1, 4, adamantine::SolidLiquidPowder,
+                               dealii::MemorySpace::Host>
+      material_properties(communicator, triangulation, material_database);
+
+  boost::property_tree::ptree boundary_database;
+  for (unsigned int id = 0; id < 6; ++id)
+    boundary_database.put("boundary_" + std::to_string(id) + ".type",
+                          "clamped");
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
+
+  dealii::hp::FECollection<3> thermal_fe_collection;
+  thermal_fe_collection.push_back(dealii::FE_Q<3>(1));
+  thermal_fe_collection.push_back(dealii::FE_Nothing<3>());
+  dealii::DoFHandler<3> thermal_dof_handler(geometry.get_triangulation());
+  thermal_dof_handler.distribute_dofs(thermal_fe_collection);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      temperature(thermal_dof_handler.locally_owned_dofs(), communicator);
+  temperature = 300.;
+
+  // The last entry is the reference temperature for the unmelted substrate.
+  std::vector<double> reference_temperatures = {1000., 300.};
+  std::vector<bool> has_melted(triangulation.n_active_cells(), false);
+  adamantine::MechanicalPhysics<3, 1, 4, adamantine::SolidLiquidPowder,
+                                dealii::MemorySpace::Host>
+      mechanical_physics(communicator, 1, geometry, boundary,
+                         material_properties, reference_temperatures);
+  mechanical_physics.setup_dofs(thermal_dof_handler, temperature, has_melted,
+                                true);
+  auto displacement = mechanical_physics.solve();
+  BOOST_CHECK_SMALL(displacement.l2_norm(), 1.e-12);
+
+  // A fully clamped body has no displacement increment. Inject a deviatoric
+  // stress left by a preceding mechanical loading step so that a thermal
+  // increment and the plastic radial return are exercised together.
+  dealii::SymmetricTensor<2, 3> trial_stress;
+  trial_stress[0][0] = 1.;
+  trial_stress[1][1] = -1.;
+  double const trial_norm = trial_stress.norm();
+  auto const flow_direction = trial_stress / trial_norm;
+  auto &stress = mechanical_physics.get_stress_tensor();
+  for (auto &cell_stress : stress)
+    for (auto &value : cell_stress)
+      value = trial_stress;
+
+  // The thermal stress is hydrostatic and therefore must not affect the J2
+  // flow direction or the effective stress norm.
+  double constexpr delta_temperature_1 = 50.;
+  temperature = 350.;
+  mechanical_physics.update_rhs(thermal_dof_handler, temperature, has_melted);
+  displacement = mechanical_physics.solve();
+  BOOST_CHECK_SMALL(displacement.l2_norm(), 1.e-12);
+
+  double const beta = (3. * lambda + 2. * mu) * alpha;
+  double const plastic_increment_1 = trial_norm / (2. * mu + plastic_modulus);
+  double const returned_stress_norm_1 =
+      trial_norm - 2. * mu * plastic_increment_1;
+  auto const expected_stress_1 =
+      -beta * delta_temperature_1 * dealii::unit_symmetric_tensor<3>() +
+      returned_stress_norm_1 * flow_direction;
+  for (auto const &cell_stress : stress)
+    for (auto const &value : cell_stress)
+      BOOST_CHECK_SMALL((value - expected_stress_1).norm(), 1.e-12);
+
+  // A second increment checks both the stored plastic history and that only
+  // the change in thermal stress is applied at the next solve.
+  double constexpr stress_increment = 0.2;
+  for (auto &cell_stress : stress)
+    for (auto &value : cell_stress)
+      value += stress_increment * flow_direction;
+
+  double constexpr delta_temperature_2 = 10.;
+  temperature = 360.;
+  mechanical_physics.update_rhs(thermal_dof_handler, temperature, has_melted);
+  displacement = mechanical_physics.solve();
+  BOOST_CHECK_SMALL(displacement.l2_norm(), 1.e-12);
+
+  double const plastic_increment_2 =
+      stress_increment / (2. * mu + plastic_modulus);
+  double const returned_stress_norm_2 =
+      returned_stress_norm_1 + stress_increment - 2. * mu * plastic_increment_2;
+  auto const expected_stress_2 =
+      -beta * (delta_temperature_1 + delta_temperature_2) *
+          dealii::unit_symmetric_tensor<3>() +
+      returned_stress_norm_2 * flow_direction;
+  for (auto const &cell_stress : stress)
+    for (auto const &value : cell_stress)
+      BOOST_CHECK_SMALL((value - expected_stress_2).norm(), 1.e-12);
+}
