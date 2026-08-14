@@ -9,6 +9,7 @@
 #include <ClosestSourcePointAdaptation.hh>
 #include <Geometry.hh>
 #include <MechanicalOperator.hh>
+#include <MechanicalOperatorDevice.hh>
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/symmetric_tensor.h>
@@ -35,7 +36,7 @@ public:
 
   /**
    * Setup the DoFHandler, the AffineConstraints, and the
-   * MechanicalOperator.
+   * MechanicalOperatorDevice.
    */
   void
   setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces =
@@ -141,11 +142,14 @@ private:
    */
   dealii::hp::QCollection<dim> _q_collection;
   /**
-   * Pointer to the MechanicalOperator
+   * Pointer to the MechanicalOperatorDevice
    */
+  std::unique_ptr<
+      MechanicalOperatorDeviceBase<dim, n_materials, p_order, MaterialStates>>
+      _mechanical_operator;
   std::unique_ptr<MechanicalOperator<dim, n_materials, p_order, MaterialStates,
                                      MemorySpaceType>>
-      _mechanical_operator;
+      _mechanical_operator_host;
   /**
    * Whether to include a gravitional body force in the calculation.
    */

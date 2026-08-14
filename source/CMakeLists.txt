@@ -47,6 +47,7 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialPropertyInstDev.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MaterialPropertyInstHost.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperator.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalOperatorDeviceInst.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/MechanicalPhysics.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/Microstructure.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/PointCloud.cc
