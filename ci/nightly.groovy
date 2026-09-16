@@ -1,0 +1,87 @@
+pipeline {
+  agent none
+
+  options {
+    disableConcurrentBuilds(abortPrevious: true)
+    timeout(time: 6, unit: 'HOURS')
+  }
+
+  environment {
+    OMP_NUM_THREADS = 2
+  }
+
+  stages {
+    stage('Test') {
+      parallel {
+        stage('CPU') {
+          agent {
+            docker {
+              image "rombur/adamantine-stack:no_gpu-latest"
+                alwaysPull false
+                label 'nvidia-docker || rocm-docker'
+            }
+          }
+          environment {
+            BOOST_TEST_LOG_LEVEL = 'test_suite'
+          }
+          steps {
+            sh 'rm -rf build && mkdir -p build'
+              dir('build') {
+                sh '''#!/bin/bash
+                  cmake \
+                  -D CMAKE_BUILD_TYPE=Debug \
+                  -D ADAMANTINE_ENABLE_TESTS=ON \
+                  -D ADAMANTINE_ENABLE_ADIAK=ON \
+                  -D ADAMANTINE_ENABLE_CALIPER=ON \
+                  -D CMAKE_CXX_FLAGS="-Wall -Wextra -pedantic -Werror" \
+                  -D DEAL_II_DIR=${DEAL_II_DIR} \
+                  ..
+                '''
+                sh 'make -j8'
+                sh 'ctest -V --timeout 7200 --no-compress-output -R test_ -T Test'
+              }
+          }
+          post {
+            always {
+              xunit([CTest(deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/Testing/**/Test.xml', skipNoTestFiles: false, stopProcessingIfError: true)])
+            }
+          }
+        }
+
+        stage('CUDA') {
+          agent {
+            docker {
+              image "rombur/adamantine-stack:latest"
+                alwaysPull false
+                label 'nvidia-docker && ampere'
+            }
+          }
+          environment {
+            BOOST_TEST_LOG_LEVEL = 'test_suite'
+          }
+          steps {
+            sh 'rm -rf build && mkdir -p build'
+              dir('build') {
+                sh '''#!/bin/bash
+                  cmake \
+                  -D CMAKE_BUILD_TYPE=Debug \
+                  -D ADAMANTINE_ENABLE_TESTS=ON \
+                  -D ADAMANTINE_ENABLE_COVERAGE=OFF \
+                  -D CMAKE_CXX_FLAGS="-Wall -Wextra" \
+                  -D DEAL_II_DIR=${DEAL_II_DIR} \
+                  ..
+                '''
+                sh 'make -j8'
+                sh 'ctest -V --timeout 7200 --no-compress-output -R test_ -T Test'
+              }
+          }
+          post {
+            always {
+              xunit([CTest(deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/Testing/**/Test.xml', skipNoTestFiles: false, stopProcessingIfError: true)])
+            }
+          }
+        }
+      }
+    }
+  }
+}
