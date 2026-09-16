@@ -68,7 +68,7 @@ pipeline {
               dir('build') {
                 sh '''#!/bin/bash
                   cmake \
-                  -D CMAKE_BUILD_TYPE=Debug \
+                  -D CMAKE_BUILD_TYPE=Release \
                   -D ADAMANTINE_ENABLE_TESTS=ON \
                   -D ADAMANTINE_ENABLE_COVERAGE=OFF \
                   -D CMAKE_CXX_FLAGS="-Wall -Wextra" \
