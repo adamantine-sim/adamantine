@@ -6,13 +6,13 @@
 
 stdenv.mkDerivation rec {
   pname = "adiak";
-  version = "0.4.0";
+  version = "0.5.0";
 
   src = fetchFromGitHub {
     owner = "LLNL";
     repo  = "Adiak";
     rev   = "v${version}";
-    hash  = "sha256-S4ZLU6f/njdZXyoQdCJIDzpQTSmfapZiRe4zIex5f0Q=";
+    hash  = "sha256-8cBQINKOU2gRIljaLy9TPqZP3UiYl+8GmTIoRJZNDA8=";
 
     fetchSubmodules = true;
   };
@@ -26,4 +26,3 @@ stdenv.mkDerivation rec {
     "-DCMAKE_BUILD_TYPE=Release"
   ];
 }
-

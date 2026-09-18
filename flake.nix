@@ -4,7 +4,7 @@
   description = "Software to simulate heat transfer for additive manufacturing";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
     utils.url   = "github:numtide/flake-utils";
   };
 
@@ -32,8 +32,14 @@
         dealii = let
           versions = rec {
             latest = v962;
-            v962   = callPackage ./nix/dependencies/dealii/v9.6.2.nix { inherit callPackage; };
-            v952   = callPackage ./nix/dependencies/dealii/v9.5.2.nix { inherit callPackage; };
+            v962   = callPackage ./nix/dependencies/dealii/v9.6.2.nix {
+              inherit callPackage;
+              trilinos-mpi = pkgs.trilinos-mpi;
+            };
+            v952   = callPackage ./nix/dependencies/dealii/v9.5.2.nix {
+              inherit callPackage;
+              trilinos-mpi = pkgs.trilinos-mpi-14_4_0;
+            };
           };
         in (versions.latest) // {
           inherit versions;
@@ -56,6 +62,7 @@
           v100 = callPackage ./nix/adamantine/v1.0.0.nix {
             inherit callPackage;
             dealii = libs.dealii.versions.v952;
+            trilinos-mpi = pkgs.trilinos-mpi-14_4_0;
           };
         };
       in (versions.devel) // {
