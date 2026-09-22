@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c)  2026, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -19,7 +19,9 @@ GaussianHeatSource<dim>::GaussianHeatSource(
     : HeatSource<dim>(beam_database, units_optional_database),
       _five_axis(this->_scan_path.is_five_axis())
 {
+  // PropertyTreeInput sources.beam_X.A
   _A = beam_database.get<double>("A");
+  // PropertyTreeInput sources.beam_X.B
   _B = beam_database.get<double>("B");
 }
 
@@ -31,7 +33,7 @@ void GaussianHeatSource<dim>::update_time(double time)
   this->_source_on = (segment_power_modifier > 0.0);
 
   dealii::Point<3> const &path = this->_scan_path.value(time);
-  _quaternion = this->_scan_path.get_current_quaternion();
+  _quaternion = this->_scan_path.get_quaternion(time);
 
   for (unsigned int d = 0; d < 3; ++d)
   {
@@ -46,13 +48,11 @@ void GaussianHeatSource<dim>::update_time(double time)
       std::min(std::max(0.0, _A * std::log2(aspect_ratio) + _B), 9.0);
   _k = std::pow(2.0, n);
 
-  double const V0 =
-      0.5 * dealii::numbers::PI * _radius_squared[0] * _depth[0] *
-      std::tgamma(1.0 / _k) / (_k * std::pow(3.0, 1.0 / _k));
+  double const V0 = 0.5 * dealii::numbers::PI * _radius_squared[0] * _depth[0] *
+                    std::tgamma(1.0 / _k) / (_k * std::pow(3.0, 1.0 / _k));
 
-  double const effective_power =
-      this->_beam.absorption_efficiency * this->_beam.max_power *
-      segment_power_modifier;
+  double const effective_power = this->_beam.absorption_efficiency *
+                                 this->_beam.max_power * segment_power_modifier;
 
   _alpha = effective_power / V0;
 }
@@ -147,13 +147,12 @@ dealii::VectorizedArray<double> GaussianHeatSource<dim>::value(
 
   dealii::VectorizedArray<double> shape = _k;
 
-  auto const radial_component =
-      std::exp(-2.0 * xpy_squared / _radius_squared);
+  auto const radial_component = std::exp(-2.0 * xpy_squared / _radius_squared);
 
   auto const depth_component =
       std::exp(-3.0 * std::pow(std::abs(z / _depth), shape));
 
-  return depth_mask * _alpha * radial_component * depth_component;
+  return depth_mask * xpy_mask * _alpha * radial_component * depth_component;
 }
 
 template <int dim>
@@ -182,10 +181,9 @@ GaussianHeatSource<dim>::get_bounding_box(double const time,
 
     if (this->_scan_path.is_five_axis())
     {
-      dealii::Point<3> rotated_max_corner =
-          this->_scan_path.rotate(time, max_corner);
-      dealii::Point<3> rotated_min_corner =
-          this->_scan_path.rotate(time, min_corner);
+      Quaternion quaternion = this->_scan_path.get_quaternion(time);
+      dealii::Point<3> rotated_max_corner = quaternion.rotate(max_corner);
+      dealii::Point<3> rotated_min_corner = quaternion.rotate(min_corner);
 
       dealii::Point<3> new_max_corner;
       dealii::Point<3> new_min_corner;

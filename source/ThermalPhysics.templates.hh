@@ -5,9 +5,9 @@
 #ifndef THERMAL_PHYSICS_TEMPLATES_HH
 #define THERMAL_PHYSICS_TEMPLATES_HH
 
-#include <GaussianHeatSource.hh>
 #include <CubeHeatSource.hh>
 #include <ElectronBeamHeatSource.hh>
+#include <GaussianHeatSource.hh>
 #include <GoldakHeatSource.hh>
 #include <ThermalOperator.hh>
 #include <ThermalOperatorDevice.hh>

@@ -13,7 +13,8 @@
 namespace adamantine
 {
 /**
- * A derived class from HeatSource for the Gaussian model of a laser heat source.
+ * A derived class from HeatSource for the Gaussian model of a laser heat
+ * source.
  */
 template <int dim>
 class GaussianHeatSource final : public HeatSource<dim>
@@ -29,16 +30,16 @@ public:
    *   - <B>scan_path_file</B>: name of the file that contains the scan path
    *     segments
    *   - <B>scan_path_file_format</B>: format of the scan path file
-   *   - <B>A</B>: double, empirical coefficient for the model
-   *   - <B>B</B>: double, empirical coefficient for the model
+   *   - <B>A</B>: double, coefficient controlling the dependence of the axial
+   *     shape exponent on the depth-to-radius aspect ratio
+   *   - <B>B</B>: double, offset for the axial shape exponent
    * \param[in] units_optional_database may contain the following entries:
    *   - <B>heat_source.dimension</B>
    *   - <B>heat_source.power</B>
    */
-  GaussianHeatSource(
-      boost::property_tree::ptree const &beam_database,
-      boost::optional<boost::property_tree::ptree const &> const
-          &units_optional_database);
+  GaussianHeatSource(boost::property_tree::ptree const &beam_database,
+                     boost::optional<boost::property_tree::ptree const &> const
+                         &units_optional_database);
 
   /**
    * Set the time variable. This updates the beam position and recalculates
@@ -65,7 +66,15 @@ public:
   get_bounding_box(double time, double const scaling_factor) const final;
 
 private:
+  /**
+   * Coefficient multiplying the logarithm of the depth-to-radius aspect ratio
+   * in the axial shape exponent.
+   */
   double _A;
+  /**
+   * Offset in the axial shape exponent. Together, A and B define
+   * \f$k = 2^{\mathrm{clamp}(A\log_2(\max(1, d/r)) + B, 0, 9)}\f$.
+   */
   double _B;
 
   bool const _five_axis;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -44,6 +44,11 @@ BOOST_AUTO_TEST_CASE(expected_passes)
   database.put("time_stepping.method", "forward_euler");
   database.put("time_stepping.duration", 1.0);
   database.put("time_stepping.time_step", 0.1);
+  validate_input_database(database);
+
+  database.put("sources.beam_0.type", "gaussian");
+  database.put("sources.beam_0.A", 1.0);
+  database.put("sources.beam_0.B", 1.0);
   validate_input_database(database);
 }
 

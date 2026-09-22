@@ -2,9 +2,9 @@
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
-#include <GaussianHeatSource.hh>
 #include <CubeHeatSource.hh>
 #include <ElectronBeamHeatSource.hh>
+#include <GaussianHeatSource.hh>
 #include <GoldakHeatSource.hh>
 #include <ensemble_management.hh>
 #include <utils.hh>
