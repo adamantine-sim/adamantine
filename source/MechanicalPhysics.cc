@@ -5,8 +5,12 @@
 #include <MechanicalPhysics.hh>
 #include <instantiation.hh>
 
+#include <deal.II/base/geometry_info.h>
+#include <deal.II/base/mpi.h>
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/base/tensor.h>
+#include <deal.II/base/types.h>
+#include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_q.h>
@@ -15,12 +19,382 @@
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/numerics/vector_tools.h>
 
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
+
 #ifdef ADAMANTINE_WITH_CALIPER
 #include <caliper/cali.h>
 #endif
 
+#include <deque>
+#include <map>
+#include <numeric>
+#include <set>
+#include <string>
+#include <vector>
+
 namespace adamantine
 {
+namespace DistributedFEIndexComponentsUF
+{
+class DisjointSet
+{
+public:
+  DisjointSet() = default;
+
+  explicit DisjointSet(const unsigned int n) : parent(n), rank(n, 0)
+  {
+    std::iota(parent.begin(), parent.end(), 0U);
+  }
+
+  unsigned int find(unsigned int x)
+  {
+    while (parent[x] != x)
+    {
+      parent[x] = parent[parent[x]];
+      x = parent[x];
+    }
+    return x;
+  }
+
+  void unite(unsigned int a, unsigned int b)
+  {
+    a = find(a);
+    b = find(b);
+
+    if (a == b)
+      return;
+
+    if (rank[a] < rank[b])
+      std::swap(a, b);
+
+    parent[b] = a;
+
+    if (rank[a] == rank[b])
+      ++rank[a];
+  }
+
+  unsigned int size() const { return parent.size(); }
+
+private:
+  std::vector<unsigned int> parent;
+  std::vector<unsigned int> rank;
+};
+
+struct OwnedCellRecord
+{
+  std::string cell_id;
+  std::string component_rep_id;
+
+  template <class Archive>
+  void serialize(Archive &ar, const unsigned int)
+  {
+    ar &cell_id &component_rep_id;
+  }
+};
+
+struct LocalComponentRecord
+{
+  std::string rep_id;
+  unsigned int fe_index = 0;
+  bool touches_target_boundary = false;
+
+  template <class Archive>
+  void serialize(Archive &ar, const unsigned int)
+  {
+    ar &rep_id &fe_index &touches_target_boundary;
+  }
+};
+
+struct InterfaceRecord
+{
+  std::string cell_id_1;
+  std::string cell_id_2;
+
+  template <class Archive>
+  void serialize(Archive &ar, const unsigned int)
+  {
+    ar &cell_id_1 &cell_id_2;
+  }
+};
+
+struct LocalSummary
+{
+  std::vector<OwnedCellRecord> owned_cells;
+  std::vector<LocalComponentRecord> components;
+  std::vector<InterfaceRecord> interfaces;
+
+  template <class Archive>
+  void serialize(Archive &ar, const unsigned int)
+  {
+    ar &owned_cells &components &interfaces;
+  }
+};
+
+template <int dim, int spacedim = dim>
+struct ComponentInfo
+{
+  unsigned int fe_index = 0;
+  bool touches_target_boundary = false;
+
+  // Only locally owned cells on this rank.
+  std::vector<typename dealii::DoFHandler<dim, spacedim>::active_cell_iterator>
+      locally_owned_cells;
+};
+
+template <int dim, int spacedim = dim>
+struct Result
+{
+  std::vector<ComponentInfo<dim, spacedim>> components;
+
+  // Only for locally owned cells on this rank.
+  std::map<std::string, unsigned int> component_of_locally_owned_cell;
+};
+
+template <int dim, int spacedim = dim>
+Result<dim, spacedim> find_components(
+    const dealii::DoFHandler<dim, spacedim> &dof_handler,
+    const std::vector<dealii::types::boundary_id> &target_boundary_ids,
+    const MPI_Comm mpi_communicator)
+{
+  using Cell = typename dealii::DoFHandler<dim, spacedim>::active_cell_iterator;
+
+  // --------------------------------------------------------------------------
+  // Step 1: collect all locally owned active cells
+  // --------------------------------------------------------------------------
+  std::vector<Cell> local_cells;
+  std::map<std::string, unsigned int> local_index_of_id;
+
+  for (const Cell &cell : dof_handler.active_cell_iterators())
+    if (cell->is_locally_owned())
+    {
+      const std::string id = cell->id().to_string();
+      local_index_of_id[id] = local_cells.size();
+      local_cells.push_back(cell);
+    }
+
+  DisjointSet local_dsu(local_cells.size());
+  std::vector<bool> local_touches_target_boundary(local_cells.size(), false);
+
+  // Same-FE cross-rank adjacencies.
+  std::set<std::pair<std::string, std::string>> interface_pairs;
+
+  auto process_neighbor = [&](const unsigned int i, const unsigned int fe_index,
+                              const std::string &cell_id, const Cell &neighbor)
+  {
+    if (!neighbor->is_active())
+      return;
+
+    if (neighbor->active_fe_index() != fe_index)
+      return;
+
+    if (neighbor->is_locally_owned())
+    {
+      const auto it = local_index_of_id.find(neighbor->id().to_string());
+      if (it != local_index_of_id.end())
+        local_dsu.unite(i, it->second);
+    }
+    else if (neighbor->is_ghost())
+    {
+      std::string a = cell_id;
+      std::string b = neighbor->id().to_string();
+
+      if (b < a)
+        std::swap(a, b);
+
+      interface_pairs.emplace(std::move(a), std::move(b));
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // Step 2: local union-find
+  // --------------------------------------------------------------------------
+  for (unsigned int i = 0; i < local_cells.size(); ++i)
+  {
+    const Cell cell = local_cells[i];
+    const std::string cell_id = cell->id().to_string();
+    const unsigned int fe_idx = cell->active_fe_index();
+
+    for (unsigned int f = 0; f < dealii::GeometryInfo<dim>::faces_per_cell; ++f)
+    {
+      if (cell->at_boundary(f))
+      {
+        if (std::find(target_boundary_ids.begin(), target_boundary_ids.end(),
+                      cell->face(f)->boundary_id()) !=
+            target_boundary_ids.end())
+          local_touches_target_boundary[i] = true;
+
+        continue;
+      }
+
+      if (cell->neighbor_is_coarser(f))
+      {
+        process_neighbor(i, fe_idx, cell_id, cell->neighbor(f));
+      }
+      else
+      {
+        const auto neighbor = cell->neighbor(f);
+
+        if (neighbor->is_active())
+        {
+          process_neighbor(i, fe_idx, cell_id, neighbor);
+        }
+        else
+        {
+          for (unsigned int subface = 0; subface < cell->face(f)->n_children();
+               ++subface)
+            process_neighbor(i, fe_idx, cell_id,
+                             cell->neighbor_child_on_subface(f, subface));
+        }
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Step 3: compress local components
+  // --------------------------------------------------------------------------
+  LocalSummary local_summary;
+  std::map<unsigned int, std::string> rep_id_of_root;
+  std::map<unsigned int, unsigned int> fe_index_of_root;
+  std::map<unsigned int, bool> touches_of_root;
+  std::map<std::string, std::string> local_rep_of_owned_cell;
+
+  for (unsigned int i = 0; i < local_cells.size(); ++i)
+  {
+    const unsigned int root = local_dsu.find(i);
+
+    if (rep_id_of_root.find(root) == rep_id_of_root.end())
+    {
+      rep_id_of_root[root] = local_cells[root]->id().to_string();
+      fe_index_of_root[root] = local_cells[root]->active_fe_index();
+    }
+
+    touches_of_root[root] =
+        touches_of_root[root] || local_touches_target_boundary[i];
+  }
+
+  for (const auto &[root, rep_id] : rep_id_of_root)
+    local_summary.components.push_back(
+        {rep_id, fe_index_of_root[root], touches_of_root[root]});
+
+  for (unsigned int i = 0; i < local_cells.size(); ++i)
+  {
+    const std::string cell_id = local_cells[i]->id().to_string();
+    const std::string rep_id = rep_id_of_root[local_dsu.find(i)];
+
+    local_summary.owned_cells.push_back({cell_id, rep_id});
+    local_rep_of_owned_cell[cell_id] = rep_id;
+  }
+
+  for (const auto &p : interface_pairs)
+    local_summary.interfaces.push_back({p.first, p.second});
+
+  // --------------------------------------------------------------------------
+  // Step 4: gather local summaries
+  // --------------------------------------------------------------------------
+  const std::vector<LocalSummary> all_summaries =
+      dealii::Utilities::MPI::all_gather(mpi_communicator, local_summary);
+
+  // --------------------------------------------------------------------------
+  // Step 5: global union-find on local-component representatives
+  // --------------------------------------------------------------------------
+  std::map<std::string, unsigned int> component_index_of_rep;
+  std::vector<std::string> component_reps;
+  std::vector<unsigned int> fe_index_of_rep;
+  std::vector<bool> touches_of_rep;
+  std::map<std::string, std::string> owned_cell_to_rep;
+
+  auto ensure_component_index =
+      [&](const std::string &rep_id, const unsigned int fe_index)
+  {
+    const auto it = component_index_of_rep.find(rep_id);
+    if (it != component_index_of_rep.end())
+      return it->second;
+
+    const unsigned int idx = component_reps.size();
+    component_index_of_rep[rep_id] = idx;
+    component_reps.push_back(rep_id);
+    fe_index_of_rep.push_back(fe_index);
+    touches_of_rep.push_back(false);
+    return idx;
+  };
+
+  for (const auto &summary : all_summaries)
+  {
+    for (const auto &comp : summary.components)
+    {
+      const unsigned int idx =
+          ensure_component_index(comp.rep_id, comp.fe_index);
+
+      touches_of_rep[idx] = touches_of_rep[idx] || comp.touches_target_boundary;
+    }
+
+    for (const auto &cell : summary.owned_cells)
+      owned_cell_to_rep[cell.cell_id] = cell.component_rep_id;
+  }
+
+  DisjointSet global_dsu(component_reps.size());
+
+  for (const auto &summary : all_summaries)
+    for (const auto &edge : summary.interfaces)
+    {
+      const auto it_a = owned_cell_to_rep.find(edge.cell_id_1);
+      const auto it_b = owned_cell_to_rep.find(edge.cell_id_2);
+
+      if (it_a == owned_cell_to_rep.end() || it_b == owned_cell_to_rep.end())
+        continue;
+
+      const unsigned int ia = component_index_of_rep.at(it_a->second);
+      const unsigned int ib = component_index_of_rep.at(it_b->second);
+
+      if (fe_index_of_rep[ia] == fe_index_of_rep[ib])
+        global_dsu.unite(ia, ib);
+    }
+
+  // --------------------------------------------------------------------------
+  // Step 6: compact global components and fill local cell lists
+  // --------------------------------------------------------------------------
+  Result<dim, spacedim> result;
+  std::map<unsigned int, unsigned int> compact_id_of_root;
+
+  for (unsigned int i = 0; i < global_dsu.size(); ++i)
+  {
+    const unsigned int root = global_dsu.find(i);
+
+    auto it = compact_id_of_root.find(root);
+    if (it == compact_id_of_root.end())
+    {
+      const unsigned int cid = result.components.size();
+      compact_id_of_root[root] = cid;
+      result.components.emplace_back();
+      result.components.back().fe_index = fe_index_of_rep[root];
+      it = compact_id_of_root.find(root);
+    }
+
+    const unsigned int cid = it->second;
+    result.components[cid].touches_target_boundary =
+        result.components[cid].touches_target_boundary || touches_of_rep[i];
+  }
+
+  for (const Cell &cell : dof_handler.active_cell_iterators())
+    if (cell->is_locally_owned())
+    {
+      const std::string cell_id = cell->id().to_string();
+      const std::string rep_id = local_rep_of_owned_cell.at(cell_id);
+
+      const unsigned int root =
+          global_dsu.find(component_index_of_rep.at(rep_id));
+      const unsigned int cid = compact_id_of_root.at(root);
+
+      result.component_of_locally_owned_cell[cell_id] = cid;
+      result.components[cid].locally_owned_cells.push_back(cell);
+    }
+
+  return result;
+}
+
+} // namespace DistributedFEIndexComponentsUF
+
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
@@ -445,6 +819,28 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
                                          _dof_handler.get_communicator()
 #endif
       );
+
+  if (rebuild_matrix)
+  {
+    // Ensure that we aren't activating cells that aren't connected to a clamped
+    // boundary
+    auto boundary_ids = _boundary.get_boundary_ids(BoundaryType::clamped);
+
+    auto result = DistributedFEIndexComponentsUF::find_components(
+        _dof_handler, boundary_ids, MPI_COMM_WORLD);
+
+    for (unsigned int c = 0; c < result.components.size(); ++c)
+    {
+      if (result.components[c].fe_index == 0 &&
+          !result.components[c].touches_target_boundary)
+      {
+        rebuild_matrix = true;
+        for (auto &cell : result.components[c].locally_owned_cells)
+          cell->set_active_fe_index(1);
+      }
+    }
+  }
+
   // If we do not need to rebuild the matrix. Update the rhs and exit.
   if (!rebuild_matrix)
   {
