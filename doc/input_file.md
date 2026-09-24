@@ -113,16 +113,26 @@ are refined (default value: 2)
 * **n\_beams**: number of heat source beams (required)
 * **print\_heat\_input**: print the total heat input absorbed by the object at each time step (default value: false, <span style="color:green">since 1.1<span>)
 * **beam\_X**: property tree for the beam with number X
-* **beam\_X.type**: type of heat source: `goldak`, `electron_beam`, or `cube` (required)
+* **beam\_X.type**: type of heat source: `goldak`, `electron_beam`, `gaussian,
+    or `cube` (required)
 * **beam\_X.scan\_path\_file**: scan path filename (required)
 * **beam\_X.scan\_path\_file\_format**: format of the scan path: `segment` or
 `event_series` (required)
 * **beam\_X.max\_power**: maximum power of the beam in watts (required)
-* **beam\_X.depth**: maximum depth reached by the electron beam in meters (required)
+* **beam\_X.depth**: maximum depth reached by the heat source in meters (required)
 * **beam\_X.absorption\_efficiency**: absorption efficiency of the beam equivalent
-to `energy_conversion_efficiency * control_efficiency` for electon beam. Number
+to `energy_conversion_efficiency * control_efficiency` for electron beam. Number
 between 0 and 1 (required).
 * **beam\_X.diameter**: diameter of the beam in meters (default value: 2e-3)
+* **beam\_X.A**: coefficient controlling the dependence of the Gaussian heat
+  source's axial shape exponent on the depth-to-radius aspect ratio (required
+  for `gaussian`)
+* **beam\_X.B**: offset in the Gaussian heat source's axial shape exponent
+  (required for `gaussian`)
+
+For a `gaussian` heat source, the axial shape exponent is calculated as
+$$k = 2^{\operatorname{clamp}(A\log_2(\max(1,d/r)) + B, 0, 9)}$$, where $$d$$
+is the heat-source depth and $$r$$ is its radius.
 
 ## time\_stepping (required):
 * **method**: name of the method to use for the time integration: `forward_euler`,
