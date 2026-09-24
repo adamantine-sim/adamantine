@@ -19,7 +19,7 @@ project(Adamantine LANGUAGES CXX VERSION 1.1.9)
 include(SetupTPLs)
 include(SetupAdamantine)
 
-add_subdirectory(application)
+add_subdirectory(applications)
 add_subdirectory(source)
 
 option(ADAMANTINE_ENABLE_COVERAGE "Measure coverage" OFF)
