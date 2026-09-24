@@ -7,6 +7,7 @@
 
 #include <CubeHeatSource.hh>
 #include <ElectronBeamHeatSource.hh>
+#include <GaussianHeatSource.hh>
 #include <GoldakHeatSource.hh>
 #include <ThermalOperator.hh>
 #include <ThermalOperatorDevice.hh>
@@ -400,6 +401,11 @@ ThermalPhysics<dim, n_materials, p_order, fe_degree, MaterialStates,
     else if (type == "cube")
     {
       _heat_sources[i] = std::make_shared<CubeHeatSource<dim>>(
+          beam_database, units_optional_database);
+    }
+    else if (type == "gaussian")
+    {
+      _heat_sources[i] = std::make_shared<GaussianHeatSource<dim>>(
           beam_database, units_optional_database);
     }
     else

@@ -1,10 +1,11 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
 #define BOOST_TEST_MODULE HeatSource
 
 #include <ElectronBeamHeatSource.hh>
+#include <GaussianHeatSource.hh>
 #include <GoldakHeatSource.hh>
 #include <HeatSource.hh>
 #include <ScanPath.hh>
@@ -15,6 +16,100 @@ namespace utf = boost::unit_test;
 
 namespace adamantine
 {
+
+template <int dim>
+void check_gaussian_heat_source()
+{
+  boost::property_tree::ptree database;
+  database.put("depth", 0.1);
+  database.put("absorption_efficiency", 0.1);
+  database.put("diameter", 0.1);
+  database.put("max_power", 10.);
+  database.put("scan_path_file", "scan_path.txt");
+  database.put("scan_path_file_format", "segment");
+  database.put("A", 1.);
+  database.put("B", 1.);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+
+  GaussianHeatSource<dim> heat_source(database, units_optional_database);
+  heat_source.update_time(0.001001);
+  BOOST_TEST(heat_source.is_source_on());
+
+  dealii::Point<dim> center;
+  center[axis<dim>::x] = 8.0e-4;
+  center[axis<dim>::z] = 0.1;
+  if constexpr (dim == 3)
+  {
+    center[axis<dim>::y] = 0.1;
+  }
+
+  // depth / radius = 2, so A = B = 1 gives k = 2^(1 + 1) = 4.
+  double constexpr radius_squared = 0.05 * 0.05;
+  double constexpr depth = 0.1;
+  double constexpr k = 4.;
+  double const normalization = 0.5 * dealii::numbers::PI * radius_squared *
+                               depth * std::tgamma(1. / k) /
+                               (k * std::pow(3., 1. / k));
+  double const expected_center = 1. / normalization;
+  BOOST_TEST(heat_source.value(center) == expected_center);
+
+  dealii::Point<dim> off_center = center;
+  off_center[axis<dim>::x] += 0.01;
+  double radial_distance_squared = 0.01 * 0.01;
+  if constexpr (dim == 3)
+  {
+    off_center[axis<dim>::y] += 0.02;
+    radial_distance_squared += 0.02 * 0.02;
+  }
+  off_center[axis<dim>::z] -= 0.025;
+  double const expected_off_center =
+      expected_center *
+      std::exp(-2. * radial_distance_squared / radius_squared) *
+      std::exp(-3. * std::pow(0.025 / depth, k));
+  BOOST_TEST(heat_source.value(off_center) == expected_off_center);
+
+  dealii::Point<dim> outside = center;
+  outside[axis<dim>::z] += 1.e-6;
+  BOOST_TEST(heat_source.value(outside) == 0.);
+  outside = center;
+  outside[axis<dim>::z] -= depth + 1.e-6;
+  BOOST_TEST(heat_source.value(outside) == 0.);
+  outside = center;
+  outside[axis<dim>::x] += 0.12;
+  BOOST_TEST(heat_source.value(outside) == 0.);
+
+  unsigned int constexpr n_lanes = dealii::VectorizedArray<double>::size();
+  dealii::Point<dim, dealii::VectorizedArray<double>> vectorized_points;
+  for (unsigned int lane = 0; lane < n_lanes; ++lane)
+  {
+    dealii::Point<dim> const &point = lane == 0 ? off_center : outside;
+    for (unsigned int d = 0; d < dim; ++d)
+    {
+      vectorized_points[d][lane] = point[d];
+    }
+  }
+  dealii::VectorizedArray<double> const values =
+      heat_source.value(vectorized_points);
+  BOOST_TEST(values[0] == expected_off_center);
+  for (unsigned int lane = 1; lane < n_lanes; ++lane)
+  {
+    BOOST_TEST(values[lane] == 0.);
+  }
+
+  heat_source.update_time(100.);
+  BOOST_TEST(!heat_source.is_source_on());
+  BOOST_TEST(heat_source.value(center) == 0.);
+}
+
+BOOST_AUTO_TEST_CASE(gaussian_heat_source_value_2d, *utf::tolerance(1e-12))
+{
+  check_gaussian_heat_source<2>();
+}
+
+BOOST_AUTO_TEST_CASE(gaussian_heat_source_value_3d, *utf::tolerance(1e-12))
+{
+  check_gaussian_heat_source<3>();
+}
 
 BOOST_AUTO_TEST_CASE(heat_source_value_2d, *utf::tolerance(1e-12))
 {
