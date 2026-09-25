@@ -279,11 +279,21 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_BEGIN("initialize mechanical matrix preconditioner");
 #endif
+
+// FIXME: Constant modes reduce cg iterations by 40% for build without TPETRA
+// with TEPETRA, we run into a level 0 scratch memory issue. This is a temporary
+// solution to bypass constant_modes with TPETRA.
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+  _preconditioner.clear();
+  _preconditioner.initialize(_system_matrix);
+
+#else
   // Provide the constant displacement modes to AMG for the elasticity problem.
   dealii::FEValuesExtractors::Vector const displacement_components(0);
   auto const component_mask =
       _dof_handler->get_fe_collection().component_mask(
           displacement_components);
+
   std::vector<std::vector<bool>> constant_modes;
   dealii::DoFTools::extract_constant_modes(
       *_dof_handler,
@@ -294,6 +304,8 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
   amg_data.constant_modes = constant_modes;
   _preconditioner.clear();
   _preconditioner.initialize(_system_matrix, amg_data);
+#endif
+
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_END("initialize mechanical matrix preconditioner");
 #endif
