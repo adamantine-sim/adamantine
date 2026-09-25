@@ -279,8 +279,21 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_BEGIN("initialize mechanical matrix preconditioner");
 #endif
+  // Provide the constant displacement modes to AMG for the elasticity problem.
+  dealii::FEValuesExtractors::Vector const displacement_components(0);
+  auto const component_mask =
+      _dof_handler->get_fe_collection().component_mask(
+          displacement_components);
+  std::vector<std::vector<bool>> constant_modes;
+  dealii::DoFTools::extract_constant_modes(
+      *_dof_handler,
+      component_mask,
+      constant_modes);
+
+  typename TrilinosPreconditionerType::AdditionalData amg_data;
+  amg_data.constant_modes = constant_modes;
   _preconditioner.clear();
-  _preconditioner.initialize(_system_matrix);
+  _preconditioner.initialize(_system_matrix, amg_data);
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_END("initialize mechanical matrix preconditioner");
 #endif
