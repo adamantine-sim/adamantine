@@ -827,7 +827,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
     auto boundary_ids = _boundary.get_boundary_ids(BoundaryType::clamped);
 
     auto result = DistributedFEIndexComponentsUF::find_components(
-        _dof_handler, target_id, MPI_COMM_WORLD);
+        _dof_handler, boundary_ids, MPI_COMM_WORLD);
 
     for (unsigned int c = 0; c < result.components.size(); ++c)
     {
