@@ -197,18 +197,25 @@ void visualize_activation(MPI_Comm const &communicator,
 
   // The material-deposition API returns one cell list for every deposition
   // box. Apply those lists in chronological order and write one cumulative
-  // snapshot whenever the deposition time changes.
-  for (unsigned int i = 0; i < elements_to_activate.size(); ++i)
+  // snapshot whenever the deposition time changes. Multiple beams can produce
+  // boxes at the same time, so all such boxes must be applied before writing
+  // the snapshot for that time.
+  for (unsigned int i = 0; i < elements_to_activate.size();)
   {
     double const time = deposition_times[i];
-    for (auto const &cell : elements_to_activate[i])
+    do
     {
-      unsigned int const cell_id = cell->active_cell_index();
-      if (activation_time[cell_id] < 0.)
+      for (auto const &cell : elements_to_activate[i])
       {
-        activation_time[cell_id] = time;
+        unsigned int const cell_id = cell->active_cell_index();
+        if (activation_time[cell_id] < 0.)
+        {
+          activation_time[cell_id] = time;
+        }
       }
-    }
+
+      ++i;
+    } while (i < elements_to_activate.size() && deposition_times[i] == time);
 
     write_activation_output(communicator, triangulation, output_directory,
                             filename_prefix, output_time_step, time,
