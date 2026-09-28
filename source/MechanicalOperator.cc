@@ -280,9 +280,8 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
   CALI_MARK_BEGIN("initialize mechanical matrix preconditioner");
 #endif
 
-// FIXME: Constant modes reduce cg iterations by 40% for build without TPETRA
-// with TEPETRA, we run into a level 0 scratch memory issue. This is a temporary
-// solution to bypass constant_modes with TPETRA.
+// Constant modes reduce cg iterations by 40%.
+// FIXME: With Tpetra, we run into a level 0 scratch memory issue on Frontier.
 #if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
   _preconditioner.clear();
   _preconditioner.initialize(_system_matrix);
