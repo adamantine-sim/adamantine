@@ -138,7 +138,7 @@ namespace DistributedFEIndexComponentsUF
   template <int dim, int spacedim = dim>
   std::vector<ComponentInfo<dim, spacedim>>
   find_components(const DoFHandler<dim, spacedim> &dof_handler,
-                  const types::boundary_id         target_boundary_id,
+                  const std::vector<types::boundary_id>&        target_boundary_id,
                   const unsigned int target_fe_index,
                   const MPI_Comm                   mpi_communicator)
   {
@@ -211,7 +211,7 @@ namespace DistributedFEIndexComponentsUF
           {
             if (cell->at_boundary(f))
               {
-                if (cell->face(f)->boundary_id() == target_boundary_id)
+                if (std::find(target_boundary_id.begin(), target_boundary_id.end(), cell->face(f)->boundary_id()) != target_boundary_id.end())
                   local_touches_target_boundary[i] = true;
 
                 continue;
@@ -690,7 +690,7 @@ namespace
 for (unsigned int target_fe_index = 0; target_fe_index<4; ++ target_fe_index) {
 Kokkos::Timer timer;
 auto result  = Impl3::DistributedFEIndexComponentsUF::find_components(
-        dof_handler, top_boundary_id, target_fe_index, comm);
+        dof_handler, {top_boundary_id}, target_fe_index, comm);
 std::cout << "Impl3: " << timer.seconds() << '\n';
 
     // --------------------------------------------------------------------------
