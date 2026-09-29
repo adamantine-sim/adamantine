@@ -27,7 +27,6 @@
     MPI_Comm comm = MPI_COMM_WORLD;
 
     const unsigned int my_rank = dealii::Utilities::MPI::this_mpi_process(comm);
-    dealii::ConditionalOStream pcout(std::cout, my_rank == 0);
 
     // --------------------------------------------------------------------------
     // Build a 2 x 2 x 4 cube on [0,1]^3.
@@ -45,8 +44,6 @@
                                               /*colorize=*/true);
 
     dealii::DoFHandler<3> dof_handler(triangulation);
-
-    std::cout << "n_cells: " << triangulation.n_cells() << std::endl;
 
     // One FE per z-layer. Using different polynomial degrees is a simple way
     // to guarantee distinct FE indices.
@@ -90,144 +87,33 @@
     const dealii::types::boundary_id top_boundary_id =
       static_cast<dealii::types::boundary_id>(top_boundary_id_int);
 
-    pcout << "Top boundary id = " << static_cast<unsigned int>(top_boundary_id)
-          << '\n';
-
     // --------------------------------------------------------------------------
     // Run the connected-components routine.
     // --------------------------------------------------------------------------
 
-for (unsigned int target_fe_index = 0; target_fe_index<4; ++ target_fe_index) {
+for (unsigned int target_fe_index = 0; target_fe_index<fe_collection.size(); ++ target_fe_index) {
 auto result  = adamantine::ConnectedComponents::find_components(
         dof_handler, {top_boundary_id}, target_fe_index, comm);
 
+    BOOST_TEST(result.size() == 1); 
     // --------------------------------------------------------------------------
-    // Local consistency checks.
+    // consistency checks.
     // --------------------------------------------------------------------------
-    unsigned int local_fail = 0;
-
-    for (unsigned int c = 0; c < result.size(); ++c)
-      {
-        const auto &component = result[c];
-
-        for (const auto &cell : component.locally_owned_cells)
+        for (const auto &cell : result[0].locally_owned_cells)
           {
-            if (cell->active_fe_index() != target_fe_index)
-              local_fail = 1;
-
-            if (z_layer_from_point(cell->center(), static_cast<unsigned int>(fe_collection.size())) != target_fe_index)
-              local_fail = 1;
-          }
-      }
-
-    // --------------------------------------------------------------------------
-    // Global checks by FE index.
-    // Since each z-layer has a unique FE index, we expect up to one component per layer
-    // (zero components are acceptable for FEs that were intentionally filtered out).
-    // --------------------------------------------------------------------------
-
-    const unsigned int n_layers_check = static_cast<unsigned int>(fe_collection.size());
-    std::vector<unsigned int> local_cells_per_fe(n_layers_check, 0U);
-    std::vector<unsigned int> components_per_fe(n_layers_check, 0U);
-    std::vector<unsigned int> touches_top_per_fe(n_layers_check, 0U);
-
-    for (const auto &component : result)
-      {
-        if (target_fe_index >= n_layers_check)
-          {
-            local_fail = 1;
-            continue;
+            BOOST_TEST(cell->active_fe_index() == target_fe_index);
+            BOOST_TEST(z_layer_from_point(cell->center(), static_cast<unsigned int>(fe_collection.size())) == target_fe_index);
           }
 
-        ++components_per_fe[target_fe_index];
-        local_cells_per_fe[target_fe_index] += component.locally_owned_cells.size();
+    unsigned int n_expected_local_cells = 0;
+    for (const auto& cell: dof_handler.active_cell_iterators()) {
+      if(cell->is_locally_owned() && cell->active_fe_index() == target_fe_index)
+       ++n_expected_local_cells;
+    }
+    BOOST_TEST(result[0].locally_owned_cells.size() == n_expected_local_cells);
 
-        if (component.touches_target_boundary)
-          touches_top_per_fe[target_fe_index] = 1U;
-      }
-
-    for (unsigned int fe_index = 0; fe_index < n_layers_check; ++fe_index)
-      {
-        // Zero components are acceptable if the FE was filtered out. More than one
-        // component per FE is an error.
-        if (components_per_fe[fe_index] > 1U)
-          local_fail = 1;
-
-        if (components_per_fe[fe_index] == 1U)
-          {
-            const unsigned int expected_touches_top = (fe_index == n_layers_check - 1U ? 1U : 0U);
-            if (touches_top_per_fe[fe_index] != expected_touches_top)
-              local_fail = 1;
-          }
-      }
-
-    // Compute global fail for the test and print detailed diagnostics if failing.
-    const unsigned int global_fail = dealii::Utilities::MPI::max(local_fail, comm);
-
-    // --------------------------------------------------------------------------
-    // Print a short summary.
-    // --------------------------------------------------------------------------
-    pcout << "Found " << result.size() << " components\n";
-    for (unsigned int c = 0; c < result.size(); ++c)
-      {
-        const auto &component = result[c];
-        const unsigned int global_n_cells =
-          dealii::Utilities::MPI::sum(static_cast<unsigned int>(component.locally_owned_cells.size()),
-                              comm);
-
-        pcout << "  component " << c
-              << ": fe_index=" << target_fe_index
-              << ", touches_top=" << std::boolalpha
-              << component.touches_target_boundary
-              << ", global_cells=" << global_n_cells
-              << ", local_cells=" << component.locally_owned_cells.size()
-              << '\n';
-
-        // Print a small sample of local cell ids and verify mapping correctness
-        unsigned int sample = 0;
-        for (const auto &cell : component.locally_owned_cells)
-          {
-            if (sample++ >= 5)
-              break;
-            pcout << "    sample cell id=" << cell->active_cell_index()
-                  << ", active_fe_index=" << cell->active_fe_index()
-                  << '\n';
-          }
-      }
-
-    if (global_fail)
-      {
-        pcout << "TEST FAILURE: local_fail=" << local_fail << " result.size()=" << result.size() << "\n";
-
-        // Print per-FE diagnostics
-        for (unsigned int fe_index = 0; fe_index < n_layers_check; ++fe_index)
-          {
-            pcout << "FE " << fe_index << ": components_per_fe=" << components_per_fe[fe_index]
-                  << ", local_cells_per_fe=" << local_cells_per_fe[fe_index]
-                  << ", touches_top=" << touches_top_per_fe[fe_index] << '\n';
-          }
-
-        // Search for mismatched component mappings
-        for (unsigned int c = 0; c < result.size(); ++c)
-          {
-            const auto &component = result[c];
-            for (const auto &cell : component.locally_owned_cells)
-              {
-                const unsigned int id = cell->active_cell_index();
-                if (cell->active_fe_index() != target_fe_index)
-                  pcout << "  FE_MISMATCH: cell " << id << " fe_index=" << cell->active_fe_index()
-                        << " target_fe_index=" << target_fe_index << "\n";
-
-                if (z_layer_from_point(cell->center(), static_cast<unsigned int>(fe_collection.size())) != target_fe_index)
-                  pcout << "  Z_LAYER_MISMATCH: cell " << id << " center_z=" << cell->center()[2]
-                        << " expected_layer=" << z_layer_from_point(cell->center(), static_cast<unsigned int>(fe_collection.size()))
-                        << " target_fe_index=" << target_fe_index << "\n";
-              }
-          }
-
-        throw std::runtime_error("Connected-components test failed.");
-      }
-
-    pcout << "Connected-components test passed.\n";
+    const unsigned int n_layers = static_cast<unsigned int>(fe_collection.size());
+    const bool expected_touches_top = (target_fe_index == n_layers - 1);
+    BOOST_TEST(result[0].touches_target_boundary == expected_touches_top);
   }
 }
