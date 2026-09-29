@@ -13,7 +13,7 @@ endforeach()
 
 if(DEAL_II_MISSING_FEATURES)
   string(REPLACE ";"  ", " DEAL_II_MISSING_FEATURES "${DEAL_II_MISSING_FEATURES}")
-  #message(FATAL_ERROR "deal.II wasn't configured with all required dependencies. The missing dependencies are ${DEAL_II_MISSING_FEATURES}.")
+  message(FATAL_ERROR "deal.II wasn't configured with all required dependencies. The missing dependencies are ${DEAL_II_MISSING_FEATURES}.")
 endif()
 
 if(NOT DEAL_II_ARBORX_WITH_MPI)
