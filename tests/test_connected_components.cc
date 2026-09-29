@@ -13,8 +13,8 @@
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/base/conditional_ostream.h>
 
-namespace
-{
+#include "main.cc"
+
   unsigned int
   z_layer_from_point(const dealii::Point<3> &p, const unsigned int n_layers)
   {
@@ -23,12 +23,8 @@ namespace
                     static_cast<unsigned int>(std::floor(z * n_layers)));
   }
 
-  void
-  run_test(const MPI_Comm comm)
-  {
-    constexpr unsigned int nx = 64;
-    constexpr unsigned int ny = nx;
-    constexpr unsigned int nz = 2*nx;
+  BOOST_AUTO_TEST_CASE(connected_components) {
+    MPI_Comm comm = MPI_COMM_WORLD;
 
     const unsigned int my_rank = dealii::Utilities::MPI::this_mpi_process(comm);
     dealii::ConditionalOStream pcout(std::cout, my_rank == 0);
@@ -39,6 +35,9 @@ namespace
     // --------------------------------------------------------------------------
     dealii::parallel::distributed::Triangulation<3> triangulation(comm);
 
+    constexpr unsigned int nx = 64;
+    constexpr unsigned int ny = nx;
+    constexpr unsigned int nz = 2*nx;
     dealii::GridGenerator::subdivided_hyper_rectangle(triangulation,
                                               {nx, ny, nz},
                                               dealii::Point<3>(0.0, 0.0, 0.0),
@@ -232,12 +231,3 @@ auto result  = adamantine::ConnectedComponents::find_components(
     pcout << "Connected-components test passed.\n";
   }
 }
-} // namespace
-
-int
-main(int argc, char **argv)
-{
-  dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
-  run_test(MPI_COMM_WORLD);
-}
-
