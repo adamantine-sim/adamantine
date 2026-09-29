@@ -2,7 +2,6 @@
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
-//#include <deal.II/base
 #include <ConnectedComponents.hh>
 
 #include <deal.II/distributed/tria.h>
@@ -26,10 +25,8 @@
   BOOST_AUTO_TEST_CASE(connected_components) {
     MPI_Comm comm = MPI_COMM_WORLD;
 
-    const unsigned int my_rank = dealii::Utilities::MPI::this_mpi_process(comm);
-
     // --------------------------------------------------------------------------
-    // Build a 2 x 2 x 4 cube on [0,1]^3.
+    // Build a nx x nx x 2*nx cube on [0,1]^3.
     // With colorize=true, deal.II assigns distinct boundary ids to the 6 faces.
     // --------------------------------------------------------------------------
     dealii::parallel::distributed::Triangulation<3> triangulation(comm);
@@ -45,8 +42,7 @@
 
     dealii::DoFHandler<3> dof_handler(triangulation);
 
-    // One FE per z-layer. Using different polynomial degrees is a simple way
-    // to guarantee distinct FE indices.
+    // One FE per z-layer. 
     dealii::hp::FECollection<3> fe_collection;
     dealii::FE_DGQ<3> fe(0);
     fe_collection.push_back(fe); // fe_index 0
@@ -95,14 +91,15 @@ for (unsigned int target_fe_index = 0; target_fe_index<fe_collection.size(); ++ 
 auto result  = adamantine::ConnectedComponents::find_components(
         dof_handler, {top_boundary_id}, target_fe_index, comm);
 
-    BOOST_TEST(result.size() == 1); 
     // --------------------------------------------------------------------------
-    // consistency checks.
+    // Consistency checks.
     // --------------------------------------------------------------------------
-        for (const auto &cell : result[0].locally_owned_cells)
+    BOOST_TEST(result.size() == 1);
+    const unsigned int n_layers = static_cast<unsigned int>(fe_collection.size());
+       for (const auto &cell : result[0].locally_owned_cells)
           {
             BOOST_TEST(cell->active_fe_index() == target_fe_index);
-            BOOST_TEST(z_layer_from_point(cell->center(), static_cast<unsigned int>(fe_collection.size())) == target_fe_index);
+            BOOST_TEST(z_layer_from_point(cell->center(), n_layers) == target_fe_index);
           }
 
     unsigned int n_expected_local_cells = 0;
@@ -112,7 +109,6 @@ auto result  = adamantine::ConnectedComponents::find_components(
     }
     BOOST_TEST(result[0].locally_owned_cells.size() == n_expected_local_cells);
 
-    const unsigned int n_layers = static_cast<unsigned int>(fe_collection.size());
     const bool expected_touches_top = (target_fe_index == n_layers - 1);
     BOOST_TEST(result[0].touches_target_boundary == expected_touches_top);
   }

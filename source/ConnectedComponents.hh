@@ -5,23 +5,11 @@
 #ifndef CONNECTED_COMPONENTS_HH
 #define CONNECTED_COMPONENTS_HH
 
-//#include <deal.II/distributed/tria.h>
-//#include <deal.II/base/geometry_info.h>
 #include <deal.II/base/types.h>
 #include <deal.II/dofs/dof_handler.h>
-//#include <deal.II/grid/grid_generator.h>
-//#include <deal.II/fe/fe_dgq.h>
-//#include <deal.II/base/conditional_ostream.h>
 
-//#include <deque>
 #include <numeric>
 #include <vector>
-//#include <unordered_map>
-//#include <unordered_set>
-//#include <functional>
-//#include <type_traits>
-//#include <cstdint>
-//#include <algorithm>
 
 namespace adamantine {
 namespace ConnectedComponents
@@ -135,7 +123,7 @@ namespace ConnectedComponents
   {
     bool         touches_target_boundary = false;
 
-    // Only locally owned cells on this rank.
+    // Only locally owned cells on this rank are stored.
     std::vector<typename dealii::DoFHandler<dim, spacedim>::active_cell_iterator>
       locally_owned_cells;
   };
@@ -163,6 +151,9 @@ namespace ConnectedComponents
           local_cells.push_back(cell);
         }
 
+  // --------------------------------------------------------------------------
+    // Step 2: local union-find
+    // --------------------------------------------------------------------------
     DisjointSet       local_dsu(local_cells.size());
     std::vector<bool> local_touches_target_boundary(local_cells.size(), false);
 
@@ -198,10 +189,6 @@ namespace ConnectedComponents
             interface_pairs.emplace_back(a, b);
           }
       };
-
-    // --------------------------------------------------------------------------
-    // Step 2: local union-find
-    // --------------------------------------------------------------------------
 
     for (unsigned int i = 0; i < local_cells.size(); ++i)
       {
@@ -329,7 +316,7 @@ namespace ConnectedComponents
 
     // Pack local summary into a compact uint32 buffer: [C, comp*(rep,fe,touch), O, owned*(cell,rep), I, iface*(a,b)]
     std::vector<uint32_t> send_buf;
-    send_buf.reserve(local_summary.components.size() * 3 + local_summary.owned_cells.size() * 2 + local_summary.interfaces.size() * 2 + 3);
+    send_buf.reserve(local_summary.components.size() * 2 + local_summary.owned_cells.size() * 2 + local_summary.interfaces.size() * 2 + 3);
 
     // components
     send_buf.push_back(static_cast<uint32_t>(local_summary.components.size()));
