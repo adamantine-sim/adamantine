@@ -32,7 +32,7 @@ Online documentation can be found on the [project website](https://adamantine-si
 - **Test Framework**: The project uses a custom test runner (see `tests/main.cc`). Tests are structured as standalone `.cc` files in the `tests/` directory.
 
 ### 4. Project Structure
-- `application/`: Main entry point and application-level logic.
+- `applications/`: Main entry point and application-level logic.
 - `source/`: Core library implementation.
 - `tests/`: Test suite and test data.
 - `cmake/`: Custom CMake modules for dependency detection.
@@ -43,4 +43,4 @@ Online documentation can be found on the [project website](https://adamantine-si
 - **Execution**: 
     - Always verify changes by compiling (e.g., `ninja`) and running `ctest`.
     - Always run `./indent` after modifying C++ files.
-    - If adding a new source file, ensure it is added to the appropriate `CMakeLists.txt` in `source/` or `application/`.
+    - If adding a new source file, ensure it is added to the appropriate `CMakeLists.txt` in `source/` or `applications/`.

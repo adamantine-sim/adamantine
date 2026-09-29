@@ -19,7 +19,21 @@ if (ADAMANTINE_ENABLE_ADIAK)
   target_link_libraries(adamantine adiak::adiak)
 endif()
 
+# Create an executable that visualizes the cells activated by the scan path.
+add_executable(activation_visualizer activation_visualizer.cc)
+
+set_target_properties(activation_visualizer PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+)
+
+DEAL_II_SETUP_TARGET(activation_visualizer)
+target_link_libraries(activation_visualizer Adamantine)
+
+# Install executables
+install(TARGETS adamantine activation_visualizer)
+
+# Copy input files
 file(COPY input.info DESTINATION ${CMAKE_BINARY_DIR}/bin)
 file(COPY input_scan_path.txt DESTINATION ${CMAKE_BINARY_DIR}/bin)
-
-install(TARGETS adamantine)

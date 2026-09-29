@@ -4,7 +4,7 @@
 
 #define BOOST_TEST_MODULE Integration_3D
 
-#include "../application/adamantine.hh"
+#include "../applications/adamantine.hh"
 
 #include <boost/property_tree/info_parser.hpp>
 

@@ -1,11 +1,11 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
 #include "MaterialStates.hh"
 #define BOOST_TEST_MODULE Integration_3D_Device
 
-#include "../application/adamantine.hh"
+#include "../applications/adamantine.hh"
 
 #include <boost/property_tree/info_parser.hpp>
 
