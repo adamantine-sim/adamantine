@@ -99,10 +99,8 @@ namespace
     // --------------------------------------------------------------------------
 
 for (unsigned int target_fe_index = 0; target_fe_index<4; ++ target_fe_index) {
-Kokkos::Timer timer;
 auto result  = adamantine::ConnectedComponents::find_components(
         dof_handler, {top_boundary_id}, target_fe_index, comm);
-std::cout << "Impl3: " << timer.seconds() << '\n';
 
     // --------------------------------------------------------------------------
     // Local consistency checks.

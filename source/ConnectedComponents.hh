@@ -147,7 +147,6 @@ namespace ConnectedComponents
                   const unsigned int target_fe_index,
                   const MPI_Comm                   mpi_communicator)
   {
-    Kokkos::Timer timer;
     using Cell = typename dealii::DoFHandler<dim, spacedim>::active_cell_iterator;
 
     // Step 1: collect all locally owned active cells
@@ -163,8 +162,6 @@ namespace ConnectedComponents
           local_index_of_id[id] = local_cells.size();
           local_cells.push_back(cell);
         }
-    std::cout << "Collect cells: " << timer.seconds() << std::endl;
-    timer.reset();
 
     DisjointSet       local_dsu(local_cells.size());
     std::vector<bool> local_touches_target_boundary(local_cells.size(), false);
@@ -248,8 +245,6 @@ namespace ConnectedComponents
               }
           }
       }
-  std::cout << "Local union find: " << timer.seconds() << std::endl;
-    timer.reset();
 
     // --------------------------------------------------------------------------
     // Step 3: compress local components
@@ -289,9 +284,6 @@ namespace ConnectedComponents
 
     for (const auto &p : interface_pairs)
       local_summary.interfaces.push_back({p.first, p.second});
-
-  std::cout << "Compress local: " << timer.seconds() << std::endl;
-    timer.reset();
 
     // If running with a single MPI rank, we can stop here and construct the
     // final result directly from the local compression step. This avoids the
@@ -547,17 +539,11 @@ namespace ConnectedComponents
     auto new_end = std::unique(global_edges.begin(), global_edges.end());
     global_edges.erase(new_end, global_edges.end());
 
-    std::cout << "Gather locals: " << timer.seconds() << std::endl;
-    timer.reset();
-
     DisjointSet global_dsu(component_reps.size());
 
     // Unite according to deduplicated global edges
     for (const auto &e : global_edges)
       global_dsu.unite(e.first, e.second);
-
-  std::cout << "Global union-find: " << timer.seconds() << std::endl;
-    timer.reset();
 
     // --------------------------------------------------------------------------
     // Step 6: compact global components and fill local cell lists
@@ -599,8 +585,6 @@ namespace ConnectedComponents
 
           result[cid].locally_owned_cells.push_back(cell);
         }
-  std::cout << "Compact global: " << timer.seconds() << std::endl;
-    timer.reset();
 
     return result;
   }
