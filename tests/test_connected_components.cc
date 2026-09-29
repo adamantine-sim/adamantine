@@ -5,18 +5,18 @@
 //#include <deal.II/base
 #include <ConnectedComponents.hh>
 
-//#include <deal.II/distributed/tria.h>
-//#include <deal.II/base/geometry_info.h>
-//#include <deal.II/base/types.h>
-//#include <deal.II/dofs/dof_handler.h>
-//#include <deal.II/grid/grid_generator.h>
-//#include <deal.II/fe/fe_dgq.h>
-//#include <deal.II/base/conditional_ostream.h>
+#include <deal.II/distributed/tria.h>
+#include <deal.II/base/geometry_info.h>
+#include <deal.II/base/types.h>
+#include <deal.II/dofs/dof_handler.h>
+#include <deal.II/grid/grid_generator.h>
+#include <deal.II/fe/fe_dgq.h>
+#include <deal.II/base/conditional_ostream.h>
 
 namespace
 {
   unsigned int
-  z_layer_from_point(const Point<3> &p, const unsigned int n_layers)
+  z_layer_from_point(const dealii::Point<3> &p, const unsigned int n_layers)
   {
     const double z = p[2];
     return std::min(n_layers - 1U,
@@ -26,36 +26,37 @@ namespace
   void
   run_test(const MPI_Comm comm)
   {
-    constexpr unsigned int nx = 81;
+    constexpr unsigned int nx = 64;
     constexpr unsigned int ny = nx;
     constexpr unsigned int nz = 2*nx;
 
-    const unsigned int my_rank = Utilities::MPI::this_mpi_process(comm);
-    ConditionalOStream pcout(std::cout, my_rank == 0);
+    const unsigned int my_rank = dealii::Utilities::MPI::this_mpi_process(comm);
+    dealii::ConditionalOStream pcout(std::cout, my_rank == 0);
 
     // --------------------------------------------------------------------------
     // Build a 2 x 2 x 4 cube on [0,1]^3.
     // With colorize=true, deal.II assigns distinct boundary ids to the 6 faces.
     // --------------------------------------------------------------------------
-    parallel::distributed::Triangulation<3> triangulation(comm);
+    dealii::parallel::distributed::Triangulation<3> triangulation(comm);
 
-    GridGenerator::subdivided_hyper_rectangle(triangulation,
+    dealii::GridGenerator::subdivided_hyper_rectangle(triangulation,
                                               {nx, ny, nz},
-                                              Point<3>(0.0, 0.0, 0.0),
-                                              Point<3>(1.0, 1.0, 1.0),
+                                              dealii::Point<3>(0.0, 0.0, 0.0),
+                                              dealii::Point<3>(1.0, 1.0, 1.0),
                                               /*colorize=*/true);
 
-    DoFHandler<3> dof_handler(triangulation);
+    dealii::DoFHandler<3> dof_handler(triangulation);
 
     std::cout << "n_cells: " << triangulation.n_cells() << std::endl;
 
     // One FE per z-layer. Using different polynomial degrees is a simple way
     // to guarantee distinct FE indices.
-    hp::FECollection<3> fe_collection;
-    fe_collection.push_back(FE_DGQ<3>(0)); // fe_index 0
-    fe_collection.push_back(FE_DGQ<3>(0)); // fe_index 1
-    fe_collection.push_back(FE_DGQ<3>(0)); // fe_index 2
-    fe_collection.push_back(FE_DGQ<3>(0)); // fe_index 3
+    dealii::hp::FECollection<3> fe_collection;
+    dealii::FE_DGQ<3> fe(0);
+    fe_collection.push_back(fe); // fe_index 0
+    fe_collection.push_back(fe); // fe_index 1
+    fe_collection.push_back(fe); // fe_index 2
+    fe_collection.push_back(fe); // fe_index 3
 
     // --------------------------------------------------------------------------
     // Assign active FE indices by z-layer, on locally owned cells.
@@ -71,24 +72,24 @@ namespace
     // Detect the boundary id of the top face z=1 from the triangulation itself.
     // This avoids hard-coding the numeric boundary id.
     // --------------------------------------------------------------------------
-    types::boundary_id local_top_boundary_id = numbers::invalid_boundary_id;
+    dealii::types::boundary_id local_top_boundary_id = dealii::numbers::invalid_boundary_id;
 
     for (const auto &cell : triangulation.active_cell_iterators())
       if (!cell->is_artificial())
-        for (unsigned int f = 0; f < GeometryInfo<3>::faces_per_cell; ++f)
+        for (unsigned int f = 0; f < dealii::GeometryInfo<3>::faces_per_cell; ++f)
           if (cell->at_boundary(f) &&
               std::abs(cell->face(f)->center()[2] - 1.0) < 1e-12)
             local_top_boundary_id = cell->face(f)->boundary_id();
 
     const unsigned int top_boundary_id_int =
-      Utilities::MPI::min(static_cast<unsigned int>(local_top_boundary_id), comm);
+      dealii::Utilities::MPI::min(static_cast<unsigned int>(local_top_boundary_id), comm);
 
     if (top_boundary_id_int ==
-        static_cast<unsigned int>(numbers::invalid_boundary_id))
+        static_cast<unsigned int>(dealii::numbers::invalid_boundary_id))
       throw std::runtime_error("Could not determine top boundary id.");
 
-    const types::boundary_id top_boundary_id =
-      static_cast<types::boundary_id>(top_boundary_id_int);
+    const dealii::types::boundary_id top_boundary_id =
+      static_cast<dealii::types::boundary_id>(top_boundary_id_int);
 
     pcout << "Top boundary id = " << static_cast<unsigned int>(top_boundary_id)
           << '\n';
@@ -99,7 +100,7 @@ namespace
 
 for (unsigned int target_fe_index = 0; target_fe_index<4; ++ target_fe_index) {
 Kokkos::Timer timer;
-auto result  = Impl3::DistributedFEIndexComponentsUF::find_components(
+auto result  = adamantine::ConnectedComponents::find_components(
         dof_handler, {top_boundary_id}, target_fe_index, comm);
 std::cout << "Impl3: " << timer.seconds() << '\n';
 
@@ -164,7 +165,7 @@ std::cout << "Impl3: " << timer.seconds() << '\n';
       }
 
     // Compute global fail for the test and print detailed diagnostics if failing.
-    const unsigned int global_fail = Utilities::MPI::max(local_fail, comm);
+    const unsigned int global_fail = dealii::Utilities::MPI::max(local_fail, comm);
 
     // --------------------------------------------------------------------------
     // Print a short summary.
@@ -174,7 +175,7 @@ std::cout << "Impl3: " << timer.seconds() << '\n';
       {
         const auto &component = result[c];
         const unsigned int global_n_cells =
-          Utilities::MPI::sum(static_cast<unsigned int>(component.locally_owned_cells.size()),
+          dealii::Utilities::MPI::sum(static_cast<unsigned int>(component.locally_owned_cells.size()),
                               comm);
 
         pcout << "  component " << c
@@ -238,7 +239,7 @@ std::cout << "Impl3: " << timer.seconds() << '\n';
 int
 main(int argc, char **argv)
 {
-  Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
+  dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
   run_test(MPI_COMM_WORLD);
 }
 

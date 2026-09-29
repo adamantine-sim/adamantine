@@ -7,14 +7,15 @@
 
 //#include <deal.II/distributed/tria.h>
 //#include <deal.II/base/geometry_info.h>
-//#include <deal.II/base/types.h>
-//#include <deal.II/dofs/dof_handler.h>
+#include <deal.II/base/types.h>
+#include <deal.II/dofs/dof_handler.h>
 //#include <deal.II/grid/grid_generator.h>
 //#include <deal.II/fe/fe_dgq.h>
 //#include <deal.II/base/conditional_ostream.h>
 
 //#include <deque>
-//#include <vector>
+#include <numeric>
+#include <vector>
 //#include <unordered_map>
 //#include <unordered_set>
 //#include <functional>
@@ -78,8 +79,8 @@ namespace ConnectedComponents
 
   struct OwnedCellRecord
   {
-    unsigned int cell_id = numbers::invalid_unsigned_int;
-    unsigned int component_rep_id = numbers::invalid_unsigned_int;
+    unsigned int cell_id = dealii::numbers::invalid_unsigned_int;
+    unsigned int component_rep_id = dealii::numbers::invalid_unsigned_int;
 
     template <class Archive>
     void
@@ -91,7 +92,7 @@ namespace ConnectedComponents
 
   struct LocalComponentRecord
   {
-    unsigned int  rep_id = numbers::invalid_unsigned_int;
+    unsigned int  rep_id = dealii::numbers::invalid_unsigned_int;
     bool         touches_target_boundary = false;
 
     template <class Archive>
@@ -104,8 +105,8 @@ namespace ConnectedComponents
 
   struct InterfaceRecord
   {
-    unsigned int cell_id_1 = numbers::invalid_unsigned_int;
-    unsigned int cell_id_2 = numbers::invalid_unsigned_int;
+    unsigned int cell_id_1 = dealii::numbers::invalid_unsigned_int;
+    unsigned int cell_id_2 = dealii::numbers::invalid_unsigned_int;
 
     template <class Archive>
     void
@@ -135,19 +136,19 @@ namespace ConnectedComponents
     bool         touches_target_boundary = false;
 
     // Only locally owned cells on this rank.
-    std::vector<typename DoFHandler<dim, spacedim>::active_cell_iterator>
+    std::vector<typename dealii::DoFHandler<dim, spacedim>::active_cell_iterator>
       locally_owned_cells;
   };
 
   template <int dim, int spacedim = dim>
   std::vector<ComponentInfo<dim, spacedim>>
-  find_components(const DoFHandler<dim, spacedim> &dof_handler,
-                  const std::vector<types::boundary_id>&        target_boundary_id,
+  find_components(const dealii::DoFHandler<dim, spacedim> &dof_handler,
+                  const std::vector<dealii::types::boundary_id>&        target_boundary_id,
                   const unsigned int target_fe_index,
                   const MPI_Comm                   mpi_communicator)
   {
     Kokkos::Timer timer;
-    using Cell = typename DoFHandler<dim, spacedim>::active_cell_iterator;
+    using Cell = typename dealii::DoFHandler<dim, spacedim>::active_cell_iterator;
 
     // Step 1: collect all locally owned active cells
     // --------------------------------------------------------------------------
@@ -211,7 +212,7 @@ namespace ConnectedComponents
         const unsigned int cell_id = cell->active_cell_index();
         const unsigned int fe_idx = cell->active_fe_index();
 
-        for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell; ++f)
+        for (unsigned int f = 0; f < dealii::GeometryInfo<dim>::faces_per_cell; ++f)
           {
             if (cell->at_boundary(f))
               {
@@ -295,7 +296,7 @@ namespace ConnectedComponents
     // If running with a single MPI rank, we can stop here and construct the
     // final result directly from the local compression step. This avoids the
     // distributed gathering and global union-find.
-    if (Utilities::MPI::n_mpi_processes(mpi_communicator) == 1)
+    if (dealii::Utilities::MPI::n_mpi_processes(mpi_communicator) == 1)
       {
         std::vector<ComponentInfo<dim, spacedim>> result;
 
@@ -331,8 +332,8 @@ namespace ConnectedComponents
     // Step 4: gather local summaries (packed, non-blocking) and build global maps
     // --------------------------------------------------------------------------
 
-    const int n_ranks = Utilities::MPI::n_mpi_processes(mpi_communicator);
-    const int my_rank = Utilities::MPI::this_mpi_process(mpi_communicator);
+    const int n_ranks = dealii::Utilities::MPI::n_mpi_processes(mpi_communicator);
+    const int my_rank = dealii::Utilities::MPI::this_mpi_process(mpi_communicator);
 
     // Pack local summary into a compact uint32 buffer: [C, comp*(rep,fe,touch), O, owned*(cell,rep), I, iface*(a,b)]
     std::vector<uint32_t> send_buf;
