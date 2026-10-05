@@ -88,6 +88,19 @@ public:
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solve();
 
   /**
+   * Evaluate the mechanical residual for a displacement. The existing
+   * constitutive update is used to associate the current quadrature-point
+   * stress with the displacement before assembling
+   * \f[
+   *   R(u) = f_internal(u) - f_external.
+   * \f]
+   */
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+  evaluate_residual(
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+          &displacement);
+
+  /**
    * Return the DoFHandler.
    */
   dealii::DoFHandler<dim> &get_dof_handler();

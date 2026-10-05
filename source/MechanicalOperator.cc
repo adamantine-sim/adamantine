@@ -130,6 +130,25 @@ struct CopyDataMatrix
   }
 };
 
+struct CopyDataInternalForce
+{
+  CopyDataInternalForce(unsigned int dofs_per_cell)
+  {
+    cell_force.reinit(dofs_per_cell);
+    local_dof_indices.resize(dofs_per_cell);
+  }
+
+  dealii::Vector<double> cell_force;
+  std::vector<dealii::types::global_dof_index> local_dof_indices;
+
+  template <class Iterator>
+  void reinit(const Iterator &cell)
+  {
+    cell_force = 0.;
+    cell->get_dof_indices(local_dof_indices);
+  }
+};
+
 } // namespace
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -175,6 +194,69 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
   _thermal_dof_handler = &thermal_dof_handler;
   _temperature = temperature;
   _has_melted = has_melted;
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+MechanicalOperator<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
+    assemble_internal_force(
+        std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const &stress)
+        const
+{
+  auto const locally_owned_dofs = _dof_handler->locally_owned_dofs();
+  auto const locally_relevant_dofs =
+      dealii::DoFTools::extract_locally_relevant_dofs(*_dof_handler);
+  unsigned int const dofs_per_cell =
+      _dof_handler->get_fe_collection().max_dofs_per_cell();
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      internal_force(locally_owned_dofs, locally_relevant_dofs, _communicator);
+
+  dealii::hp::FEValues<dim> displacement_hp_fe_values(
+      _dof_handler->get_fe_collection(), *_q_collection,
+      dealii::update_gradients | dealii::update_JxW_values);
+
+  auto cell_worker =
+      [&](const typename dealii::DoFHandler<dim>::active_cell_iterator &cell,
+          ScratchDataMatrix<dim> &scratch_data,
+          CopyDataInternalForce &copy_data)
+  {
+    scratch_data.displacement_hp_fe_values.reinit(cell);
+    auto const &fe_values =
+        scratch_data.displacement_hp_fe_values.get_present_fe_values();
+    copy_data.reinit(cell);
+
+    dealii::FEValuesExtractors::Vector const displacements(0);
+    auto const &cell_stress = stress[cell->active_cell_index()];
+    for (auto const i : fe_values.dof_indices())
+      for (auto const q_point : fe_values.quadrature_point_indices())
+        copy_data.cell_force(i) +=
+            fe_values[displacements].symmetric_gradient(i, q_point) *
+            cell_stress[q_point] * fe_values.JxW(q_point);
+  };
+
+  auto copier = [&](CopyDataInternalForce const &copy_data)
+  {
+    _affine_constraints->distribute_local_to_global(
+        copy_data.cell_force, copy_data.local_dof_indices, internal_force);
+  };
+
+  dealii::IteratorFilters::ActiveFEIndexEqualTo filter(
+      0, /* locally owned */ true);
+  dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>
+      begin(filter, _dof_handler->begin_active());
+  dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>
+      end(filter, _dof_handler->end());
+
+  ScratchDataMatrix<dim> scratch_data(displacement_hp_fe_values);
+  dealii::MeshWorker::mesh_loop(begin, end, cell_worker, copier, scratch_data,
+                                CopyDataInternalForce(dofs_per_cell),
+                                dealii::MeshWorker::assemble_own_cells);
+  internal_force.compress(dealii::VectorOperation::add);
+
+  return internal_force;
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
