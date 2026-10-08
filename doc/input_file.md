@@ -113,7 +113,7 @@ are refined (default value: 2)
 * **n\_beams**: number of heat source beams (required)
 * **print\_heat\_input**: print the total heat input absorbed by the object at each time step (default value: false, <span style="color:green">since 1.1<span>)
 * **beam\_X**: property tree for the beam with number X
-* **beam\_X.type**: type of heat source: `goldak`, `electron_beam`, `gaussian,
+* **beam\_X.type**: type of heat source: `goldak`, `electron_beam`, `gaussian`,
     or `cube` (required)
 * **beam\_X.scan\_path\_file**: scan path filename (required)
 * **beam\_X.scan\_path\_file\_format**: format of the scan path: `segment` or
