@@ -14,6 +14,11 @@
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/numerics/vector_tools.h>
+#include <deal.II/sundials/kinsol.h>
+
+#include <algorithm>
+#include <iostream>
+#include <limits>
 
 #ifdef ADAMANTINE_WITH_CALIPER
 #include <caliper/cali.h>
@@ -29,12 +34,13 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
         Geometry<dim> &geometry, Boundary const &boundary,
         MaterialProperty<dim, n_materials, p_order, MaterialStates,
                          MemorySpaceType> &material_properties,
-        std::vector<double> const &reference_temperatures)
+        std::vector<double> const &reference_temperatures,
+        bool const verbose_output)
     : _geometry(geometry), _boundary(boundary),
       _material_properties(material_properties),
       _dof_handler(_geometry.get_triangulation()),
       _reference_temperatures(reference_temperatures),
-      _solution_transfer(_dof_handler),
+      _verbose_output(verbose_output), _solution_transfer(_dof_handler),
       _closest_quad_point_adaptation(dealii::QGauss<dim>(fe_degree + 1)),
       _cell_data_transfer(
           dynamic_cast<const dealii::parallel::distributed::Triangulation<dim>
@@ -53,6 +59,8 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
                                                                  child_values);
           })
 {
+  _is_purely_elastic = _material_properties.has_infinite_elastic_limit();
+
   // Create the FECollection
   _fe_collection.push_back(
       dealii::FESystem<dim>(dealii::FE_Q<dim>(fe_degree) ^ dim));
@@ -564,13 +572,12 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
-                  MemorySpaceType>::solve()
+MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
+    solve_linear_system(
+        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+            &rhs,
+        double const tolerance) const
 {
-#ifdef ADAMANTINE_WITH_CALIPER
-  CALI_MARK_BEGIN("solve mechanical system");
-#endif
-
   dealii::IndexSet locally_owned_dofs = _dof_handler.locally_owned_dofs();
   dealii::IndexSet locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
@@ -586,14 +593,11 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
   dealii::LinearAlgebra::ReadWriteVector<double> rw_vector(locally_owned_dofs);
 
-  rw_vector.import_elements(_mechanical_operator->rhs(),
-                            dealii::VectorOperation::insert);
+  rw_vector.import_elements(rhs, dealii::VectorOperation::insert);
   rhs_device.import_elements(rw_vector, dealii::VectorOperation::insert);
 
-  // Solve the mechanical problem assuming that the deformation is elastic
   unsigned int const max_iter = _dof_handler.n_dofs() / 10;
-  double const tol = 1e-12 * _mechanical_operator->rhs().l2_norm();
-  dealii::SolverControl solver_control(max_iter, tol);
+  dealii::SolverControl solver_control(max_iter, tolerance);
   dealii::SolverCG<TrilinosVectorType> cg(solver_control);
   cg.solve(_mechanical_operator->system_matrix(), displacement, rhs_device,
            _mechanical_operator->preconditioner());
@@ -604,6 +608,86 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
                         _mechanical_operator->rhs().get_mpi_communicator());
   displacement_host.import_elements(rw_vector, dealii::VectorOperation::insert);
   _affine_constraints.distribute(displacement_host);
+
+  return displacement_host;
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
+                  MemorySpaceType>::solve_nonlinear_system()
+{
+  using VectorType =
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>;
+  using KINSOL = dealii::SUNDIALS::KINSOL<VectorType>;
+
+  // Use the existing elastic solution as the initial guess. The matrix used
+  // below is deliberately fixed.
+  double const linear_tolerance = 1e-12 * _mechanical_operator->rhs().l2_norm();
+  auto displacement =
+      solve_linear_system(_mechanical_operator->rhs(), linear_tolerance);
+
+  dealii::IndexSet const locally_owned_dofs = _dof_handler.locally_owned_dofs();
+  dealii::IndexSet const locally_relevant_dofs =
+      dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+  MPI_Comm const communicator =
+      _mechanical_operator->rhs().get_mpi_communicator();
+
+  typename KINSOL::AdditionalData additional_data;
+  // Tolerance is scaled by the norm of the initial residual. We use the
+  // infinity norm to match KINSOL stopping criteria for the non-linear solver.
+  additional_data.function_tolerance =
+      std::max(1.e-10 * evaluate_residual(displacement).linfty_norm(), 1.e-12);
+  KINSOL nonlinear_solver(additional_data, communicator);
+
+  nonlinear_solver.reinit_vector = [locally_owned_dofs, locally_relevant_dofs,
+                                    communicator](VectorType &vector)
+  { vector.reinit(locally_owned_dofs, locally_relevant_dofs, communicator); };
+
+  nonlinear_solver.residual = [this](VectorType const &src, VectorType &dst)
+  { dst = evaluate_residual(src); };
+
+  // The elastic system matrix is the fixed approximate Jacobian for the
+  // nonlinear solver. No state is changed by this callback.
+  nonlinear_solver.setup_jacobian = [](VectorType const &, VectorType const &) {
+  };
+  nonlinear_solver.solve_with_jacobian =
+      [this](VectorType const &rhs, VectorType &dst, double const tolerance)
+  { dst = solve_linear_system(rhs, std::max(tolerance, 1e-14)); };
+
+  unsigned int const nonlinear_iterations =
+      nonlinear_solver.solve(displacement);
+  if (_verbose_output &&
+      dealii::Utilities::MPI::this_mpi_process(communicator) == 0)
+    std::cout << "Number of nonlinear iterations: " << nonlinear_iterations
+              << std::endl;
+
+  return displacement;
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
+                  MemorySpaceType>::solve()
+{
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("solve mechanical system");
+#endif
+
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      displacement_host;
+  if (_is_purely_elastic)
+  {
+    double const tolerance = 1e-12 * _mechanical_operator->rhs().l2_norm();
+    displacement_host =
+        solve_linear_system(_mechanical_operator->rhs(), tolerance);
+  }
+  else
+  {
+    displacement_host = solve_nonlinear_system();
+  }
 
   // Evaluate the trial state using the displacement increment from the
   // previous time step. If the stress is under the yield criterion, the

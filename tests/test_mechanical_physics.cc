@@ -310,6 +310,35 @@ BOOST_AUTO_TEST_CASE(elastoplastic_residual)
   adamantine::Boundary boundary(
       boundary_database, geometry.get_triangulation().get_boundary_ids());
 
+  // An omitted elastic limit selects the linear elastic solver.
+  boost::property_tree::ptree elastic_material_database;
+  elastic_material_database.put("property_format", "polynomial");
+  elastic_material_database.put("n_materials", 1);
+  elastic_material_database.put("material_0.solid.density", 1.);
+  elastic_material_database.put("material_0.solid.lame_first_parameter", 2.);
+  elastic_material_database.put("material_0.solid.lame_second_parameter", 3.);
+  adamantine::MaterialProperty<3, 1, 4, adamantine::SolidLiquidPowder,
+                               dealii::MemorySpace::Host>
+      elastic_material_properties(communicator, triangulation,
+                                  elastic_material_database);
+  BOOST_TEST(elastic_material_properties.has_infinite_elastic_limit());
+  adamantine::MechanicalPhysics<3, 1, 4, adamantine::SolidLiquidPowder,
+                                dealii::MemorySpace::Host>
+      elastic_mechanical_physics(communicator, 1, geometry, boundary,
+                                 elastic_material_properties,
+                                 std::vector<double>());
+  std::vector<std::shared_ptr<adamantine::BodyForce<3>>> elastic_body_forces;
+  elastic_body_forces.push_back(
+      std::make_shared<adamantine::GravityForce<
+          3, 1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
+          elastic_material_properties));
+  elastic_mechanical_physics.setup_dofs(elastic_body_forces);
+  auto const elastic_displacement = elastic_mechanical_physics.solve();
+  auto const elastic_residual =
+      elastic_mechanical_physics.evaluate_residual(elastic_displacement);
+  BOOST_CHECK_SMALL(elastic_residual.l2_norm(), 1.e-9);
+
+  // A finite elastic limit selects the nonlinear solver.
   adamantine::MechanicalPhysics<3, 1, 4, adamantine::SolidLiquidPowder,
                                 dealii::MemorySpace::Host>
       mechanical_physics(communicator, 1, geometry, boundary,
@@ -319,14 +348,11 @@ BOOST_AUTO_TEST_CASE(elastoplastic_residual)
       std::make_shared<adamantine::GravityForce<
           3, 1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
           material_properties));
+  BOOST_TEST(!material_properties.has_infinite_elastic_limit());
   mechanical_physics.setup_dofs(body_forces);
   auto const displacement = mechanical_physics.solve();
-
-  // The elastic solve is followed by a local plastic return, but the global
-  // displacement is not corrected. Therefore the resulting stress need not
-  // balance the external load.
   auto const residual = mechanical_physics.evaluate_residual(displacement);
-  BOOST_CHECK(residual.l2_norm() > 1.e-8);
+  BOOST_CHECK_SMALL(residual.l2_norm(), 1.e-9);
 
   // A trial evaluation must start from the same state each time.
   // Use a different displacement so that the local update is nontrivial.
@@ -351,6 +377,12 @@ BOOST_AUTO_TEST_CASE(elastoplastic_residual)
   auto residual_difference = first_trial_residual;
   residual_difference -= repeated_trial_residual;
   BOOST_CHECK_SMALL(residual_difference.l2_norm(), 1.e-12);
+
+  // Plastic redistribution changes the global displacement from the elastic
+  // initial guess used by the nonlinear solver.
+  auto displacement_difference = displacement;
+  displacement_difference -= elastic_displacement;
+  BOOST_CHECK(displacement_difference.l2_norm() > 1.e-8);
 }
 
 BOOST_AUTO_TEST_CASE(fe_nothing)

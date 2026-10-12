@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -803,6 +803,7 @@ void MaterialProperty<dim, n_materials, p_order, MaterialStates,
   std::string property_format = database.get<std::string>("property_format");
 
   _use_table = (property_format == "table");
+  _has_infinite_elastic_limit = true;
 
   unsigned int n_materials_runtime = database.get<unsigned int>("n_materials");
 
@@ -911,6 +912,7 @@ void MaterialProperty<dim, n_materials, p_order, MaterialStates,
     // Get the material property tree.
     boost::property_tree::ptree const &material_database =
         database.get_child("material_" + std::to_string(material_id));
+    bool material_has_infinite_elastic_limit = false;
     // For each material, loop over the possible states.
     for (unsigned int state = 0; state < MaterialStates::n_material_states;
          ++state)
@@ -1035,6 +1037,7 @@ void MaterialProperty<dim, n_materials, p_order, MaterialStates,
           {
             // If the elastic limit is not provided, we solve a purely elastic
             // problem. We set the elastic limit to infinity.
+            material_has_infinite_elastic_limit = true;
             double infinity = std::numeric_limits<double>::infinity();
             if (_use_table)
             {
@@ -1054,6 +1057,9 @@ void MaterialProperty<dim, n_materials, p_order, MaterialStates,
         }
       }
     }
+
+    _has_infinite_elastic_limit =
+        _has_infinite_elastic_limit && material_has_infinite_elastic_limit;
 
     // Check for the properties that are associated to a material but that
     // are independent of an individual state. These properties are duplicated
