@@ -265,7 +265,10 @@ BOOST_AUTO_TEST_CASE(elastostatic)
 
   // The elastic solution also satisfies the stress-based residual up to the
   // tolerance used by the elastic CG solve.
-  auto const residual = mechanical_physics.evaluate_residual(solution);
+  auto zero_increment = solution;
+  zero_increment = 0.;
+  zero_increment.update_ghost_values();
+  auto const residual = mechanical_physics.evaluate_residual(zero_increment);
   BOOST_CHECK_SMALL(residual.l2_norm(), 1.e-9);
 }
 
@@ -334,8 +337,11 @@ BOOST_AUTO_TEST_CASE(elastoplastic_residual)
           elastic_material_properties));
   elastic_mechanical_physics.setup_dofs(elastic_body_forces);
   auto const elastic_displacement = elastic_mechanical_physics.solve();
+  auto elastic_zero_increment = elastic_displacement;
+  elastic_zero_increment = 0.;
+  elastic_zero_increment.update_ghost_values();
   auto const elastic_residual =
-      elastic_mechanical_physics.evaluate_residual(elastic_displacement);
+      elastic_mechanical_physics.evaluate_residual(elastic_zero_increment);
   BOOST_CHECK_SMALL(elastic_residual.l2_norm(), 1.e-9);
 
   // A finite elastic limit selects the nonlinear solver.
@@ -351,17 +357,19 @@ BOOST_AUTO_TEST_CASE(elastoplastic_residual)
   BOOST_TEST(!material_properties.has_infinite_elastic_limit());
   mechanical_physics.setup_dofs(body_forces);
   auto const displacement = mechanical_physics.solve();
-  auto const residual = mechanical_physics.evaluate_residual(displacement);
+  auto zero_increment = displacement;
+  zero_increment = 0.;
+  zero_increment.update_ghost_values();
+  auto const residual = mechanical_physics.evaluate_residual(zero_increment);
   BOOST_CHECK_SMALL(residual.l2_norm(), 1.e-9);
 
   // A trial evaluation must start from the same state each time.
-  // Use a different displacement so that the local update is nontrivial.
+  // Use a nonzero increment so that the local update is nontrivial.
   auto const state_stress = mechanical_physics.get_stress_tensor();
-  auto trial_displacement = displacement;
-  trial_displacement *= 2.;
-  trial_displacement.update_ghost_values();
+  auto trial_increment = displacement;
+  trial_increment.update_ghost_values();
   auto const first_trial_residual =
-      mechanical_physics.evaluate_residual(trial_displacement);
+      mechanical_physics.evaluate_residual(trial_increment);
 
   // Evaluating a trial state must not modify the state stress.
   auto const stress_after_trial = mechanical_physics.get_stress_tensor();
@@ -373,7 +381,7 @@ BOOST_AUTO_TEST_CASE(elastoplastic_residual)
           1.e-14);
 
   auto const repeated_trial_residual =
-      mechanical_physics.evaluate_residual(trial_displacement);
+      mechanical_physics.evaluate_residual(trial_increment);
   auto residual_difference = first_trial_residual;
   residual_difference -= repeated_trial_residual;
   BOOST_CHECK_SMALL(residual_difference.l2_norm(), 1.e-12);
@@ -1027,6 +1035,22 @@ BOOST_AUTO_TEST_CASE(thermoelastic_stress_uniform_heating)
   };
   check_stress(350.);
 
+  // The stored thermal strain must remain valid if the current stiffness
+  // differs from the stiffness used when the state was created.
+  adamantine::MechanicalConstitutiveState<3> state_with_thermal_strain;
+  state_with_thermal_strain.thermal_strain = 0.1;
+  auto const constitutive_response =
+      mechanical_physics.evaluate_constitutive_response(
+          dealii::SymmetricTensor<2, 3>(), 20., 0., 4., 5., 1., 0.5, alpha,
+          true, state_with_thermal_strain);
+  double const expected_thermal_stress = -(3. * 4. + 2. * 5.) * (0.2 - 0.1);
+  BOOST_CHECK_SMALL(
+      (constitutive_response.first.stress -
+       expected_thermal_stress * dealii::unit_symmetric_tensor<3>())
+          .norm(),
+      1.e-14);
+  BOOST_CHECK_SMALL(constitutive_response.first.thermal_strain - 0.2, 1.e-14);
+
   // Updating the temperature must apply only the thermal stress increment, not
   // the total thermal stress a second time.
   temperature = 360.;
@@ -1145,10 +1169,13 @@ BOOST_AUTO_TEST_CASE(thermoelastoplastic_radial_return)
   // displacement must therefore produce the same residual.
   auto const state_before_residual =
       mechanical_physics.get_constitutive_state();
+  auto zero_increment = displacement;
+  zero_increment = 0.;
+  zero_increment.update_ghost_values();
   auto const first_residual =
-      mechanical_physics.evaluate_residual(displacement);
+      mechanical_physics.evaluate_residual(zero_increment);
   auto const repeated_residual =
-      mechanical_physics.evaluate_residual(displacement);
+      mechanical_physics.evaluate_residual(zero_increment);
   auto residual_difference = first_residual;
   residual_difference -= repeated_residual;
   BOOST_CHECK_SMALL(residual_difference.l2_norm(), 1.e-12);
@@ -1170,13 +1197,13 @@ BOOST_AUTO_TEST_CASE(thermoelastoplastic_radial_return)
           state_after_residual[cell_id][q].plastic_internal_variable -
               state_before_residual[cell_id][q].plastic_internal_variable,
           1.e-14);
-      BOOST_CHECK_SMALL(state_after_residual[cell_id][q].thermal_stress -
-                            state_before_residual[cell_id][q].thermal_stress,
+      BOOST_CHECK_SMALL(state_after_residual[cell_id][q].thermal_strain -
+                            state_before_residual[cell_id][q].thermal_strain,
                         1.e-14);
     }
 
   // A second increment checks both the stored plastic history and that only
-  // the change in thermal stress is applied at the next solve.
+  // the change in thermal strain is applied at the next solve.
   double constexpr stress_increment = 0.2;
   state_with_trial_stress = mechanical_physics.get_constitutive_state();
   for (auto &cell_state : state_with_trial_stress)

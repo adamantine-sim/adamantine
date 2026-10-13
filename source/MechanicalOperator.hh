@@ -50,13 +50,11 @@ public:
 #endif
 
   /**
-   * Constructor. If the initial temperature is negative, the simulation is
-   * mechanical only. Otherwise, we solve a thermo-mechanical problem.
+   * Constructor.
    */
   MechanicalOperator(MPI_Comm const &communicator,
                      MaterialProperty<dim, n_materials, p_order, MaterialStates,
-                                      MemorySpaceType> &material_properties,
-                     std::vector<double> const &reference_temperatures);
+                                      MemorySpaceType> &material_properties);
 
   void reinit(dealii::DoFHandler<dim> const &dof_handler,
               dealii::AffineConstraints<double> const &affine_constraints,
@@ -65,16 +63,7 @@ public:
                   std::vector<std::shared_ptr<BodyForce<dim>>>());
 
   /**
-   * Update the DoFHandler used by ThermalPhysics and update the temperature.
-   */
-  void update_temperature(
-      dealii::DoFHandler<dim> const &thermal_dof_handler,
-      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &temperature,
-      std::vector<bool> const &has_melted);
-
-  /**
-   * Assemble the right-hand-side.
+   * Assemble the mechanical right-hand-side from the body forces.
    */
   void
   assemble_rhs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces);
@@ -165,11 +154,6 @@ private:
    */
   MPI_Comm const &_communicator;
   /**
-   * List of initial temperatures of the material. If the length of the vector
-   * is nonzero, we solve a thermo-mechanical problem.
-   */
-  std::vector<double> _reference_temperatures;
-  /**
    * Reference to the MaterialProperty from MechanicalPhysics.
    */
   MaterialProperty<dim, n_materials, p_order, MaterialStates, MemorySpaceType>
@@ -178,10 +162,6 @@ private:
    * Non-owning pointer to the DoFHandler from MechanicalPhysics
    */
   dealii::DoFHandler<dim> const *_dof_handler = nullptr;
-  /**
-   * Non-owning pointer to the DoFHandler from ThermalPhysics
-   */
-  dealii::DoFHandler<dim> const *_thermal_dof_handler = nullptr;
   /**
    * Non-owning pointer to the AffineConstraints from MechanicalPhysics
    */
@@ -213,17 +193,6 @@ private:
    * _system_matrix.
    */
   TrilinosPreconditionerType _preconditioner;
-  /**
-   * Temperature of the material.
-   */
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      _temperature;
-  /**
-   * Indicator variable for whether a point has ever been above the solidus. The
-   * value is false for material that has not yet melted and true for material
-   * that has melted.
-   */
-  std::vector<bool> _has_melted;
 };
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,

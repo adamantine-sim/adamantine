@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -203,11 +203,9 @@ BOOST_AUTO_TEST_CASE(mechanical_post_processor)
       mat_properties(communicator, geometry.get_triangulation(),
                      mat_prop_database);
 
-  std::vector<double> empty_vector;
-
   adamantine::MechanicalOperator<dim, 1, 0, adamantine::SolidLiquidPowder,
                                  dealii::MemorySpace::Host>
-      mechanical_operator(communicator, mat_properties, empty_vector);
+      mechanical_operator(communicator, mat_properties);
   mechanical_operator.reinit(dof_handler, affine_constraints, q_collection);
 
   // Create the PostProcessor

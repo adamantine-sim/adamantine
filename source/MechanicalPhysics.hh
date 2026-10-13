@@ -27,7 +27,7 @@ struct MechanicalConstitutiveState
   dealii::SymmetricTensor<2, dim> stress;
   dealii::SymmetricTensor<2, dim> back_stress;
   double plastic_internal_variable = 0.;
-  double thermal_stress = 0.;
+  double thermal_strain = 0.;
 };
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -99,26 +99,26 @@ public:
    *
    * The default solver selection uses the elastic limit from the material
    * properties. An infinite elastic limit selects the linear solver; any
-   * finite elastic limit selects the nonlinear solver. The nonlinear solver
-   * uses the residual \f$ R(u) = f_{internal}(u) - f_{external} \f$ with the
-   * elastic system matrix as a fixed approximate Jacobian. If verbose output
-   * was enabled in the constructor, the nonlinear iteration count is printed
-   * on rank zero.
+   * finite elastic limit selects the nonlinear solver. The residual is
+   * evaluated from the increment \f$ \Delta u = u - u_{old} \f$ from the
+   * committed displacement. The nonlinear solver iterates on total
+   * displacement. If verbose output was enabled in the constructor, the
+   * nonlinear iteration count is printed on rank zero.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solve();
 
   /**
-   * Evaluate the mechanical residual for a displacement. The existing
-   * constitutive update is used to associate the current quadrature-point
-   * stress with the displacement before assembling
+   * Evaluate the mechanical residual for a displacement increment from the
+   * committed displacement. The existing constitutive state is updated
+   * locally with this increment before assembling
    * \f[
-   *   R(u) = f_internal(u) - f_external.
+   *   R(\Delta u) = f_internal(\Delta u) - f_external.
    * \f]
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
   evaluate_residual(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &displacement);
+          &displacement_increment);
 
   /**
    * Return the DoFHandler.
@@ -167,10 +167,9 @@ public:
 private:
   /**
    * Solve a linear system with the current mechanical matrix and return a
-   * constrained displacement vector. The nonlinear solve restores the elastic
-   * stiffness matrix before using this function for its initial guess; during
-   * subsequent KINSOL linear solves, the current matrix is the nonlinear
-   * Jacobian.
+   * constrained displacement vector. The current matrix is the elastic
+   * stiffness matrix for an elastic solve or the initial nonlinear guess, and
+   * is the current nonlinear Jacobian for subsequent KINSOL linear solves.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
   solve_linear_system(
@@ -179,20 +178,21 @@ private:
       double const tolerance) const;
 
   /**
-   * Solve the nonlinear mechanical residual with KINSOL. The elastic matrix is
-   * restored before it provides the initial guess; KINSOL then replaces it
-   * with the assembled consistent global Jacobian for its linear solves.
+   * Solve the nonlinear mechanical residual with KINSOL. The elastic matrix
+   * provides the initial guess; KINSOL then replaces it with the assembled
+   * consistent global Jacobian for its linear solves.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
   solve_nonlinear_system();
 
   /**
-   * Compute the displacement increment relative to the previous displacement.
+   * Compute the displacement increment from the committed displacement to
+   * the supplied total displacement.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
   compute_incremental_displacement(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-          &displacement) const;
+          &total_displacement) const;
 
   /**
    * Evaluate the constitutive response at all quadrature points for the

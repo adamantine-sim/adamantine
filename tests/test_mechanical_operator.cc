@@ -123,11 +123,9 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
   q_collection.push_back(dealii::QGauss<dim>(3));
   q_collection.push_back(dealii::QGauss<dim>(1));
 
-  std::vector<double> empty_vector;
-
   adamantine::MechanicalOperator<dim, 1, 4, adamantine::SolidLiquidPowder,
                                  dealii::MemorySpace::Host>
-      mechanical_operator(communicator, material_properties, empty_vector);
+      mechanical_operator(communicator, material_properties);
   std::vector<std::shared_ptr<adamantine::BodyForce<dim>>> body_forces;
   auto gravity_force = std::make_shared<adamantine::GravityForce<
       dim, 1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
@@ -339,17 +337,6 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
   adamantine::MaterialProperty<dim, -1, 4, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
-  // Create the thermal DoFHandler
-  dealii::hp::FECollection<dim> thermal_fe_collection;
-  thermal_fe_collection.push_back(dealii::FE_Q<dim>(3));
-  thermal_fe_collection.push_back(dealii::FE_Nothing<dim>());
-  dealii::DoFHandler<dim> thermal_dof_handler(geometry.get_triangulation());
-  thermal_dof_handler.distribute_dofs(thermal_fe_collection);
-  dealii::AffineConstraints<double> thermal_affine_constraints;
-  thermal_affine_constraints.close();
-  dealii::hp::QCollection<1> thermal_q_collection;
-  thermal_q_collection.push_back(dealii::QGauss<1>(4));
-  thermal_q_collection.push_back(dealii::QGauss<1>(1));
   // Create the mechanical DoFHandler
   dealii::hp::FECollection<dim> mechanical_fe_collection;
   mechanical_fe_collection.push_back(
@@ -368,19 +355,10 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
   dealii::hp::QCollection<dim> mechanical_q_collection;
   mechanical_q_collection.push_back(dealii::QGauss<dim>(3));
   mechanical_q_collection.push_back(dealii::QGauss<dim>(1));
-  // Create the temperature vector
-  dealii::LinearAlgebra::distributed::Vector<double> temperature(
-      thermal_dof_handler.locally_owned_dofs(), communicator);
-  temperature = 1.;
   // Create the MechanicalOperator
-  std::vector<double> reference_temperatures = {2.0, 0.0};
   adamantine::MechanicalOperator<dim, -1, 4, adamantine::SolidLiquidPowder,
                                  dealii::MemorySpace::Host>
-      mechanical_operator(communicator, material_properties,
-                          reference_temperatures);
-  std::vector<bool> has_melted(triangulation.n_active_cells(), false);
-  mechanical_operator.update_temperature(thermal_dof_handler, temperature,
-                                         has_melted);
+      mechanical_operator(communicator, material_properties);
   std::vector<std::shared_ptr<adamantine::BodyForce<dim>>> body_forces;
   auto gravity_force = std::make_shared<adamantine::GravityForce<
       dim, -1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
@@ -397,21 +375,18 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
       mechanical_dof_handler, AffineDisplacement<dim>(0), virtual_displacement);
   mechanical_affine_constraints.distribute(virtual_displacement);
 
-  // The thermoelastic weak form gives
-  // l(v) = integral_Omega div(v) beta (T-T_ref), with
-  // beta = (3 lambda + 2 mu) alpha. For v = (x,0,0), div(v) = 1.
+  // The direct thermal-strain formulation produces a compressive stress for
+  // zero displacement. Its internal-force contribution is the negative of the
+  // equivalent thermal RHS.
   double constexpr volume = 6. * 6. * 6.;
   double const beta = (3. * lame_first + 2. * lame_second) * thermal_expansion;
-  double virtual_work = virtual_displacement * mechanical_operator.rhs();
-  BOOST_TEST(virtual_work == beta * volume);
-
-  // Once a cell has melted, its reference temperature changes from the initial
-  // substrate temperature to the material-specific reference temperature.
-  std::fill(has_melted.begin(), has_melted.end(), true);
-  mechanical_operator.update_temperature(thermal_dof_handler, temperature,
-                                         has_melted);
-  mechanical_operator.assemble_rhs({});
-  virtual_work = virtual_displacement * mechanical_operator.rhs();
+  std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> thermal_stress(
+      triangulation.n_active_cells(),
+      std::vector<dealii::SymmetricTensor<2, dim>>(
+          mechanical_q_collection.max_n_quadrature_points(),
+          -beta * dealii::unit_symmetric_tensor<dim>()));
+  auto const residual = mechanical_operator.assemble_residual(thermal_stress);
+  double const virtual_work = virtual_displacement * residual;
   BOOST_TEST(virtual_work == -beta * volume);
 }
 
@@ -468,7 +443,7 @@ BOOST_AUTO_TEST_CASE(jacobian, *utf::tolerance(1e-10))
 
   adamantine::MechanicalOperator<dim, 1, 4, adamantine::SolidLiquidPowder,
                                  dealii::MemorySpace::Host>
-      mechanical_operator(communicator, material_properties, {});
+      mechanical_operator(communicator, material_properties);
   mechanical_operator.reinit(dof_handler, affine_constraints, q_collection, {});
 
   auto const constitutive_tangent =
