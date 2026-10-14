@@ -17,16 +17,38 @@
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/hp/fe_collection.h>
 
+#include <tuple>
 #include <utility>
 
 namespace adamantine
 {
+/**
+ * Constitutive history stored at a mechanical quadrature point.
+ */
 template <int dim>
 struct MechanicalConstitutiveState
 {
-  dealii::SymmetricTensor<2, dim> stress;
+  /**
+   * Total strain at the time the cell becomes mechanically active. This
+   * reference strain is subtracted from later total strains so that inherited
+   * displacement does not create stress when material is activated.
+   */
+  dealii::SymmetricTensor<2, dim> activation_strain;
+  /**
+   * Accumulated plastic strain tensor.
+   */
+  dealii::SymmetricTensor<2, dim> plastic_strain;
+  /**
+   * Back-stress tensor used for kinematic hardening in the yield condition.
+   */
   dealii::SymmetricTensor<2, dim> back_stress;
+  /**
+   * Current scalar yield threshold, updated by isotropic hardening.
+   */
   double plastic_internal_variable = 0.;
+  /**
+   * Isotropic thermal strain magnitude, multiplying the identity tensor.
+   */
   double thermal_strain = 0.;
 };
 
@@ -83,14 +105,14 @@ public:
           std::vector<std::shared_ptr<BodyForce<dim>>>());
 
   /**
-   * Prepare displacement and stresses to be communicated when activating cells
-   * or refining the mesh.
+   * Prepare displacement and constitutive state to be communicated when
+   * activating cells or refining the mesh.
    */
   void prepare_transfer_mpi();
 
   /**
-   * Complete transfer of displacment and stress data after activating cells or
-   * refining the mesh.
+   * Complete transfer of displacement and constitutive state after activating
+   * cells or refining the mesh.
    */
   void complete_transfer_mpi();
 
@@ -146,22 +168,22 @@ public:
       std::vector<std::vector<MechanicalConstitutiveState<dim>>> const &state);
 
   /**
-   * Return the stress tensor associated to each quadrature point.
+   * Compute the committed stress tensor associated to each quadrature point.
    */
   std::vector<std::vector<dealii::SymmetricTensor<2, dim>>>
   get_stress_tensor() const;
 
   /**
    * Evaluate the local constitutive response without modifying the state and
-   * return the trial state and algorithmic tangent.
+   * return the trial state, trial stress, and algorithmic tangent.
    */
-  std::pair<MechanicalConstitutiveState<dim>, dealii::SymmetricTensor<4, dim>>
+  std::tuple<MechanicalConstitutiveState<dim>, dealii::SymmetricTensor<2, dim>,
+             dealii::SymmetricTensor<4, dim>>
   evaluate_constitutive_response(
-      dealii::SymmetricTensor<2, dim> const &strain_increment,
-      double const temperature, double const reference_temperature,
-      double const lambda, double const mu, double const plastic_modulus,
-      double const iso_hardening_coef, double const alpha,
-      bool const include_thermal_loading,
+      dealii::SymmetricTensor<2, dim> const &strain, double const temperature,
+      double const reference_temperature, double const lambda, double const mu,
+      double const plastic_modulus, double const iso_hardening_coef,
+      double const alpha, bool const include_thermal_loading,
       MechanicalConstitutiveState<dim> const &state) const;
 
 private:
@@ -196,7 +218,9 @@ private:
 
   /**
    * Evaluate the constitutive response at all quadrature points for the
-   * displacement increment and store the trial state and constitutive tangent.
+   * displacement increment and store the trial state, trial stress, and
+   * constitutive tangent. The total strain used by the constitutive law
+   * combines this increment with the previous converged displacement.
    */
   void evaluate_trial_state(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
@@ -283,6 +307,12 @@ private:
    * Trial constitutive state at each (cell, quadrature point).
    */
   std::vector<std::vector<MechanicalConstitutiveState<dim>>> _trial_state;
+
+  /**
+   * Trial stress associated with the trial state at each (cell, quadrature
+   * point).
+   */
+  std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> _trial_stress;
 
   /**
    * Algorithmic constitutive tangent associated with the trial state at each
