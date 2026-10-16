@@ -35,7 +35,7 @@ if (ADAMANTINE_ENABLE_TESTS)
   add_subdirectory(tests)
   add_test(NAME indent_code
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ./indent
+    COMMAND ./indent --check
   )
 endif()
 

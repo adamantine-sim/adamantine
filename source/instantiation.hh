@@ -1,10 +1,10 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
-#include <boost/preprocessor/seq/for_each_product.hpp>
-
 #include <deal.II/base/quadrature_lib.h>
+
+#include <boost/preprocessor/seq/for_each_product.hpp>
 
 // clang-format off
 #define ADAMANTINE_DIM (2)(3)

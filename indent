@@ -1,5 +1,17 @@
-clang-format -style=file -i source/*.cc
-clang-format -style=file -i source/*.hh
-clang-format -style=file -i tests/*.cc
-clang-format -style=file -i applications/*.cc
-clang-format -style=file -i applications/*.hh
+#!/bin/sh
+set -eu
+
+case "${1:-}" in
+  --check)
+    set -- --dry-run --Werror
+    ;;
+  "")
+    set -- -i
+    ;;
+  *)
+    echo "Usage: $0 [--check]" >&2
+    exit 1
+    ;;
+esac
+
+clang-format -style=file "$@" source/*.cc source/*.hh tests/*.cc tests/*.hh applications/*.cc applications/*.hh

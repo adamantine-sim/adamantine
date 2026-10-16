@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2025 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -18,8 +18,9 @@
 
 #include "main.cc"
 
-// Check that ClosestSourcePointAdaption can be used with dealii::CellDataTransfer
-// In particular, check that we get obtain the same quadrature point values when we first refine and then coarsen the mesh.
+// Check that ClosestSourcePointAdaption can be used with
+// dealii::CellDataTransfer In particular, check that we get obtain the same
+// quadrature point values when we first refine and then coarsen the mesh.
 
 template <int dim, int spacedim>
 void test()
@@ -60,15 +61,13 @@ void test()
           tria, /* transfer_variable_size_data */ false,
           [&](const typename dealii::Triangulation<dim, spacedim>::cell_iterator
                   &parent,
-              const std::vector<double> parent_values)
-          {
+              const std::vector<double> parent_values) {
             return closest_quad_point_adaptation.coarse_to_fine(parent,
                                                                 parent_values);
           },
           [&](const typename dealii::Triangulation<dim, spacedim>::cell_iterator
                   &parent,
-              const std::vector<std::vector<double>> child_values)
-          {
+              const std::vector<std::vector<double>> child_values) {
             return closest_quad_point_adaptation.fine_to_coarse(parent,
                                                                 child_values);
           });
