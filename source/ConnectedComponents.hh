@@ -9,8 +9,8 @@
 #include <deal.II/dofs/dof_handler.h>
 
 #include <numeric>
-#include <vector>
 #include <unordered_set>
+#include <vector>
 
 namespace adamantine
 {
@@ -62,7 +62,8 @@ private:
 
 struct OwnedCellRecord
 {
-  unsigned int cell_id = dealii::numbers::invalid_unsigned_int;
+  dealii::types::global_cell_index cell_id =
+      dealii::numbers::invalid_unsigned_int;
   unsigned int component_rep_id = dealii::numbers::invalid_unsigned_int;
 };
 
@@ -74,8 +75,10 @@ struct LocalComponentRecord
 
 struct InterfaceRecord
 {
-  unsigned int cell_id_1 = dealii::numbers::invalid_unsigned_int;
-  unsigned int cell_id_2 = dealii::numbers::invalid_unsigned_int;
+  dealii::types::global_cell_index cell_id_1 =
+      dealii::numbers::invalid_unsigned_int;
+  dealii::types::global_cell_index cell_id_2 =
+      dealii::numbers::invalid_unsigned_int;
 };
 
 struct LocalSummary
@@ -112,7 +115,7 @@ std::vector<ComponentInfo<dim, spacedim>> find_components(
   for (const Cell &cell : dof_handler.active_cell_iterators())
     if (cell->is_locally_owned() && cell->active_fe_index() == target_fe_index)
     {
-      const unsigned int id = cell->active_cell_index();
+      const unsigned int id = cell->global_active_cell_index();
       local_index_of_id[id] = local_cells.size();
       local_cells.push_back(cell);
     }
@@ -127,7 +130,8 @@ std::vector<ComponentInfo<dim, spacedim>> find_components(
   std::vector<std::pair<unsigned int, unsigned int>> interface_pairs;
 
   auto process_neighbor = [&](const unsigned int i, const unsigned int fe_index,
-                              const unsigned int cell_id, const Cell &neighbor)
+                              const dealii::types::global_cell_index cell_id,
+                              const Cell &neighbor)
   {
     if (!neighbor->is_active())
       return;
@@ -137,14 +141,15 @@ std::vector<ComponentInfo<dim, spacedim>> find_components(
 
     if (neighbor->is_locally_owned())
     {
-      const auto it = local_index_of_id.find(neighbor->active_cell_index());
+      const auto it =
+          local_index_of_id.find(neighbor->global_active_cell_index());
       if (it != local_index_of_id.end())
         local_dsu.unite(i, it->second);
     }
     else if (neighbor->is_ghost())
     {
-      unsigned int a = cell_id;
-      unsigned int b = neighbor->active_cell_index();
+      dealii::types::global_cell_index a = cell_id;
+      dealii::types::global_cell_index b = neighbor->global_active_cell_index();
 
       if (b < a)
         std::swap(a, b);
@@ -156,7 +161,7 @@ std::vector<ComponentInfo<dim, spacedim>> find_components(
   for (unsigned int i = 0; i < local_cells.size(); ++i)
   {
     const Cell cell = local_cells[i];
-    const unsigned int cell_id = cell->active_cell_index();
+    dealii::types::global_cell_index cell_id = cell->global_active_cell_index();
     const unsigned int fe_idx = cell->active_fe_index();
 
     for (unsigned int f = 0; f < dealii::GeometryInfo<dim>::faces_per_cell; ++f)
@@ -205,7 +210,7 @@ std::vector<ComponentInfo<dim, spacedim>> find_components(
     const unsigned int root = local_dsu.find(i);
 
     if (rep_id_of_root.find(root) == rep_id_of_root.end())
-      rep_id_of_root[root] = local_cells[root]->active_cell_index();
+      rep_id_of_root[root] = local_cells[root]->global_active_cell_index();
 
     touches_of_root[root] =
         touches_of_root[root] || local_touches_target_boundary[i];
@@ -216,7 +221,8 @@ std::vector<ComponentInfo<dim, spacedim>> find_components(
 
   for (unsigned int i = 0; i < local_cells.size(); ++i)
   {
-    const unsigned int cell_id = local_cells[i]->active_cell_index();
+    const dealii::types::global_cell_index cell_id =
+        local_cells[i]->global_active_cell_index();
     const unsigned int rep_id = rep_id_of_root[local_dsu.find(i)];
 
     local_summary.owned_cells.push_back({cell_id, rep_id});
@@ -294,12 +300,12 @@ std::vector<ComponentInfo<dim, spacedim>> find_components(
   std::unordered_set<uint32_t> owned_interface_cells;
   owned_interface_cells.reserve(local_summary.interfaces.size() * 2 + 4);
   for (const auto &itf : local_summary.interfaces)
-    {
-      if (owned_ids.find(itf.cell_id_1) != owned_ids.end())
-        owned_interface_cells.insert(itf.cell_id_1);
-      if (owned_ids.find(itf.cell_id_2) != owned_ids.end())
-        owned_interface_cells.insert(itf.cell_id_2);
-    }
+  {
+    if (owned_ids.find(itf.cell_id_1) != owned_ids.end())
+      owned_interface_cells.insert(itf.cell_id_1);
+    if (owned_ids.find(itf.cell_id_2) != owned_ids.end())
+      owned_interface_cells.insert(itf.cell_id_2);
+  }
 
   // Build compact vector of owned cells to send
   std::vector<OwnedCellRecord> owned_to_send;
@@ -310,10 +316,10 @@ std::vector<ComponentInfo<dim, spacedim>> find_components(
 
   send_buf.push_back(static_cast<uint32_t>(owned_to_send.size()));
   for (const auto &o : owned_to_send)
-    {
-      send_buf.push_back(static_cast<uint32_t>(o.cell_id));
-      send_buf.push_back(static_cast<uint32_t>(o.component_rep_id));
-    }
+  {
+    send_buf.push_back(static_cast<uint32_t>(o.cell_id));
+    send_buf.push_back(static_cast<uint32_t>(o.component_rep_id));
+  }
 
   // interfaces
   send_buf.push_back(static_cast<uint32_t>(local_summary.interfaces.size()));
@@ -328,7 +334,7 @@ std::vector<ComponentInfo<dim, spacedim>> find_components(
   // Gather sizes non-blocking (then wait) so we can post per-rank receives
   std::vector<int> send_counts(n_ranks, 0);
   MPI_Allgather(&my_send_count, 1, MPI_INT, send_counts.data(), 1, MPI_INT,
-                 mpi_communicator);
+                mpi_communicator);
 
   // Post non-blocking receives for each sender (except self)
   std::vector<std::vector<uint32_t>> recv_bufs(n_ranks);
@@ -538,15 +544,15 @@ std::vector<ComponentInfo<dim, spacedim>> find_components(
   }
 
   for (unsigned int i = 0; i < local_cells.size(); ++i)
-    {
-      const unsigned int rep_id = rep_id_of_root[local_dsu.find(i)];
+  {
+    const unsigned int rep_id = rep_id_of_root[local_dsu.find(i)];
 
-      const unsigned int root =
-          global_dsu.find(component_index_of_rep.at(rep_id));
-      const unsigned int cid = compact_id_of_root.at(root);
+    const unsigned int root =
+        global_dsu.find(component_index_of_rep.at(rep_id));
+    const unsigned int cid = compact_id_of_root.at(root);
 
-      result[cid].locally_owned_cells.push_back(local_cells[i]);
-    }
+    result[cid].locally_owned_cells.push_back(local_cells[i]);
+  }
 
   return result;
 }
