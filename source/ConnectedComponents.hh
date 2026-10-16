@@ -317,6 +317,7 @@ std::vector<ComponentInfo<dim, spacedim>> find_components(
   send_buf.push_back(static_cast<uint32_t>(owned_to_send.size()));
   for (const auto &o : owned_to_send)
   {
+    AssertIndexRange(o.cell_id, std::numeric_limits<uint32_t>::max());
     send_buf.push_back(static_cast<uint32_t>(o.cell_id));
     send_buf.push_back(static_cast<uint32_t>(o.component_rep_id));
   }
@@ -325,6 +326,8 @@ std::vector<ComponentInfo<dim, spacedim>> find_components(
   send_buf.push_back(static_cast<uint32_t>(local_summary.interfaces.size()));
   for (const auto &itf : local_summary.interfaces)
   {
+    AssertIndexRange(itf.cell_id_1, std::numeric_limits<uint32_t>::max());
+    AssertIndexRange(itf.cell_id_2, std::numeric_limits<uint32_t>::max());
     send_buf.push_back(static_cast<uint32_t>(itf.cell_id_1));
     send_buf.push_back(static_cast<uint32_t>(itf.cell_id_2));
   }
