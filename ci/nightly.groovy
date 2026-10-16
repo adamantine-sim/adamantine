@@ -38,7 +38,7 @@ pipeline {
                   ..
                 '''
                 sh 'make -j8'
-                sh 'ctest -V --timeout 7200 --no-compress-output -R test_ -T Test'
+                sh 'ctest -j4 -V --timeout 7200 --no-compress-output -R test_ -T Test'
               }
           }
           post {
@@ -72,7 +72,7 @@ pipeline {
                   ..
                 '''
                 sh 'make -j8'
-                sh 'ctest -V --timeout 7200 --no-compress-output -R test_ -T Test'
+                sh 'ctest -j4 -V --timeout 7200 --no-compress-output -R test_ -T Test'
               }
           }
           post {
