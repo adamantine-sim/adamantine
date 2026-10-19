@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE(integration_3D_checkpoint_restart_device)
                            "The file " + input_filename + " does not exist.");
   boost::property_tree::ptree database;
   boost::property_tree::info_parser::read_info(input_filename, database);
-  std::string const checkpoint_filename = "test_checkpoint";
+  std::string const checkpoint_filename = "test_checkpoint_device";
 
   // First run with checkpoint of the solution halfway through the solution
   database.put("checkpoint.filename_prefix", checkpoint_filename);
