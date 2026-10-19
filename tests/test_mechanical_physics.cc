@@ -989,4 +989,32 @@ BOOST_AUTO_TEST_CASE(thermoelastoplastic_radial_return)
   for (auto const &cell_stress : stress)
     for (auto const &value : cell_stress)
       BOOST_CHECK_SMALL((value - expected_stress_2).norm(), 1.e-12);
+
+  // Reverse the deviatoric loading while cooling back to the reference
+  // temperature. Unlike proportional loading, reversal distinguishes the
+  // isotropic and kinematic parts of the hardening law: the back stress shifts
+  // the center of the yield surface while the internal variable changes its
+  // radius.
+  double constexpr reverse_stress_increment = 0.4;
+  for (auto &cell_stress : stress)
+    for (auto &value : cell_stress)
+      value -= reverse_stress_increment * flow_direction;
+
+  temperature = 300.;
+  mechanical_physics.update_rhs(thermal_dof_handler, temperature, has_melted);
+  displacement = mechanical_physics.solve();
+  BOOST_CHECK_SMALL(displacement.l2_norm(), 1.e-12);
+
+  double const yield_radius_2 = isotropic_hardening * plastic_modulus *
+                                (plastic_increment_1 + plastic_increment_2);
+  double const reverse_plastic_increment =
+      (reverse_stress_increment - 2. * yield_radius_2) /
+      (2. * mu + plastic_modulus);
+  double const returned_stress_norm_3 = returned_stress_norm_2 -
+                                        reverse_stress_increment +
+                                        2. * mu * reverse_plastic_increment;
+  auto const expected_stress_3 = returned_stress_norm_3 * flow_direction;
+  for (auto const &cell_stress : stress)
+    for (auto const &value : cell_stress)
+      BOOST_CHECK_SMALL((value - expected_stress_3).norm(), 1.e-12);
 }
