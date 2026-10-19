@@ -183,9 +183,10 @@ void validate_input_database(boost::property_tree::ptree &database)
 
     if (method == "file")
     {
-      ASSERT_THROW(database.count("geometry.material_deposition_file") != 0,
-                   "If the material deposition method is 'file', "
-                   "'material_deposition_file' must be given.");
+      ASSERT_THROW(
+          database.get_child("geometry").count("material_deposition_file") != 0,
+          "If the material deposition method is 'file', "
+          "'material_deposition_file' must be given.");
     }
     else
     {
