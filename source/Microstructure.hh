@@ -141,7 +141,7 @@ void Microstructure<dim>::compute_G_and_R(
       if ((_old_temperature[dof] > liquidus) && (temperature[dof] <= liquidus))
       {
         relevant_indices[i] = true;
-        cooling_rate[i] = _old_temperature[dof] - temperature[dof] / delta_t;
+        cooling_rate[i] = (_old_temperature[dof] - temperature[dof]) / delta_t;
         skip_cell = false;
       }
       else
