@@ -33,10 +33,6 @@ if (ADAMANTINE_ENABLE_TESTS)
   enable_testing()
   include(CTest)
   add_subdirectory(tests)
-  add_test(NAME indent_code
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ./indent --check
-  )
 endif()
 
 # Provide "indent" target for indenting all the header and the source files.

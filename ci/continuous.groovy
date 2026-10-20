@@ -15,6 +15,19 @@ pipeline {
   }
 
   stages {
+    stage('Formatting') {
+      agent {
+        docker {
+          image "rombur/adamantine-stack:no_gpu-latest"
+          alwaysPull false
+          label 'nvidia-docker || rocm-docker'
+        }
+      }
+      steps {
+        sh './indent --check'
+      }
+    }
+
     stage('Test') {
       parallel {
         stage('CPU') {
