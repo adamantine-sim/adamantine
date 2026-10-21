@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2025 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -15,8 +15,8 @@ namespace adamantine
 
 /**
  * This class is supposed to be used with dealii::CellDataTransfer to
- * interpolate quadrature point values when coarsening and refining the mesh. The
- * approach taken by this class is to use the value stored in the closest
+ * interpolate quadrature point values when coarsening and refining the mesh.
+ * The approach taken by this class is to use the value stored in the closest
  * previous quadrature point.
  **/
 template <int dim, int spacedim, typename quad_point_value_type>

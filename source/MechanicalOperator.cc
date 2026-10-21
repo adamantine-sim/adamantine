@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2022 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -290,14 +290,11 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
   // Provide the constant displacement modes to AMG for the elasticity problem.
   dealii::FEValuesExtractors::Vector const displacement_components(0);
   auto const component_mask =
-      _dof_handler->get_fe_collection().component_mask(
-          displacement_components);
+      _dof_handler->get_fe_collection().component_mask(displacement_components);
 
   std::vector<std::vector<bool>> constant_modes;
-  dealii::DoFTools::extract_constant_modes(
-      *_dof_handler,
-      component_mask,
-      constant_modes);
+  dealii::DoFTools::extract_constant_modes(*_dof_handler, component_mask,
+                                           constant_modes);
 
   typename TrilinosPreconditionerType::AdditionalData amg_data;
   amg_data.constant_modes = constant_modes;

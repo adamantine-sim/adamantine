@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -192,8 +192,9 @@ private:
    */
   std::vector<std::shared_ptr<HeatSource<dim>>> _heat_sources;
   /**
-   * This optional flag enables heat source integration to monitor total heat input
-   */  
+   * This optional flag enables heat source integration to monitor total heat
+   * input.
+   */
   bool _print_heat_input;
   /**
    * Shared pointer to the underlying ThermalOperator.
