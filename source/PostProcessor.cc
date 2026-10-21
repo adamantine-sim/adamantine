@@ -124,7 +124,7 @@ dealii::Vector<double> PostProcessor<dim>::get_von_mises_stress(
                dealii::Utilities::fixed_power<2>(tensor[2][2] - tensor[0][0]) +
                6.0 * (dealii::Utilities::fixed_power<2>(tensor[0][1]) +
                       dealii::Utilities::fixed_power<2>(tensor[1][2]) +
-                      dealii::Utilities::fixed_power<2>(tensor[2][1]))));
+                      dealii::Utilities::fixed_power<2>(tensor[2][0]))));
         }
 
         von_mises_stress(cell->active_cell_index()) = cell_stress / n_quad_pts;
