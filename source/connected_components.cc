@@ -2,8 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
-#ifndef CONNECTED_COMPONENTS_HH
-#define CONNECTED_COMPONENTS_HH
+#include "connected_components.hh"
 
 #include <deal.II/base/types.h>
 #include <deal.II/base/utilities.h>
@@ -11,30 +10,33 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <limits>
 #include <numeric>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-namespace adamantine {
-namespace ConnectedComponents {
+namespace
+{
 /**
  * Class implementing the union-find algorithm.
  */
-class DisjointSet {
+class DisjointSet
+{
 public:
   DisjointSet() = default;
 
-  explicit DisjointSet(const unsigned int n) : _parent(n), _rank(n, 0) {
+  explicit DisjointSet(const unsigned int n) : _parent(n), _rank(n, 0)
+  {
     std::iota(_parent.begin(), _parent.end(), 0U);
   }
 
   /**
    * Return the root representing the component for a given node.
    */
-  unsigned int find(unsigned int x) {
-    while (_parent[x] != x) {
+  unsigned int find(unsigned int x)
+  {
+    while (_parent[x] != x)
+    {
       // path contraction
       _parent[x] = _parent[_parent[x]];
       x = _parent[x];
@@ -45,7 +47,8 @@ public:
   /**
    * Join two nodes so that they belong to the same component.
    */
-  void unite(unsigned int a, unsigned int b) {
+  void unite(unsigned int a, unsigned int b)
+  {
     a = find(a);
     b = find(b);
 
@@ -81,18 +84,22 @@ private:
  * Data structure storing the cell index together with the index of the
  * representative for the component the cell belongs to.
  */
-struct OwnedCellRecord {
+struct OwnedCellRecord
+{
   dealii::types::global_cell_index _cell_id =
       dealii::numbers::invalid_unsigned_int;
-  unsigned int _component_rep_id = dealii::numbers::invalid_unsigned_int;
+  dealii::types::global_cell_index _component_rep_id =
+      dealii::numbers::invalid_unsigned_int;
 };
 
 /**
  * Data structure storing the representative for a component together with
  * information about it touching a boundary we care about.
  */
-struct LocalComponentRecord {
-  unsigned int _rep_id = dealii::numbers::invalid_unsigned_int;
+struct LocalComponentRecord
+{
+  dealii::types::global_cell_index _rep_id =
+      dealii::numbers::invalid_unsigned_int;
   bool _touches_target_boundary = false;
 };
 
@@ -100,7 +107,8 @@ struct LocalComponentRecord {
  * Data structure storing the two cells indices for locally owned cell with a
  * ghost neighbor.
  */
-struct InterfaceRecord {
+struct InterfaceRecord
+{
   dealii::types::global_cell_index _cell_id_1 =
       dealii::numbers::invalid_unsigned_int;
   dealii::types::global_cell_index _cell_id_2 =
@@ -110,23 +118,13 @@ struct InterfaceRecord {
 /**
  * Data structure storing information about locally owned cells.
  */
-struct LocalSummary {
+struct LocalSummary
+{
   std::vector<OwnedCellRecord> _owned_cells;
   std::vector<LocalComponentRecord> _components;
   std::vector<InterfaceRecord> _interfaces;
 };
-
-/**
- * Data structure storing all cell indices for a component and whether it
- * touches a boundary we care about.
- */
-template <int dim> struct ComponentInfo {
-  bool _touches_target_boundary = false;
-
-  // Only locally owned cells on this rank are stored.
-  std::vector<typename dealii::DoFHandler<dim>::active_cell_iterator>
-      _locally_owned_cells;
-};
+} // namespace
 
 /**
  * Find connected components of locally owned active cells with the given FE
@@ -138,15 +136,17 @@ template <int dim> struct ComponentInfo {
  * global component touches one of the target boundaries.
  */
 template <int dim>
-std::vector<ComponentInfo<dim>> find_components(
+std::vector<adamantine::ConnectedComponents::ComponentInfo<dim>>
+adamantine::ConnectedComponents::find_components(
     const dealii::DoFHandler<dim> &dof_handler,
     const std::vector<dealii::types::boundary_id> &target_boundary_id,
-    const unsigned int target_fe_index, const MPI_Comm mpi_communicator) {
+    const unsigned int target_fe_index, const MPI_Comm mpi_communicator)
+{
   using Cell = typename dealii::DoFHandler<dim>::active_cell_iterator;
   using GlobalCellIndex = dealii::types::global_cell_index;
   // The cell index is either a 32-bit or a 64-bit type. Since it's the largest
-  // type we need to send, we use std::uint64_t as type for the MPI buffers.
-  using PackedWord = std::uint64_t;
+  // type we need to send, we can it as type for the MPI buffers.
+  using PackedWord = GlobalCellIndex;
 
   // Step 1: collect all locally owned active cells with the requested FE index.
   std::vector<Cell> local_cells;
@@ -154,8 +154,8 @@ std::vector<ComponentInfo<dim>> find_components(
   std::unordered_map<GlobalCellIndex, unsigned int> local_index_of_id;
 
   for (const Cell &cell : dof_handler.active_cell_iterators())
-    if (cell->is_locally_owned() &&
-        cell->active_fe_index() == target_fe_index) {
+    if (cell->is_locally_owned() && cell->active_fe_index() == target_fe_index)
+    {
       const GlobalCellIndex id = cell->global_active_cell_index();
       local_index_of_id[id] = local_cells.size();
       local_cells.push_back(cell);
@@ -178,19 +178,23 @@ std::vector<ComponentInfo<dim>> find_components(
 
   auto process_neighbor = [&](const unsigned int i, const unsigned int fe_index,
                               const GlobalCellIndex cell_id,
-                              const Cell &neighbor) {
+                              const Cell &neighbor)
+  {
     if (!neighbor->is_active())
       return;
 
     if (neighbor->active_fe_index() != fe_index)
       return;
 
-    if (neighbor->is_locally_owned()) {
+    if (neighbor->is_locally_owned())
+    {
       const auto it =
           local_index_of_id.find(neighbor->global_active_cell_index());
       if (it != local_index_of_id.end())
         local_dsu.unite(i, it->second);
-    } else if (neighbor->is_ghost()) {
+    }
+    else if (neighbor->is_ghost())
+    {
       GlobalCellIndex a = cell_id;
       GlobalCellIndex b = neighbor->global_active_cell_index();
 
@@ -202,14 +206,16 @@ std::vector<ComponentInfo<dim>> find_components(
     }
   };
 
-  for (unsigned int i = 0; i < local_cells.size(); ++i) {
+  for (unsigned int i = 0; i < local_cells.size(); ++i)
+  {
     const Cell cell = local_cells[i];
     const GlobalCellIndex cell_id = cell->global_active_cell_index();
     const unsigned int fe_idx = cell->active_fe_index();
 
-    for (unsigned int f = 0; f < dealii::GeometryInfo<dim>::faces_per_cell;
-         ++f) {
-      if (cell->at_boundary(f)) {
+    for (unsigned int f = 0; f < dealii::GeometryInfo<dim>::faces_per_cell; ++f)
+    {
+      if (cell->at_boundary(f))
+      {
         if (std::find(target_boundary_id.begin(), target_boundary_id.end(),
                       cell->face(f)->boundary_id()) != target_boundary_id.end())
           local_touches_target_boundary[i] = true;
@@ -218,12 +224,18 @@ std::vector<ComponentInfo<dim>> find_components(
       }
 
       const auto neighbor = cell->neighbor(f);
-      if (cell->neighbor_is_coarser(f)) {
+      if (cell->neighbor_is_coarser(f))
+      {
         process_neighbor(i, fe_idx, cell_id, neighbor);
-      } else {
-        if (neighbor->is_active()) {
+      }
+      else
+      {
+        if (neighbor->is_active())
+        {
           process_neighbor(i, fe_idx, cell_id, neighbor);
-        } else {
+        }
+        else
+        {
           for (unsigned int subface = 0; subface < cell->face(f)->n_children();
                ++subface)
             process_neighbor(i, fe_idx, cell_id,
@@ -244,7 +256,8 @@ std::vector<ComponentInfo<dim>> find_components(
   std::unordered_map<unsigned int, GlobalCellIndex> rep_id_of_root;
   std::unordered_map<unsigned int, bool> touches_of_root;
 
-  for (unsigned int i = 0; i < local_cells.size(); ++i) {
+  for (unsigned int i = 0; i < local_cells.size(); ++i)
+  {
     const unsigned int root = local_dsu.find(i);
 
     if (rep_id_of_root.find(root) == rep_id_of_root.end())
@@ -265,7 +278,8 @@ std::vector<ComponentInfo<dim>> find_components(
   std::vector<OwnedCellRecord> owned_to_send(n_owned_to_send);
   unsigned int owned_to_send_pos = 0;
 
-  for (unsigned int i = 0; i < local_cells.size(); ++i) {
+  for (unsigned int i = 0; i < local_cells.size(); ++i)
+  {
     const GlobalCellIndex cell_id = local_cells[i]->global_active_cell_index();
     const GlobalCellIndex rep_id = rep_id_of_root[local_dsu.find(i)];
 
@@ -284,7 +298,8 @@ std::vector<ComponentInfo<dim>> find_components(
   // If running with a single MPI rank, we can stop here and construct the
   // final result directly from the local compression step. This avoids the
   // distributed gathering and global union-find.
-  if (dealii::Utilities::MPI::n_mpi_processes(mpi_communicator) == 1) {
+  if (dealii::Utilities::MPI::n_mpi_processes(mpi_communicator) == 1)
+  {
     std::vector<ComponentInfo<dim>> result;
     result.reserve(local_summary._components.size());
 
@@ -292,14 +307,16 @@ std::vector<ComponentInfo<dim>> find_components(
     std::unordered_map<GlobalCellIndex, unsigned int> cid_of_rep;
     cid_of_rep.reserve(local_summary._components.size());
 
-    for (const auto &c : local_summary._components) {
+    for (const auto &c : local_summary._components)
+    {
       const unsigned int cid = static_cast<unsigned int>(result.size());
       cid_of_rep[c._rep_id] = cid;
       result.emplace_back();
       result.back()._touches_target_boundary = c._touches_target_boundary;
     }
 
-    for (unsigned int i = 0; i < local_cells.size(); ++i) {
+    for (unsigned int i = 0; i < local_cells.size(); ++i)
+    {
       const unsigned int root = local_dsu.find(i);
       const GlobalCellIndex rep_id = rep_id_of_root.at(root);
       const unsigned int cid = cid_of_rep.at(rep_id);
@@ -318,8 +335,8 @@ std::vector<ComponentInfo<dim>> find_components(
   //    n_interfaces, iface*(cell_id_1,cell_id_2)]
   //
   // The send buffer is allocated from the exact number of packed entries.
-  // Cell ids and representative ids are carried as 64-bit words, so no 32-bit
-  // truncation is required.
+  // Cell ids and representative ids are packed as GlobalCellIndex values
+  // avoiding any narrowing casts.
   // --------------------------------------------------------------------------
   const int n_ranks = dealii::Utilities::MPI::n_mpi_processes(mpi_communicator);
   const int my_rank =
@@ -333,32 +350,36 @@ std::vector<ComponentInfo<dim>> find_components(
   std::size_t send_pos = 0;
 
   // components
-  send_buf[send_pos++] =
-      static_cast<PackedWord>(local_summary._components.size());
-  for (const auto &c : local_summary._components) {
-    send_buf[send_pos++] = static_cast<PackedWord>(c._rep_id);
-    send_buf[send_pos++] =
-        static_cast<PackedWord>(c._touches_target_boundary ? 1U : 0U);
+  send_buf[send_pos++] = local_summary._components.size();
+  for (const auto &c : local_summary._components)
+  {
+    send_buf[send_pos++] = c._rep_id;
+    send_buf[send_pos++] = c._touches_target_boundary;
   }
 
   // owned cells
   send_buf[send_pos++] = static_cast<PackedWord>(owned_to_send.size());
-  for (const auto &o : owned_to_send) {
-    send_buf[send_pos++] = static_cast<PackedWord>(o._cell_id);
-    send_buf[send_pos++] = static_cast<PackedWord>(o._component_rep_id);
+  for (const auto &o : owned_to_send)
+  {
+    send_buf[send_pos++] = o._cell_id;
+    send_buf[send_pos++] = o._component_rep_id;
   }
 
   // interfaces
   send_buf[send_pos++] =
       static_cast<PackedWord>(local_summary._interfaces.size());
-  for (const auto &itf : local_summary._interfaces) {
-    send_buf[send_pos++] = static_cast<PackedWord>(itf._cell_id_1);
-    send_buf[send_pos++] = static_cast<PackedWord>(itf._cell_id_2);
+  for (const auto &itf : local_summary._interfaces)
+  {
+    send_buf[send_pos++] = itf._cell_id_1;
+    send_buf[send_pos++] = itf._cell_id_2;
   }
 
   AssertDimension(send_pos, send_buf.size());
+  AssertIndexRange(send_buf.size() * sizeof(PackedWord),
+                   std::numeric_limits<int>::max());
 
   const int my_send_count = static_cast<int>(send_buf.size());
+  const int my_send_n_bytes = my_send_count * sizeof(PackedWord);
 
   // Gather exact message sizes first so each receive buffer can be sized
   // tightly before posting Irecv.
@@ -370,24 +391,27 @@ std::vector<ComponentInfo<dim>> find_components(
   std::vector<std::vector<PackedWord>> recv_bufs(n_ranks);
   std::vector<MPI_Request> recv_reqs(n_ranks, MPI_REQUEST_NULL);
   int n_pending = 0;
-  for (int r = 0; r < n_ranks; ++r) {
+  for (int r = 0; r < n_ranks; ++r)
+  {
     if (r == my_rank)
       continue;
     const int cnt = send_counts[r];
     if (cnt == 0)
       continue;
     recv_bufs[r].resize(cnt);
-    MPI_Irecv(recv_bufs[r].data(), cnt, MPI_UINT64_T, r, 0, mpi_communicator,
-              &recv_reqs[r]);
+    const int recv_n_bytes = cnt * static_cast<int>(sizeof(PackedWord));
+    MPI_Irecv(recv_bufs[r].data(), recv_n_bytes, MPI_BYTE, r, 0,
+              mpi_communicator, &recv_reqs[r]);
     ++n_pending;
   }
 
   // Post non-blocking sends to all other ranks.
   std::vector<MPI_Request> send_reqs(n_ranks, MPI_REQUEST_NULL);
-  for (int r = 0; r < n_ranks; ++r) {
+  for (int r = 0; r < n_ranks; ++r)
+  {
     if (r == my_rank)
       continue;
-    MPI_Isend(send_buf.data(), my_send_count, MPI_UINT64_T, r, 0,
+    MPI_Isend(send_buf.data(), my_send_n_bytes, MPI_BYTE, r, 0,
               mpi_communicator, &send_reqs[r]);
   }
 
@@ -396,7 +420,9 @@ std::vector<ComponentInfo<dim>> find_components(
   std::vector<GlobalCellIndex> component_reps;
   std::vector<bool> touches_of_rep;
 
-  auto ensure_component_index = [&](const GlobalCellIndex rep_id) {
+  // Helper populating component_index_of_rep and component_reps
+  auto ensure_component_index = [&](const GlobalCellIndex rep_id)
+  {
     const auto it = component_index_of_rep.find(rep_id);
     if (it != component_index_of_rep.end())
       return it->second;
@@ -407,7 +433,8 @@ std::vector<ComponentInfo<dim>> find_components(
     return idx;
   };
 
-  for (const auto &comp : local_summary._components) {
+  for (const auto &comp : local_summary._components)
+  {
     const unsigned int idx = ensure_component_index(comp._rep_id);
     touches_of_rep[idx] = touches_of_rep[idx] || comp._touches_target_boundary;
   }
@@ -425,27 +452,29 @@ std::vector<ComponentInfo<dim>> find_components(
   // We unpack components and owned-cell mappings immediately. Interface records
   // are skipped for now and revisited later from recv_bufs once all ownership
   // information is available.
-  while (n_pending > 0) {
+  while (n_pending > 0)
+  {
     int idx;
     MPI_Waitany(n_ranks, recv_reqs.data(), &idx, MPI_STATUS_IGNORE);
-    if (idx == MPI_UNDEFINED)
-      break;
+    Assert(idx != MPI_UNDEFINED, dealii::ExcInternalError());
 
     const auto &buf = recv_bufs[idx];
     std::size_t pos = 0;
 
     const std::size_t ncomps = static_cast<std::size_t>(buf[pos++]);
-    for (std::size_t ci = 0; ci < ncomps; ++ci) {
-      const GlobalCellIndex rep_id = static_cast<GlobalCellIndex>(buf[pos++]);
+    for (std::size_t ci = 0; ci < ncomps; ++ci)
+    {
+      const GlobalCellIndex rep_id = buf[pos++];
       const bool touches = (buf[pos++] != 0);
       const unsigned int id = ensure_component_index(rep_id);
       touches_of_rep[id] = touches_of_rep[id] || touches;
     }
 
     const std::size_t nowned = static_cast<std::size_t>(buf[pos++]);
-    for (std::size_t oi = 0; oi < nowned; ++oi) {
-      const GlobalCellIndex cell_id = static_cast<GlobalCellIndex>(buf[pos++]);
-      const GlobalCellIndex rep_id = static_cast<GlobalCellIndex>(buf[pos++]);
+    for (std::size_t oi = 0; oi < nowned; ++oi)
+    {
+      const GlobalCellIndex cell_id = buf[pos++];
+      const GlobalCellIndex rep_id = buf[pos++];
       owned_cell_to_rep_local[cell_id] = rep_id;
     }
 
@@ -465,7 +494,8 @@ std::vector<ComponentInfo<dim>> find_components(
   // received summaries. The buffer is allocated from the exact number of
   // interface records.
   std::size_t n_global_interfaces = local_summary._interfaces.size();
-  for (int r = 0; r < n_ranks; ++r) {
+  for (int r = 0; r < n_ranks; ++r)
+  {
     if (r == my_rank || send_counts[r] == 0)
       continue;
 
@@ -492,7 +522,8 @@ std::vector<ComponentInfo<dim>> find_components(
   for (const auto &itf : local_summary._interfaces)
     global_interface_pairs[interface_pos++] = {itf._cell_id_1, itf._cell_id_2};
 
-  for (int r = 0; r < n_ranks; ++r) {
+  for (int r = 0; r < n_ranks; ++r)
+  {
     if (r == my_rank || send_counts[r] == 0)
       continue;
 
@@ -506,9 +537,10 @@ std::vector<ComponentInfo<dim>> find_components(
     pos += 2U * nowned;
 
     const std::size_t nifaces = static_cast<std::size_t>(buf[pos++]);
-    for (std::size_t ii = 0; ii < nifaces; ++ii) {
-      const GlobalCellIndex a = static_cast<GlobalCellIndex>(buf[pos++]);
-      const GlobalCellIndex b = static_cast<GlobalCellIndex>(buf[pos++]);
+    for (std::size_t ii = 0; ii < nifaces; ++ii)
+    {
+      const GlobalCellIndex a = buf[pos++];
+      const GlobalCellIndex b = buf[pos++];
       global_interface_pairs[interface_pos++] = {a, b};
     }
 
@@ -535,7 +567,8 @@ std::vector<ComponentInfo<dim>> find_components(
   new_component_reps.reserve(reps_sorted.size());
   new_touches_of_rep.reserve(reps_sorted.size());
 
-  for (unsigned int i = 0; i < reps_sorted.size(); ++i) {
+  for (unsigned int i = 0; i < reps_sorted.size(); ++i)
+  {
     const GlobalCellIndex rep_id = reps_sorted[i];
     const unsigned int old_idx = component_index_of_rep.at(rep_id);
     new_component_index_of_rep[rep_id] = i;
@@ -552,7 +585,8 @@ std::vector<ComponentInfo<dim>> find_components(
   // mappings using the deterministic representative numbering.
   std::unordered_map<GlobalCellIndex, unsigned int> owned_cell_to_rep;
   owned_cell_to_rep.reserve(owned_cell_to_rep_local.size());
-  for (const auto &p : owned_cell_to_rep_local) {
+  for (const auto &p : owned_cell_to_rep_local)
+  {
     const GlobalCellIndex cell = p.first;
     const GlobalCellIndex rep_id = p.second;
     const unsigned int rep_idx = component_index_of_rep.at(rep_id);
@@ -563,7 +597,8 @@ std::vector<ComponentInfo<dim>> find_components(
   // endpoints to representative indices.
   std::vector<std::pair<unsigned int, unsigned int>> global_edges;
   global_edges.reserve(global_interface_pairs.size());
-  for (const auto &itf : global_interface_pairs) {
+  for (const auto &itf : global_interface_pairs)
+  {
     const auto it_a = owned_cell_to_rep.find(itf.first);
     const auto it_b = owned_cell_to_rep.find(itf.second);
     if (it_a == owned_cell_to_rep.end() || it_b == owned_cell_to_rep.end())
@@ -591,11 +626,13 @@ std::vector<ComponentInfo<dim>> find_components(
   std::vector<ComponentInfo<dim>> result;
   std::unordered_map<unsigned int, unsigned int> compact_id_of_root;
 
-  for (unsigned int i = 0; i < global_dsu.size(); ++i) {
+  for (unsigned int i = 0; i < global_dsu.size(); ++i)
+  {
     const unsigned int root = global_dsu.find(i);
 
     auto it = compact_id_of_root.find(root);
-    if (it == compact_id_of_root.end()) {
+    if (it == compact_id_of_root.end())
+    {
       const unsigned int cid = result.size();
       compact_id_of_root[root] = cid;
       result.emplace_back();
@@ -607,7 +644,8 @@ std::vector<ComponentInfo<dim>> find_components(
         result[cid]._touches_target_boundary || touches_of_rep[i];
   }
 
-  for (unsigned int i = 0; i < local_cells.size(); ++i) {
+  for (unsigned int i = 0; i < local_cells.size(); ++i)
+  {
     const GlobalCellIndex rep_id = rep_id_of_root[local_dsu.find(i)];
 
     const unsigned int root =
@@ -620,7 +658,15 @@ std::vector<ComponentInfo<dim>> find_components(
   return result;
 }
 
-} // namespace ConnectedComponents
-} // namespace adamantine
+// Explicit template instantiations
 
-#endif
+template std::vector<adamantine::ConnectedComponents::ComponentInfo<2>>
+adamantine::ConnectedComponents::find_components(
+    const dealii::DoFHandler<2> &dof_handler,
+    const std::vector<dealii::types::boundary_id> &target_boundary_id,
+    const unsigned int target_fe_index, const MPI_Comm mpi_communicator);
+template std::vector<adamantine::ConnectedComponents::ComponentInfo<3>>
+adamantine::ConnectedComponents::find_components(
+    const dealii::DoFHandler<3> &dof_handler,
+    const std::vector<dealii::types::boundary_id> &target_boundary_id,
+    const unsigned int target_fe_index, const MPI_Comm mpi_communicator);

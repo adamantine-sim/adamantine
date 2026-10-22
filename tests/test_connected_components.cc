@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
-#include <ConnectedComponents.hh>
+#include <connected_components.hh>
 
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/geometry_info.h>
@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE(connected_components)
     BOOST_TEST(result.size() == 1);
     const unsigned int n_layers =
         static_cast<unsigned int>(fe_collection.size());
-    for (const auto &cell : result[0].locally_owned_cells)
+    for (const auto &cell : result[0]._locally_owned_cells)
     {
       BOOST_TEST(cell->active_fe_index() == target_fe_index);
       BOOST_TEST(z_layer_from_point(cell->center(), n_layers) ==
@@ -115,10 +115,10 @@ BOOST_AUTO_TEST_CASE(connected_components)
           cell->active_fe_index() == target_fe_index)
         ++n_expected_local_cells;
     }
-    BOOST_TEST(result[0].locally_owned_cells.size() == n_expected_local_cells);
+    BOOST_TEST(result[0]._locally_owned_cells.size() == n_expected_local_cells);
 
     const bool expected_touches_top = (target_fe_index == n_layers - 1);
-    BOOST_TEST(result[0].touches_target_boundary == expected_touches_top);
+    BOOST_TEST(result[0]._touches_target_boundary == expected_touches_top);
   }
 }
 
@@ -199,10 +199,10 @@ BOOST_AUTO_TEST_CASE(disconnected_components)
 
   for (const auto &component : result)
   {
-    if (component.touches_target_boundary)
+    if (component._touches_target_boundary)
       ++n_touching_top;
 
-    for (const auto &cell : component.locally_owned_cells)
+    for (const auto &cell : component._locally_owned_cells)
     {
       ++n_result_local_cells;
 
@@ -210,7 +210,7 @@ BOOST_AUTO_TEST_CASE(disconnected_components)
 
       // A component must not contain cells from both regions.
       const bool is_left_region = cell->center()[0] < 1.0 / 3.0;
-      BOOST_TEST(is_left_region == component.touches_target_boundary);
+      BOOST_TEST(is_left_region == component._touches_target_boundary);
     }
   }
 

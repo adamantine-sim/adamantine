@@ -69,6 +69,7 @@ set(Adamantine_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysicsInstSLHost.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysicsInstSLPHost.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/connected_components.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ensemble_management.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/experimental_data_utils.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/material_deposition.cc
