@@ -46,8 +46,9 @@ list(APPEND
 # test_integration_da is a special test that we need to test with more
 # processors than the others
 adamantine_ADD_BOOST_TEST(test_integration_da 1 2 3 6)
-# same goes for test_closest_source_point_adaptation
+# same goes for test_closest_source_point_adaptation and test_connected_components
 adamantine_ADD_BOOST_TEST(test_closest_source_point_adaptation 1 2 3 6)
+adamantine_ADD_BOOST_TEST(test_connected_components 1 2 3 6)
 
 foreach(TEST_NAME ${UNIT_TESTS})
   adamantine_ADD_BOOST_TEST(${TEST_NAME})
