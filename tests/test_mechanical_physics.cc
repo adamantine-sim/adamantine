@@ -262,6 +262,71 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   // O(1), so the tolerance is strict enough to catch meaningful differences.
   for (unsigned int i = 0; i < reference_solution.size(); ++i)
     BOOST_CHECK_SMALL(solution[i] - reference_solution[i], tolerance);
+
+  // The elastic solution also satisfies the stress-based residual up to the
+  // tolerance used by the elastic CG solve.
+  auto const residual = mechanical_physics.evaluate_residual(solution);
+  BOOST_CHECK_SMALL(residual.l2_norm(), 1.e-9);
+}
+
+BOOST_AUTO_TEST_CASE(elastoplastic_residual)
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 1.);
+  geometry_database.put("length_divisions", 2);
+  geometry_database.put("height", 1.);
+  geometry_database.put("height_divisions", 2);
+  geometry_database.put("width", 1.);
+  geometry_database.put("width_divisions", 2);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<3> geometry(communicator, geometry_database,
+                                   units_optional_database);
+  auto const &triangulation = geometry.get_triangulation();
+  for (auto cell : triangulation.cell_iterators())
+  {
+    cell->set_material_id(0);
+    cell->set_user_index(
+        static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
+  }
+
+  boost::property_tree::ptree material_database;
+  material_database.put("property_format", "polynomial");
+  material_database.put("n_materials", 1);
+  material_database.put("material_0.solid.density", 1.);
+  material_database.put("material_0.solid.lame_first_parameter", 2.);
+  material_database.put("material_0.solid.lame_second_parameter", 3.);
+  material_database.put("material_0.solid.plastic_modulus", 1.5);
+  material_database.put("material_0.solid.isotropic_hardening", 0.25);
+  material_database.put("material_0.solid.elastic_limit", 0.01);
+  adamantine::MaterialProperty<3, 1, 4, adamantine::SolidLiquidPowder,
+                               dealii::MemorySpace::Host>
+      material_properties(communicator, triangulation, material_database);
+
+  boost::property_tree::ptree boundary_database;
+  boundary_database.put("boundary_4.type", "clamped");
+  adamantine::Boundary boundary(
+      boundary_database, geometry.get_triangulation().get_boundary_ids());
+
+  adamantine::MechanicalPhysics<3, 1, 4, adamantine::SolidLiquidPowder,
+                                dealii::MemorySpace::Host>
+      mechanical_physics(communicator, 1, geometry, boundary,
+                         material_properties, std::vector<double>());
+  std::vector<std::shared_ptr<adamantine::BodyForce<3>>> body_forces;
+  body_forces.push_back(
+      std::make_shared<adamantine::GravityForce<
+          3, 1, 4, adamantine::SolidLiquidPowder, dealii::MemorySpace::Host>>(
+          material_properties));
+  mechanical_physics.setup_dofs(body_forces);
+  auto const displacement = mechanical_physics.solve();
+
+  // The elastic solve is followed by a local plastic return, but the global
+  // displacement is not corrected. Therefore the resulting stress need not
+  // balance the external load.
+  auto const residual = mechanical_physics.evaluate_residual(displacement);
+  BOOST_CHECK(residual.l2_norm() > 1.e-8);
 }
 
 BOOST_AUTO_TEST_CASE(fe_nothing)

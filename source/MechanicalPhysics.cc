@@ -569,6 +569,32 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
+dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
+    evaluate_residual(
+        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+            &displacement)
+{
+  dealii::IndexSet const locally_owned_dofs = _dof_handler.locally_owned_dofs();
+  dealii::IndexSet const locally_relevant_dofs =
+      dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+      incremental_displacement(
+          locally_owned_dofs, locally_relevant_dofs,
+          _mechanical_operator->rhs().get_mpi_communicator());
+  incremental_displacement = displacement;
+  if (_old_displacement.size() > 0)
+    incremental_displacement -= _old_displacement;
+  incremental_displacement.update_ghost_values();
+  compute_stress(incremental_displacement);
+
+  auto residual = _mechanical_operator->assemble_internal_force(_stress);
+  residual -= _mechanical_operator->rhs();
+  return residual;
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
                        MemorySpaceType>::
     compute_stress(
