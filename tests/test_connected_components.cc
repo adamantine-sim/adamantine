@@ -22,6 +22,23 @@ unsigned int z_layer_from_point(const dealii::Point<3> &p,
                   static_cast<unsigned int>(std::floor(z * n_layers)));
 }
 
+dealii::types::boundary_id
+find_top_boundary_id(const dealii::Triangulation<3> &triangulation,
+                     const MPI_Comm comm)
+{
+  dealii::types::boundary_id local_id = dealii::numbers::invalid_boundary_id;
+  for (const auto &cell : triangulation.active_cell_iterators())
+    if (!cell->is_artificial())
+      for (unsigned int f = 0; f < dealii::GeometryInfo<3>::faces_per_cell; ++f)
+        if (cell->at_boundary(f) &&
+            std::abs(cell->face(f)->center()[2] - 1.0) < 1e-12)
+          local_id = cell->face(f)->boundary_id();
+
+  const auto id = dealii::Utilities::MPI::min(local_id, comm);
+  BOOST_REQUIRE(id != dealii::numbers::invalid_boundary_id);
+  return id;
+}
+
 BOOST_AUTO_TEST_CASE(connected_components)
 {
   MPI_Comm comm = MPI_COMM_WORLD;
@@ -168,25 +185,8 @@ BOOST_AUTO_TEST_CASE(disconnected_components)
   dof_handler.distribute_dofs(fe_collection);
 
   // Find the top boundary ID without assuming a particular numeric ID.
-  dealii::types::boundary_id local_top_boundary_id =
-      dealii::numbers::invalid_boundary_id;
-
-  for (const auto &cell : triangulation.active_cell_iterators())
-    if (!cell->is_artificial())
-      for (unsigned int f = 0; f < dealii::GeometryInfo<3>::faces_per_cell; ++f)
-        if (cell->at_boundary(f) &&
-            std::abs(cell->face(f)->center()[2] - 1.0) < 1e-12)
-          local_top_boundary_id = cell->face(f)->boundary_id();
-
-  const unsigned int top_boundary_id_int = dealii::Utilities::MPI::min(
-      static_cast<unsigned int>(local_top_boundary_id), comm);
-
-  BOOST_REQUIRE(
-      top_boundary_id_int !=
-      static_cast<unsigned int>(dealii::numbers::invalid_boundary_id));
-
-  const auto top_boundary_id =
-      static_cast<dealii::types::boundary_id>(top_boundary_id_int);
+  dealii::types::boundary_id top_boundary_id =
+      find_top_boundary_id(triangulation, comm);
 
   const auto result = adamantine::ConnectedComponents::find_components(
       dof_handler, {top_boundary_id}, 0, comm);
@@ -224,4 +224,111 @@ BOOST_AUTO_TEST_CASE(disconnected_components)
       ++n_expected_local_cells;
 
   BOOST_TEST(n_result_local_cells == n_expected_local_cells);
+}
+
+// Components must be connected across hanging-node (coarse/fine) faces.
+//
+// The left half (x < 0.5) is refined (twice near x = 0, once elsewhere), the
+// right half stays coarse. Case 1: all cells have FE index 0, so the single
+// component spans coarse/fine interfaces. Case 2: a FE index 1 slab separates
+// a refined left region from a coarse right region, which only touches the top
+// boundary for the left one.
+BOOST_AUTO_TEST_CASE(adaptive_mesh_refinement)
+{
+  MPI_Comm comm = MPI_COMM_WORLD;
+
+  dealii::parallel::distributed::Triangulation<3> triangulation(comm);
+  dealii::GridGenerator::subdivided_hyper_rectangle(
+      triangulation, {4, 4, 4}, dealii::Point<3>(0., 0., 0.),
+      dealii::Point<3>(1., 1., 1.), /*colorize=*/true);
+
+  for (unsigned int level = 0; level < 2; ++level)
+  {
+    for (const auto &cell : triangulation.active_cell_iterators())
+      if (cell->is_locally_owned() &&
+          cell->center()[0] < (level == 0 ? 0.5 : 0.25))
+        cell->set_refine_flag();
+    triangulation.execute_coarsening_and_refinement();
+  }
+
+  const auto top_boundary_id = find_top_boundary_id(triangulation, comm);
+
+  dealii::hp::FECollection<3> fe_collection;
+  fe_collection.push_back(dealii::FE_DGQ<3>(0));
+  fe_collection.push_back(dealii::FE_DGQ<3>(0));
+
+  // The mesh must actually contain hanging nodes for this test to be useful.
+  unsigned int local_n_coarser_faces = 0;
+  for (const auto &cell : triangulation.active_cell_iterators())
+    if (cell->is_locally_owned())
+      for (unsigned int f = 0; f < dealii::GeometryInfo<3>::faces_per_cell; ++f)
+        if (!cell->at_boundary(f) && cell->neighbor_is_coarser(f))
+          ++local_n_coarser_faces;
+  BOOST_TEST(dealii::Utilities::MPI::sum(local_n_coarser_faces, comm) > 0);
+
+  // Case 1: a single FE index.
+  {
+    dealii::DoFHandler<3> dof_handler(triangulation);
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      if (cell->is_locally_owned())
+        cell->set_active_fe_index(0);
+    dof_handler.distribute_dofs(fe_collection);
+
+    const auto result = adamantine::ConnectedComponents::find_components(
+        dof_handler, {top_boundary_id}, 0, comm);
+
+    BOOST_TEST(result.size() == 1);
+    BOOST_TEST(result[0]._touches_target_boundary);
+
+    unsigned int n_result_cells = 0;
+    for (const auto &c : result)
+      n_result_cells += c._locally_owned_cells.size();
+    unsigned int n_local_cells = 0;
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      if (cell->is_locally_owned())
+        ++n_local_cells;
+    BOOST_TEST(n_result_cells == n_local_cells);
+  }
+
+  // Case 2: FE index 1 slab for 0.5 <= x < 0.75; FE 0 on both sides. The right
+  // FE 0 region (x >= 0.75) only extends up to z < 0.5.
+  {
+    dealii::DoFHandler<3> dof_handler(triangulation);
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      if (cell->is_locally_owned())
+      {
+        const auto center = cell->center();
+        const bool left = center[0] < 0.5;
+        const bool right = center[0] > 0.75 && center[2] < 0.5;
+        cell->set_active_fe_index((left || right) ? 0U : 1U);
+      }
+    dof_handler.distribute_dofs(fe_collection);
+
+    const auto result = adamantine::ConnectedComponents::find_components(
+        dof_handler, {top_boundary_id}, 0, comm);
+
+    BOOST_TEST(result.size() == 2);
+
+    unsigned int n_touching_top = 0;
+    unsigned int n_result_cells = 0;
+    for (const auto &component : result)
+    {
+      if (component._touches_target_boundary)
+        ++n_touching_top;
+      for (const auto &cell : component._locally_owned_cells)
+      {
+        ++n_result_cells;
+        BOOST_TEST(cell->active_fe_index() == 0);
+        const bool is_left = cell->center()[0] < 0.5;
+        BOOST_TEST(is_left == component._touches_target_boundary);
+      }
+    }
+    BOOST_TEST(n_touching_top == 1);
+
+    unsigned int n_expected = 0;
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      if (cell->is_locally_owned() && cell->active_fe_index() == 0)
+        ++n_expected;
+    BOOST_TEST(n_result_cells == n_expected);
+  }
 }
