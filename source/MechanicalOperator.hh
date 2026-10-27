@@ -10,6 +10,7 @@
 
 #include <deal.II/base/memory_space.h>
 #include <deal.II/base/quadrature_lib.h>
+#include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/hp/q_collection.h>
 #include <deal.II/lac/affine_constraints.h>
@@ -83,6 +84,19 @@ public:
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const &
   rhs() const;
+
+  /**
+   * Assemble the internal force at each quadrature point.
+   *
+   * The assembled vector is
+   * \f[
+   *   f_internal_i = integral_Omega epsilon(phi_i) : sigma dV.
+   * \f]
+   */
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+  assemble_internal_force(
+      std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const &stress)
+      const;
 
   /**
    * Return the matrix of the system.
