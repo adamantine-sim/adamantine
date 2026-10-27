@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
-#include "connected_components.hh"
+#include <connected_components.hh>
 
 #include <deal.II/base/types.h>
 #include <deal.II/base/utilities.h>
@@ -145,7 +145,7 @@ adamantine::ConnectedComponents::find_components(
   using Cell = typename dealii::DoFHandler<dim>::active_cell_iterator;
   using GlobalCellIndex = dealii::types::global_cell_index;
   // The cell index is either a 32-bit or a 64-bit type. Since it's the largest
-  // type we need to send, we can it as type for the MPI buffers.
+  // type we need to send, we can sue it as type for the MPI buffers.
   using PackedWord = GlobalCellIndex;
 
   // Step 1: collect all locally owned active cells with the requested FE index.
@@ -289,7 +289,8 @@ adamantine::ConnectedComponents::find_components(
       owned_to_send[owned_to_send_pos++] = {cell_id, rep_id};
   }
 
-  AssertDimension(owned_to_send_pos, owned_to_send.size());
+  ASSERT(owned_to_send_pos == owned_to_send.size(),
+         "Didn't write whole buffer!");
 
   local_summary._interfaces.reserve(interface_pairs.size());
   for (const auto &p : interface_pairs)
@@ -374,18 +375,18 @@ adamantine::ConnectedComponents::find_components(
     send_buf[send_pos++] = itf._cell_id_2;
   }
 
-  AssertDimension(send_pos, send_buf.size());
-  AssertIndexRange(send_buf.size() * sizeof(PackedWord),
-                   std::numeric_limits<int>::max());
+  ASSERT(send_pos == send_buf.size(), "Didn't write whole buffer!");
+  ASSERT((send_buf.size() * sizeof(PackedWord)) <
+             std::numeric_limits<int>::max(),
+         "Send buffer too large!");
 
   const int my_send_count = static_cast<int>(send_buf.size());
   const int my_send_n_bytes = my_send_count * sizeof(PackedWord);
 
   // Gather exact message sizes first so each receive buffer can be sized
   // tightly before posting Irecv.
-  std::vector<int> send_counts(n_ranks, 0);
-  MPI_Allgather(&my_send_count, 1, MPI_INT, send_counts.data(), 1, MPI_INT,
-                mpi_communicator);
+  std::vector<int> send_counts =
+      dealii::Utilities::MPI::all_gather(mpi_communicator, my_send_count);
 
   // Post non-blocking receives for each sender (except self).
   std::vector<std::vector<PackedWord>> recv_bufs(n_ranks);
@@ -456,7 +457,7 @@ adamantine::ConnectedComponents::find_components(
   {
     int idx;
     MPI_Waitany(n_ranks, recv_reqs.data(), &idx, MPI_STATUS_IGNORE);
-    Assert(idx != MPI_UNDEFINED, dealii::ExcInternalError());
+    ASSERT(idx != MPI_UNDEFINED, "We should never get MPI_UNDEFINED!");
 
     const auto &buf = recv_bufs[idx];
     std::size_t pos = 0;
@@ -481,7 +482,7 @@ adamantine::ConnectedComponents::find_components(
     const std::size_t nifaces = static_cast<std::size_t>(buf[pos++]);
     pos += 2U * nifaces;
 
-    AssertDimension(pos, buf.size());
+    ASSERT(pos == buf.size(), "Didn't read whole buffer!");
 
     recv_reqs[idx] = MPI_REQUEST_NULL;
     --n_pending;
@@ -512,7 +513,7 @@ adamantine::ConnectedComponents::find_components(
     n_global_interfaces += nifaces;
 
     pos += 2U * nifaces;
-    AssertDimension(pos, buf.size());
+    ASSERT(pos == buf.size(), "Didn't read whole buffer!");
   }
 
   std::vector<std::pair<GlobalCellIndex, GlobalCellIndex>>
@@ -544,10 +545,11 @@ adamantine::ConnectedComponents::find_components(
       global_interface_pairs[interface_pos++] = {a, b};
     }
 
-    AssertDimension(pos, buf.size());
+    ASSERT(pos == buf.size(), "Didn't read whole buffer!");
   }
 
-  AssertDimension(interface_pos, global_interface_pairs.size());
+  ASSERT(interface_pos == global_interface_pairs.size(),
+         "Didn't read whole buffer!");
 
   // At this point component_index_of_rep and component_reps are populated
   // but their insertion order depends on message arrival order which may

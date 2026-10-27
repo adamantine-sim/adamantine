@@ -30,6 +30,7 @@ set(Adamantine_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ThermalPhysics.templates.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/Timer.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/connected_components.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/ensemble_management.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/experimental_data_utils.hh
     ${CMAKE_CURRENT_SOURCE_DIR}/material_deposition.hh
