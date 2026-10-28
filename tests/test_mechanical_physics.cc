@@ -821,7 +821,8 @@ BOOST_AUTO_TEST_CASE(cell_data_transfer_refine_coarsen)
   material_database.put("material_0.solid.density", 1.);
   material_database.put("material_0.solid.lame_first_parameter", 2.);
   material_database.put("material_0.solid.lame_second_parameter", 3.);
-  material_database.put("material_0.solid.elastic_limit", 0.1);
+  material_database.put("material_0.solid.elastic_limit", 10);
+  material_database.put("material_0.solid.plastic_modulus", 5);
   adamantine::MaterialProperty<3, 1, 4, adamantine::SolidLiquidPowder,
                                dealii::MemorySpace::Host>
       material_properties(communicator, triangulation, material_database);
