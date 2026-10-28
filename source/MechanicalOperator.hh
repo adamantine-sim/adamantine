@@ -99,6 +99,20 @@ public:
       const;
 
   /**
+   * Assemble the mechanical residual corresponding to the stress at each
+   * quadrature point.
+   *
+   * The assembled vector is
+   * \f[
+   *   R(u) = f_{internal}(u) - f_{external}.
+   * \f]
+   */
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+  assemble_residual(
+      std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const &stress)
+      const;
+
+  /**
    * Return the matrix of the system.
    */
   TrilinosMatrixType const &system_matrix() const;

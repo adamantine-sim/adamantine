@@ -261,6 +261,19 @@ MechanicalOperator<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
+dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+MechanicalOperator<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
+    assemble_residual(
+        std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const &stress)
+        const
+{
+  auto residual = assemble_internal_force(stress);
+  residual -= _system_rhs;
+  return residual;
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
                         MemorySpaceType>::assemble_matrix()
 {

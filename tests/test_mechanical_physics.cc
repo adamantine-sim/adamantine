@@ -327,6 +327,30 @@ BOOST_AUTO_TEST_CASE(elastoplastic_residual)
   // balance the external load.
   auto const residual = mechanical_physics.evaluate_residual(displacement);
   BOOST_CHECK(residual.l2_norm() > 1.e-8);
+
+  // A trial evaluation must start from the same state each time.
+  // Use a different displacement so that the local update is nontrivial.
+  auto const state_stress = mechanical_physics.get_stress_tensor();
+  auto trial_displacement = displacement;
+  trial_displacement *= 2.;
+  trial_displacement.update_ghost_values();
+  auto const first_trial_residual =
+      mechanical_physics.evaluate_residual(trial_displacement);
+
+  // Evaluating a trial state must not modify the state stress.
+  auto const stress_after_trial = mechanical_physics.get_stress_tensor();
+  BOOST_TEST(stress_after_trial.size() == state_stress.size());
+  for (unsigned int cell_id = 0; cell_id < state_stress.size(); ++cell_id)
+    for (unsigned int q = 0; q < state_stress[cell_id].size(); ++q)
+      BOOST_CHECK_SMALL(
+          (stress_after_trial[cell_id][q] - state_stress[cell_id][q]).norm(),
+          1.e-14);
+
+  auto const repeated_trial_residual =
+      mechanical_physics.evaluate_residual(trial_displacement);
+  auto residual_difference = first_trial_residual;
+  residual_difference -= repeated_trial_residual;
+  BOOST_CHECK_SMALL(residual_difference.l2_norm(), 1.e-12);
 }
 
 BOOST_AUTO_TEST_CASE(fe_nothing)
@@ -681,13 +705,13 @@ BOOST_AUTO_TEST_CASE(elastoplastic_radial_return)
   // kappa = 0 must not enter the plastic branch and form the undefined 0/0
   // flow direction.
   mechanical_physics.solve();
-  auto &stress = mechanical_physics.get_stress_tensor();
-  for (auto const &cell_stress : stress)
-    for (auto const &value : cell_stress)
+  auto const &state = mechanical_physics.get_constitutive_state();
+  for (auto const &cell_state : state)
+    for (auto const &value : cell_state)
     {
-      BOOST_CHECK_SMALL(value.norm(), 1.e-14);
-      for (unsigned int i = 0; i < value.n_independent_components; ++i)
-        BOOST_TEST(std::isfinite(value.access_raw_entry(i)));
+      BOOST_CHECK_SMALL(value.stress.norm(), 1.e-14);
+      for (unsigned int i = 0; i < value.stress.n_independent_components; ++i)
+        BOOST_TEST(std::isfinite(value.stress.access_raw_entry(i)));
     }
 
   // Combined isotropic-kinematic hardening radial return, following R. I.
@@ -698,26 +722,30 @@ BOOST_AUTO_TEST_CASE(elastoplastic_radial_return)
   trial_stress[1][1] = -1.;
   double const trial_norm = trial_stress.norm();
   auto const flow_direction = trial_stress / trial_norm;
-  for (auto &cell_stress : stress)
-    for (auto &value : cell_stress)
-      value = trial_stress;
+  auto state_with_trial_stress = state;
+  for (auto &cell_state : state_with_trial_stress)
+    for (auto &value : cell_state)
+      value.stress = trial_stress;
+  mechanical_physics.set_constitutive_state(state_with_trial_stress);
 
   mechanical_physics.solve();
   double const plastic_increment_1 = trial_norm / (2. * mu + plastic_modulus);
   double const returned_stress_norm =
       trial_norm - 2. * mu * plastic_increment_1;
   auto const expected_stress_1 = returned_stress_norm * flow_direction;
-  for (auto const &cell_stress : stress)
-    for (auto const &value : cell_stress)
-      BOOST_CHECK_SMALL((value - expected_stress_1).norm(), 1.e-12);
+  for (auto const &cell_state : state)
+    for (auto const &value : cell_state)
+      BOOST_CHECK_SMALL((value.stress - expected_stress_1).norm(), 1.e-12);
 
   // A second collinear increment exercises the stored back stress. This is a
   // regression for accidentally multiplying the kinematic update by H twice
   // and omitting Delta eta.
   double constexpr stress_increment = 0.2;
-  for (auto &cell_stress : stress)
-    for (auto &value : cell_stress)
-      value += stress_increment * flow_direction;
+  state_with_trial_stress = mechanical_physics.get_constitutive_state();
+  for (auto &cell_state : state_with_trial_stress)
+    for (auto &value : cell_state)
+      value.stress += stress_increment * flow_direction;
+  mechanical_physics.set_constitutive_state(state_with_trial_stress);
 
   mechanical_physics.solve();
   double const plastic_increment_2 =
@@ -725,9 +753,9 @@ BOOST_AUTO_TEST_CASE(elastoplastic_radial_return)
   double const expected_stress_norm =
       returned_stress_norm + stress_increment - 2. * mu * plastic_increment_2;
   auto const expected_stress_2 = expected_stress_norm * flow_direction;
-  for (auto const &cell_stress : stress)
-    for (auto const &value : cell_stress)
-      BOOST_CHECK_SMALL((value - expected_stress_2).norm(), 1.e-12);
+  for (auto const &cell_state : state)
+    for (auto const &value : cell_state)
+      BOOST_CHECK_SMALL((value.stress - expected_stress_2).norm(), 1.e-12);
 }
 
 BOOST_AUTO_TEST_CASE(cell_data_transfer_refine_coarsen)
@@ -1006,10 +1034,12 @@ BOOST_AUTO_TEST_CASE(thermoelastoplastic_radial_return)
   trial_stress[1][1] = -1.;
   double const trial_norm = trial_stress.norm();
   auto const flow_direction = trial_stress / trial_norm;
-  auto &stress = mechanical_physics.get_stress_tensor();
-  for (auto &cell_stress : stress)
-    for (auto &value : cell_stress)
-      value = trial_stress;
+  auto const &state = mechanical_physics.get_constitutive_state();
+  auto state_with_trial_stress = mechanical_physics.get_constitutive_state();
+  for (auto &cell_state : state_with_trial_stress)
+    for (auto &value : cell_state)
+      value.stress = trial_stress;
+  mechanical_physics.set_constitutive_state(state_with_trial_stress);
 
   // The thermal stress is hydrostatic and therefore must not affect the J2
   // flow direction or the effective stress norm.
@@ -1026,16 +1056,53 @@ BOOST_AUTO_TEST_CASE(thermoelastoplastic_radial_return)
   auto const expected_stress_1 =
       -beta * delta_temperature_1 * dealii::unit_symmetric_tensor<3>() +
       returned_stress_norm_1 * flow_direction;
-  for (auto const &cell_stress : stress)
-    for (auto const &value : cell_stress)
-      BOOST_CHECK_SMALL((value - expected_stress_1).norm(), 1.e-12);
+  for (auto const &cell_state : state)
+    for (auto const &value : cell_state)
+      BOOST_CHECK_SMALL((value.stress - expected_stress_1).norm(), 1.e-12);
+
+  // Residual evaluation must use the current temperature and state while
+  // leaving the state unchanged. Repeating the evaluation at the same
+  // displacement must therefore produce the same residual.
+  auto const state_before_residual =
+      mechanical_physics.get_constitutive_state();
+  auto const first_residual =
+      mechanical_physics.evaluate_residual(displacement);
+  auto const repeated_residual =
+      mechanical_physics.evaluate_residual(displacement);
+  auto residual_difference = first_residual;
+  residual_difference -= repeated_residual;
+  BOOST_CHECK_SMALL(residual_difference.l2_norm(), 1.e-12);
+  auto const &state_after_residual =
+      mechanical_physics.get_constitutive_state();
+  for (unsigned int cell_id = 0; cell_id < state_before_residual.size();
+       ++cell_id)
+    for (unsigned int q = 0; q < state_before_residual[cell_id].size(); ++q)
+    {
+      BOOST_CHECK_SMALL((state_after_residual[cell_id][q].stress -
+                         state_before_residual[cell_id][q].stress)
+                            .norm(),
+                        1.e-14);
+      BOOST_CHECK_SMALL((state_after_residual[cell_id][q].back_stress -
+                         state_before_residual[cell_id][q].back_stress)
+                            .norm(),
+                        1.e-14);
+      BOOST_CHECK_SMALL(
+          state_after_residual[cell_id][q].plastic_internal_variable -
+              state_before_residual[cell_id][q].plastic_internal_variable,
+          1.e-14);
+      BOOST_CHECK_SMALL(state_after_residual[cell_id][q].thermal_stress -
+                            state_before_residual[cell_id][q].thermal_stress,
+                        1.e-14);
+    }
 
   // A second increment checks both the stored plastic history and that only
   // the change in thermal stress is applied at the next solve.
   double constexpr stress_increment = 0.2;
-  for (auto &cell_stress : stress)
-    for (auto &value : cell_stress)
-      value += stress_increment * flow_direction;
+  state_with_trial_stress = mechanical_physics.get_constitutive_state();
+  for (auto &cell_state : state_with_trial_stress)
+    for (auto &value : cell_state)
+      value.stress += stress_increment * flow_direction;
+  mechanical_physics.set_constitutive_state(state_with_trial_stress);
 
   double constexpr delta_temperature_2 = 10.;
   temperature = 360.;
@@ -1051,9 +1118,9 @@ BOOST_AUTO_TEST_CASE(thermoelastoplastic_radial_return)
       -beta * (delta_temperature_1 + delta_temperature_2) *
           dealii::unit_symmetric_tensor<3>() +
       returned_stress_norm_2 * flow_direction;
-  for (auto const &cell_stress : stress)
-    for (auto const &value : cell_stress)
-      BOOST_CHECK_SMALL((value - expected_stress_2).norm(), 1.e-12);
+  for (auto const &cell_state : state)
+    for (auto const &value : cell_state)
+      BOOST_CHECK_SMALL((value.stress - expected_stress_2).norm(), 1.e-12);
 
   // Reverse the deviatoric loading while cooling back to the reference
   // temperature. Unlike proportional loading, reversal distinguishes the
@@ -1061,9 +1128,11 @@ BOOST_AUTO_TEST_CASE(thermoelastoplastic_radial_return)
   // the center of the yield surface while the internal variable changes its
   // radius.
   double constexpr reverse_stress_increment = 0.4;
-  for (auto &cell_stress : stress)
-    for (auto &value : cell_stress)
-      value -= reverse_stress_increment * flow_direction;
+  state_with_trial_stress = mechanical_physics.get_constitutive_state();
+  for (auto &cell_state : state_with_trial_stress)
+    for (auto &value : cell_state)
+      value.stress -= reverse_stress_increment * flow_direction;
+  mechanical_physics.set_constitutive_state(state_with_trial_stress);
 
   temperature = 300.;
   mechanical_physics.update_rhs(thermal_dof_handler, temperature, has_melted);
@@ -1079,7 +1148,7 @@ BOOST_AUTO_TEST_CASE(thermoelastoplastic_radial_return)
                                         reverse_stress_increment +
                                         2. * mu * reverse_plastic_increment;
   auto const expected_stress_3 = returned_stress_norm_3 * flow_direction;
-  for (auto const &cell_stress : stress)
-    for (auto const &value : cell_stress)
-      BOOST_CHECK_SMALL((value - expected_stress_3).norm(), 1.e-12);
+  for (auto const &cell_state : state)
+    for (auto const &value : cell_state)
+      BOOST_CHECK_SMALL((value.stress - expected_stress_3).norm(), 1.e-12);
 }
