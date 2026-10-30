@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
-#include <connected_components.hh>
+#include "connected_components.hh"
 
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/geometry_info.h>
@@ -11,6 +11,8 @@
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/grid/grid_generator.h>
+
+#include <set>
 
 #include "main.cc"
 
@@ -331,4 +333,57 @@ BOOST_AUTO_TEST_CASE(adaptive_mesh_refinement)
         ++n_expected;
     BOOST_TEST(n_result_cells == n_expected);
   }
+}
+
+// Components that share no face but touch at >= 3 non-collinear vertices must
+// be merged. The mesh is 3x3x1 cells; (i,j) are the cell indices in x and y.
+// Diagonal neighbors share an edge, i.e. two collinear vertices.
+BOOST_AUTO_TEST_CASE(vertex_contacts)
+{
+  MPI_Comm comm = MPI_COMM_WORLD;
+
+  dealii::parallel::distributed::Triangulation<3> triangulation(comm);
+  dealii::GridGenerator::subdivided_hyper_rectangle(
+      triangulation, {3, 3, 1}, dealii::Point<3>(0., 0., 0.),
+      dealii::Point<3>(1., 1., 1.), /*colorize=*/true);
+  const auto top_boundary_id = find_top_boundary_id(triangulation, comm);
+
+  dealii::hp::FECollection<3> fe_collection;
+  fe_collection.push_back(dealii::FE_DGQ<3>(0));
+  fe_collection.push_back(dealii::FE_DGQ<3>(0));
+
+  auto run = [&](const std::set<std::pair<int, int>> &fe0_cells,
+                 const unsigned int expected_components)
+  {
+    dealii::DoFHandler<3> dof_handler(triangulation);
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      if (cell->is_locally_owned())
+      {
+        const std::pair<int, int> ij(
+            static_cast<int>(std::floor(cell->center()[0] * 3.)),
+            static_cast<int>(std::floor(cell->center()[1] * 3.)));
+        cell->set_active_fe_index(fe0_cells.count(ij) ? 0U : 1U);
+      }
+    dof_handler.distribute_dofs(fe_collection);
+
+    const auto result = adamantine::ConnectedComponents::find_components(
+        dof_handler, {top_boundary_id}, 0, comm);
+
+    BOOST_TEST(result.size() == expected_components);
+    unsigned int n_result_cells = 0;
+    for (const auto &component : result)
+      n_result_cells += component._locally_owned_cells.size();
+    unsigned int n_expected = 0;
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      if (cell->is_locally_owned() && cell->active_fe_index() == 0)
+        ++n_expected;
+    BOOST_TEST(n_result_cells == n_expected);
+  };
+
+  // U-shaped region plus (1,2): (1,2) touches (0,1) and (2,1) diagonally at
+  // four non-collinear vertices -> one component.
+  run({{0, 1}, {0, 0}, {1, 0}, {2, 0}, {2, 1}, {1, 2}}, 1);
+
+  // Only one diagonal contact (two collinear vertices) -> two components.
+  run({{0, 1}, {0, 0}, {1, 2}}, 2);
 }

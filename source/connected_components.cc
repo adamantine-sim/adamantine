@@ -4,13 +4,16 @@
 
 #include <connected_components.hh>
 
+#include <deal.II/base/point.h>
 #include <deal.II/base/types.h>
 #include <deal.II/base/utilities.h>
 #include <deal.II/dofs/dof_handler.h>
 
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <numeric>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -124,6 +127,126 @@ struct LocalSummary
   std::vector<LocalComponentRecord> _components;
   std::vector<InterfaceRecord> _interfaces;
 };
+
+/**
+ * Two cells with the same FE index that share the vertex _point but are not
+ * face neighbors.
+ */
+template <int dim>
+struct ContactRecord
+{
+  dealii::types::global_cell_index _cell_id_1 =
+      dealii::numbers::invalid_unsigned_int;
+  dealii::types::global_cell_index _cell_id_2 =
+      dealii::numbers::invalid_unsigned_int;
+  dealii::Point<dim> _point;
+};
+
+/**
+ * Return true if the points contain at least three distinct, non-collinear
+ * points.
+ */
+template <int dim>
+bool has_three_non_collinear_points(const std::vector<dealii::Point<dim>> &pts)
+{
+  if (pts.size() < 3)
+    return false;
+
+  // Find a second point different from the first
+  dealii::Point<dim> p1;
+  std::size_t pts_idx = 1;
+  for (; pts_idx < pts.size(); ++pts_idx)
+  {
+    if (pts[pts_idx].distance(pts[0]) > 1.e-10 * (1. + pts[0].norm()))
+    {
+      p1 = pts[pts_idx];
+      break;
+    }
+  }
+  if (pts_idx == pts.size())
+    return false;
+
+  // If every point lies on the line through the first two, all are collinear.
+  const auto d1 = p1 - pts[0];
+  for (; pts_idx < pts.size(); ++pts_idx)
+  {
+    const auto d2 = pts[pts_idx] - pts[0];
+    const double dot = d1 * d2;
+    const double sin2_scaled = d1.norm_square() * d2.norm_square() - dot * dot;
+    if (sin2_scaled > 1e-12 * d1.norm_square() * d2.norm_square())
+      return true;
+  }
+  return false;
+}
+
+/**
+ * Unite nodes of dsu whose cells touch at three or more non-collinear
+ * vertices. The shared vertices are accumulated over all cell pairs of the two
+ * components. Uniting components can create new qualifying pairs, so we repeat
+ * until nothing changes. node_of_cell maps a cell id to a node of dsu and
+ * returns invalid_unsigned_int for unknown cells.
+ */
+template <int dim, typename NodeOfCell>
+void unite_by_vertex_contacts(const std::vector<ContactRecord<dim>> &contacts,
+                              DisjointSet &dsu, const NodeOfCell &node_of_cell)
+{
+  struct Resolved
+  {
+    unsigned int _a;
+    unsigned int _b;
+    dealii::Point<dim> _point;
+  };
+
+  std::vector<Resolved> resolved;
+  resolved.reserve(contacts.size());
+  for (const auto &c : contacts)
+  {
+    const unsigned int a = node_of_cell(c._cell_id_1);
+    const unsigned int b = node_of_cell(c._cell_id_2);
+    if (a != dealii::numbers::invalid_unsigned_int &&
+        b != dealii::numbers::invalid_unsigned_int)
+      resolved.push_back({a, b, c._point});
+  }
+
+  bool changed = true;
+  while (changed)
+  {
+    changed = false;
+
+    std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> keys;
+    keys.reserve(resolved.size());
+    for (unsigned int i = 0; i < resolved.size(); ++i)
+    {
+      unsigned int ra = dsu.find(resolved[i]._a);
+      unsigned int rb = dsu.find(resolved[i]._b);
+      if (ra == rb)
+        continue;
+      if (rb < ra)
+        std::swap(ra, rb);
+      keys.emplace_back(ra, rb, i);
+    }
+    std::sort(keys.begin(), keys.end());
+
+    for (std::size_t begin = 0; begin < keys.size();)
+    {
+      std::size_t end = begin;
+      std::vector<dealii::Point<dim>> pts;
+      while (end < keys.size() &&
+             std::get<0>(keys[end]) == std::get<0>(keys[begin]) &&
+             std::get<1>(keys[end]) == std::get<1>(keys[begin]))
+        pts.push_back(resolved[std::get<2>(keys[end++])]._point);
+
+      const unsigned int ra = std::get<0>(keys[begin]);
+      const unsigned int rb = std::get<1>(keys[begin]);
+      if (dsu.find(ra) != dsu.find(rb) && has_three_non_collinear_points(pts))
+      {
+        dsu.unite(ra, rb);
+        changed = true;
+      }
+      begin = end;
+    }
+  }
+}
 } // namespace
 
 /**
@@ -145,7 +268,7 @@ adamantine::ConnectedComponents::find_components(
   using Cell = typename dealii::DoFHandler<dim>::active_cell_iterator;
   using GlobalCellIndex = dealii::types::global_cell_index;
   // The cell index is either a 32-bit or a 64-bit type. Since it's the largest
-  // type we need to send, we can sue it as type for the MPI buffers.
+  // type we need to send, we can use it as type for the MPI buffers.
   using PackedWord = GlobalCellIndex;
 
   // Step 1: collect all locally owned active cells with the requested FE index.
@@ -246,6 +369,81 @@ adamantine::ConnectedComponents::find_components(
   }
 
   // --------------------------------------------------------------------------
+  // Step 2b: vertex contacts
+  //
+  // Components also count as connected if their cells touch at three or more
+  // non-collinear vertices. For every vertex we look at the owned and ghost
+  // cells with the target FE index. Owned cells are reduced to one cell per
+  // local component. Pairs of owned cells in different local components and
+  // pairs of an owned and a ghost cell are recorded as contacts.
+  // --------------------------------------------------------------------------
+  std::vector<ContactRecord<dim>> contacts;
+  {
+    struct VertexCell
+    {
+      GlobalCellIndex _cell_id;
+      int _local_index; // -1 for ghost cells
+    };
+    std::unordered_map<unsigned int, std::vector<VertexCell>> cells_of_vertex;
+    std::unordered_map<unsigned int, dealii::Point<dim>> point_of_vertex;
+
+    for (const Cell &cell : dof_handler.active_cell_iterators())
+      if ((cell->is_locally_owned() || cell->is_ghost()) &&
+          cell->active_fe_index() == target_fe_index)
+      {
+        int local_index = -1;
+        if (cell->is_locally_owned())
+          local_index = static_cast<int>(
+              local_index_of_id.at(cell->global_active_cell_index()));
+        for (unsigned int v = 0;
+             v < dealii::GeometryInfo<dim>::vertices_per_cell; ++v)
+        {
+          cells_of_vertex[cell->vertex_index(v)].push_back(
+              {cell->global_active_cell_index(), local_index});
+          point_of_vertex[cell->vertex_index(v)] = cell->vertex(v);
+        }
+      }
+
+    for (const auto &[vertex_index, vertex_cells] : cells_of_vertex)
+    {
+      if (vertex_cells.size() < 2)
+        continue;
+
+      std::vector<VertexCell> reduced;
+      std::unordered_map<unsigned int, bool> root_seen;
+      for (const auto &vc : vertex_cells)
+        if (vc._local_index < 0 ||
+            root_seen.emplace(local_dsu.find(vc._local_index), true).second)
+          reduced.push_back(vc);
+
+      for (std::size_t i = 0; i < reduced.size(); ++i)
+        for (std::size_t j = i + 1; j < reduced.size(); ++j)
+        {
+          if (reduced[i]._local_index < 0 && reduced[j]._local_index < 0)
+            continue;
+          contacts.push_back({reduced[i]._cell_id, reduced[j]._cell_id,
+                              point_of_vertex.at(vertex_index)});
+          if (reduced[i]._local_index >= 0)
+            local_cell_has_interface[reduced[i]._local_index] = true;
+          if (reduced[j]._local_index >= 0)
+            local_cell_has_interface[reduced[j]._local_index] = true;
+        }
+    }
+  }
+
+  // With a single rank all contacts are known, so merge them right away.
+  if (dealii::Utilities::MPI::n_mpi_processes(mpi_communicator) == 1)
+    unite_by_vertex_contacts<dim>(
+        contacts, local_dsu,
+        [&](const GlobalCellIndex id)
+        {
+          const auto it = local_index_of_id.find(id);
+          return it == local_index_of_id.end()
+                     ? dealii::numbers::invalid_unsigned_int
+                     : it->second;
+        });
+
+  // --------------------------------------------------------------------------
   // Step 3: compress local components
   //
   // local_summary._owned_cells stores all locally owned target-FE cells on this
@@ -289,8 +487,7 @@ adamantine::ConnectedComponents::find_components(
       owned_to_send[owned_to_send_pos++] = {cell_id, rep_id};
   }
 
-  ASSERT(owned_to_send_pos == owned_to_send.size(),
-         "Didn't write whole buffer!");
+  AssertDimension(owned_to_send_pos, owned_to_send.size());
 
   local_summary._interfaces.reserve(interface_pairs.size());
   for (const auto &p : interface_pairs)
@@ -333,7 +530,8 @@ adamantine::ConnectedComponents::find_components(
   // Packed layout:
   //   [n_components, comp*(rep_id,touch),
   //    n_owned_to_send, owned*(cell_id,rep_id),
-  //    n_interfaces, iface*(cell_id_1,cell_id_2)]
+  //    n_interfaces, iface*(cell_id_1,cell_id_2),
+  //    n_contacts, contact*(cell_id_1,cell_id_2,vertex coordinates)]
   //
   // The send buffer is allocated from the exact number of packed entries.
   // Cell ids and representative ids are packed as GlobalCellIndex values
@@ -343,9 +541,15 @@ adamantine::ConnectedComponents::find_components(
   const int my_rank =
       dealii::Utilities::MPI::this_mpi_process(mpi_communicator);
 
+  // The vertex coordinates are copied bit-wise into whole packed words.
+  constexpr std::size_t coord_words =
+      (dim * sizeof(double) + sizeof(PackedWord) - 1) / sizeof(PackedWord);
+  constexpr std::size_t contact_words = 2U + coord_words;
+
   const std::size_t send_buf_size = 1U + 2U * local_summary._components.size() +
                                     1U + 2U * owned_to_send.size() + 1U +
-                                    2U * local_summary._interfaces.size();
+                                    2U * local_summary._interfaces.size() + 1U +
+                                    contact_words * contacts.size();
 
   std::vector<PackedWord> send_buf(send_buf_size);
   std::size_t send_pos = 0;
@@ -375,10 +579,19 @@ adamantine::ConnectedComponents::find_components(
     send_buf[send_pos++] = itf._cell_id_2;
   }
 
-  ASSERT(send_pos == send_buf.size(), "Didn't write whole buffer!");
-  ASSERT((send_buf.size() * sizeof(PackedWord)) <
-             std::numeric_limits<int>::max(),
-         "Send buffer too large!");
+  // contacts
+  send_buf[send_pos++] = static_cast<PackedWord>(contacts.size());
+  for (const auto &c : contacts)
+  {
+    send_buf[send_pos++] = c._cell_id_1;
+    send_buf[send_pos++] = c._cell_id_2;
+    std::memcpy(&send_buf[send_pos], &c._point[0], dim * sizeof(double));
+    send_pos += coord_words;
+  }
+
+  AssertDimension(send_pos, send_buf.size());
+  AssertIndexRange(send_buf.size() * sizeof(PackedWord),
+                   std::numeric_limits<int>::max());
 
   const int my_send_count = static_cast<int>(send_buf.size());
   const int my_send_n_bytes = my_send_count * sizeof(PackedWord);
@@ -457,7 +670,7 @@ adamantine::ConnectedComponents::find_components(
   {
     int idx;
     MPI_Waitany(n_ranks, recv_reqs.data(), &idx, MPI_STATUS_IGNORE);
-    ASSERT(idx != MPI_UNDEFINED, "We should never get MPI_UNDEFINED!");
+    Assert(idx != MPI_UNDEFINED, dealii::ExcInternalError());
 
     const auto &buf = recv_bufs[idx];
     std::size_t pos = 0;
@@ -482,7 +695,10 @@ adamantine::ConnectedComponents::find_components(
     const std::size_t nifaces = static_cast<std::size_t>(buf[pos++]);
     pos += 2U * nifaces;
 
-    ASSERT(pos == buf.size(), "Didn't read whole buffer!");
+    const std::size_t ncontacts = static_cast<std::size_t>(buf[pos++]);
+    pos += contact_words * ncontacts;
+
+    AssertDimension(pos, buf.size());
 
     recv_reqs[idx] = MPI_REQUEST_NULL;
     --n_pending;
@@ -513,7 +729,8 @@ adamantine::ConnectedComponents::find_components(
     n_global_interfaces += nifaces;
 
     pos += 2U * nifaces;
-    ASSERT(pos == buf.size(), "Didn't read whole buffer!");
+    pos += 1U + contact_words * static_cast<std::size_t>(buf[pos]);
+    AssertDimension(pos, buf.size());
   }
 
   std::vector<std::pair<GlobalCellIndex, GlobalCellIndex>>
@@ -545,11 +762,21 @@ adamantine::ConnectedComponents::find_components(
       global_interface_pairs[interface_pos++] = {a, b};
     }
 
-    ASSERT(pos == buf.size(), "Didn't read whole buffer!");
+    const std::size_t ncontacts = static_cast<std::size_t>(buf[pos++]);
+    for (std::size_t ci = 0; ci < ncontacts; ++ci)
+    {
+      ContactRecord<dim> c;
+      c._cell_id_1 = buf[pos++];
+      c._cell_id_2 = buf[pos++];
+      std::memcpy(&c._point[0], &buf[pos], dim * sizeof(double));
+      pos += coord_words;
+      contacts.push_back(c);
+    }
+
+    AssertDimension(pos, buf.size());
   }
 
-  ASSERT(interface_pos == global_interface_pairs.size(),
-         "Didn't read whole buffer!");
+  AssertDimension(interface_pos, global_interface_pairs.size());
 
   // At this point component_index_of_rep and component_reps are populated
   // but their insertion order depends on message arrival order which may
@@ -621,6 +848,18 @@ adamantine::ConnectedComponents::find_components(
 
   for (const auto &e : global_edges)
     global_dsu.unite(e.first, e.second);
+
+  // Merge components touching at three or more non-collinear vertices. The
+  // contacts contain all local ones and the ones received from other ranks.
+  unite_by_vertex_contacts<dim>(
+      contacts, global_dsu,
+      [&](const GlobalCellIndex id)
+      {
+        const auto it = owned_cell_to_rep.find(id);
+        return it == owned_cell_to_rep.end()
+                   ? dealii::numbers::invalid_unsigned_int
+                   : it->second;
+      });
 
   // --------------------------------------------------------------------------
   // Step 6: compact global components and fill local cell lists
