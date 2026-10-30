@@ -30,6 +30,7 @@ list(APPEND
 set(MPI_UNIT_TESTS "")
 list(APPEND
      MPI_UNIT_TESTS
+     test_connected_components
      test_integration_2d
      test_integration_2d_device
      test_integration_3d
@@ -46,7 +47,7 @@ list(APPEND
 # test_integration_da is a special test that we need to test with more
 # processors than the others
 adamantine_ADD_BOOST_TEST(test_integration_da 1 2 3 6)
-# same goes for test_closest_source_point_adaptation
+# same goes for test_closest_source_point_adaptation and test_connected_components
 adamantine_ADD_BOOST_TEST(test_closest_source_point_adaptation 1 2 3 6)
 
 foreach(TEST_NAME ${UNIT_TESTS})
