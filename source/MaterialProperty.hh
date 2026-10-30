@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -145,6 +145,11 @@ public:
    * Return false if they are given in polynomial format.
    */
   bool properties_use_table() const;
+
+  /**
+   * Return true if every material has an infinite elastic limit.
+   */
+  bool has_infinite_elastic_limit() const;
 
   /**
    * Return the value of the given StateProperty for a given cell.
@@ -420,6 +425,10 @@ private:
                dealii::MemorySpace::Host::kokkos_space>
       _mechanical_properties_host;
   /**
+   * Whether every material has an infinite elastic limit.
+   */
+  bool _has_infinite_elastic_limit;
+  /**
    * Discontinuous piecewise constant finite element.
    */
   dealii::FE_DGQ<dim> _fe;
@@ -460,6 +469,15 @@ inline bool MaterialProperty<dim, n_materials, p_order, MaterialStates,
                              MemorySpaceType>::properties_use_table() const
 {
   return _use_table;
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+inline bool
+MaterialProperty<dim, n_materials, p_order, MaterialStates,
+                 MemorySpaceType>::has_infinite_elastic_limit() const
+{
+  return _has_infinite_elastic_limit;
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,

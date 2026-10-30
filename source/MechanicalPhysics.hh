@@ -40,7 +40,8 @@ public:
                     Geometry<dim> &geometry, Boundary const &boundary,
                     MaterialProperty<dim, n_materials, p_order, MaterialStates,
                                      MemorySpaceType> &material_properties,
-                    std::vector<double> const &initial_temperatures);
+                    std::vector<double> const &initial_temperatures,
+                    bool verbose_output = false);
 
   /**
    * Setup the DoFHandler, the AffineConstraints, and the
@@ -93,6 +94,14 @@ public:
 
   /**
    * Solve the mechanical problem and return the displacement.
+   *
+   * The default solver selection uses the elastic limit from the material
+   * properties. An infinite elastic limit selects the linear solver; any
+   * finite elastic limit selects the nonlinear solver. The nonlinear solver
+   * uses the residual \f$ R(u) = f_{internal}(u) - f_{external} \f$ with the
+   * elastic system matrix as a fixed approximate Jacobian. If verbose output
+   * was enabled in the constructor, the nonlinear iteration count is printed
+   * on rank zero.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solve();
 
@@ -141,6 +150,23 @@ public:
   get_stress_tensor() const;
 
 private:
+  /**
+   * Solve a linear system with the elastic matrix and return a constrained
+   * displacement vector.
+   */
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+  solve_linear_system(
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
+          &rhs,
+      double const tolerance) const;
+
+  /**
+   * Solve the nonlinear mechanical residual with KINSOL using the elastic
+   * matrix as a fixed approximate Jacobian.
+   */
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+  solve_nonlinear_system();
+
   /**
    * Evaluate the local constitutive response without modifying the state.
    */
@@ -226,7 +252,14 @@ private:
    * Whether to include a gravitional body force in the calculation.
    */
   bool _include_gravity;
-
+  /**
+   * Whether all mechanical material has an infinite elastic limit.
+   */
+  bool _is_purely_elastic;
+  /**
+   * Whether to print nonlinear solver information on rank zero.
+   */
+  bool _verbose_output;
   /**
    * Save displacement from the previous time step.
    */

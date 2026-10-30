@@ -852,7 +852,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     mechanical_physics = std::make_unique<adamantine::MechanicalPhysics<
         dim, n_materials, p_order, MaterialStates, MemorySpaceType>>(
         communicator, fe_degree, geometry, boundary, material_properties,
-        material_reference_temps);
+        material_reference_temps, verbose_output);
     post_processor_database.put("mechanical_output", true);
   }
 
