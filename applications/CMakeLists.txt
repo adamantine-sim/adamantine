@@ -6,6 +6,10 @@ set(Adamantine_app_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/adamantine.cc
 )
 add_executable(adamantine ${Adamantine_app_SOURCES} ${Adamantine_app_HEADERS})
+target_compile_definitions(adamantine PRIVATE
+    ADAMANTINE_VERSION="${PROJECT_VERSION}"
+    ADAMANTINE_GIT_SHA="${ADAMANTINE_GIT_SHA}"
+)
 
 set_target_properties(adamantine PROPERTIES
     CXX_STANDARD 17

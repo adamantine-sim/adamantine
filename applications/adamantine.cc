@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -259,6 +259,8 @@ int main(int argc, char *argv[])
   adiak::cmdline();
   adiak::clustername();
   adiak::jobsize();
+  adiak::value("AdamantineVersion", ADAMANTINE_VERSION);
+  adiak::value("AdamantineGitSHA", ADAMANTINE_GIT_SHA);
 #endif
 
   std::vector<adamantine::Timer> timers;
@@ -273,6 +275,7 @@ int main(int argc, char *argv[])
     // First declare the possible options.
     boost_po::options_description description("Options:");
     description.add_options()("help,h", "Produce help message.")(
+        "version,v", "Print Adamantine version and Git SHA.")(
         "input-file,i", boost_po::value<std::string>(),
         "Name of the input file.")(
         "output-dir,o", boost_po::value<std::string>(),
@@ -291,6 +294,12 @@ int main(int argc, char *argv[])
     if (map.count("help") == 1)
     {
       std::cout << description << std::endl;
+      return 0;
+    }
+    if (map.count("version") == 1)
+    {
+      std::cout << "Adamantine " << ADAMANTINE_VERSION << " ("
+                << ADAMANTINE_GIT_SHA << ")\n";
       return 0;
     }
 
