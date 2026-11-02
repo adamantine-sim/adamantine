@@ -143,7 +143,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
-MechanicalConstitutiveState<dim>
+std::pair<MechanicalConstitutiveState<dim>, dealii::SymmetricTensor<4, dim>>
 MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
     evaluate_constitutive_response(
         dealii::SymmetricTensor<2, dim> const &strain_increment,
@@ -160,6 +160,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
       lambda * dealii::outer_product(dealii::unit_symmetric_tensor<dim>(),
                                      dealii::unit_symmetric_tensor<dim>()) +
       2 * mu * dealii::identity_tensor<dim>();
+  dealii::SymmetricTensor<4, dim> constitutive_tangent;
 
   // Compute the trial elastic stress from the state.
   dealii::SymmetricTensor<2, dim> elastic_stress = state.stress;
@@ -185,6 +186,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
   {
     // The deformation is elastic.
     result.stress = elastic_stress;
+    constitutive_tangent = stiffness_tensor;
   }
   else
   {
@@ -201,9 +203,20 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
         iso_hardening_coef * plastic_modulus * plastic_strain_increment;
     result.back_stress += (1. - iso_hardening_coef) * plastic_modulus *
                           plastic_strain_increment * plastic_flow_direction;
+
+    auto const deviatoric_projection = dealii::deviator_tensor<dim>();
+    auto const flow_direction_projection =
+        dealii::outer_product(plastic_flow_direction, plastic_flow_direction);
+    double const two_mu = 2. * mu;
+    constitutive_tangent =
+        stiffness_tensor -
+        (two_mu * two_mu / (two_mu + plastic_modulus)) *
+            flow_direction_projection -
+        (two_mu * two_mu * plastic_strain_increment / effective_stress_norm) *
+            (deviatoric_projection - flow_direction_projection);
   }
 
-  return result;
+  return {result, constitutive_tangent};
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -855,12 +868,12 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       {
         double const temperature =
             _reference_temperatures.empty() ? 0. : temperature_values[q];
-        auto const result = evaluate_constitutive_response(
+        auto const response = evaluate_constitutive_response(
             strain_tensor[q], temperature, reference_temperature, lambda, mu,
             plastic_modulus, iso_hardening_coef, alpha,
             !_reference_temperatures.empty(), _state[cell_id][q]);
 
-        _trial_state[cell_id][q] = result;
+        _trial_state[cell_id][q] = response.first;
       }
     }
     ++cell_id;

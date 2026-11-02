@@ -733,6 +733,53 @@ BOOST_AUTO_TEST_CASE(elastoplastic_radial_return)
                          material_properties, no_reference_temperatures);
   mechanical_physics.setup_dofs();
 
+  double constexpr lambda = 2.;
+  auto check_constitutive_tangent =
+      [&](adamantine::MechanicalConstitutiveState<3> const &state,
+          dealii::SymmetricTensor<2, 3> const &strain_increment,
+          dealii::SymmetricTensor<2, 3> const &strain_direction)
+  {
+    auto const [response, constitutive_tangent] =
+        mechanical_physics.evaluate_constitutive_response(
+            strain_increment, 0., 0., lambda, mu, plastic_modulus,
+            isotropic_hardening, 0., false, state);
+
+    double constexpr h = 1.e-7;
+    auto perturbed_strain = strain_increment;
+    perturbed_strain += h * strain_direction;
+    auto const perturbed_response =
+        mechanical_physics.evaluate_constitutive_response(
+            perturbed_strain, 0., 0., lambda, mu, plastic_modulus,
+            isotropic_hardening, 0., false, state);
+    auto const finite_difference =
+        (perturbed_response.first.stress - response.stress) / h;
+    BOOST_CHECK_SMALL(
+        (finite_difference - constitutive_tangent * strain_direction).norm(),
+        1.e-7);
+  };
+
+  dealii::SymmetricTensor<2, 3> strain_direction;
+  strain_direction[0][0] = 0.02;
+  strain_direction[1][1] = -0.01;
+  strain_direction[2][2] = 0.005;
+
+  adamantine::MechanicalConstitutiveState<3> elastic_state;
+  elastic_state.plastic_internal_variable = 1.;
+  dealii::SymmetricTensor<2, 3> elastic_strain;
+  elastic_strain[0][0] = 0.01;
+  elastic_strain[1][1] = -0.005;
+  check_constitutive_tangent(elastic_state, elastic_strain, strain_direction);
+
+  adamantine::MechanicalConstitutiveState<3> plastic_state;
+  plastic_state.plastic_internal_variable = 0.2;
+  plastic_state.back_stress[0][0] = 0.02;
+  plastic_state.back_stress[1][1] = -0.01;
+  plastic_state.back_stress[2][2] = -0.01;
+  dealii::SymmetricTensor<2, 3> plastic_strain;
+  plastic_strain[0][0] = 0.1;
+  plastic_strain[1][1] = -0.05;
+  check_constitutive_tangent(plastic_state, plastic_strain, strain_direction);
+
   // The documented elastic branch is chi <= kappa. In particular, chi =
   // kappa = 0 must not enter the plastic branch and form the undefined 0/0
   // flow direction.

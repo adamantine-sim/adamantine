@@ -17,6 +17,8 @@
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/hp/fe_collection.h>
 
+#include <utility>
+
 namespace adamantine
 {
 template <int dim>
@@ -149,6 +151,19 @@ public:
   std::vector<std::vector<dealii::SymmetricTensor<2, dim>>>
   get_stress_tensor() const;
 
+  /**
+   * Evaluate the local constitutive response without modifying the state and
+   * return the trial state and algorithmic tangent.
+   */
+  std::pair<MechanicalConstitutiveState<dim>, dealii::SymmetricTensor<4, dim>>
+  evaluate_constitutive_response(
+      dealii::SymmetricTensor<2, dim> const &strain_increment,
+      double const temperature, double const reference_temperature,
+      double const lambda, double const mu, double const plastic_modulus,
+      double const iso_hardening_coef, double const alpha,
+      bool const include_thermal_loading,
+      MechanicalConstitutiveState<dim> const &state) const;
+
 private:
   /**
    * Solve a linear system with the elastic matrix and return a constrained
@@ -166,17 +181,6 @@ private:
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
   solve_nonlinear_system();
-
-  /**
-   * Evaluate the local constitutive response without modifying the state.
-   */
-  MechanicalConstitutiveState<dim> evaluate_constitutive_response(
-      dealii::SymmetricTensor<2, dim> const &strain_increment,
-      double const temperature, double const reference_temperature,
-      double const lambda, double const mu, double const plastic_modulus,
-      double const iso_hardening_coef, double const alpha,
-      bool const include_thermal_loading,
-      MechanicalConstitutiveState<dim> const &state) const;
 
   /**
    * Compute the displacement increment relative to the previous displacement.
