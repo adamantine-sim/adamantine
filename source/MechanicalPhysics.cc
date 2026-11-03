@@ -424,6 +424,8 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   // already reserve the memory.
   unsigned int const n_dofs_per_cell = _fe_collection.max_dofs_per_cell();
   unsigned int const n_old_active_cells = _state.size();
+  double const no_previous_displacement =
+      std::numeric_limits<double>::infinity();
   std::vector<dealii::types::global_dof_index> global_dof_indices(
       n_dofs_per_cell);
   tmp_state.reserve(n_old_active_cells);
@@ -452,13 +454,14 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
         {
           // The cell does not contain material or it is liquid. The
           // displacement is ignored.
-          cell_values.assign(n_dofs_per_cell, 0.);
+          cell_values.assign(n_dofs_per_cell, no_previous_displacement);
         }
         saved_old_displacement.push_back(cell_values);
       }
       else
       {
-        saved_old_displacement.push_back(std::vector<double>(n_dofs_per_cell));
+        saved_old_displacement.push_back(
+            std::vector<double>(n_dofs_per_cell, no_previous_displacement));
       }
     }
   }
@@ -569,7 +572,8 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       if (cell->is_locally_owned())
       {
         auto fe_index = cell->active_fe_index();
-        if (fe_index == 0)
+        if (fe_index == 0 &&
+            saved_old_displacement[cell_id][0] != no_previous_displacement)
         {
           cell->get_dof_indices(global_dof_indices);
           for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
