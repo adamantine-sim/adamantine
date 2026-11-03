@@ -13,6 +13,7 @@
 #include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
+#include <deal.II/hp/fe_values.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/lac/sparsity_pattern.h>
@@ -412,4 +413,170 @@ BOOST_AUTO_TEST_CASE(thermoelastic, *utf::tolerance(1e-12))
   mechanical_operator.assemble_rhs({});
   virtual_work = virtual_displacement * mechanical_operator.rhs();
   BOOST_TEST(virtual_work == -beta * volume);
+}
+
+BOOST_AUTO_TEST_CASE(jacobian, *utf::tolerance(1e-10))
+{
+  MPI_Comm communicator = MPI_COMM_WORLD;
+  int constexpr dim = 3;
+
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 1.);
+  geometry_database.put("length_divisions", 1);
+  geometry_database.put("height", 1.);
+  geometry_database.put("height_divisions", 1);
+  geometry_database.put("width", 1.);
+  geometry_database.put("width_divisions", 1);
+  boost::optional<boost::property_tree::ptree const &> units_optional_database;
+  adamantine::Geometry<dim> geometry(communicator, geometry_database,
+                                     units_optional_database);
+  auto const &triangulation = geometry.get_triangulation();
+  for (auto cell : triangulation.cell_iterators())
+  {
+    cell->set_material_id(0);
+    cell->set_user_index(
+        static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
+  }
+
+  double constexpr lambda = 2.;
+  double constexpr mu = 3.;
+  boost::property_tree::ptree material_database;
+  material_database.put("property_format", "polynomial");
+  material_database.put("n_materials", 1);
+  material_database.put("material_0.solid.lame_first_parameter", lambda);
+  material_database.put("material_0.solid.lame_second_parameter", mu);
+  adamantine::MaterialProperty<dim, 1, 4, adamantine::SolidLiquidPowder,
+                               dealii::MemorySpace::Host>
+      material_properties(communicator, triangulation, material_database);
+
+  dealii::hp::FECollection<dim> fe_collection;
+  fe_collection.push_back(dealii::FESystem<dim>(dealii::FE_Q<dim>(1) ^ dim));
+  fe_collection.push_back(
+      dealii::FESystem<dim>(dealii::FE_Nothing<dim>() ^ dim));
+  dealii::DoFHandler<dim> dof_handler(triangulation);
+  dof_handler.distribute_dofs(fe_collection);
+
+  dealii::AffineConstraints<double> affine_constraints;
+  dealii::DoFTools::make_hanging_node_constraints(dof_handler,
+                                                  affine_constraints);
+  affine_constraints.close();
+
+  dealii::hp::QCollection<dim> q_collection;
+  q_collection.push_back(dealii::QGauss<dim>(2));
+  q_collection.push_back(dealii::QGauss<dim>(1));
+
+  adamantine::MechanicalOperator<dim, 1, 4, adamantine::SolidLiquidPowder,
+                                 dealii::MemorySpace::Host>
+      mechanical_operator(communicator, material_properties, {});
+  mechanical_operator.reinit(dof_handler, affine_constraints, q_collection, {});
+
+  auto const constitutive_tangent =
+      lambda * dealii::outer_product(dealii::unit_symmetric_tensor<dim>(),
+                                     dealii::unit_symmetric_tensor<dim>()) +
+      2. * mu * dealii::identity_tensor<dim>();
+  std::vector<std::vector<dealii::SymmetricTensor<4, dim>>> tangent(
+      triangulation.n_active_cells(),
+      std::vector<dealii::SymmetricTensor<4, dim>>(
+          q_collection.max_n_quadrature_points(), constitutive_tangent));
+  mechanical_operator.assemble_jacobian(tangent);
+
+  using VectorType =
+      dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>;
+  VectorType displacement(dof_handler.locally_owned_dofs(), communicator);
+  VectorType direction(dof_handler.locally_owned_dofs(), communicator);
+  dealii::VectorTools::interpolate(dof_handler, AffineDisplacement<dim>(0),
+                                   displacement);
+  dealii::VectorTools::interpolate(dof_handler, AffineDisplacement<dim>(1),
+                                   direction);
+  affine_constraints.distribute(displacement);
+  affine_constraints.distribute(direction);
+
+  auto compute_stress = [&](VectorType const &input)
+  {
+    std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> stress(
+        triangulation.n_active_cells(),
+        std::vector<dealii::SymmetricTensor<2, dim>>(
+            q_collection.max_n_quadrature_points()));
+    auto input_with_ghosts = input;
+    input_with_ghosts.update_ghost_values();
+    dealii::hp::FEValues<dim> hp_fe_values(fe_collection, q_collection,
+                                           dealii::update_gradients);
+    dealii::FEValuesExtractors::Vector const displacements(0);
+    std::vector<dealii::SymmetricTensor<2, dim>> strain(
+        q_collection.max_n_quadrature_points());
+    unsigned int cell_id = 0;
+    for (auto const &cell : dof_handler.active_cell_iterators())
+    {
+      if (cell->is_locally_owned() && cell->active_fe_index() == 0)
+      {
+        hp_fe_values.reinit(cell);
+        auto const &fe_values = hp_fe_values.get_present_fe_values();
+        fe_values[displacements].get_function_symmetric_gradients(
+            input_with_ghosts, strain);
+        for (auto const q : fe_values.quadrature_point_indices())
+          stress[cell_id][q] = constitutive_tangent * strain[q];
+      }
+      ++cell_id;
+    }
+    return stress;
+  };
+
+  auto const residual =
+      mechanical_operator.assemble_residual(compute_stress(displacement));
+  double constexpr h = 1.e-5;
+  auto perturbed_displacement = displacement;
+  perturbed_displacement.add(h, direction);
+  auto finite_difference = mechanical_operator.assemble_residual(
+      compute_stress(perturbed_displacement));
+  finite_difference -= residual;
+  finite_difference /= h;
+
+  dealii::IndexSet const locally_owned_dofs = dof_handler.locally_owned_dofs();
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+  using TrilinosVectorType = dealii::LinearAlgebra::TpetraWrappers::Vector<
+      double, dealii::MemorySpace::Default>;
+#else
+  using TrilinosVectorType = dealii::TrilinosWrappers::MPI::Vector;
+#endif
+  auto matrix_action = [&](auto const &matrix)
+  {
+    TrilinosVectorType direction_device(locally_owned_dofs, communicator);
+    TrilinosVectorType matrix_action_device(locally_owned_dofs, communicator);
+    dealii::LinearAlgebra::ReadWriteVector<double> rw_vector(
+        locally_owned_dofs);
+    rw_vector.import_elements(direction, dealii::VectorOperation::insert);
+    direction_device.import_elements(rw_vector,
+                                     dealii::VectorOperation::insert);
+    matrix.vmult(matrix_action_device, direction_device);
+    rw_vector.import_elements(matrix_action_device,
+                              dealii::VectorOperation::insert);
+    VectorType action(locally_owned_dofs, communicator);
+    action.import_elements(rw_vector, dealii::VectorOperation::insert);
+    return action;
+  };
+  auto const jacobian_action =
+      matrix_action(mechanical_operator.system_matrix());
+
+  finite_difference -= jacobian_action;
+  BOOST_CHECK_SMALL(finite_difference.l2_norm(), 1.e-9);
+
+  // A nonlinear solve overwrites the shared matrix with its current
+  // Jacobian. Ensure that the elastic matrix can be restored before the next
+  // nonlinear solve.
+  auto scaled_tangent = tangent;
+  for (auto &cell_tangent : scaled_tangent)
+    for (auto &q_point_tangent : cell_tangent)
+      q_point_tangent *= 0.5;
+  mechanical_operator.assemble_jacobian(scaled_tangent);
+  auto scaled_jacobian_action =
+      matrix_action(mechanical_operator.system_matrix());
+  scaled_jacobian_action -= jacobian_action;
+  BOOST_CHECK(scaled_jacobian_action.l2_norm() > 1.e-10);
+
+  mechanical_operator.ensure_elastic_matrix();
+  auto restored_elastic_action =
+      matrix_action(mechanical_operator.system_matrix());
+  restored_elastic_action -= jacobian_action;
+  BOOST_CHECK_SMALL(restored_elastic_action.l2_norm(), 1.e-12);
 }

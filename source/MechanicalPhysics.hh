@@ -166,8 +166,11 @@ public:
 
 private:
   /**
-   * Solve a linear system with the elastic matrix and return a constrained
-   * displacement vector.
+   * Solve a linear system with the current mechanical matrix and return a
+   * constrained displacement vector. The nonlinear solve restores the elastic
+   * stiffness matrix before using this function for its initial guess; during
+   * subsequent KINSOL linear solves, the current matrix is the nonlinear
+   * Jacobian.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
   solve_linear_system(
@@ -176,8 +179,9 @@ private:
       double const tolerance) const;
 
   /**
-   * Solve the nonlinear mechanical residual with KINSOL using the elastic
-   * matrix as a fixed approximate Jacobian.
+   * Solve the nonlinear mechanical residual with KINSOL. The elastic matrix is
+   * restored before it provides the initial guess; KINSOL then replaces it
+   * with the assembled consistent global Jacobian for its linear solves.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
   solve_nonlinear_system();
@@ -192,7 +196,7 @@ private:
 
   /**
    * Evaluate the constitutive response at all quadrature points for the
-   * displacement increment and store the result in the trial state.
+   * displacement increment and store the trial state and constitutive tangent.
    */
   void evaluate_trial_state(
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
@@ -279,6 +283,13 @@ private:
    * Trial constitutive state at each (cell, quadrature point).
    */
   std::vector<std::vector<MechanicalConstitutiveState<dim>>> _trial_state;
+
+  /**
+   * Algorithmic constitutive tangent associated with the trial state at each
+   * (cell, quadrature point).
+   */
+  std::vector<std::vector<dealii::SymmetricTensor<4, dim>>>
+      _constitutive_tangent;
 
   /**
    * Solution transfer object used for updating _old_displacement when the

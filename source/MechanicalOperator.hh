@@ -113,18 +113,48 @@ public:
       const;
 
   /**
-   * Return the matrix of the system.
+   * Assemble the consistent mechanical Jacobian of the equilibrium problem
+   * corresponding to the constitutive tangent at each quadrature point.
+   * This overwrites the elastic matrix currently stored in _system_matrix.
+   *
+   * The assembled matrix is
+   * \f[
+   *   K_{ij} = \int_\Omega \varepsilon(\phi_i) :
+   *             C_{\mathrm{alg}} : \varepsilon(\phi_j)\,dV.
+   * \f]
+   */
+  void assemble_jacobian(
+      std::vector<std::vector<dealii::SymmetricTensor<4, dim>>> const
+          &constitutive_tangent);
+
+  /**
+   * Ensure the system matrix contains the elastic stiffness matrix.
+   *
+   * The matrix is reassembled if a previous nonlinear solve replaced it
+   * with a Jacobian at a nonlinear iterate.
+   */
+  void ensure_elastic_matrix();
+
+  /**
+   * Return the matrix currently used by the linear solve.
+   *
+   * During an elastic solve, or before the first nonlinear Jacobian is
+   * assembled, this is the elastic stiffness matrix. During a nonlinear
+   * solve, assemble_jacobian() overwrites it with the Jacobian at the current
+   * nonlinear iterate.
    */
   TrilinosMatrixType const &system_matrix() const;
 
   /**
-   * Return the preconditioner for the system matrix.
+   * Return the preconditioner for the system matrix used by the linear solve.
    */
   TrilinosPreconditionerType const &preconditioner() const;
 
 private:
   /**
-   * Assemble the sparse matrix of the system.
+   * Assemble the elastic sparse matrix of the system into _system_matrix.
+   * The matrix is later overwritten by assemble_jacobian() during a nonlinear
+   * solve.
    * @note The 2D case does not represent any physical model but it is
    * convenient for testing.
    */
@@ -166,11 +196,21 @@ private:
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       _system_rhs;
   /**
-   * Matrix of the mechanical problem.
+   * Matrix currently used by the mechanical linear solve.
+   *
+   * This single matrix has two roles over the course of a solve. It stores
+   * the elastic stiffness matrix before the nonlinear solve starts and the
+   * Jacobian associated with the current nonlinear iterate after
+   * assemble_jacobian() is called.
    */
   TrilinosMatrixType _system_matrix;
   /**
-   * Preconditioner associated with the system matrix
+   * Whether _system_matrix currently stores the elastic stiffness matrix.
+   */
+  bool _system_matrix_is_elastic = false;
+  /**
+   * Preconditioner associated with the matrix currently stored in
+   * _system_matrix.
    */
   TrilinosPreconditionerType _preconditioner;
   /**

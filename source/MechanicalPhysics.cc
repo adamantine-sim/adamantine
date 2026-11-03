@@ -122,6 +122,8 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
       n_active_cells,
       std::vector<MechanicalConstitutiveState<dim>>(n_quad_pts));
   _trial_state = _state;
+  _constitutive_tangent.resize(
+      n_active_cells, std::vector<dealii::SymmetricTensor<4, dim>>(n_quad_pts));
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -357,6 +359,8 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   _trial_state.resize(
       n_active_cells,
       std::vector<MechanicalConstitutiveState<dim>>(n_quad_pts));
+  _constitutive_tangent.resize(
+      n_active_cells, std::vector<dealii::SymmetricTensor<4, dim>>(n_quad_pts));
 
   unsigned int const n_doubles_per_quad_scalar = 2;
   unsigned int const n_doubles_per_quad_stress =
@@ -542,6 +546,8 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 
   _state.swap(tmp_state);
   _trial_state = _state;
+  _constitutive_tangent.resize(
+      _state.size(), std::vector<dealii::SymmetricTensor<4, dim>>(n_quad_pts));
 
   setup_dofs(body_forces);
 
@@ -635,8 +641,11 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>;
   using KINSOL = dealii::SUNDIALS::KINSOL<VectorType>;
 
-  // Use the existing elastic solution as the initial guess. The matrix used
-  // below is deliberately fixed.
+  // A previous nonlinear solve leaves its last Jacobian in the shared system
+  // matrix. Restore the elastic matrix before computing the initial guess.
+  _mechanical_operator->ensure_elastic_matrix();
+
+  // Use the elastic solution as the initial guess.
   double const linear_tolerance = 1e-12 * _mechanical_operator->rhs().l2_norm();
   auto displacement =
       solve_linear_system(_mechanical_operator->rhs(), linear_tolerance);
@@ -661,9 +670,13 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   nonlinear_solver.residual = [this](VectorType const &src, VectorType &dst)
   { dst = evaluate_residual(src); };
 
-  // The elastic system matrix is the fixed approximate Jacobian for the
-  // nonlinear solver. No state is changed by this callback.
-  nonlinear_solver.setup_jacobian = [](VectorType const &, VectorType const &) {
+  nonlinear_solver.setup_jacobian =
+      [this](VectorType const &current_u, VectorType const &)
+  {
+    auto const incremental_displacement =
+        compute_incremental_displacement(current_u);
+    evaluate_trial_state(incremental_displacement);
+    _mechanical_operator->assemble_jacobian(_constitutive_tangent);
   };
   nonlinear_solver.solve_with_jacobian =
       [this](VectorType const &rhs, VectorType &dst, double const tolerance)
@@ -874,6 +887,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
             !_reference_temperatures.empty(), _state[cell_id][q]);
 
         _trial_state[cell_id][q] = response.first;
+        _constitutive_tangent[cell_id][q] = response.second;
       }
     }
     ++cell_id;

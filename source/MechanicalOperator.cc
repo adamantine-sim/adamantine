@@ -275,6 +275,96 @@ MechanicalOperator<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
+                        MemorySpaceType>::
+    assemble_jacobian(
+        std::vector<std::vector<dealii::SymmetricTensor<4, dim>>> const
+            &constitutive_tangent)
+{
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("assemble mechanical Jacobian");
+#endif
+
+  _system_matrix = 0.;
+
+  auto const dofs_per_cell =
+      _dof_handler->get_fe_collection().max_dofs_per_cell();
+  dealii::hp::FEValues<dim> displacement_hp_fe_values(
+      _dof_handler->get_fe_collection(), *_q_collection,
+      dealii::update_gradients | dealii::update_JxW_values);
+
+  auto cell_worker =
+      [&](const typename dealii::DoFHandler<dim>::active_cell_iterator &cell,
+          ScratchDataMatrix<dim> &scratch_data, CopyDataMatrix &copy_data)
+  {
+    scratch_data.displacement_hp_fe_values.reinit(cell);
+    auto const &fe_values =
+        scratch_data.displacement_hp_fe_values.get_present_fe_values();
+    auto const &cell_tangent = constitutive_tangent[cell->active_cell_index()];
+    copy_data.reinit(cell);
+
+    dealii::FEValuesExtractors::Vector const displacements(0);
+    for (auto const i : fe_values.dof_indices())
+      for (auto const j : fe_values.dof_indices())
+        for (auto const q_point : fe_values.quadrature_point_indices())
+        {
+          auto const strain_i =
+              fe_values[displacements].symmetric_gradient(i, q_point);
+          auto const strain_j =
+              fe_values[displacements].symmetric_gradient(j, q_point);
+          copy_data.cell_matrix(i, j) += strain_i *
+                                         (cell_tangent[q_point] * strain_j) *
+                                         fe_values.JxW(q_point);
+        }
+  };
+
+  auto copier = [&](const CopyDataMatrix &copy_data)
+  {
+    _affine_constraints->distribute_local_to_global(
+        copy_data.cell_matrix, copy_data.local_dof_indices, _system_matrix);
+  };
+
+  dealii::IteratorFilters::ActiveFEIndexEqualTo filter(
+      0, /* locally owned */ true);
+  dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>
+      begin(filter, _dof_handler->begin_active());
+  dealii::FilteredIterator<
+      typename dealii::DoFHandler<dim>::active_cell_iterator>
+      end(filter, _dof_handler->end());
+
+  ScratchDataMatrix<dim> scratch_data(displacement_hp_fe_values);
+  dealii::MeshWorker::mesh_loop(begin, end, cell_worker, copier, scratch_data,
+                                CopyDataMatrix(dofs_per_cell),
+                                dealii::MeshWorker::assemble_own_cells);
+
+  _system_matrix.compress(dealii::VectorOperation::add);
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("assemble mechanical Jacobian");
+#endif
+
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_BEGIN("initialize mechanical Jacobian preconditioner");
+#endif
+  _preconditioner.clear();
+  _preconditioner.initialize(_system_matrix);
+#ifdef ADAMANTINE_WITH_CALIPER
+  CALI_MARK_END("initialize mechanical Jacobian preconditioner");
+#endif
+  _system_matrix_is_elastic = false;
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
+                        MemorySpaceType>::ensure_elastic_matrix()
+{
+  if (!_system_matrix_is_elastic)
+    assemble_matrix();
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
+void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
                         MemorySpaceType>::assemble_matrix()
 {
 #ifdef ADAMANTINE_WITH_CALIPER
@@ -400,6 +490,7 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_END("initialize mechanical matrix preconditioner");
 #endif
+  _system_matrix_is_elastic = true;
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
