@@ -31,8 +31,10 @@ struct ComponentInfo
 
 /**
  * Find connected components of locally owned active cells with the given FE
- * index. Connectivity is defined through face adjacency, including across MPI
- * ranks through ghost neighbors.
+ * index. In a first step, connectivity is defined through face adjacency with
+ * the same finite element index, including across MPI ranks through ghost
+ * neighbors. Then, two components are identified if they share at least 3
+ * collinear points.
  *
  * The returned vector stores, on each rank, only the locally owned cells that
  * belong to each global component together with a flag indicating whether that
