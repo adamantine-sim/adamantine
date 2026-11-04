@@ -384,6 +384,7 @@ adamantine::ConnectedComponents::find_components(
       GlobalCellIndex _cell_id;
       int _local_index; // -1 for ghost cells
     };
+    // First gather for every vertex its position and the cells that contain it.
     std::unordered_map<unsigned int, std::vector<VertexCell>> cells_of_vertex;
     std::unordered_map<unsigned int, dealii::Point<dim>> point_of_vertex;
 
@@ -404,6 +405,9 @@ adamantine::ConnectedComponents::find_components(
         }
       }
 
+    // For every vertex with at least two corresponding cells, only consider one
+    // cell per component (unless it's a ghost cell) and run a pairwise match
+    // storing the contact if at least one of those cells is locally owned.
     for (const auto &[vertex_index, vertex_cells] : cells_of_vertex)
     {
       if (vertex_cells.size() < 2)
