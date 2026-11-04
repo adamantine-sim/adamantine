@@ -33,43 +33,6 @@ namespace adamantine
 {
 namespace
 {
-template <int dim>
-struct ScratchDataRightHandSide
-{
-  ScratchDataRightHandSide(
-      dealii::hp::FEValues<dim> const &displacement_hp_fe_values,
-      dealii::hp::FEValues<dim> const &temperature_hp_fe_values)
-      : displacement_hp_fe_values(
-            displacement_hp_fe_values.get_mapping_collection(),
-            displacement_hp_fe_values.get_fe_collection(),
-            displacement_hp_fe_values.get_quadrature_collection(),
-            displacement_hp_fe_values.get_update_flags()),
-        temperature_hp_fe_values(
-            temperature_hp_fe_values.get_mapping_collection(),
-            temperature_hp_fe_values.get_fe_collection(),
-            temperature_hp_fe_values.get_quadrature_collection(),
-            temperature_hp_fe_values.get_update_flags())
-  {
-  }
-
-  ScratchDataRightHandSide(ScratchDataRightHandSide<dim> const &scratch_data)
-      : displacement_hp_fe_values(
-            scratch_data.displacement_hp_fe_values.get_mapping_collection(),
-            scratch_data.displacement_hp_fe_values.get_fe_collection(),
-            scratch_data.displacement_hp_fe_values.get_quadrature_collection(),
-            scratch_data.displacement_hp_fe_values.get_update_flags()),
-        temperature_hp_fe_values(
-            scratch_data.temperature_hp_fe_values.get_mapping_collection(),
-            scratch_data.temperature_hp_fe_values.get_fe_collection(),
-            scratch_data.temperature_hp_fe_values.get_quadrature_collection(),
-            scratch_data.temperature_hp_fe_values.get_update_flags())
-  {
-  }
-
-  dealii::hp::FEValues<dim> displacement_hp_fe_values;
-  dealii::hp::FEValues<dim> temperature_hp_fe_values;
-};
-
 struct CopyDataRightHandSide
 {
   CopyDataRightHandSide(unsigned int dofs_per_cell)
@@ -157,11 +120,8 @@ MechanicalOperator<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
     MechanicalOperator(
         MPI_Comm const &communicator,
         MaterialProperty<dim, n_materials, p_order, MaterialStates,
-                         MemorySpaceType> &material_properties,
-        std::vector<double> const &reference_temperatures)
-    : _communicator(communicator),
-      _reference_temperatures(reference_temperatures),
-      _material_properties(material_properties)
+                         MemorySpaceType> &material_properties)
+    : _communicator(communicator), _material_properties(material_properties)
 {
 }
 
@@ -179,21 +139,6 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
   _q_collection = &q_collection;
   assemble_matrix();
   assemble_rhs(body_forces);
-}
-
-template <int dim, int n_materials, int p_order, typename MaterialStates,
-          typename MemorySpaceType>
-void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
-                        MemorySpaceType>::
-    update_temperature(
-        dealii::DoFHandler<dim> const &thermal_dof_handler,
-        dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &temperature,
-        std::vector<bool> const &has_melted)
-{
-  _thermal_dof_handler = &thermal_dof_handler;
-  _temperature = temperature;
-  _has_melted = has_melted;
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -507,146 +452,20 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
   auto locally_owned_dofs = _dof_handler->locally_owned_dofs();
   auto locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(*_dof_handler);
-  unsigned int const dofs_per_cell =
-      _dof_handler->get_fe_collection().max_dofs_per_cell();
-  dealii::hp::FEValues<dim> displacement_hp_fe_values(
-      _dof_handler->get_fe_collection(), *_q_collection,
-      dealii::update_values | dealii::update_gradients |
-          dealii::update_JxW_values);
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       assembled_rhs(locally_owned_dofs, locally_relevant_dofs, _communicator);
-  std::vector<dealii::types::global_dof_index> local_dof_indices(dofs_per_cell);
-  // If the list of reference temperatures is non-empty, we solve the
-  // thermo-elastic problem.
-  if (_reference_temperatures.size() > 0)
-  {
-    // _has_melted is using its own indices. The indices are computed using the
-    // locally owned cells of the thermal DoFHandler that have an FE_Index
-    // equal to zero. We need to translate these indices to be used with the
-    // mechanical DoFHandler. This is simplified by the fact that both the
-    // thermal and the mechanical simulation use the same Triangulation and have
-    // the same cells locally owned.
-    auto &triangulation = _dof_handler->get_triangulation();
-    unsigned int const n_local_active_cells = triangulation.n_active_cells();
-    std::vector<unsigned int> cell_indices(n_local_active_cells);
-    unsigned int cell_index = 0;
-    for (auto const &tria_cell :
-         triangulation.active_cell_iterators() |
-             dealii::IteratorFilters::LocallyOwnedCell())
-    {
-      dealii::TriaIterator<dealii::DoFCellAccessor<dim, dim, false>>
-          temperature_cell(&triangulation, tria_cell->level(),
-                           tria_cell->index(), _thermal_dof_handler);
-      if (temperature_cell->active_fe_index() == 0)
-      {
-        dealii::TriaIterator<dealii::DoFCellAccessor<dim, dim, false>>
-            displacement_cell(&triangulation, tria_cell->level(),
-                              tria_cell->index(), _dof_handler);
-        if (displacement_cell->active_fe_index() == 0)
-        {
-          cell_indices[displacement_cell->active_cell_index()] = cell_index;
-        }
-        ++cell_index;
-      }
-    }
-
-    _temperature.update_ghost_values();
-
-    std::vector<dealii::types::global_dof_index> temperature_local_dof_indices(
-        _thermal_dof_handler->get_fe_collection().max_dofs_per_cell());
-    double const initial_temperature = _reference_temperatures.back();
-
-    auto cell_worker =
-        [&](const typename dealii::DoFHandler<dim>::active_cell_iterator &cell,
-            ScratchDataRightHandSide<dim> &scratch_data,
-            CopyDataRightHandSide &copy_data)
-    {
-      // Get the temperature cell associated to the mechanical cell
-      dealii::TriaIterator<dealii::DoFCellAccessor<dim, dim, false>>
-          temperature_cell(&triangulation, cell->level(), cell->index(),
-                           _thermal_dof_handler);
-
-      // Get the appropriate reference temperature for the cell. If the cell
-      // is not in the unmelted substrate, the reference temperature depends
-      // on the material.
-      double reference_temperature =
-          _has_melted[cell_indices[cell->active_cell_index()]]
-              ? _reference_temperatures[temperature_cell->material_id()]
-              : initial_temperature;
-
-      dealii::hp::FEValues<dim> &displacement_hp_fe_values =
-          scratch_data.displacement_hp_fe_values;
-      displacement_hp_fe_values.reinit(cell);
-      auto const &fe_values = displacement_hp_fe_values.get_present_fe_values();
-
-      double const alpha = this->_material_properties.get_mechanical_property(
-          cell, StateProperty::thermal_expansion_coef);
-      double const lambda = this->_material_properties.get_mechanical_property(
-          cell, StateProperty::lame_first_parameter);
-      double const mu = this->_material_properties.get_mechanical_property(
-          cell, StateProperty::lame_second_parameter);
-
-      dealii::hp::FEValues<dim> &temperature_hp_fe_values =
-          scratch_data.temperature_hp_fe_values;
-      temperature_hp_fe_values.reinit(temperature_cell);
-      auto &temperature_fe_values =
-          temperature_hp_fe_values.get_present_fe_values();
-      temperature_cell->get_dof_indices(temperature_local_dof_indices);
-
-      copy_data.reinit(cell);
-      dealii::Vector<double> &cell_rhs = copy_data.cell_rhs;
-
-      dealii::FEValuesExtractors::Vector const displacements(0);
-
-      for (auto const q_point : fe_values.quadrature_point_indices())
-      {
-        double delta_T = -reference_temperature;
-        for (unsigned int j = 0; j < temperature_fe_values.dofs_per_cell; ++j)
-        {
-          delta_T += temperature_fe_values.shape_value(j, q_point) *
-                     _temperature(temperature_local_dof_indices[j]);
-        }
-        auto const B = (3. * lambda + 2 * mu) * alpha * delta_T;
-
-        for (auto const i : fe_values.dof_indices())
-        {
-          cell_rhs(i) +=
-              dealii::trace(fe_values[displacements].gradient(i, q_point)) * B *
-              fe_values.JxW(q_point);
-        }
-      }
-    };
-
-    auto copier = [&](const CopyDataRightHandSide &cd)
-    {
-      _affine_constraints->distribute_local_to_global(
-          cd.cell_rhs, cd.local_dof_indices, assembled_rhs);
-    };
-
-    dealii::IteratorFilters::ActiveFEIndexEqualTo filter(
-        0, /* locally owned */ true);
-    dealii::FilteredIterator<
-        typename dealii::DoFHandler<dim>::active_cell_iterator>
-        begin(filter, _dof_handler->begin_active());
-    dealii::FilteredIterator<
-        typename dealii::DoFHandler<dim>::active_cell_iterator>
-        end(filter, _dof_handler->end());
-
-    dealii::hp::FEValues<dim> temperature_hp_fe_values(
-        _thermal_dof_handler->get_fe_collection(), *_q_collection,
-        dealii::update_values);
-
-    ScratchDataRightHandSide<dim> scratch_data(displacement_hp_fe_values,
-                                               temperature_hp_fe_values);
-
-    dealii::MeshWorker::mesh_loop(begin, end, cell_worker, copier, scratch_data,
-                                  CopyDataRightHandSide(dofs_per_cell),
-                                  dealii::MeshWorker::assemble_own_cells);
-  }
 
   // Add gravitational body force if present
   if (body_forces.size())
   {
+    unsigned int const dofs_per_cell =
+        _dof_handler->get_fe_collection().max_dofs_per_cell();
+    dealii::hp::FEValues<dim> displacement_hp_fe_values(
+        _dof_handler->get_fe_collection(), *_q_collection,
+        dealii::update_values | dealii::update_gradients |
+            dealii::update_JxW_values);
+    std::vector<dealii::types::global_dof_index> local_dof_indices(
+        dofs_per_cell);
     dealii::Vector<double> cell_rhs(dofs_per_cell);
 
     for (auto const &cell : _dof_handler->active_cell_iterators() |
@@ -678,8 +497,8 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
       _affine_constraints->distribute_local_to_global(
           cell_rhs, local_dof_indices, assembled_rhs);
     }
+    assembled_rhs.compress(dealii::VectorOperation::add);
   }
-  assembled_rhs.compress(dealii::VectorOperation::add);
 
   // When solving the system, we don't want ghost entries
   _system_rhs.reinit(_dof_handler->locally_owned_dofs(), _communicator);

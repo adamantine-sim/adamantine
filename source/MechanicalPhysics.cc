@@ -94,7 +94,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
   _mechanical_operator =
       std::make_unique<MechanicalOperator<dim, n_materials, p_order,
                                           MaterialStates, MemorySpaceType>>(
-          communicator, _material_properties, reference_temperatures);
+          communicator, _material_properties);
 
   // Create the data used to compute the stress tensor
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
@@ -157,26 +157,28 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
 {
   MechanicalConstitutiveState<dim> result = state;
 
-  double const beta = (3. * lambda + 2. * mu) * alpha;
   dealii::SymmetricTensor<4, dim> stiffness_tensor =
       lambda * dealii::outer_product(dealii::unit_symmetric_tensor<dim>(),
                                      dealii::unit_symmetric_tensor<dim>()) +
       2 * mu * dealii::identity_tensor<dim>();
   dealii::SymmetricTensor<4, dim> constitutive_tangent;
 
-  // Compute the trial elastic stress from the state.
-  dealii::SymmetricTensor<2, dim> elastic_stress = state.stress;
-  elastic_stress += stiffness_tensor * strain_increment;
+  // Compute the trial elastic stress from the strain decomposition
+  // epsilon = epsilon_e + epsilon_p + epsilon_th. The stored thermal strain
+  // is the thermal strain at the beginning of the time step.
+  auto elastic_strain_increment = strain_increment;
   if (include_thermal_loading)
   {
-    // Compute the thermal stress due to the temperature change since the last
-    // time step. The rest of the thermal stress is included in the state.
-    double const current_thermal_stress =
-        beta * (temperature - reference_temperature);
-    elastic_stress -= (current_thermal_stress - state.thermal_stress) *
-                      dealii::unit_symmetric_tensor<dim>();
-    result.thermal_stress = current_thermal_stress;
+    double const current_thermal_strain =
+        alpha * (temperature - reference_temperature);
+    double const previous_thermal_strain = state.thermal_strain;
+    elastic_strain_increment -=
+        (current_thermal_strain - previous_thermal_strain) *
+        dealii::unit_symmetric_tensor<dim>();
+    result.thermal_strain = current_thermal_strain;
   }
+  dealii::SymmetricTensor<2, dim> elastic_stress = state.stress;
+  elastic_stress += stiffness_tensor * elastic_strain_increment;
 
   // Formulation based on the combined isotropic-kinematic hardening model for
   // J2 plasticity in Chapter 3 of R. Borja, Plasticity: Modeling and
@@ -274,8 +276,6 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   _thermal_dof_handler = &thermal_dof_handler;
   _temperature = temperature;
   _has_melted = has_melted;
-  _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
-                                           has_melted);
   _mechanical_operator->assemble_rhs(body_forces);
 }
 
@@ -312,7 +312,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       {
         std::vector<double> &cell_data_quad = cell_data[quad];
         cell_data_quad[0] = _state[cell_id][quad].plastic_internal_variable;
-        cell_data_quad[1] = _state[cell_id][quad].thermal_stress;
+        cell_data_quad[1] = _state[cell_id][quad].thermal_strain;
         for (unsigned int i = 0; i < n_doubles_per_quad_stress; ++i)
         {
           cell_data_quad[stress_offset + i] =
@@ -386,7 +386,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       {
         _state[cell_id][quad].plastic_internal_variable =
             data_to_unpack[cell_id][quad][0];
-        _state[cell_id][quad].thermal_stress = data_to_unpack[cell_id][quad][1];
+        _state[cell_id][quad].thermal_strain = data_to_unpack[cell_id][quad][1];
         for (unsigned int i = 0; i < n_doubles_per_quad_stress; ++i)
         {
           _state[cell_id][quad].stress.access_raw_entry(i) =
@@ -415,8 +415,6 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   _thermal_dof_handler = &thermal_dof_handler;
   _temperature = temperature;
   _has_melted = has_melted;
-  _mechanical_operator->update_temperature(thermal_dof_handler, temperature,
-                                           has_melted);
   // Update the active fe indices, the plastic variables, and the displacement.
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
   unsigned int cell_id = 0;
@@ -426,6 +424,8 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   // already reserve the memory.
   unsigned int const n_dofs_per_cell = _fe_collection.max_dofs_per_cell();
   unsigned int const n_old_active_cells = _state.size();
+  double const no_previous_displacement =
+      std::numeric_limits<double>::infinity();
   std::vector<dealii::types::global_dof_index> global_dof_indices(
       n_dofs_per_cell);
   tmp_state.reserve(n_old_active_cells);
@@ -454,13 +454,14 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
         {
           // The cell does not contain material or it is liquid. The
           // displacement is ignored.
-          cell_values.assign(n_dofs_per_cell, 0.);
+          cell_values.assign(n_dofs_per_cell, no_previous_displacement);
         }
         saved_old_displacement.push_back(cell_values);
       }
       else
       {
-        saved_old_displacement.push_back(std::vector<double>(n_dofs_per_cell));
+        saved_old_displacement.push_back(
+            std::vector<double>(n_dofs_per_cell, no_previous_displacement));
       }
     }
   }
@@ -571,7 +572,8 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       if (cell->is_locally_owned())
       {
         auto fe_index = cell->active_fe_index();
-        if (fe_index == 0)
+        if (fe_index == 0 &&
+            saved_old_displacement[cell_id][0] != no_previous_displacement)
         {
           cell->get_dof_indices(global_dof_indices);
           for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
@@ -641,26 +643,35 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>;
   using KINSOL = dealii::SUNDIALS::KINSOL<VectorType>;
 
-  // A previous nonlinear solve leaves its last Jacobian in the shared system
-  // matrix. Restore the elastic matrix before computing the initial guess.
-  _mechanical_operator->ensure_elastic_matrix();
-
-  // Use the elastic solution as the initial guess.
-  double const linear_tolerance = 1e-12 * _mechanical_operator->rhs().l2_norm();
-  auto displacement =
-      solve_linear_system(_mechanical_operator->rhs(), linear_tolerance);
-
   dealii::IndexSet const locally_owned_dofs = _dof_handler.locally_owned_dofs();
   dealii::IndexSet const locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
   MPI_Comm const communicator =
       _mechanical_operator->rhs().get_mpi_communicator();
 
+  // Use the elastic solution as the initial guess. The residual at zero
+  // increment includes the current stress and body forces.
+  VectorType zero_increment(locally_owned_dofs, locally_relevant_dofs,
+                            communicator);
+  auto initial_rhs = evaluate_residual(zero_increment);
+  initial_rhs *= -1.;
+  double const linear_tolerance = 1e-12 * initial_rhs.l2_norm();
+  auto displacement_increment =
+      solve_linear_system(initial_rhs, linear_tolerance);
+  auto displacement = displacement_increment;
+  if (_old_displacement.size() > 0)
+  {
+    _old_displacement.update_ghost_values();
+    displacement += _old_displacement;
+  }
+  displacement.update_ghost_values();
+
   typename KINSOL::AdditionalData additional_data;
   // Tolerance is scaled by the norm of the initial residual. We use the
   // infinity norm to match KINSOL stopping criteria for the non-linear solver.
-  additional_data.function_tolerance =
-      std::max(1.e-10 * evaluate_residual(displacement).linfty_norm(), 1.e-12);
+  auto const initial_increment = compute_incremental_displacement(displacement);
+  additional_data.function_tolerance = std::max(
+      1.e-10 * evaluate_residual(initial_increment).linfty_norm(), 1.e-12);
   KINSOL nonlinear_solver(additional_data, communicator);
 
   nonlinear_solver.reinit_vector = [locally_owned_dofs, locally_relevant_dofs,
@@ -668,7 +679,10 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   { vector.reinit(locally_owned_dofs, locally_relevant_dofs, communicator); };
 
   nonlinear_solver.residual = [this](VectorType const &src, VectorType &dst)
-  { dst = evaluate_residual(src); };
+  {
+    auto const incremental_displacement = compute_incremental_displacement(src);
+    dst = evaluate_residual(incremental_displacement);
+  };
 
   nonlinear_solver.setup_jacobian =
       [this](VectorType const &current_u, VectorType const &)
@@ -702,13 +716,36 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   CALI_MARK_BEGIN("solve mechanical system");
 #endif
 
+  _mechanical_operator->ensure_elastic_matrix();
+
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       displacement_host;
   if (_is_purely_elastic)
   {
-    double const tolerance = 1e-12 * _mechanical_operator->rhs().l2_norm();
-    displacement_host =
-        solve_linear_system(_mechanical_operator->rhs(), tolerance);
+    dealii::IndexSet const locally_owned_dofs =
+        _dof_handler.locally_owned_dofs();
+    dealii::IndexSet const locally_relevant_dofs =
+        dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+        zero_increment(locally_owned_dofs, locally_relevant_dofs,
+                       _mechanical_operator->rhs().get_mpi_communicator());
+    zero_increment = 0.;
+    zero_increment.update_ghost_values();
+
+    // For an elastic constitutive law the residual is affine in the
+    // displacement increment. Evaluating it at zero increment gives the
+    // right-hand side for the unchanged elastic matrix without introducing a
+    // separate thermal load vector.
+    auto rhs = evaluate_residual(zero_increment);
+    rhs *= -1.;
+    double const tolerance = 1e-12 * rhs.l2_norm();
+    displacement_host = solve_linear_system(rhs, tolerance);
+    if (_old_displacement.size() > 0)
+    {
+      _old_displacement.update_ghost_values();
+      displacement_host += _old_displacement;
+    }
+    displacement_host.update_ghost_values();
   }
   else
   {
@@ -751,10 +788,10 @@ dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
 MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
     compute_incremental_displacement(
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &displacement) const
+            &total_displacement) const
 {
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-      incremental_displacement = displacement;
+      incremental_displacement = total_displacement;
   if (_old_displacement.size() > 0)
     incremental_displacement -= _old_displacement;
   incremental_displacement.update_ghost_values();
@@ -767,11 +804,9 @@ dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
 MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
     evaluate_residual(
         dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> const
-            &displacement)
+            &displacement_increment)
 {
-  auto const incremental_displacement =
-      compute_incremental_displacement(displacement);
-  evaluate_trial_state(incremental_displacement);
+  evaluate_trial_state(displacement_increment);
 
   std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> trial_stress(
       _trial_state.size());
