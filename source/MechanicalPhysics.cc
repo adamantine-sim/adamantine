@@ -734,6 +734,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   // increment includes the current stress and body forces.
   VectorType zero_increment(locally_owned_dofs, locally_relevant_dofs,
                             communicator);
+  zero_increment.update_ghost_values();
   auto initial_rhs = evaluate_residual(zero_increment);
   initial_rhs *= -1.;
   double const linear_tolerance = 1e-12 * initial_rhs.l2_norm();
@@ -810,6 +811,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
         zero_displacement(locally_owned_dofs, locally_relevant_dofs,
                           _mechanical_operator->rhs().get_mpi_communicator());
+    zero_displacement.update_ghost_values();
 
     // For an elastic constitutive law the residual is affine in the
     // displacement increment. Evaluating it at zero displacement gives the
