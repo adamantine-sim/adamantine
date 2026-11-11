@@ -263,8 +263,14 @@ std::vector<adamantine::ConnectedComponents::ComponentInfo<dim>>
 adamantine::ConnectedComponents::find_components(
     const dealii::DoFHandler<dim> &dof_handler,
     const std::vector<dealii::types::boundary_id> &target_boundary_id,
-    const unsigned int target_fe_index, const MPI_Comm mpi_communicator)
+    const unsigned int target_fe_index)
 {
+#if DEAL_II_VERSION_GTE(9, 7, 0)
+  const MPI_Comm mpi_communicator = dof_handler.get_mpi_communicator();
+#else
+  const MPI_Comm mpi_communicator = dof_handler.get_communicator();
+#endif
+
   using Cell = typename dealii::DoFHandler<dim>::active_cell_iterator;
   using GlobalCellIndex = dealii::types::global_cell_index;
   // The cell index is either a 32-bit or a 64-bit type. Since it's the largest
@@ -909,9 +915,9 @@ template std::vector<adamantine::ConnectedComponents::ComponentInfo<2>>
 adamantine::ConnectedComponents::find_components(
     const dealii::DoFHandler<2> &dof_handler,
     const std::vector<dealii::types::boundary_id> &target_boundary_id,
-    const unsigned int target_fe_index, const MPI_Comm mpi_communicator);
+    const unsigned int target_fe_index);
 template std::vector<adamantine::ConnectedComponents::ComponentInfo<3>>
 adamantine::ConnectedComponents::find_components(
     const dealii::DoFHandler<3> &dof_handler,
     const std::vector<dealii::types::boundary_id> &target_boundary_id,
-    const unsigned int target_fe_index, const MPI_Comm mpi_communicator);
+    const unsigned int target_fe_index);

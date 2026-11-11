@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE(connected_components)
        ++target_fe_index)
   {
     auto result = adamantine::ConnectedComponents::find_components(
-        dof_handler, {top_boundary_id}, target_fe_index, comm);
+        dof_handler, {top_boundary_id}, target_fe_index);
 
     // --------------------------------------------------------------------------
     // Consistency checks.
@@ -191,7 +191,7 @@ BOOST_AUTO_TEST_CASE(disconnected_components)
       find_top_boundary_id(triangulation, comm);
 
   const auto result = adamantine::ConnectedComponents::find_components(
-      dof_handler, {top_boundary_id}, 0, comm);
+      dof_handler, {top_boundary_id}, 0);
 
   // The two FE-0 regions must remain separate components.
   BOOST_REQUIRE_EQUAL(result.size(), 2);
@@ -277,7 +277,7 @@ BOOST_AUTO_TEST_CASE(adaptive_mesh_refinement)
     dof_handler.distribute_dofs(fe_collection);
 
     const auto result = adamantine::ConnectedComponents::find_components(
-        dof_handler, {top_boundary_id}, 0, comm);
+        dof_handler, {top_boundary_id}, 0);
 
     BOOST_TEST(result.size() == 1);
     BOOST_TEST(result[0]._touches_target_boundary);
@@ -307,7 +307,7 @@ BOOST_AUTO_TEST_CASE(adaptive_mesh_refinement)
     dof_handler.distribute_dofs(fe_collection);
 
     const auto result = adamantine::ConnectedComponents::find_components(
-        dof_handler, {top_boundary_id}, 0, comm);
+        dof_handler, {top_boundary_id}, 0);
 
     BOOST_TEST(result.size() == 2);
 
@@ -367,7 +367,7 @@ BOOST_AUTO_TEST_CASE(vertex_contacts)
     dof_handler.distribute_dofs(fe_collection);
 
     const auto result = adamantine::ConnectedComponents::find_components(
-        dof_handler, {top_boundary_id}, 0, comm);
+        dof_handler, {top_boundary_id}, 0);
 
     BOOST_TEST(result.size() == expected_components);
     unsigned int n_result_cells = 0;
