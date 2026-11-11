@@ -133,6 +133,8 @@ void ScanPath::load_segment_scan_path()
           segment.end_point.distance(_segment_list.back().end_point);
       segment.end_time =
           _segment_list.back().end_time + std::abs(line_length / velocity);
+      ASSERT_THROW(line_length != 0.,
+                   "Invalid scan path: segment of length zero.");
     }
     _segment_list.push_back(segment);
     data_index++;
