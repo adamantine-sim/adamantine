@@ -3,6 +3,7 @@
  */
 
 #include <MechanicalPhysics.hh>
+#include <connected_components.hh>
 #include <instantiation.hh>
 
 #include <deal.II/base/symmetric_tensor.h>
@@ -266,6 +267,18 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
     setup_dofs(std::vector<std::shared_ptr<BodyForce<dim>>> const &body_forces)
 {
   _dof_handler.distribute_dofs(_fe_collection);
+
+#ifdef ADAMANTINE_DEBUG
+  auto connected_components = ConnectedComponents::find_components(
+      _dof_handler, _boundary.get_boundary_ids(BoundaryType::clamped), 0);
+
+  for (const auto &component : connected_components)
+  {
+    ASSERT(component._touches_target_boundary,
+           "At least one component doesn't touch the boundary!");
+  }
+#endif
+
   dealii::IndexSet locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
   dealii::IndexSet locally_owned_dofs = _dof_handler.locally_owned_dofs();
