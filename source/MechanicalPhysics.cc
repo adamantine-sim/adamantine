@@ -598,16 +598,16 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
     return;
   }
 
+#ifdef ADAMANTINE_DEBUG
   auto connected_components = ConnectedComponents::find_components(
       _dof_handler, _boundary.get_boundary_ids(BoundaryType::clamped), 0);
 
   for (const auto &component : connected_components)
   {
-    if (!component._touches_target_boundary)
-      Kokkos::abort("bla");
     ASSERT(component._touches_target_boundary,
            "At least one component doesn't touch the boundary!");
   }
+#endif
 
   _state.swap(tmp_state);
   _trial_state = _state;
