@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -32,7 +32,7 @@ namespace utf = boost::unit_test;
 class LaplaceCoefficient : public dealii::Function<2>
 {
 public:
-  double value(const dealii::Point<2> &, const unsigned int = 0) const final
+  double value(dealii::Point<2> const &, unsigned int const = 0) const final
   {
     return -1;
   }
@@ -360,7 +360,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic, *utf::tolerance(1e-12))
                                   dealii::update_gradients |
                                       dealii::update_quadrature_points |
                                       dealii::update_JxW_values);
-    const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
+    unsigned int const dofs_per_cell = fe.n_dofs_per_cell();
     dealii::FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
     std::vector<dealii::types::global_dof_index> local_dof_indices(
         dofs_per_cell);
@@ -509,7 +509,7 @@ BOOST_AUTO_TEST_CASE(spmv_anisotropic_angle, *utf::tolerance(1e-10))
                                   dealii::update_gradients |
                                       dealii::update_quadrature_points |
                                       dealii::update_JxW_values);
-    const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
+    unsigned int const dofs_per_cell = fe.n_dofs_per_cell();
     dealii::FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
     std::vector<dealii::types::global_dof_index> local_dof_indices(
         dofs_per_cell);

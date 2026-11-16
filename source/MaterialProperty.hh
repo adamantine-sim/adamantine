@@ -835,7 +835,7 @@ MaterialProperty<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
     for (unsigned int material_state = 0;
          material_state < MaterialStates::n_material_states; ++material_state)
     {
-      const dealii::types::material_id m_id = material_id;
+      dealii::types::material_id const m_id = material_id;
 
       value += state_ratios[material_state] *
                compute_property_from_table(_state_property_tables, m_id,

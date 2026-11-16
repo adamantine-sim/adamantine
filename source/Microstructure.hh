@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2025 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -124,7 +124,7 @@ void Microstructure<dim>::compute_G_and_R(
   std::vector<double> cooling_rate(n_dofs_per_cell);
   std::vector<unsigned int> quad_to_support_pts(n_dofs_per_cell);
 
-  for (const auto &cell : dof_handler.active_cell_iterators() |
+  for (auto const &cell : dof_handler.active_cell_iterators() |
                               dealii::IteratorFilters::LocallyOwnedCell() |
                               dealii::IteratorFilters::ActiveFEIndexEqualTo(0))
   {

@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023, the adamantine authors.
+/* Copyright (c) 2021-2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -109,7 +109,7 @@ public:
   template <int dim>
   void
   update_covariance_sparsity_pattern(dealii::DoFHandler<dim> const &dof_handler,
-                                     const unsigned int parameter_size);
+                                     unsigned int const parameter_size);
 
 private:
   using block_size_type =
@@ -259,7 +259,7 @@ private:
    * the support points for the associated dofs on the mesh. This is necessary
    * for localization.
    */
-  std::map<const std::pair<unsigned int, unsigned int>, double>
+  std::map<std::pair<unsigned int, unsigned int> const, double>
       _covariance_distance_map;
 
   /**

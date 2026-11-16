@@ -32,8 +32,8 @@ void test()
   tria.refine_global(3);
 
   dealii::QGauss<dim> quadrature(2);
-  const unsigned int n_q_points = quadrature.size();
-  const unsigned int n_active_cells = tria.n_global_active_cells();
+  unsigned int const n_q_points = quadrature.size();
+  unsigned int const n_active_cells = tria.n_global_active_cells();
 
   std::vector<std::vector<double>> cell_quad_point_values(
       n_active_cells,
@@ -59,15 +59,15 @@ void test()
       dim, spacedim, std::vector<std::vector<double>>>
       cell_data_transfer(
           tria, /* transfer_variable_size_data */ false,
-          [&](const typename dealii::Triangulation<dim, spacedim>::cell_iterator
+          [&](typename dealii::Triangulation<dim, spacedim>::cell_iterator const
                   &parent,
-              const std::vector<double> parent_values) {
+              std::vector<double> const parent_values) {
             return closest_quad_point_adaptation.coarse_to_fine(parent,
                                                                 parent_values);
           },
-          [&](const typename dealii::Triangulation<dim, spacedim>::cell_iterator
+          [&](typename dealii::Triangulation<dim, spacedim>::cell_iterator const
                   &parent,
-              const std::vector<std::vector<double>> child_values) {
+              std::vector<std::vector<double>> const child_values) {
             return closest_quad_point_adaptation.fine_to_coarse(parent,
                                                                 child_values);
           });
@@ -76,7 +76,7 @@ void test()
       cell_quad_point_values);
   tria.execute_coarsening_and_refinement();
 
-  const unsigned int n_active_cells_new = tria.n_global_active_cells();
+  unsigned int const n_active_cells_new = tria.n_global_active_cells();
 
   std::vector<std::vector<double>> cell_quad_point_values_new(
       n_active_cells_new,
@@ -90,7 +90,7 @@ void test()
       cell->set_coarsen_flag();
       for (unsigned int i = 0; i < n_q_points; ++i)
       {
-        const double quad_point_value =
+        double const quad_point_value =
             cell_quad_point_values_new[cell->active_cell_index()][i];
         BOOST_TEST(quad_point_value >= 1.);
         BOOST_TEST(quad_point_value <= 2.);

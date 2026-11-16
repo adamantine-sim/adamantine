@@ -47,7 +47,7 @@ private:
 };
 
 template <int dim>
-void right_hand_side(const std::vector<dealii::Point<dim>> &points,
+void right_hand_side(std::vector<dealii::Point<dim>> const &points,
                      std::vector<dealii::Tensor<1, dim>> &values)
 {
   dealii::Point<dim> point_1, point_2;
@@ -183,7 +183,7 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
 
     std::vector<dealii::Tensor<1, dim>> rhs_values(n_q_points);
 
-    for (const auto &cell : ref_dof_handler.active_cell_iterators())
+    for (auto const &cell : ref_dof_handler.active_cell_iterators())
     {
       cell_matrix = 0;
       cell_rhs = 0;
@@ -194,16 +194,16 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
       mu.value_list(fe_values.get_quadrature_points(), mu_values);
       right_hand_side(fe_values.get_quadrature_points(), rhs_values);
 
-      for (const unsigned int i : fe_values.dof_indices())
+      for (unsigned int const i : fe_values.dof_indices())
       {
-        const unsigned int component_i = fe.system_to_component_index(i).first;
+        unsigned int const component_i = fe.system_to_component_index(i).first;
 
-        for (const unsigned int j : fe_values.dof_indices())
+        for (unsigned int const j : fe_values.dof_indices())
         {
-          const unsigned int component_j =
+          unsigned int const component_j =
               fe.system_to_component_index(j).first;
 
-          for (const unsigned int q_point :
+          for (unsigned int const q_point :
                fe_values.quadrature_point_indices())
           {
             cell_matrix(i, j) +=
@@ -222,11 +222,11 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
         }
       }
 
-      for (const unsigned int i : fe_values.dof_indices())
+      for (unsigned int const i : fe_values.dof_indices())
       {
-        const unsigned int component_i = fe.system_to_component_index(i).first;
+        unsigned int const component_i = fe.system_to_component_index(i).first;
 
-        for (const unsigned int q_point : fe_values.quadrature_point_indices())
+        for (unsigned int const q_point : fe_values.quadrature_point_indices())
           cell_rhs(i) += fe_values.shape_value(i, q_point) *
                          rhs_values[q_point][component_i] *
                          fe_values.JxW(q_point);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -30,7 +30,7 @@ get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler)
   // Manually do what dealii::DoFTools::map_dofs_to_support_points does, since
   // that doesn't currently work with FE_Nothing. The issue has been fixed in
   // deal.II 9.7
-  const dealii::FiniteElement<dim> &fe = dof_handler.get_fe(0);
+  dealii::FiniteElement<dim> const &fe = dof_handler.get_fe(0);
 
   dealii::FEValues<dim, dim> fe_values(fe, fe.get_unit_support_points(),
                                        dealii::update_quadrature_points);
@@ -46,7 +46,7 @@ get_dof_to_support_mapping(dealii::DoFHandler<dim> const &dof_handler)
   {
     fe_values.reinit(cell);
     cell->get_dof_indices(local_dof_indices);
-    const std::vector<dealii::Point<dim>> &points =
+    std::vector<dealii::Point<dim>> const &points =
         fe_values.get_quadrature_points();
     for (unsigned int i = 0; i < fe.n_dofs_per_cell(); ++i)
     {

@@ -42,9 +42,9 @@ struct ComponentInfo
  */
 template <int dim>
 std::vector<ComponentInfo<dim>> find_components(
-    const dealii::DoFHandler<dim> &dof_handler,
-    const std::vector<dealii::types::boundary_id> &target_boundary_id,
-    const unsigned int target_fe_index);
+    dealii::DoFHandler<dim> const &dof_handler,
+    std::vector<dealii::types::boundary_id> const &target_boundary_id,
+    unsigned int const target_fe_index);
 
 } // namespace ConnectedComponents
 } // namespace adamantine

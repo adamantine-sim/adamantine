@@ -3,6 +3,7 @@ BasedOnStyle:  LLVM
 Language:        Cpp
 AlwaysBreakTemplateDeclarations: true
 BreakBeforeBraces: Allman
+QualifierAlignment: Right
 IncludeBlocks: Regroup
 IncludeCategories:
   - Regex: "[a-z]*.hh"
