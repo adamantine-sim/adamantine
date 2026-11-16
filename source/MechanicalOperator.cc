@@ -44,7 +44,7 @@ struct CopyDataRightHandSide
   std::vector<dealii::types::global_dof_index> local_dof_indices;
 
   template <class Iterator>
-  void reinit(const Iterator &cell)
+  void reinit(Iterator const &cell)
   {
     cell_rhs = 0.;
     cell->get_dof_indices(local_dof_indices);
@@ -86,7 +86,7 @@ struct CopyDataMatrix
   std::vector<dealii::types::global_dof_index> local_dof_indices;
 
   template <class Iterator>
-  void reinit(const Iterator &cell)
+  void reinit(Iterator const &cell)
   {
     cell_matrix = 0.;
     cell->get_dof_indices(local_dof_indices);
@@ -105,7 +105,7 @@ struct CopyDataInternalForce
   std::vector<dealii::types::global_dof_index> local_dof_indices;
 
   template <class Iterator>
-  void reinit(const Iterator &cell)
+  void reinit(Iterator const &cell)
   {
     cell_force = 0.;
     cell->get_dof_indices(local_dof_indices);
@@ -162,7 +162,7 @@ MechanicalOperator<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
       dealii::update_gradients | dealii::update_JxW_values);
 
   auto cell_worker =
-      [&](const typename dealii::DoFHandler<dim>::active_cell_iterator &cell,
+      [&](typename dealii::DoFHandler<dim>::active_cell_iterator const &cell,
           ScratchDataMatrix<dim> &scratch_data,
           CopyDataInternalForce &copy_data)
   {
@@ -238,7 +238,7 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
       dealii::update_gradients | dealii::update_JxW_values);
 
   auto cell_worker =
-      [&](const typename dealii::DoFHandler<dim>::active_cell_iterator &cell,
+      [&](typename dealii::DoFHandler<dim>::active_cell_iterator const &cell,
           ScratchDataMatrix<dim> &scratch_data, CopyDataMatrix &copy_data)
   {
     scratch_data.displacement_hp_fe_values.reinit(cell);
@@ -262,7 +262,7 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
         }
   };
 
-  auto copier = [&](const CopyDataMatrix &copy_data)
+  auto copier = [&](CopyDataMatrix const &copy_data)
   {
     _affine_constraints->distribute_local_to_global(
         copy_data.cell_matrix, copy_data.local_dof_indices, _system_matrix);
@@ -340,7 +340,7 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
   // Loop over the locally owned cells that are not FE_Nothing and assemble the
   // sparse matrix and the right-hand-side
   auto cell_worker =
-      [&](const typename dealii::DoFHandler<dim>::active_cell_iterator &cell,
+      [&](typename dealii::DoFHandler<dim>::active_cell_iterator const &cell,
           ScratchDataMatrix<dim> &scratch_data, CopyDataMatrix &copy_data)
   {
     dealii::hp::FEValues<dim> &displacement_hp_fe_values =
@@ -379,7 +379,7 @@ void MechanicalOperator<dim, n_materials, p_order, MaterialStates,
     }
   };
 
-  auto copier = [&](const CopyDataMatrix &cd)
+  auto copier = [&](CopyDataMatrix const &cd)
   {
     _affine_constraints->distribute_local_to_global(
         cd.cell_matrix, cd.local_dof_indices, _system_matrix);

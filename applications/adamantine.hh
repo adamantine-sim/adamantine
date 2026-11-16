@@ -644,7 +644,7 @@ void refine_mesh(
                                 time_steps_refinement, heat_sources);
 
     // PropertyTreeInput refinement.coarsen_after_beam
-    const bool coarsen_after_beam =
+    bool const coarsen_after_beam =
         refinement_database.get<bool>("coarsen_after_beam", false);
 
     // If coarsening is allowed, set the coarsening flag everywhere
@@ -1521,9 +1521,9 @@ run_ensemble(MPI_Comm const &global_communicator,
   // Optional subtrees
   boost::optional<boost::property_tree::ptree const &> units_optional_database =
       database.get_child_optional("units");
-  boost::optional<const boost::property_tree::ptree &>
+  boost::optional<boost::property_tree::ptree const &>
       experiment_optional_database = database.get_child_optional("experiment");
-  boost::optional<const boost::property_tree::ptree &>
+  boost::optional<boost::property_tree::ptree const &>
       data_assimilation_optional_database =
           database.get_child_optional("data_assimilation");
 

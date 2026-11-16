@@ -49,9 +49,9 @@ Point read_point(char const *facet, double const unit_scaling)
 struct InsideCallBack
 {
   template <typename Predicate, typename Value, typename OutputFunctor>
-  KOKKOS_FUNCTION void operator()(const Predicate &predicate,
-                                  const Value &value,
-                                  const OutputFunctor &out) const
+  KOKKOS_FUNCTION void operator()(Predicate const &predicate,
+                                  Value const &value,
+                                  OutputFunctor const &out) const
   {
     auto p = ArborX::getGeometry(predicate);
 #if ARBORX_VERSION_MINOR * 100 + ARBORX_VERSION_PATCH >= 99

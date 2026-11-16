@@ -24,7 +24,7 @@ class ClosestQuadPointAdaptation
 {
 public:
   template <class Quadrature>
-  ClosestQuadPointAdaptation(const Quadrature &quadrature)
+  ClosestQuadPointAdaptation(Quadrature const &quadrature)
       : m_fe_values_coarse(m_fe_nothing, quadrature,
                            dealii::update_quadrature_points),
         m_fe_values_fine(m_fe_nothing, quadrature,
@@ -40,12 +40,12 @@ public:
    * quadrature point and the use its value.
    */
   std::vector<std::vector<quad_point_value_type>> coarse_to_fine(
-      const typename dealii::Triangulation<dim, spacedim>::cell_iterator
+      typename dealii::Triangulation<dim, spacedim>::cell_iterator const
           &parent,
-      const std::vector<quad_point_value_type> parent_values)
+      std::vector<quad_point_value_type> const parent_values)
   {
     m_fe_values_coarse.reinit(parent);
-    const std::vector<dealii::Point<spacedim>> &coarse_quad_points =
+    std::vector<dealii::Point<spacedim>> const &coarse_quad_points =
         m_fe_values_coarse.get_quadrature_points();
 
     std::vector<std::vector<quad_point_value_type>> child_values(
@@ -54,7 +54,7 @@ public:
     for (unsigned int i = 0; i < parent->n_children(); ++i)
     {
       m_fe_values_fine.reinit(parent->child(i));
-      const std::vector<dealii::Point<spacedim>> &fine_quad_points =
+      std::vector<dealii::Point<spacedim>> const &fine_quad_points =
           m_fe_values_fine.get_quadrature_points();
       for (unsigned int j = 0; j < fine_quad_points.size(); ++j)
       {
@@ -83,12 +83,12 @@ public:
    * quadrature point and the use its value.
    */
   std::vector<quad_point_value_type> fine_to_coarse(
-      const typename dealii::Triangulation<dim, spacedim>::cell_iterator
+      typename dealii::Triangulation<dim, spacedim>::cell_iterator const
           &parent,
-      const std::vector<std::vector<quad_point_value_type>> &children_values)
+      std::vector<std::vector<quad_point_value_type>> const &children_values)
   {
     m_fe_values_coarse.reinit(parent);
-    const std::vector<dealii::Point<spacedim>> &coarse_quad_points =
+    std::vector<dealii::Point<spacedim>> const &coarse_quad_points =
         m_fe_values_coarse.get_quadrature_points();
 
     std::vector<std::pair<std::pair<int, int>, double>> min_index_distances{
@@ -97,7 +97,7 @@ public:
     for (unsigned int i = 0; i < parent->n_children(); ++i)
     {
       m_fe_values_fine.reinit(parent->child(i));
-      const std::vector<dealii::Point<spacedim>> &fine_quad_points =
+      std::vector<dealii::Point<spacedim>> const &fine_quad_points =
           m_fe_values_fine.get_quadrature_points();
       for (unsigned int j = 0; j < fine_quad_points.size(); ++j)
       {

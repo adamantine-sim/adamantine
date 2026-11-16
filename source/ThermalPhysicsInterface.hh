@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -165,7 +165,7 @@ public:
   /**
    * Returns one entry of _has_melted
    */
-  virtual bool get_has_melted(const unsigned int) const = 0;
+  virtual bool get_has_melted(unsigned int const) const = 0;
 
   /**
    * Return the DoFHandler.

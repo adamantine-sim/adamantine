@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -29,7 +29,7 @@ public:
   StrainPostProcessor();
 
   void evaluate_vector_field(
-      const dealii::DataPostprocessorInputs::Vector<dim> &displacement_data,
+      dealii::DataPostprocessorInputs::Vector<dim> const &displacement_data,
       std::vector<dealii::Vector<double>> &strain) const override;
 };
 
@@ -195,7 +195,7 @@ StrainPostProcessor<dim>::StrainPostProcessor()
 
 template <int dim>
 void StrainPostProcessor<dim>::evaluate_vector_field(
-    const dealii::DataPostprocessorInputs::Vector<dim> &displacement_data,
+    dealii::DataPostprocessorInputs::Vector<dim> const &displacement_data,
     std::vector<dealii::Vector<double>> &strain) const
 {
   for (unsigned int i = 0; i < displacement_data.solution_gradients.size(); ++i)

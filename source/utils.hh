@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2024, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -76,7 +76,7 @@ inline void ASSERT_THROW(bool cond, std::string const &message)
 // ----------- Custom Exceptions --------------//
 class NotImplementedExc : public std::exception
 {
-  virtual const char *what() const throw() override
+  virtual char const *what() const throw() override
   {
     return "The function is not implemented";
   }

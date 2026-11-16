@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2021 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -424,14 +424,14 @@ DataAssimilator::apply_kalman_gain(
   ASSERT(H.n() == P.m(), "Matrices dimensions not compatible");
   ASSERT(H.m() == R.m(), "Matrices dimensions not compatible");
 
-  const auto op_H = dealii::linear_operator(H);
-  const auto op_P = dealii::linear_operator(P);
-  const auto op_R = dealii::linear_operator(R);
+  auto const op_H = dealii::linear_operator(H);
+  auto const op_P = dealii::linear_operator(P);
+  auto const op_R = dealii::linear_operator(R);
 
-  const auto op_HPH_plus_R =
+  auto const op_HPH_plus_R =
       op_H * op_P * dealii::transpose_operator(op_H) + op_R;
 
-  const std::vector<dealii::types::global_dof_index> block_sizes = {
+  std::vector<dealii::types::global_dof_index> const block_sizes = {
       _sim_size, _parameter_size};
   std::vector<dealii::LA::distributed::BlockVector<double>> output(
       _num_ensemble_members,
@@ -453,7 +453,7 @@ DataAssimilator::apply_kalman_gain(
         auto op_HPH_plus_R_inv =
             dealii::inverse_operator(op_HPH_plus_R, HPH_plus_R_inv_solver);
 
-        const auto op_K =
+        auto const op_K =
             op_P * dealii::transpose_operator(op_H) * op_HPH_plus_R_inv;
 
         // Apply the Kalman gain to each innovation vector
@@ -512,7 +512,7 @@ void DataAssimilator::update_dof_mapping(
 template <int dim>
 void DataAssimilator::update_covariance_sparsity_pattern(
     dealii::DoFHandler<dim> const &dof_handler,
-    const unsigned int parameter_size)
+    unsigned int const parameter_size)
 {
   if (_color == 0)
   {
@@ -758,9 +758,9 @@ template void DataAssimilator::update_dof_mapping<3>(
     std::pair<std::vector<int>, std::vector<int>> const &expt_to_dof_mapping);
 template void DataAssimilator::update_covariance_sparsity_pattern<2>(
     dealii::DoFHandler<2> const &dof_handler,
-    const unsigned int parameter_size);
+    unsigned int const parameter_size);
 template void DataAssimilator::update_covariance_sparsity_pattern<3>(
     dealii::DoFHandler<3> const &dof_handler,
-    const unsigned int parameter_size);
+    unsigned int const parameter_size);
 
 } // namespace adamantine

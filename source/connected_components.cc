@@ -28,7 +28,7 @@ class DisjointSet
 public:
   DisjointSet() = default;
 
-  explicit DisjointSet(const unsigned int n) : _parent(n), _rank(n, 0)
+  explicit DisjointSet(unsigned int const n) : _parent(n), _rank(n, 0)
   {
     std::iota(_parent.begin(), _parent.end(), 0U);
   }
@@ -147,7 +147,7 @@ struct ContactRecord
  * points.
  */
 template <int dim>
-bool has_three_non_collinear_points(const std::vector<dealii::Point<dim>> &pts)
+bool has_three_non_collinear_points(std::vector<dealii::Point<dim>> const &pts)
 {
   if (pts.size() < 3)
     return false;
@@ -167,12 +167,12 @@ bool has_three_non_collinear_points(const std::vector<dealii::Point<dim>> &pts)
     return false;
 
   // If every point lies on the line through the first two, all are collinear.
-  const auto d1 = p1 - pts[0];
+  auto const d1 = p1 - pts[0];
   for (; pts_idx < pts.size(); ++pts_idx)
   {
-    const auto d2 = pts[pts_idx] - pts[0];
-    const double dot = d1 * d2;
-    const double sin2_scaled = d1.norm_square() * d2.norm_square() - dot * dot;
+    auto const d2 = pts[pts_idx] - pts[0];
+    double const dot = d1 * d2;
+    double const sin2_scaled = d1.norm_square() * d2.norm_square() - dot * dot;
     if (sin2_scaled > 1e-12 * d1.norm_square() * d2.norm_square())
       return true;
   }
@@ -187,8 +187,8 @@ bool has_three_non_collinear_points(const std::vector<dealii::Point<dim>> &pts)
  * returns invalid_unsigned_int for unknown cells.
  */
 template <int dim, typename NodeOfCell>
-void unite_by_vertex_contacts(const std::vector<ContactRecord<dim>> &contacts,
-                              DisjointSet &dsu, const NodeOfCell &node_of_cell)
+void unite_by_vertex_contacts(std::vector<ContactRecord<dim>> const &contacts,
+                              DisjointSet &dsu, NodeOfCell const &node_of_cell)
 {
   struct Resolved
   {
@@ -199,10 +199,10 @@ void unite_by_vertex_contacts(const std::vector<ContactRecord<dim>> &contacts,
 
   std::vector<Resolved> resolved;
   resolved.reserve(contacts.size());
-  for (const auto &c : contacts)
+  for (auto const &c : contacts)
   {
-    const unsigned int a = node_of_cell(c._cell_id_1);
-    const unsigned int b = node_of_cell(c._cell_id_2);
+    unsigned int const a = node_of_cell(c._cell_id_1);
+    unsigned int const b = node_of_cell(c._cell_id_2);
     if (a != dealii::numbers::invalid_unsigned_int &&
         b != dealii::numbers::invalid_unsigned_int)
       resolved.push_back({a, b, c._point});
@@ -236,8 +236,8 @@ void unite_by_vertex_contacts(const std::vector<ContactRecord<dim>> &contacts,
              std::get<1>(keys[end]) == std::get<1>(keys[begin]))
         pts.push_back(resolved[std::get<2>(keys[end++])]._point);
 
-      const unsigned int ra = std::get<0>(keys[begin]);
-      const unsigned int rb = std::get<1>(keys[begin]);
+      unsigned int const ra = std::get<0>(keys[begin]);
+      unsigned int const rb = std::get<1>(keys[begin]);
       if (dsu.find(ra) != dsu.find(rb) && has_three_non_collinear_points(pts))
       {
         dsu.unite(ra, rb);
@@ -261,14 +261,14 @@ void unite_by_vertex_contacts(const std::vector<ContactRecord<dim>> &contacts,
 template <int dim>
 std::vector<adamantine::ConnectedComponents::ComponentInfo<dim>>
 adamantine::ConnectedComponents::find_components(
-    const dealii::DoFHandler<dim> &dof_handler,
-    const std::vector<dealii::types::boundary_id> &target_boundary_id,
-    const unsigned int target_fe_index)
+    dealii::DoFHandler<dim> const &dof_handler,
+    std::vector<dealii::types::boundary_id> const &target_boundary_id,
+    unsigned int const target_fe_index)
 {
 #if DEAL_II_VERSION_GTE(9, 7, 0)
-  const MPI_Comm mpi_communicator = dof_handler.get_mpi_communicator();
+  MPI_Comm const mpi_communicator = dof_handler.get_mpi_communicator();
 #else
-  const MPI_Comm mpi_communicator = dof_handler.get_communicator();
+  MPI_Comm const mpi_communicator = dof_handler.get_communicator();
 #endif
 
   using Cell = typename dealii::DoFHandler<dim>::active_cell_iterator;
@@ -282,10 +282,10 @@ adamantine::ConnectedComponents::find_components(
   local_cells.reserve(dof_handler.get_triangulation().n_active_cells());
   std::unordered_map<GlobalCellIndex, unsigned int> local_index_of_id;
 
-  for (const Cell &cell : dof_handler.active_cell_iterators())
+  for (Cell const &cell : dof_handler.active_cell_iterators())
     if (cell->is_locally_owned() && cell->active_fe_index() == target_fe_index)
     {
-      const GlobalCellIndex id = cell->global_active_cell_index();
+      GlobalCellIndex const id = cell->global_active_cell_index();
       local_index_of_id[id] = local_cells.size();
       local_cells.push_back(cell);
     }
@@ -305,9 +305,9 @@ adamantine::ConnectedComponents::find_components(
   // Same-FE cross-rank adjacencies, stored as sorted cell-id pairs.
   std::vector<std::pair<GlobalCellIndex, GlobalCellIndex>> interface_pairs;
 
-  auto process_neighbor = [&](const unsigned int i, const unsigned int fe_index,
-                              const GlobalCellIndex cell_id,
-                              const Cell &neighbor)
+  auto process_neighbor = [&](unsigned int const i, unsigned int const fe_index,
+                              GlobalCellIndex const cell_id,
+                              Cell const &neighbor)
   {
     if (!neighbor->is_active())
       return;
@@ -317,7 +317,7 @@ adamantine::ConnectedComponents::find_components(
 
     if (neighbor->is_locally_owned())
     {
-      const auto it =
+      auto const it =
           local_index_of_id.find(neighbor->global_active_cell_index());
       if (it != local_index_of_id.end())
         local_dsu.unite(i, it->second);
@@ -337,9 +337,9 @@ adamantine::ConnectedComponents::find_components(
 
   for (unsigned int i = 0; i < local_cells.size(); ++i)
   {
-    const Cell cell = local_cells[i];
-    const GlobalCellIndex cell_id = cell->global_active_cell_index();
-    const unsigned int fe_idx = cell->active_fe_index();
+    Cell const cell = local_cells[i];
+    GlobalCellIndex const cell_id = cell->global_active_cell_index();
+    unsigned int const fe_idx = cell->active_fe_index();
 
     for (unsigned int f = 0; f < dealii::GeometryInfo<dim>::faces_per_cell; ++f)
     {
@@ -352,7 +352,7 @@ adamantine::ConnectedComponents::find_components(
         continue;
       }
 
-      const auto neighbor = cell->neighbor(f);
+      auto const neighbor = cell->neighbor(f);
       if (cell->neighbor_is_coarser(f))
       {
         process_neighbor(i, fe_idx, cell_id, neighbor);
@@ -394,7 +394,7 @@ adamantine::ConnectedComponents::find_components(
     std::unordered_map<unsigned int, std::vector<VertexCell>> cells_of_vertex;
     std::unordered_map<unsigned int, dealii::Point<dim>> point_of_vertex;
 
-    for (const Cell &cell : dof_handler.active_cell_iterators())
+    for (Cell const &cell : dof_handler.active_cell_iterators())
       if ((cell->is_locally_owned() || cell->is_ghost()) &&
           cell->active_fe_index() == target_fe_index)
       {
@@ -414,14 +414,14 @@ adamantine::ConnectedComponents::find_components(
     // For every vertex with at least two corresponding cells, only consider one
     // cell per component (unless it's a ghost cell) and run a pairwise match
     // storing the contact if at least one of those cells is locally owned.
-    for (const auto &[vertex_index, vertex_cells] : cells_of_vertex)
+    for (auto const &[vertex_index, vertex_cells] : cells_of_vertex)
     {
       if (vertex_cells.size() < 2)
         continue;
 
       std::vector<VertexCell> reduced;
       std::unordered_map<unsigned int, bool> root_seen;
-      for (const auto &vc : vertex_cells)
+      for (auto const &vc : vertex_cells)
         if (vc._local_index < 0 ||
             root_seen.emplace(local_dsu.find(vc._local_index), true).second)
           reduced.push_back(vc);
@@ -445,9 +445,9 @@ adamantine::ConnectedComponents::find_components(
   if (dealii::Utilities::MPI::n_mpi_processes(mpi_communicator) == 1)
     unite_by_vertex_contacts<dim>(
         contacts, local_dsu,
-        [&](const GlobalCellIndex id)
+        [&](GlobalCellIndex const id)
         {
-          const auto it = local_index_of_id.find(id);
+          auto const it = local_index_of_id.find(id);
           return it == local_index_of_id.end()
                      ? dealii::numbers::invalid_unsigned_int
                      : it->second;
@@ -466,7 +466,7 @@ adamantine::ConnectedComponents::find_components(
 
   for (unsigned int i = 0; i < local_cells.size(); ++i)
   {
-    const unsigned int root = local_dsu.find(i);
+    unsigned int const root = local_dsu.find(i);
 
     if (rep_id_of_root.find(root) == rep_id_of_root.end())
       rep_id_of_root[root] = local_cells[root]->global_active_cell_index();
@@ -476,20 +476,20 @@ adamantine::ConnectedComponents::find_components(
   }
 
   local_summary._components.reserve(rep_id_of_root.size());
-  for (const auto &[root, rep_id] : rep_id_of_root)
+  for (auto const &[root, rep_id] : rep_id_of_root)
     local_summary._components.push_back({rep_id, touches_of_root[root]});
 
   local_summary._owned_cells.reserve(local_cells.size());
 
-  const unsigned int n_owned_to_send = std::count(
+  unsigned int const n_owned_to_send = std::count(
       local_cell_has_interface.begin(), local_cell_has_interface.end(), true);
   std::vector<OwnedCellRecord> owned_to_send(n_owned_to_send);
   unsigned int owned_to_send_pos = 0;
 
   for (unsigned int i = 0; i < local_cells.size(); ++i)
   {
-    const GlobalCellIndex cell_id = local_cells[i]->global_active_cell_index();
-    const GlobalCellIndex rep_id = rep_id_of_root[local_dsu.find(i)];
+    GlobalCellIndex const cell_id = local_cells[i]->global_active_cell_index();
+    GlobalCellIndex const rep_id = rep_id_of_root[local_dsu.find(i)];
 
     local_summary._owned_cells.push_back({cell_id, rep_id});
 
@@ -500,7 +500,7 @@ adamantine::ConnectedComponents::find_components(
   AssertDimension(owned_to_send_pos, owned_to_send.size());
 
   local_summary._interfaces.reserve(interface_pairs.size());
-  for (const auto &p : interface_pairs)
+  for (auto const &p : interface_pairs)
     local_summary._interfaces.push_back({p.first, p.second});
 
   // If running with a single MPI rank, we can stop here and construct the
@@ -515,9 +515,9 @@ adamantine::ConnectedComponents::find_components(
     std::unordered_map<GlobalCellIndex, unsigned int> cid_of_rep;
     cid_of_rep.reserve(local_summary._components.size());
 
-    for (const auto &c : local_summary._components)
+    for (auto const &c : local_summary._components)
     {
-      const unsigned int cid = static_cast<unsigned int>(result.size());
+      unsigned int const cid = static_cast<unsigned int>(result.size());
       cid_of_rep[c._rep_id] = cid;
       result.emplace_back();
       result.back()._touches_target_boundary = c._touches_target_boundary;
@@ -525,9 +525,9 @@ adamantine::ConnectedComponents::find_components(
 
     for (unsigned int i = 0; i < local_cells.size(); ++i)
     {
-      const unsigned int root = local_dsu.find(i);
-      const GlobalCellIndex rep_id = rep_id_of_root.at(root);
-      const unsigned int cid = cid_of_rep.at(rep_id);
+      unsigned int const root = local_dsu.find(i);
+      GlobalCellIndex const rep_id = rep_id_of_root.at(root);
+      unsigned int const cid = cid_of_rep.at(rep_id);
       result[cid]._locally_owned_cells.push_back(local_cells[i]);
     }
 
@@ -547,8 +547,8 @@ adamantine::ConnectedComponents::find_components(
   // Cell ids and representative ids are packed as GlobalCellIndex values
   // avoiding any narrowing casts.
   // --------------------------------------------------------------------------
-  const int n_ranks = dealii::Utilities::MPI::n_mpi_processes(mpi_communicator);
-  const int my_rank =
+  int const n_ranks = dealii::Utilities::MPI::n_mpi_processes(mpi_communicator);
+  int const my_rank =
       dealii::Utilities::MPI::this_mpi_process(mpi_communicator);
 
   // The vertex coordinates are copied bit-wise into whole packed words.
@@ -556,7 +556,7 @@ adamantine::ConnectedComponents::find_components(
       (dim * sizeof(double) + sizeof(PackedWord) - 1) / sizeof(PackedWord);
   constexpr std::size_t contact_words = 2U + coord_words;
 
-  const std::size_t send_buf_size = 1U + 2U * local_summary._components.size() +
+  std::size_t const send_buf_size = 1U + 2U * local_summary._components.size() +
                                     1U + 2U * owned_to_send.size() + 1U +
                                     2U * local_summary._interfaces.size() + 1U +
                                     contact_words * contacts.size();
@@ -566,7 +566,7 @@ adamantine::ConnectedComponents::find_components(
 
   // components
   send_buf[send_pos++] = local_summary._components.size();
-  for (const auto &c : local_summary._components)
+  for (auto const &c : local_summary._components)
   {
     send_buf[send_pos++] = c._rep_id;
     send_buf[send_pos++] = c._touches_target_boundary;
@@ -574,7 +574,7 @@ adamantine::ConnectedComponents::find_components(
 
   // owned cells
   send_buf[send_pos++] = static_cast<PackedWord>(owned_to_send.size());
-  for (const auto &o : owned_to_send)
+  for (auto const &o : owned_to_send)
   {
     send_buf[send_pos++] = o._cell_id;
     send_buf[send_pos++] = o._component_rep_id;
@@ -583,7 +583,7 @@ adamantine::ConnectedComponents::find_components(
   // interfaces
   send_buf[send_pos++] =
       static_cast<PackedWord>(local_summary._interfaces.size());
-  for (const auto &itf : local_summary._interfaces)
+  for (auto const &itf : local_summary._interfaces)
   {
     send_buf[send_pos++] = itf._cell_id_1;
     send_buf[send_pos++] = itf._cell_id_2;
@@ -591,7 +591,7 @@ adamantine::ConnectedComponents::find_components(
 
   // contacts
   send_buf[send_pos++] = static_cast<PackedWord>(contacts.size());
-  for (const auto &c : contacts)
+  for (auto const &c : contacts)
   {
     send_buf[send_pos++] = c._cell_id_1;
     send_buf[send_pos++] = c._cell_id_2;
@@ -603,8 +603,8 @@ adamantine::ConnectedComponents::find_components(
   AssertIndexRange(send_buf.size() * sizeof(PackedWord),
                    std::numeric_limits<int>::max());
 
-  const int my_send_count = static_cast<int>(send_buf.size());
-  const int my_send_n_bytes = my_send_count * sizeof(PackedWord);
+  int const my_send_count = static_cast<int>(send_buf.size());
+  int const my_send_n_bytes = my_send_count * sizeof(PackedWord);
 
   // Gather exact message sizes first so each receive buffer can be sized
   // tightly before posting Irecv.
@@ -619,11 +619,11 @@ adamantine::ConnectedComponents::find_components(
   {
     if (r == my_rank)
       continue;
-    const int cnt = send_counts[r];
+    int const cnt = send_counts[r];
     if (cnt == 0)
       continue;
     recv_bufs[r].resize(cnt);
-    const int recv_n_bytes = cnt * static_cast<int>(sizeof(PackedWord));
+    int const recv_n_bytes = cnt * static_cast<int>(sizeof(PackedWord));
     MPI_Irecv(recv_bufs[r].data(), recv_n_bytes, MPI_BYTE, r, 0,
               mpi_communicator, &recv_reqs[r]);
     ++n_pending;
@@ -645,21 +645,21 @@ adamantine::ConnectedComponents::find_components(
   std::vector<bool> touches_of_rep;
 
   // Helper populating component_index_of_rep and component_reps
-  auto ensure_component_index = [&](const GlobalCellIndex rep_id)
+  auto ensure_component_index = [&](GlobalCellIndex const rep_id)
   {
-    const auto it = component_index_of_rep.find(rep_id);
+    auto const it = component_index_of_rep.find(rep_id);
     if (it != component_index_of_rep.end())
       return it->second;
-    const unsigned int idx = static_cast<unsigned int>(component_reps.size());
+    unsigned int const idx = static_cast<unsigned int>(component_reps.size());
     component_index_of_rep[rep_id] = idx;
     component_reps.push_back(rep_id);
     touches_of_rep.push_back(false);
     return idx;
   };
 
-  for (const auto &comp : local_summary._components)
+  for (auto const &comp : local_summary._components)
   {
-    const unsigned int idx = ensure_component_index(comp._rep_id);
+    unsigned int const idx = ensure_component_index(comp._rep_id);
     touches_of_rep[idx] = touches_of_rep[idx] || comp._touches_target_boundary;
   }
 
@@ -668,7 +668,7 @@ adamantine::ConnectedComponents::find_components(
   // deterministic representative indices after all summaries have been read.
   std::unordered_map<GlobalCellIndex, GlobalCellIndex> owned_cell_to_rep_local;
   owned_cell_to_rep_local.reserve(local_summary._owned_cells.size());
-  for (const auto &o : local_summary._owned_cells)
+  for (auto const &o : local_summary._owned_cells)
     owned_cell_to_rep_local[o._cell_id] = o._component_rep_id;
 
   // Process incoming messages as they arrive.
@@ -682,30 +682,30 @@ adamantine::ConnectedComponents::find_components(
     MPI_Waitany(n_ranks, recv_reqs.data(), &idx, MPI_STATUS_IGNORE);
     Assert(idx != MPI_UNDEFINED, dealii::ExcInternalError());
 
-    const auto &buf = recv_bufs[idx];
+    auto const &buf = recv_bufs[idx];
     std::size_t pos = 0;
 
-    const std::size_t ncomps = static_cast<std::size_t>(buf[pos++]);
+    std::size_t const ncomps = static_cast<std::size_t>(buf[pos++]);
     for (std::size_t ci = 0; ci < ncomps; ++ci)
     {
-      const GlobalCellIndex rep_id = buf[pos++];
-      const bool touches = (buf[pos++] != 0);
-      const unsigned int id = ensure_component_index(rep_id);
+      GlobalCellIndex const rep_id = buf[pos++];
+      bool const touches = (buf[pos++] != 0);
+      unsigned int const id = ensure_component_index(rep_id);
       touches_of_rep[id] = touches_of_rep[id] || touches;
     }
 
-    const std::size_t nowned = static_cast<std::size_t>(buf[pos++]);
+    std::size_t const nowned = static_cast<std::size_t>(buf[pos++]);
     for (std::size_t oi = 0; oi < nowned; ++oi)
     {
-      const GlobalCellIndex cell_id = buf[pos++];
-      const GlobalCellIndex rep_id = buf[pos++];
+      GlobalCellIndex const cell_id = buf[pos++];
+      GlobalCellIndex const rep_id = buf[pos++];
       owned_cell_to_rep_local[cell_id] = rep_id;
     }
 
-    const std::size_t nifaces = static_cast<std::size_t>(buf[pos++]);
+    std::size_t const nifaces = static_cast<std::size_t>(buf[pos++]);
     pos += 2U * nifaces;
 
-    const std::size_t ncontacts = static_cast<std::size_t>(buf[pos++]);
+    std::size_t const ncontacts = static_cast<std::size_t>(buf[pos++]);
     pos += contact_words * ncontacts;
 
     AssertDimension(pos, buf.size());
@@ -726,16 +726,16 @@ adamantine::ConnectedComponents::find_components(
     if (r == my_rank || send_counts[r] == 0)
       continue;
 
-    const auto &buf = recv_bufs[r];
+    auto const &buf = recv_bufs[r];
     std::size_t pos = 0;
 
-    const std::size_t ncomps = static_cast<std::size_t>(buf[pos++]);
+    std::size_t const ncomps = static_cast<std::size_t>(buf[pos++]);
     pos += 2U * ncomps;
 
-    const std::size_t nowned = static_cast<std::size_t>(buf[pos++]);
+    std::size_t const nowned = static_cast<std::size_t>(buf[pos++]);
     pos += 2U * nowned;
 
-    const std::size_t nifaces = static_cast<std::size_t>(buf[pos++]);
+    std::size_t const nifaces = static_cast<std::size_t>(buf[pos++]);
     n_global_interfaces += nifaces;
 
     pos += 2U * nifaces;
@@ -747,7 +747,7 @@ adamantine::ConnectedComponents::find_components(
       global_interface_pairs(n_global_interfaces);
   std::size_t interface_pos = 0;
 
-  for (const auto &itf : local_summary._interfaces)
+  for (auto const &itf : local_summary._interfaces)
     global_interface_pairs[interface_pos++] = {itf._cell_id_1, itf._cell_id_2};
 
   for (int r = 0; r < n_ranks; ++r)
@@ -755,24 +755,24 @@ adamantine::ConnectedComponents::find_components(
     if (r == my_rank || send_counts[r] == 0)
       continue;
 
-    const auto &buf = recv_bufs[r];
+    auto const &buf = recv_bufs[r];
     std::size_t pos = 0;
 
-    const std::size_t ncomps = static_cast<std::size_t>(buf[pos++]);
+    std::size_t const ncomps = static_cast<std::size_t>(buf[pos++]);
     pos += 2U * ncomps;
 
-    const std::size_t nowned = static_cast<std::size_t>(buf[pos++]);
+    std::size_t const nowned = static_cast<std::size_t>(buf[pos++]);
     pos += 2U * nowned;
 
-    const std::size_t nifaces = static_cast<std::size_t>(buf[pos++]);
+    std::size_t const nifaces = static_cast<std::size_t>(buf[pos++]);
     for (std::size_t ii = 0; ii < nifaces; ++ii)
     {
-      const GlobalCellIndex a = buf[pos++];
-      const GlobalCellIndex b = buf[pos++];
+      GlobalCellIndex const a = buf[pos++];
+      GlobalCellIndex const b = buf[pos++];
       global_interface_pairs[interface_pos++] = {a, b};
     }
 
-    const std::size_t ncontacts = static_cast<std::size_t>(buf[pos++]);
+    std::size_t const ncontacts = static_cast<std::size_t>(buf[pos++]);
     for (std::size_t ci = 0; ci < ncontacts; ++ci)
     {
       ContactRecord<dim> c;
@@ -794,7 +794,7 @@ adamantine::ConnectedComponents::find_components(
   // ranks assign the same indices for the same rep ids.
   std::vector<GlobalCellIndex> reps_sorted;
   reps_sorted.reserve(component_index_of_rep.size());
-  for (const auto &kv : component_index_of_rep)
+  for (auto const &kv : component_index_of_rep)
     reps_sorted.push_back(kv.first);
   std::sort(reps_sorted.begin(), reps_sorted.end());
 
@@ -808,8 +808,8 @@ adamantine::ConnectedComponents::find_components(
 
   for (unsigned int i = 0; i < reps_sorted.size(); ++i)
   {
-    const GlobalCellIndex rep_id = reps_sorted[i];
-    const unsigned int old_idx = component_index_of_rep.at(rep_id);
+    GlobalCellIndex const rep_id = reps_sorted[i];
+    unsigned int const old_idx = component_index_of_rep.at(rep_id);
     new_component_index_of_rep[rep_id] = i;
     new_component_reps.push_back(rep_id);
     new_touches_of_rep.push_back(touches_of_rep[old_idx]);
@@ -824,11 +824,11 @@ adamantine::ConnectedComponents::find_components(
   // mappings using the deterministic representative numbering.
   std::unordered_map<GlobalCellIndex, unsigned int> owned_cell_to_rep;
   owned_cell_to_rep.reserve(owned_cell_to_rep_local.size());
-  for (const auto &p : owned_cell_to_rep_local)
+  for (auto const &p : owned_cell_to_rep_local)
   {
-    const GlobalCellIndex cell = p.first;
-    const GlobalCellIndex rep_id = p.second;
-    const unsigned int rep_idx = component_index_of_rep.at(rep_id);
+    GlobalCellIndex const cell = p.first;
+    GlobalCellIndex const rep_id = p.second;
+    unsigned int const rep_idx = component_index_of_rep.at(rep_id);
     owned_cell_to_rep[cell] = rep_idx;
   }
 
@@ -836,10 +836,10 @@ adamantine::ConnectedComponents::find_components(
   // endpoints to representative indices.
   std::vector<std::pair<unsigned int, unsigned int>> global_edges;
   global_edges.reserve(global_interface_pairs.size());
-  for (const auto &itf : global_interface_pairs)
+  for (auto const &itf : global_interface_pairs)
   {
-    const auto it_a = owned_cell_to_rep.find(itf.first);
-    const auto it_b = owned_cell_to_rep.find(itf.second);
+    auto const it_a = owned_cell_to_rep.find(itf.first);
+    auto const it_b = owned_cell_to_rep.find(itf.second);
     if (it_a == owned_cell_to_rep.end() || it_b == owned_cell_to_rep.end())
       continue;
     unsigned int ia = it_a->second;
@@ -856,16 +856,16 @@ adamantine::ConnectedComponents::find_components(
 
   DisjointSet global_dsu(component_reps.size());
 
-  for (const auto &e : global_edges)
+  for (auto const &e : global_edges)
     global_dsu.unite(e.first, e.second);
 
   // Merge components touching at three or more non-collinear vertices. The
   // contacts contain all local ones and the ones received from other ranks.
   unite_by_vertex_contacts<dim>(
       contacts, global_dsu,
-      [&](const GlobalCellIndex id)
+      [&](GlobalCellIndex const id)
       {
-        const auto it = owned_cell_to_rep.find(id);
+        auto const it = owned_cell_to_rep.find(id);
         return it == owned_cell_to_rep.end()
                    ? dealii::numbers::invalid_unsigned_int
                    : it->second;
@@ -879,29 +879,29 @@ adamantine::ConnectedComponents::find_components(
 
   for (unsigned int i = 0; i < global_dsu.size(); ++i)
   {
-    const unsigned int root = global_dsu.find(i);
+    unsigned int const root = global_dsu.find(i);
 
     auto it = compact_id_of_root.find(root);
     if (it == compact_id_of_root.end())
     {
-      const unsigned int cid = result.size();
+      unsigned int const cid = result.size();
       compact_id_of_root[root] = cid;
       result.emplace_back();
       it = compact_id_of_root.find(root);
     }
 
-    const unsigned int cid = it->second;
+    unsigned int const cid = it->second;
     result[cid]._touches_target_boundary =
         result[cid]._touches_target_boundary || touches_of_rep[i];
   }
 
   for (unsigned int i = 0; i < local_cells.size(); ++i)
   {
-    const GlobalCellIndex rep_id = rep_id_of_root[local_dsu.find(i)];
+    GlobalCellIndex const rep_id = rep_id_of_root[local_dsu.find(i)];
 
-    const unsigned int root =
+    unsigned int const root =
         global_dsu.find(component_index_of_rep.at(rep_id));
-    const unsigned int cid = compact_id_of_root.at(root);
+    unsigned int const cid = compact_id_of_root.at(root);
 
     result[cid]._locally_owned_cells.push_back(local_cells[i]);
   }
@@ -913,11 +913,11 @@ adamantine::ConnectedComponents::find_components(
 
 template std::vector<adamantine::ConnectedComponents::ComponentInfo<2>>
 adamantine::ConnectedComponents::find_components(
-    const dealii::DoFHandler<2> &dof_handler,
-    const std::vector<dealii::types::boundary_id> &target_boundary_id,
-    const unsigned int target_fe_index);
+    dealii::DoFHandler<2> const &dof_handler,
+    std::vector<dealii::types::boundary_id> const &target_boundary_id,
+    unsigned int const target_fe_index);
 template std::vector<adamantine::ConnectedComponents::ComponentInfo<3>>
 adamantine::ConnectedComponents::find_components(
-    const dealii::DoFHandler<3> &dof_handler,
-    const std::vector<dealii::types::boundary_id> &target_boundary_id,
-    const unsigned int target_fe_index);
+    dealii::DoFHandler<3> const &dof_handler,
+    std::vector<dealii::types::boundary_id> const &target_boundary_id,
+    unsigned int const target_fe_index);

@@ -44,17 +44,17 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
       _verbose_output(verbose_output), _solution_transfer(_dof_handler),
       _closest_quad_point_adaptation(dealii::QGauss<dim>(fe_degree + 1)),
       _cell_data_transfer(
-          dynamic_cast<const dealii::parallel::distributed::Triangulation<dim>
+          dynamic_cast<dealii::parallel::distributed::Triangulation<dim> const
                            &>(_dof_handler.get_triangulation()),
           /* transfer_variable_size_data */ false,
-          [&](const typename dealii::Triangulation<dim>::cell_iterator &parent,
-              const std::vector<std::vector<double>> &parent_values)
+          [&](typename dealii::Triangulation<dim>::cell_iterator const &parent,
+              std::vector<std::vector<double>> const &parent_values)
           {
             return _closest_quad_point_adaptation.coarse_to_fine(parent,
                                                                  parent_values);
           },
-          [&](const typename dealii::Triangulation<dim>::cell_iterator &parent,
-              const std::vector<std::vector<std::vector<double>>> &child_values)
+          [&](typename dealii::Triangulation<dim>::cell_iterator const &parent,
+              std::vector<std::vector<std::vector<double>>> const &child_values)
           {
             return _closest_quad_point_adaptation.fine_to_coarse(parent,
                                                                  child_values);
@@ -142,7 +142,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
       _fe_collection, _q_collection, dealii::update_gradients);
   unsigned int const n_q_points = _q_collection.max_n_quadrature_points();
   std::vector<dealii::SymmetricTensor<2, dim>> strain_tensor(n_q_points);
-  const dealii::FEValuesExtractors::Vector displacement_extr(0);
+  dealii::FEValuesExtractors::Vector const displacement_extr(0);
 
   unsigned int cell_id = 0;
   for (auto const &cell : _dof_handler.active_cell_iterators())
@@ -272,7 +272,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   auto connected_components = ConnectedComponents::find_components(
       _dof_handler, _boundary.get_boundary_ids(BoundaryType::clamped), 0);
 
-  for (const auto &component : connected_components)
+  for (auto const &component : connected_components)
   {
     ASSERT(component._touches_target_boundary,
            "At least one component doesn't touch the boundary!");
@@ -286,7 +286,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   dealii::DoFTools::make_hanging_node_constraints(_dof_handler,
                                                   _affine_constraints);
 
-  std::map<dealii::types::boundary_id, const dealii::Function<dim> *>
+  std::map<dealii::types::boundary_id, dealii::Function<dim> const *>
       boundary_function_map;
   dealii::Functions::ZeroFunction<dim> zero_function(dim);
   auto boundary_ids = _boundary.get_boundary_ids(BoundaryType::clamped);
@@ -392,7 +392,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 {
   _dof_handler.distribute_dofs(_fe_collection);
 
-  const dealii::IndexSet locally_relevant_dofs =
+  dealii::IndexSet const locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
   _old_displacement.reinit(_dof_handler.locally_owned_dofs(),
                            locally_relevant_dofs,
@@ -620,9 +620,9 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   setup_dofs(body_forces);
 
   // Update _old_displacement if necessary
-  const dealii::IndexSet locally_relevant_dofs =
+  dealii::IndexSet const locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
-  const dealii::IndexSet locally_owned_dofs = _dof_handler.locally_owned_dofs();
+  dealii::IndexSet const locally_owned_dofs = _dof_handler.locally_owned_dofs();
   _old_displacement.reinit(locally_owned_dofs, locally_relevant_dofs,
 #if DEAL_II_VERSION_GTE(9, 7, 0)
                            _dof_handler.get_mpi_communicator()
@@ -665,7 +665,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   dealii::hp::FEValues<dim> displacement_hp_fe_values(
       _fe_collection, _q_collection, dealii::update_gradients);
   std::vector<dealii::SymmetricTensor<2, dim>> activation_strain(n_quad_pts);
-  const dealii::FEValuesExtractors::Vector displacement_extr(0);
+  dealii::FEValuesExtractors::Vector const displacement_extr(0);
   cell_id = 0;
   for (auto const &cell : _dof_handler.active_cell_iterators())
   {
@@ -919,7 +919,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   std::vector<dealii::SymmetricTensor<2, dim>> previous_strain_tensor(
       n_q_points);
   std::vector<double> temperature_values(n_q_points);
-  const dealii::FEValuesExtractors::Vector displacement_extr(0);
+  dealii::FEValuesExtractors::Vector const displacement_extr(0);
   std::unique_ptr<dealii::hp::FEValues<dim>> temperature_hp_fe_values;
   std::vector<unsigned int> cell_indices;
   // When solving a thermomechanical problem, we create mapping between the

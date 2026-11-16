@@ -63,7 +63,7 @@ private:
   dealii::Vector<double> _system_rhs;
 };
 
-void right_hand_side(const std::vector<dealii::Point<3>> &points,
+void right_hand_side(std::vector<dealii::Point<3>> const &points,
                      std::vector<dealii::Tensor<1, 3>> &values)
 {
   for (unsigned int point_n = 0; point_n < points.size(); ++point_n)
@@ -476,12 +476,12 @@ template <int dim>
 class InitialValueT : public dealii::Function<dim>
 {
 public:
-  double value(const dealii::Point<dim> &p,
-               const unsigned int /*component = 0*/) const override
+  double value(dealii::Point<dim> const &p,
+               unsigned int const /*component = 0*/) const override
   {
     dealii::Point<dim> center = {2.0e-5, 2.0e-5, 2.0e-5};
-    const double a = 1.0e-6;
-    const double T0 = 3.0;
+    double const a = 1.0e-6;
+    double const T0 = 3.0;
     double dist = center.distance(p);
     if (dist < a)
     {
@@ -530,7 +530,7 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
                                      units_optional_database);
   auto &triangulation = geometry.get_triangulation();
 
-  const dealii::Point<dim> center = {2.0e-5, 2.0e-5, 2.0e-5};
+  dealii::Point<dim> const center = {2.0e-5, 2.0e-5, 2.0e-5};
 
   for (unsigned int cycle = 0; cycle < refinement_cycles; ++cycle)
   {
@@ -666,8 +666,8 @@ BOOST_AUTO_TEST_CASE(thermoelastic_eshelby, *utf::tolerance(0.16))
 
   int constexpr dim = 3;
 
-  const dealii::Point<dim> pt1 = {2.08e-5, 2.0e-5, 2.0e-5};
-  const dealii::Point<dim> pt2 = {2.3e-5, 2.2e-5, 1.9e-5};
+  dealii::Point<dim> const pt1 = {2.08e-5, 2.0e-5, 2.0e-5};
+  dealii::Point<dim> const pt2 = {2.3e-5, 2.2e-5, 1.9e-5};
   std::vector<dealii::Point<dim>> pts = {pt1, pt2};
 
   unsigned int refinement_cyles = 3;

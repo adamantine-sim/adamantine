@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2016 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -37,7 +37,7 @@ public:
 #if DEAL_II_VERSION_GTE(9, 7, 0)
   KOKKOS_FUNCTION void operator()(
       typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
-      const dealii::Portable::DeviceVector<double> &src,
+      dealii::Portable::DeviceVector<double> const &src,
       dealii::Portable::DeviceVector<double> dst) const;
 #else
   KOKKOS_FUNCTION void operator()(
@@ -47,10 +47,10 @@ public:
       double *dst) const;
 #endif
 
-  static const unsigned int n_dofs_1d = fe_degree + 1;
-  static const unsigned int n_local_dofs =
+  static unsigned int const n_dofs_1d = fe_degree + 1;
+  static unsigned int const n_local_dofs =
       dealii::Utilities::pow(fe_degree + 1, dim);
-  static const unsigned int n_q_points =
+  static unsigned int const n_q_points =
       dealii::Utilities::pow(fe_degree + 1, dim);
 };
 
@@ -59,7 +59,7 @@ KOKKOS_FUNCTION void LocalMassMatrixOperator<dim, fe_degree>::
 #if DEAL_II_VERSION_GTE(9, 7, 0)
 operator()(
     typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
-    const dealii::Portable::DeviceVector<double> & /*src*/,
+    dealii::Portable::DeviceVector<double> const & /*src*/,
     dealii::Portable::DeviceVector<double> dst) const
 #else
 operator()(
@@ -78,7 +78,7 @@ operator()(
       );
   MassMatrixOperatorQuad<dim, fe_degree> quad;
 #if DEAL_II_VERSION_GTE(9, 8, 0)
-  gpu_data->for_each_quad_point([&](const int &q_point)
+  gpu_data->for_each_quad_point([&](int const &q_point)
                                 { quad(&fe_eval, q_point); });
 #else
   fe_eval.apply_for_each_quad_point(quad);
@@ -292,7 +292,7 @@ KOKKOS_FUNCTION double ThermalOperatorQuad<dim, n_materials, use_table, p_order,
     for (unsigned int material_state = 0; material_state < _n_material_states;
          ++material_state)
     {
-      const dealii::types::material_id m_id = material_id;
+      dealii::types::material_id const m_id = material_id;
 
       value += state_ratios[material_state] *
                adamantine::MaterialProperty<dim, n_materials, p_order,
@@ -424,7 +424,7 @@ public:
 #if DEAL_II_VERSION_GTE(9, 7, 0)
   KOKKOS_FUNCTION void operator()(
       typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
-      const dealii::Portable::DeviceVector<double> &src,
+      dealii::Portable::DeviceVector<double> const &src,
       dealii::Portable::DeviceVector<double> dst) const;
 #else
   KOKKOS_FUNCTION void operator()(
@@ -434,10 +434,10 @@ public:
       double *dst) const;
 #endif
 
-  static const unsigned int n_dofs_1d = fe_degree + 1;
-  static const unsigned int n_local_dofs =
+  static unsigned int const n_dofs_1d = fe_degree + 1;
+  static unsigned int const n_local_dofs =
       dealii::Utilities::pow(fe_degree + 1, dim);
-  static const unsigned int n_q_points =
+  static unsigned int const n_q_points =
       dealii::Utilities::pow(fe_degree + 1, dim);
 
 private:
@@ -462,7 +462,7 @@ LocalThermalOperatorDevice<dim, n_materials, use_table, p_order, fe_degree,
 #if DEAL_II_VERSION_GTE(9, 7, 0)
 operator()(
     typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
-    const dealii::Portable::DeviceVector<double> &src,
+    dealii::Portable::DeviceVector<double> const &src,
     dealii::Portable::DeviceVector<double> dst) const
 #else
 operator()(
@@ -484,7 +484,7 @@ operator()(
                    dealii::EvaluationFlags::gradients);
 
 #if DEAL_II_VERSION_GTE(9, 7, 0)
-  const int cell = fe_eval.get_current_cell_index();
+  int const cell = fe_eval.get_current_cell_index();
 #endif
 
   ThermalOperatorQuad<dim, n_materials, use_table, p_order, fe_degree,
@@ -493,7 +493,7 @@ operator()(
            _material_id, _inv_rho_cp, _properties, _state_property_tables,
            _state_property_polynomials);
 #if DEAL_II_VERSION_GTE(9, 8, 0)
-  gpu_data->for_each_quad_point([&](const int &q_point)
+  gpu_data->for_each_quad_point([&](int const &q_point)
                                 { quad(&fe_eval, q_point); });
 #else
   fe_eval.apply_for_each_quad_point(quad);
