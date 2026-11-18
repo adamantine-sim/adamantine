@@ -5,7 +5,7 @@
 
   cmake,
 
-  openmpi, trilinos-mpi, arborx, p4est, boost, sundials-mpi,
+  openmpi, trilinos-mpi, arborx, p4est, boost, sundials-mpi, muparser,
 
   # Allow extra args as needed for callPackage chaining - not ideal.
   ...
@@ -28,6 +28,7 @@ stdenv.mkDerivation rec {
     p4est
     boost
     sundials-mpi
+    muparser
   ];
 
   hardeningDisable = [
@@ -46,6 +47,8 @@ stdenv.mkDerivation rec {
     "-DDEAL_II_WITH_P4EST=ON"
     "-DDEAL_II_WITH_ARBORX=ON"
     "-DDEAL_II_WITH_SUNDIALS=ON"
+    "-DDEAL_II_WITH_MUPARSER=ON"
+    "-DMUPARSER_DIR=${muparser}"
     "-DDEAL_II_WITH_TRILINOS=ON"
     "-DDEAL_II_TRILINOS_WITH_SEACAS=OFF"
     "-DDEAL_II_COMPONENT_EXAMPLES=OFF"
