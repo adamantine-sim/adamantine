@@ -271,6 +271,17 @@ BOOST_AUTO_TEST_CASE(elastostatic)
   zero_increment.update_ghost_values();
   auto const residual = mechanical_physics.evaluate_residual(zero_increment);
   BOOST_CHECK_SMALL(residual.l2_norm(), 1.e-9);
+
+  // A second correction solve must preserve the converged displacement and
+  // the prescribed total values on the clamped face.
+  auto const repeated_solution = mechanical_physics.solve();
+  auto difference = repeated_solution;
+  difference -= solution;
+  BOOST_CHECK_SMALL(difference.l2_norm(), 1.e-9);
+  for (auto const &line :
+       mechanical_physics.get_displacement_constraints().get_lines())
+    if (line.entries.empty())
+      BOOST_CHECK_SMALL(repeated_solution[line.index], 1.e-14);
 }
 
 BOOST_AUTO_TEST_CASE(elastoplastic_residual)
@@ -392,6 +403,23 @@ BOOST_AUTO_TEST_CASE(elastoplastic_residual)
   auto displacement_difference = displacement;
   displacement_difference -= elastic_displacement;
   BOOST_CHECK(displacement_difference.l2_norm() > 1.e-8);
+
+  // Homogeneous Newton corrections must leave the clamped total displacement
+  // unchanged, including when solving again from committed plastic history.
+  auto const repeated_displacement = mechanical_physics.solve();
+  auto repeated_difference = repeated_displacement;
+  repeated_difference -= displacement;
+  BOOST_CHECK_SMALL(repeated_difference.l2_norm(), 1.e-8);
+  for (auto const &line :
+       mechanical_physics.get_displacement_constraints().get_lines())
+    if (line.entries.empty())
+      BOOST_CHECK_SMALL(repeated_displacement[line.index], 1.e-14);
+  auto const repeated_stress = mechanical_physics.get_stress_tensor();
+  for (unsigned int cell_id = 0; cell_id < state_stress.size(); ++cell_id)
+    for (unsigned int q = 0; q < state_stress[cell_id].size(); ++q)
+      BOOST_CHECK_SMALL(
+          (repeated_stress[cell_id][q] - state_stress[cell_id][q]).norm(),
+          1.e-8);
 }
 
 BOOST_AUTO_TEST_CASE(fe_nothing)
@@ -641,7 +669,7 @@ run_eshelby(std::vector<dealii::Point<dim>> pts, unsigned int refinement_cycles)
 
   // Output (for debugging)
   /*
-  mechanical_physics.get_affine_constraints().distribute(solution);
+  mechanical_physics.get_displacement_constraints().distribute(solution);
   post_processor.write_output(0, 0, 0, temperature, solution,
                               material_properties.get_state(),
                               material_properties.get_dofs_map(),

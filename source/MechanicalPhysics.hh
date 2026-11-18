@@ -148,9 +148,10 @@ public:
   dealii::DoFHandler<dim> &get_dof_handler();
 
   /**
-   * Return the AffineConstraints<double>.
+   * Return the constraints on the total displacement. Linear solver
+   * corrections use separate homogeneous constraints.
    */
-  dealii::AffineConstraints<double> &get_affine_constraints();
+  dealii::AffineConstraints<double> &get_displacement_constraints();
 
   /**
    * Return the constitutive state associated to each quadrature point.
@@ -189,9 +190,10 @@ public:
 private:
   /**
    * Solve a linear system with the current mechanical matrix and return a
-   * constrained displacement vector. The current matrix is the elastic
-   * stiffness matrix for an elastic solve or the initial nonlinear guess, and
-   * is the current nonlinear Jacobian for subsequent KINSOL linear solves.
+   * homogeneously constrained displacement correction. The current matrix is
+   * the elastic stiffness matrix for an elastic solve or the initial nonlinear
+   * guess, and is the current nonlinear Jacobian for subsequent KINSOL linear
+   * solves.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
   solve_linear_system(
@@ -248,9 +250,14 @@ private:
    */
   dealii::DoFHandler<dim> _dof_handler;
   /**
-   * Associated AffineConstraints.
+   * Constraints on the total displacement, including prescribed values.
    */
-  dealii::AffineConstraints<double> _affine_constraints;
+  dealii::AffineConstraints<double> _displacement_constraints;
+  /**
+   * Homogeneous constraints for residual assembly and linear corrections.
+   * Hanging-node relations are identical to the total-displacement constraints.
+   */
+  dealii::AffineConstraints<double> _correction_constraints;
   /**
    * Associated QCollection.
    */
@@ -367,9 +374,9 @@ template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 inline dealii::AffineConstraints<double> &
 MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
-                  MemorySpaceType>::get_affine_constraints()
+                  MemorySpaceType>::get_displacement_constraints()
 {
-  return _affine_constraints;
+  return _displacement_constraints;
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,

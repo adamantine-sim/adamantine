@@ -282,9 +282,9 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   dealii::IndexSet locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
   dealii::IndexSet locally_owned_dofs = _dof_handler.locally_owned_dofs();
-  _affine_constraints.reinit(locally_owned_dofs, locally_relevant_dofs);
+  _displacement_constraints.reinit(locally_owned_dofs, locally_relevant_dofs);
   dealii::DoFTools::make_hanging_node_constraints(_dof_handler,
-                                                  _affine_constraints);
+                                                  _displacement_constraints);
 
   std::map<dealii::types::boundary_id, dealii::Function<dim> const *>
       boundary_function_map;
@@ -295,11 +295,19 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
     boundary_function_map[id] = &zero_function;
   }
   dealii::VectorTools::interpolate_boundary_values(
-      _dof_handler, boundary_function_map, _affine_constraints);
-  _affine_constraints.close();
+      _dof_handler, boundary_function_map, _displacement_constraints);
+  _displacement_constraints.close();
 
-  _mechanical_operator->reinit(_dof_handler, _affine_constraints, _q_collection,
-                               body_forces);
+  _correction_constraints.reinit(locally_owned_dofs, locally_relevant_dofs);
+  dealii::DoFTools::make_hanging_node_constraints(_dof_handler,
+                                                  _correction_constraints);
+  for (auto id : boundary_ids)
+    dealii::VectorTools::interpolate_boundary_values(
+        _dof_handler, id, zero_function, _correction_constraints);
+  _correction_constraints.close();
+
+  _mechanical_operator->reinit(_dof_handler, _correction_constraints,
+                               _q_collection, body_forces);
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -722,7 +730,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
       displacement_host(locally_owned_dofs, locally_relevant_dofs,
                         _mechanical_operator->rhs().get_mpi_communicator());
   displacement_host.import_elements(rw_vector, dealii::VectorOperation::insert);
-  _affine_constraints.distribute(displacement_host);
+  _correction_constraints.distribute(displacement_host);
 
   return displacement_host;
 }
@@ -759,6 +767,7 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
     _old_displacement.update_ghost_values();
     displacement += _old_displacement;
   }
+  _displacement_constraints.distribute(displacement);
   displacement.update_ghost_values();
 
   typename KINSOL::AdditionalData additional_data;
@@ -845,6 +854,9 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   {
     displacement_host = solve_nonlinear_system();
   }
+
+  _displacement_constraints.distribute(displacement_host);
+  displacement_host.update_ghost_values();
 
   // Evaluate the trial state using the displacement increment from the
   // previous time step. If the trial stress is under the yield criterion, the

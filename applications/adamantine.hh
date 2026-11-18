@@ -92,7 +92,7 @@ void output_pvtu(
     thermal_physics->get_affine_constraints().distribute(temperature);
     if (mechanical_physics)
     {
-      mechanical_physics->get_affine_constraints().distribute(displacement);
+      mechanical_physics->get_displacement_constraints().distribute(displacement);
       post_processor.template write_output<typename Kokkos::View<
           double **, typename MemorySpaceType::kokkos_space>::array_layout>(
           n_time_step, time, temperature, displacement,
@@ -111,7 +111,7 @@ void output_pvtu(
   }
   else
   {
-    mechanical_physics->get_affine_constraints().distribute(displacement);
+    mechanical_physics->get_displacement_constraints().distribute(displacement);
     post_processor.template write_mechanical_output<typename Kokkos::View<
         double **, typename MemorySpaceType::kokkos_space>::array_layout>(
         n_time_step, time, displacement,
@@ -161,7 +161,7 @@ void output_pvtu(
     thermal_physics->get_affine_constraints().distribute(temperature_host);
     if (mechanical_physics)
     {
-      mechanical_physics->get_affine_constraints().distribute(displacement);
+      mechanical_physics->get_displacement_constraints().distribute(displacement);
       post_processor.template write_output<typename Kokkos::View<
           double **, typename MemorySpaceType::kokkos_space>::array_layout>(
           n_time_step, time, temperature_host, displacement,
@@ -180,7 +180,7 @@ void output_pvtu(
   }
   else
   {
-    mechanical_physics->get_affine_constraints().distribute(displacement);
+    mechanical_physics->get_displacement_constraints().distribute(displacement);
     post_processor.template write_mechanical_output<typename Kokkos::View<
         double **, typename MemorySpaceType::kokkos_space>::array_layout>(
         n_time_step, time, displacement,
@@ -1414,7 +1414,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     }
     if (use_mechanical_physics)
     {
-      mechanical_physics->get_affine_constraints().distribute(displacement);
+      mechanical_physics->get_displacement_constraints().distribute(displacement);
     }
     return std::make_pair(temperature, displacement);
   }
@@ -1431,7 +1431,7 @@ run(MPI_Comm const &communicator, boost::property_tree::ptree const &database,
     }
     if (use_mechanical_physics)
     {
-      mechanical_physics->get_affine_constraints().distribute(displacement);
+      mechanical_physics->get_displacement_constraints().distribute(displacement);
     }
     return std::make_pair(temperature_host, displacement);
   }
