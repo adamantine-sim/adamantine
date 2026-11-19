@@ -31,6 +31,7 @@ set(MPI_UNIT_TESTS "")
 list(APPEND
      MPI_UNIT_TESTS
      test_connected_components
+     test_mechanical_displacement
      test_integration_2d
      test_integration_2d_device
      test_integration_3d
