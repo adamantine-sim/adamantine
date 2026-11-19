@@ -9,8 +9,10 @@
 #include <MechanicalPhysics.hh>
 #include <PostProcessor.hh>
 #include <ThermalPhysics.hh>
+#include <types.hh>
 
 #include <deal.II/base/function.h>
+#include <deal.II/base/function_parser.h>
 #include <deal.II/base/mpi.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/tensor.h>
@@ -1471,3 +1473,83 @@ BOOST_AUTO_TEST_CASE(thermoelastoplastic_radial_return)
     for (auto const &value : cell_stress)
       BOOST_CHECK_SMALL((value - expected_stress_3).norm(), 1.e-12);
 }
+
+template <int dim>
+void displacement_patch(bool normal_component_only = false)
+{
+  std::vector<std::string> const coordinate_names =
+      dim == 2 ? std::vector<std::string>{"x", "z"}
+               : std::vector<std::string>{"x", "y", "z"};
+  auto const variables = dim == 2 ? "x,z,t" : "x,y,z,t";
+  MPI_Comm const communicator = MPI_COMM_WORLD;
+  boost::property_tree::ptree geometry_database;
+  geometry_database.put("import_mesh", false);
+  geometry_database.put("length", 1.);
+  geometry_database.put("height", 1.);
+  geometry_database.put("width", 1.);
+  geometry_database.put("length_divisions", 3);
+  geometry_database.put("height_divisions", 3);
+  geometry_database.put("width_divisions", 3);
+  boost::optional<boost::property_tree::ptree const &> units;
+  adamantine::Geometry<dim> geometry(communicator, geometry_database, units);
+  for (auto cell : geometry.get_triangulation().active_cell_iterators())
+  {
+    cell->set_material_id(0);
+    cell->set_user_index(
+        static_cast<int>(adamantine::SolidLiquidPowder::State::solid));
+  }
+  boost::property_tree::ptree materials;
+  materials.put("property_format", "polynomial");
+  materials.put("n_materials", 1);
+  materials.put("material_0.solid.lame_first_parameter", 2.);
+  materials.put("material_0.solid.lame_second_parameter", 3.);
+  adamantine::MaterialProperty<dim, 1, 4, adamantine::SolidLiquidPowder,
+                               dealii::MemorySpace::Host>
+      properties(communicator, geometry.get_triangulation(), materials);
+  boost::property_tree::ptree boundaries;
+  for (auto id : geometry.get_triangulation().get_boundary_ids())
+  {
+    auto const prefix = "boundary_" + std::to_string(id);
+    boundaries.put(prefix + ".type", "displacement");
+    for (unsigned int d = 0; d < dim; ++d)
+      if (!normal_component_only || d == id / 2)
+        boundaries.put(prefix + ".displacement." + coordinate_names[d],
+                       "0.001*t*" + coordinate_names[d]);
+  }
+  adamantine::Boundary boundary(
+      boundaries, geometry.get_triangulation().get_boundary_ids());
+  adamantine::MechanicalPhysics<dim, 1, 4, adamantine::SolidLiquidPowder,
+                                dealii::MemorySpace::Host>
+      mechanics(communicator, 1, geometry, boundary, properties, {});
+  mechanics.setup_dofs();
+  // Affine dilation has constant strain 0.001*t*I and stress
+  // (dim*lambda+2*mu)*0.001*t*I, including at unconstrained interior DoFs.
+  for (double time : {0., 1., 2., 2., 0.5})
+  {
+    auto solution = mechanics.solve(time);
+    auto expected = solution;
+    dealii::FunctionParser<dim> function(dim);
+    std::vector<std::string> expressions;
+    for (unsigned int d = 0; d < dim; ++d)
+      expressions.push_back("0.001*t*" + coordinate_names[d]);
+    function.initialize(variables, expressions, {}, true);
+    function.set_time(time);
+    dealii::VectorTools::interpolate(mechanics.get_dof_handler(), function,
+                                     expected);
+    solution -= expected;
+    BOOST_CHECK_SMALL(solution.l2_norm(), 1.e-10);
+    auto const stress =
+        (dim * 2. + 6.) * 0.001 * time * dealii::unit_symmetric_tensor<dim>();
+    for (auto const &cell : mechanics.get_stress_tensor())
+      for (auto const &value : cell)
+        BOOST_CHECK_SMALL((value - stress).norm(), 1.e-10);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(elastic_displacement_patch_2d) { displacement_patch<2>(); }
+BOOST_AUTO_TEST_CASE(elastic_displacement_components)
+{
+  displacement_patch<3>(true);
+}
+
+BOOST_AUTO_TEST_CASE(elastic_displacement_patch_3d) { displacement_patch<3>(); }

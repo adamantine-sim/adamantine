@@ -25,7 +25,8 @@ enum BoundaryType
   radiative = 0x2,
   convective = 0x4,
   clamped = 0x8,
-  traction_free = 0x10
+  traction_free = 0x10,
+  displacement = 0x20
 };
 
 /**
@@ -75,8 +76,17 @@ inline BoundaryType &operator&=(BoundaryType &b1, BoundaryType const b2)
 }
 
 /**
- * This class parses the Boundary database and stores the BoundaryType
- * associated with each boundary id.
+ * Structure that discribes the displacement boundary conditions.
+ */
+struct DisplacementBoundary
+{
+  dealii::types::boundary_id id;
+  std::string component;
+  std::string expression;
+};
+
+/**
+ * Boundary types and normalized prescribed displacement expressions.
  */
 class Boundary
 {
@@ -103,7 +113,19 @@ public:
   std::vector<dealii::types::boundary_id>
   get_boundary_ids(BoundaryType type) const;
 
+  /**
+   * Return the prescribed components and their coordinate formulas.
+   */
+  std::vector<DisplacementBoundary> const &get_displacements() const
+  {
+    return _displacements;
+  }
+
 private:
+  /**
+   * Prescribed boundary components and formulas.
+   */
+  std::vector<DisplacementBoundary> _displacements;
   /**
    * Vector of all the BoundaryType present in the Geometry.
    */

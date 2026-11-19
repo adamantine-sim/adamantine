@@ -5,7 +5,9 @@
 #include <MechanicalPhysics.hh>
 #include <connected_components.hh>
 #include <instantiation.hh>
+#include <types.hh>
 
+#include <deal.II/base/function_parser.h>
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/base/tensor.h>
 #include <deal.II/dofs/dof_tools.h>
@@ -61,6 +63,21 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
           })
 {
   _is_purely_elastic = _material_properties.has_infinite_elastic_limit();
+  ASSERT_THROW(
+      _is_purely_elastic || _boundary.get_displacements().empty(),
+      "Prescribed displacement currently requires purely elastic materials.");
+  std::map<std::string, unsigned int> const component_indices{
+      {"x", axis<dim>::x}, {"y", axis<dim>::y}, {"z", axis<dim>::z}};
+  auto const variables = dim == 2 ? "x,z,t" : "x,y,z,t";
+  for (auto const &bc : _boundary.get_displacements())
+  {
+    auto const component = component_indices.at(bc.component);
+    auto function = std::make_unique<dealii::FunctionParser<dim>>(dim);
+    std::vector<std::string> expressions(dim, "0");
+    expressions[component] = bc.expression;
+    function->initialize(variables, expressions, {}, true);
+    _displacement_functions.push_back(std::move(function));
+  }
 
   // Create the FECollection
   _fe_collection.push_back(
@@ -270,7 +287,10 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 
 #ifdef ADAMANTINE_DEBUG
   auto connected_components = ConnectedComponents::find_components(
-      _dof_handler, _boundary.get_boundary_ids(BoundaryType::clamped), 0);
+      _dof_handler,
+      _boundary.get_boundary_ids(BoundaryType::clamped |
+                                 BoundaryType::displacement),
+      0);
 
   for (auto const &component : connected_components)
   {
@@ -282,28 +302,25 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   dealii::IndexSet locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
   dealii::IndexSet locally_owned_dofs = _dof_handler.locally_owned_dofs();
-  _displacement_constraints.reinit(locally_owned_dofs, locally_relevant_dofs);
-  dealii::DoFTools::make_hanging_node_constraints(_dof_handler,
-                                                  _displacement_constraints);
-
-  std::map<dealii::types::boundary_id, dealii::Function<dim> const *>
-      boundary_function_map;
+  // Build homogeneous constraints for assembly and solver corrections.
+  // Total-displacement constraints are rebuilt at the current time in solve().
   dealii::Functions::ZeroFunction<dim> zero_function(dim);
   auto boundary_ids = _boundary.get_boundary_ids(BoundaryType::clamped);
-  for (auto id : boundary_ids)
-  {
-    boundary_function_map[id] = &zero_function;
-  }
-  dealii::VectorTools::interpolate_boundary_values(
-      _dof_handler, boundary_function_map, _displacement_constraints);
-  _displacement_constraints.close();
-
   _correction_constraints.reinit(locally_owned_dofs, locally_relevant_dofs);
   dealii::DoFTools::make_hanging_node_constraints(_dof_handler,
                                                   _correction_constraints);
   for (auto id : boundary_ids)
     dealii::VectorTools::interpolate_boundary_values(
         _dof_handler, id, zero_function, _correction_constraints);
+  std::map<std::string, unsigned int> const component_indices{
+      {"x", axis<dim>::x}, {"y", axis<dim>::y}, {"z", axis<dim>::z}};
+  for (auto const &bc : _boundary.get_displacements())
+  {
+    dealii::ComponentMask mask(dim, false);
+    mask.set(component_indices.at(bc.component), true);
+    dealii::VectorTools::interpolate_boundary_values(
+        _dof_handler, bc.id, zero_function, _correction_constraints, mask);
+  }
   _correction_constraints.close();
 
   _mechanical_operator->reinit(_dof_handler, _correction_constraints,
@@ -812,14 +829,59 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
+void MechanicalPhysics<
+    dim, n_materials, p_order, MaterialStates,
+    MemorySpaceType>::update_displacement_constraints(double time)
+{
+  ASSERT_THROW(
+      _is_purely_elastic || _boundary.get_displacements().empty(),
+      "Prescribed displacement currently requires purely elastic materials.");
+
+  // Start with the current DoF layout and preserve hanging-node relations.
+  // Boundary interpolation below leaves already constrained DoFs unchanged.
+  _displacement_constraints.reinit(
+      _dof_handler.locally_owned_dofs(),
+      dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler));
+  dealii::DoFTools::make_hanging_node_constraints(_dof_handler,
+                                                  _displacement_constraints);
+
+  // Clamped boundaries prescribe zero displacement in every component.
+  dealii::Functions::ZeroFunction<dim> zero(dim);
+  for (auto id : _boundary.get_boundary_ids(BoundaryType::clamped))
+    dealii::VectorTools::interpolate_boundary_values(_dof_handler, id, zero,
+                                                     _displacement_constraints);
+
+  // Evaluate the cached formulas at the current time. Each mask selects only
+  // the prescribed component; the other components remain unconstrained.
+  std::map<std::string, unsigned int> const component_indices{
+      {"x", axis<dim>::x}, {"y", axis<dim>::y}, {"z", axis<dim>::z}};
+  auto const &displacements = _boundary.get_displacements();
+  for (unsigned int i = 0; i < displacements.size(); ++i)
+  {
+    auto const &bc = displacements[i];
+    auto &function = *_displacement_functions[i];
+    function.set_time(time);
+    dealii::ComponentMask mask(dim, false);
+    mask.set(component_indices.at(bc.component), true);
+    dealii::VectorTools::interpolate_boundary_values(
+        _dof_handler, bc.id, function, _displacement_constraints, mask);
+  }
+
+  // Finalize the total-displacement constraints before using them in solve().
+  _displacement_constraints.close();
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
 MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
-                  MemorySpaceType>::solve()
+                  MemorySpaceType>::solve(double time)
 {
 #ifdef ADAMANTINE_WITH_CALIPER
   CALI_MARK_BEGIN("solve mechanical system");
 #endif
 
+  update_displacement_constraints(time);
   _mechanical_operator->ensure_elastic_matrix();
 
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
@@ -830,24 +892,31 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
         _dof_handler.locally_owned_dofs();
     dealii::IndexSet const locally_relevant_dofs =
         dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
+    // Start from the committed displacement and impose the current boundary
+    // values to obtain an admissible total displacement.
     dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
-        zero_displacement(locally_owned_dofs, locally_relevant_dofs,
-                          _mechanical_operator->rhs().get_mpi_communicator());
-    zero_displacement.update_ghost_values();
-
-    // For an elastic constitutive law the residual is affine in the
-    // displacement increment. Evaluating it at zero displacement gives the
-    // right-hand side for the unchanged elastic matrix without introducing a
-    // separate thermal load vector.
-    auto rhs = evaluate_residual(zero_displacement);
-    rhs *= -1.;
-    double const tolerance = 1e-12 * rhs.l2_norm();
-    displacement_host = solve_linear_system(rhs, tolerance);
+        initial_displacement(
+            locally_owned_dofs, locally_relevant_dofs,
+            _mechanical_operator->rhs().get_mpi_communicator());
     if (_old_displacement.size() > 0)
     {
-      _old_displacement.update_ghost_values();
-      displacement_host += _old_displacement;
+      initial_displacement = _old_displacement;
     }
+    _displacement_constraints.distribute(initial_displacement);
+    initial_displacement.update_ghost_values();
+
+    // The elastic residual is affine in the increment from the committed
+    // displacement. Evaluate it at this starting state to include boundary,
+    // thermal, and external loading. The correction is zero on prescribed
+    // components, so adding it preserves the imposed displacement values.
+    auto const initial_increment =
+        compute_incremental_displacement(initial_displacement);
+    auto rhs = evaluate_residual(initial_increment);
+    rhs *= -1.;
+    displacement_host = initial_displacement;
+    double const rhs_norm = rhs.l2_norm();
+    double const tolerance = std::max(1.e-12 * rhs_norm, 1.e-14);
+    displacement_host += solve_linear_system(rhs, tolerance);
     displacement_host.update_ghost_values();
   }
   else

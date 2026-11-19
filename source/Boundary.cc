@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2025 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -56,6 +56,17 @@ Boundary::Boundary(boost::property_tree::ptree const &database,
     if (boundary_type_str)
     {
       _types[id] = parse_boundary_line(*boundary_type_str);
+
+      // Displacement boundaries need to read multiple strings
+      if (_types[id] & BoundaryType::displacement)
+      {
+        auto const &components = database.get_child(
+            "boundary_" + std::to_string(id) + ".displacement");
+        for (auto const &entry : components)
+        {
+          _displacements.push_back({id, entry.first, entry.second.data()});
+        }
+      }
     }
   }
 
@@ -94,7 +105,8 @@ BoundaryType Boundary::parse_boundary_line(std::string boundary_type_str)
       {"radiative", BoundaryType::radiative},
       {"convective", BoundaryType::convective},
       {"clamped", BoundaryType::clamped},
-      {"traction_free", BoundaryType::traction_free}};
+      {"traction_free", BoundaryType::traction_free},
+      {"displacement", BoundaryType::displacement}};
 
   size_t pos_str = 0;
   while ((pos_str = boundary_type_str.find(delimiter)) != std::string::npos)
