@@ -10,6 +10,7 @@
 #include <Geometry.hh>
 #include <MechanicalOperator.hh>
 
+#include <deal.II/base/function_parser.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
@@ -117,7 +118,8 @@ public:
   void complete_transfer_mpi();
 
   /**
-   * Solve the mechanical problem and return the displacement.
+   * Solve at the supplied simulation time and return the total displacement.
+   * Formula coordinates refer to the reference mesh.
    *
    * The default solver selection uses the elastic limit from the material
    * properties. An infinite elastic limit selects the linear solver; any
@@ -127,7 +129,8 @@ public:
    * displacement. If verbose output was enabled in the constructor, the
    * nonlinear iteration count is printed on rank zero.
    */
-  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host> solve();
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
+  solve(double time = 0.);
 
   /**
    * Evaluate the mechanical residual for a displacement increment from the
@@ -148,9 +151,10 @@ public:
   dealii::DoFHandler<dim> &get_dof_handler();
 
   /**
-   * Return the AffineConstraints<double>.
+   * Return the constraints on the total displacement. Linear solver
+   * corrections use separate homogeneous constraints.
    */
-  dealii::AffineConstraints<double> &get_affine_constraints();
+  dealii::AffineConstraints<double> &get_displacement_constraints();
 
   /**
    * Return the constitutive state associated to each quadrature point.
@@ -188,10 +192,20 @@ public:
 
 private:
   /**
+   * Rebuild total-displacement constraints for the current DoF layout and time.
+   * Reuse compiled boundary functions and interpolate prescribed components.
+   * Homogeneous correction constraints are built separately by setup_dofs().
+   */
+  void update_displacement_constraints(double time);
+  /**
    * Solve a linear system with the current mechanical matrix and return a
-   * constrained displacement vector. The current matrix is the elastic
-   * stiffness matrix for an elastic solve or the initial nonlinear guess, and
-   * is the current nonlinear Jacobian for subsequent KINSOL linear solves.
+   * homogeneously constrained displacement correction. The current matrix is
+   * the elastic stiffness matrix for an elastic solve or the initial nonlinear
+   * guess, and is the current nonlinear Jacobian for subsequent KINSOL linear
+   * solves. Elasticity also uses a homogeneous correction: the residual is
+   * evaluated at a total displacement satisfying the prescribed values, and
+   * this correction is added to that displacement. Prescribed values must
+   * never be applied to the correction itself.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
   solve_linear_system(
@@ -201,8 +215,11 @@ private:
 
   /**
    * Solve the nonlinear mechanical residual with KINSOL. The elastic matrix
-   * provides the initial guess; KINSOL then replaces it with the assembled
-   * consistent global Jacobian for its linear solves.
+   * provides a correction to the previous displacement with the current
+   * prescribed values imposed. KINSOL then iterates on total displacement,
+   * using homogeneous corrections and the consistent global Jacobian.
+   * Trial constitutive updates use increments from the committed displacement;
+   * solve() commits history only after convergence.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
   solve_nonlinear_system();
@@ -235,6 +252,11 @@ private:
    */
   Boundary _boundary;
   /**
+   * Parsers associated with the displacement boundary conditions.
+   */
+  std::vector<std::unique_ptr<dealii::FunctionParser<dim>>>
+      _displacement_functions;
+  /**
    * Associated MaterialProperty.
    */
   MaterialProperty<dim, n_materials, p_order, MaterialStates, MemorySpaceType>
@@ -248,9 +270,14 @@ private:
    */
   dealii::DoFHandler<dim> _dof_handler;
   /**
-   * Associated AffineConstraints.
+   * Constraints on the total displacement, including prescribed values.
    */
-  dealii::AffineConstraints<double> _affine_constraints;
+  dealii::AffineConstraints<double> _displacement_constraints;
+  /**
+   * Homogeneous constraints for residual assembly and linear corrections.
+   * Hanging-node relations are identical to the total-displacement constraints.
+   */
+  dealii::AffineConstraints<double> _correction_constraints;
   /**
    * Associated QCollection.
    */
@@ -367,9 +394,9 @@ template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
 inline dealii::AffineConstraints<double> &
 MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
-                  MemorySpaceType>::get_affine_constraints()
+                  MemorySpaceType>::get_displacement_constraints()
 {
-  return _affine_constraints;
+  return _displacement_constraints;
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,

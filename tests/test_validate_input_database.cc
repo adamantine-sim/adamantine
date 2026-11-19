@@ -50,6 +50,13 @@ BOOST_AUTO_TEST_CASE(expected_passes)
   database.put("sources.beam_0.A", 1.0);
   database.put("sources.beam_0.B", 1.0);
   validate_input_database(database);
+
+  database.put("boundary.boundary_0.type", "adiabatic,displacement");
+  database.put("boundary.boundary_0.displacement.x", "0.001*t*x");
+  validate_input_database(database);
+  database.put("geometry.dim", 2);
+  database.put("boundary.boundary_0.displacement.z", "0.001*z*t");
+  validate_input_database(database);
 }
 
 BOOST_AUTO_TEST_CASE(parse_test_input_files)
@@ -113,6 +120,26 @@ BOOST_AUTO_TEST_CASE(expected_failures)
   // We purposefully reset the database fully after each check to make the
   // checks independent. Even though carrying some state between checks might
   // reduce the number of lines, the increase in complexity isn't worth it.
+
+  // Empty prescribed-displacement formula.
+  database.put("boundary.boundary_0.type", "adiabatic,displacement");
+  database.put("boundary.boundary_0.displacement.x", "");
+  BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
+  database.get_child("boundary").erase("boundary_0");
+
+  // Prescribed displacement cannot be combined with clamping.
+  database.put("boundary.boundary_0.type", "adiabatic,clamped,displacement");
+  database.put("boundary.boundary_0.displacement.x", "0");
+  BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
+  database.get_child("boundary").erase("boundary_0");
+
+  // The y component is unavailable in 2D, which uses x and z.
+  database.put("geometry.dim", 2);
+  database.put("boundary.boundary_0.type", "adiabatic,displacement");
+  database.put("boundary.boundary_0.displacement.y", "0");
+  BOOST_CHECK_THROW(validate_input_database(database), std::runtime_error);
+  database.get_child("boundary").erase("boundary_0");
+  database.put("geometry.dim", 3);
 
   // Invalid BC combination
   database.get_child("boundary").erase("type");

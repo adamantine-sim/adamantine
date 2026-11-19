@@ -63,20 +63,17 @@ void validate_input_database(boost::property_tree::ptree &database)
         boundary_type |= BoundaryType::convective;
         thermal_bc = true;
       }
-      else if (boundary == "clamped")
+      else if (boundary == "clamped" || boundary == "traction_free" ||
+               boundary == "displacement")
       {
         ASSERT_THROW(
-            !(line_boundary_type & BoundaryType::traction_free),
+            !mechanical_bc,
             "Mechanical boundary conditions cannot be combined together.");
-        line_boundary_type |= BoundaryType::clamped;
-        mechanical_bc = true;
-      }
-      else if (boundary == "traction_free")
-      {
-        ASSERT_THROW(
-            !(line_boundary_type & BoundaryType::clamped),
-            "Mechanical boundary conditions cannot be combined together.");
-        line_boundary_type |= BoundaryType::traction_free;
+        line_boundary_type |=
+            boundary == "clamped"
+                ? BoundaryType::clamped
+                : (boundary == "displacement" ? BoundaryType::displacement
+                                              : BoundaryType::traction_free);
         mechanical_bc = true;
       }
       else
@@ -86,7 +83,7 @@ void validate_input_database(boost::property_tree::ptree &database)
     }
   };
   auto const boundary_database = database.get_child("boundary");
-  bool clamped_boundary = false;
+  bool mechanical_dirichlet_bc = false;
   for (auto const &child_pair : boundary_database)
   {
     size_t pos_str = 0;
@@ -114,8 +111,28 @@ void validate_input_database(boost::property_tree::ptree &database)
     parse_boundary_type(boundary_type_str, line_boundary_type, thermal_bc,
                         mechanical_bc);
 
-    if (line_boundary_type & BoundaryType::clamped)
-      clamped_boundary = true;
+    if (line_boundary_type & BoundaryType::displacement)
+    {
+      ASSERT_THROW(child_pair.first.find("boundary_") == 0,
+                   "Displacement requires an explicit boundary_<id> section.");
+      auto const &components = child_pair.second.get_child("displacement");
+      ASSERT_THROW(!components.empty(),
+                   "Displacement requires a component formula.");
+      unsigned int const dimension = database.get<unsigned int>("geometry.dim");
+      for (auto const &entry : components)
+      {
+        bool const valid_component = entry.first == "x" || entry.first == "z" ||
+                                     (dimension == 3 && entry.first == "y");
+        ASSERT_THROW(valid_component,
+                     "Invalid displacement component: " + entry.first);
+        ASSERT_THROW(!entry.second.data().empty(),
+                     "Empty displacement formula.");
+      }
+    }
+
+    if (line_boundary_type &
+        (BoundaryType::clamped | BoundaryType::displacement))
+      mechanical_dirichlet_bc = true;
 
     if (use_thermal_physics)
     {
@@ -128,8 +145,9 @@ void validate_input_database(boost::property_tree::ptree &database)
   }
   if (use_mechanical_physics)
   {
-    ASSERT_THROW(clamped_boundary,
-                 "At least one boundary needs to be clamped!");
+    ASSERT_THROW(
+        mechanical_dirichlet_bc,
+        "At least one boundary needs a prescribed displacement or clamping.");
   }
 
   // Tree: discretization.thermal
