@@ -63,9 +63,6 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
           })
 {
   _is_purely_elastic = _material_properties.has_infinite_elastic_limit();
-  ASSERT_THROW(
-      _is_purely_elastic || _boundary.get_displacements().empty(),
-      "Prescribed displacement currently requires purely elastic materials.");
   std::map<std::string, unsigned int> const component_indices{
       {"x", axis<dim>::x}, {"y", axis<dim>::y}, {"z", axis<dim>::z}};
   auto const variables = dim == 2 ? "x,z,t" : "x,y,z,t";
@@ -768,22 +765,27 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   MPI_Comm const communicator =
       _mechanical_operator->rhs().get_mpi_communicator();
 
-  // Use the elastic solution as the initial guess. The residual at zero
-  // increment includes the current stress and body forces.
-  VectorType zero_increment(locally_owned_dofs, locally_relevant_dofs,
-                            communicator);
-  zero_increment.update_ghost_values();
-  auto initial_rhs = evaluate_residual(zero_increment);
-  initial_rhs *= -1.;
-  double const linear_tolerance = 1e-12 * initial_rhs.l2_norm();
-  auto displacement_increment =
-      solve_linear_system(initial_rhs, linear_tolerance);
-  auto displacement = displacement_increment;
+  // Start from an admissible total displacement, including the boundary
+  // motion since the last committed solve. Evaluate its residual before
+  // computing the initial correction with the elastic stiffness matrix.
+  VectorType displacement(locally_owned_dofs, locally_relevant_dofs,
+                          communicator);
   if (_old_displacement.size() > 0)
   {
     _old_displacement.update_ghost_values();
-    displacement += _old_displacement;
+    displacement = _old_displacement;
   }
+  _displacement_constraints.distribute(displacement);
+  displacement.update_ghost_values();
+  auto const boundary_increment =
+      compute_incremental_displacement(displacement);
+  auto initial_rhs = evaluate_residual(boundary_increment);
+  initial_rhs *= -1.;
+  double const linear_tolerance =
+      std::max(1e-12 * initial_rhs.l2_norm(), 1.e-14);
+  displacement += solve_linear_system(initial_rhs, linear_tolerance);
+  // Both the predictor and all KINSOL corrections are homogeneous on
+  // prescribed components, so the nonlinear iterates retain the total values.
   _displacement_constraints.distribute(displacement);
   displacement.update_ghost_values();
 
@@ -833,9 +835,6 @@ void MechanicalPhysics<
     dim, n_materials, p_order, MaterialStates,
     MemorySpaceType>::update_displacement_constraints(double time)
 {
-  ASSERT_THROW(
-      _is_purely_elastic || _boundary.get_displacements().empty(),
-      "Prescribed displacement currently requires purely elastic materials.");
 
   // Start with the current DoF layout and preserve hanging-node relations.
   // Boundary interpolation below leaves already constrained DoFs unchanged.

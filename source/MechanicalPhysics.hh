@@ -215,8 +215,11 @@ private:
 
   /**
    * Solve the nonlinear mechanical residual with KINSOL. The elastic matrix
-   * provides the initial guess; KINSOL then replaces it with the assembled
-   * consistent global Jacobian for its linear solves.
+   * provides a correction to the previous displacement with the current
+   * prescribed values imposed. KINSOL then iterates on total displacement,
+   * using homogeneous corrections and the consistent global Jacobian.
+   * Trial constitutive updates use increments from the committed displacement;
+   * solve() commits history only after convergence.
    */
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
   solve_nonlinear_system();
