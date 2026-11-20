@@ -115,7 +115,10 @@ private:
   BoundaryType parse_boundary_line(std::string boundary_type_str);
 };
 
-inline unsigned int Boundary::n_boundary_ids() const { return _types.size(); }
+inline unsigned int Boundary::n_boundary_ids() const
+{
+  return _types.size() - 1;
+}
 
 inline BoundaryType Boundary::get_boundary_type(unsigned int boundary_id) const
 {
