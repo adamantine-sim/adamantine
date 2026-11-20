@@ -88,7 +88,8 @@ public:
            std::vector<dealii::types::boundary_id> const &boundary_ids);
 
   /**
-   * Return the number of boundary ids associated with the Geometry.
+   * Return the number of boundary ids associated with the Geometry and the
+   * printed surface.
    */
   unsigned int n_boundary_ids() const;
 
@@ -115,10 +116,7 @@ private:
   BoundaryType parse_boundary_line(std::string boundary_type_str);
 };
 
-inline unsigned int Boundary::n_boundary_ids() const
-{
-  return _types.size() - 1;
-}
+inline unsigned int Boundary::n_boundary_ids() const { return _types.size(); }
 
 inline BoundaryType Boundary::get_boundary_type(unsigned int boundary_id) const
 {

@@ -73,7 +73,7 @@ std::vector<dealii::types::boundary_id>
 Boundary::get_boundary_ids(BoundaryType type) const
 {
   std::vector<dealii::types::boundary_id> ids;
-  for (unsigned int i = 0; i < _types.size() - 1; ++i)
+  for (unsigned int i = 0; i < _types.size(); ++i)
   {
     if (_types[i] & type)
     {
