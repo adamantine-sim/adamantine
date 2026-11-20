@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Copyright (c) 2025, the adamantine authors.
+/* SPDX-FileCopyrightText: Copyright (c) 2025 - 2026, the adamantine authors.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
@@ -30,7 +30,7 @@ Boundary::Boundary(boost::property_tree::ptree const &database,
     }
   }
 
-  _types.resize(*std::max_element(boundary_ids.begin(), boundary_ids.end()) + 1,
+  _types.resize(*std::max_element(boundary_ids.begin(), boundary_ids.end()) + 2,
                 BoundaryType::invalid);
   // Set the default boundary condition. It can be overwritten for given
   // boundary ids.

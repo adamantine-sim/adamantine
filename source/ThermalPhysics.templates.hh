@@ -253,7 +253,7 @@ evaluate_thermal_physics_impl(
         // We need to add the boundary conditions on the faces on the boundary
         // but also on the faces at the interface with FE_Nothing
         auto const &face = cell->face(f);
-        if ((face->at_boundary()) &&
+        if ((face->at_boundary()) ||
             ((!face->at_boundary()) &&
              (cell->neighbor(f)->active_fe_index() != 0)))
         {
