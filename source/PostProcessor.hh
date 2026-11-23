@@ -116,6 +116,12 @@ private:
       std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
           &stress_tensor);
   /**
+   * Compute the hydrostatic stress on each cell.
+   */
+  dealii::Vector<double> get_hydrostatic_stress(
+      std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
+          &stress_tensor);
+  /**
    * Fill _data_out with thermal data.
    */
   void

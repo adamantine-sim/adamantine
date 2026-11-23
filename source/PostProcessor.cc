@@ -137,6 +137,41 @@ dealii::Vector<double> PostProcessor<dim>::get_von_mises_stress(
 }
 
 template <int dim>
+dealii::Vector<double> PostProcessor<dim>::get_hydrostatic_stress(
+    std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
+        &stress_tensor)
+{
+  // TODO The stress tensor is computed at the quadrature points. We should
+  // interpolate the values at the support points of the displacement. To do
+  // that we need to create a FE_Q that uses the quadrature point as support
+  // points and then evaluate the new FE at the support points of the
+  // displacement. This means using two different DoFHandler. For simplicity, we
+  // currently just average the values on the cells.
+  dealii::Vector<double> hydrostatic_stress(
+      _mechanical_dof_handler->get_triangulation().n_active_cells());
+  unsigned int const n_quad_pts =
+      stress_tensor.size() > 0 ? stress_tensor[0].size() : 0;
+  unsigned int cell_id = 0;
+  for (auto const &cell : _mechanical_dof_handler->active_cell_iterators())
+  {
+    if (cell->is_locally_owned() && cell->active_fe_index() == 0)
+    {
+      double cell_stress = 0.0;
+      for (unsigned int q = 0; q < n_quad_pts; ++q)
+      {
+        auto const &tensor = stress_tensor[cell_id][q];
+        cell_stress += dealii::trace(tensor) / dim;
+      }
+
+      hydrostatic_stress(cell->active_cell_index()) = cell_stress / n_quad_pts;
+    }
+    ++cell_id;
+  }
+
+  return hydrostatic_stress;
+}
+
+template <int dim>
 void PostProcessor<dim>::thermal_dataout(
     dealii::LA::distributed::Vector<double> const &temperature)
 {
@@ -165,9 +200,14 @@ void PostProcessor<dim>::mechanical_dataout(
   // Add the strain tensor to the output
   _data_out.add_data_vector(*_mechanical_dof_handler, displacement, strain);
 
-  // Add the stress tensor
+  // Add the von Mises stress
   dealii::Vector<double> von_mises_stress = get_von_mises_stress(stress_tensor);
-  _data_out.add_data_vector(von_mises_stress, "stress");
+  _data_out.add_data_vector(von_mises_stress, "von Mises stress");
+
+  // Add the hydrostatic stress
+  dealii::Vector<double> hydrostatic_stress =
+      get_hydrostatic_stress(stress_tensor);
+  _data_out.add_data_vector(hydrostatic_stress, "hydrostatic stress");
 }
 
 template <int dim>
