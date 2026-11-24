@@ -197,6 +197,19 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
           typename MemorySpaceType>
+std::vector<std::vector<double>>
+MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
+                  MemorySpaceType>::get_equivalent_plastic_strain() const
+{
+  std::vector<std::vector<double>> values(_state.size());
+  for (unsigned int c = 0; c < _state.size(); ++c)
+    for (auto const &state : _state[c])
+      values[c].push_back(state.equivalent_plastic_strain);
+  return values;
+}
+
+template <int dim, int n_materials, int p_order, typename MaterialStates,
+          typename MemorySpaceType>
 std::tuple<MechanicalConstitutiveState<dim>, dealii::SymmetricTensor<2, dim>,
            dealii::SymmetricTensor<4, dim>>
 MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
@@ -254,6 +267,8 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
     trial_stress = elastic_stress -
                    2. * mu * plastic_strain_increment * plastic_flow_direction;
     result.plastic_strain += plastic_strain_increment * plastic_flow_direction;
+    result.equivalent_plastic_strain +=
+        std::sqrt(2. / 3.) * plastic_strain_increment;
     result.plastic_internal_variable +=
         iso_hardening_coef * plastic_modulus * plastic_strain_increment;
     result.back_stress += (1. - iso_hardening_coef) * plastic_modulus *
@@ -360,7 +375,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 
   _data_to_transfer.clear();
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
-  unsigned int const n_doubles_per_quad_scalar = 2;
+  unsigned int const n_doubles_per_quad_scalar = 3;
   unsigned int const n_doubles_per_quad_tensor =
       dealii::SymmetricTensor<2, dim>::n_independent_components;
 
@@ -386,6 +401,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
         std::vector<double> &cell_data_quad = cell_data[quad];
         cell_data_quad[0] = _state[cell_id][quad].plastic_internal_variable;
         cell_data_quad[1] = _state[cell_id][quad].thermal_strain;
+        cell_data_quad[2] = _state[cell_id][quad].equivalent_plastic_strain;
         for (unsigned int i = 0; i < n_doubles_per_quad_tensor; ++i)
         {
           cell_data_quad[activation_strain_offset + i] =
@@ -441,7 +457,7 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
   _constitutive_tangent.resize(
       n_active_cells, std::vector<dealii::SymmetricTensor<4, dim>>(n_quad_pts));
 
-  unsigned int const n_doubles_per_quad_scalar = 2;
+  unsigned int const n_doubles_per_quad_scalar = 3;
   unsigned int const n_doubles_per_quad_tensor =
       dealii::SymmetricTensor<2, dim>::n_independent_components;
 
@@ -468,6 +484,8 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
         _state[cell_id][quad].plastic_internal_variable =
             data_to_unpack[cell_id][quad][0];
         _state[cell_id][quad].thermal_strain = data_to_unpack[cell_id][quad][1];
+        _state[cell_id][quad].equivalent_plastic_strain =
+            data_to_unpack[cell_id][quad][2];
         for (unsigned int i = 0; i < n_doubles_per_quad_tensor; ++i)
         {
           _state[cell_id][quad].activation_strain.access_raw_entry(i) =
