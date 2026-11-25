@@ -230,17 +230,17 @@ void PostProcessor<dim>::mechanical_dataout(
 
   // Add the von Mises stress
   dealii::Vector<double> von_mises_stress = get_von_mises_stress(stress_tensor);
-  _data_out.add_data_vector(von_mises_stress, "von Mises stress");
+  _data_out.add_data_vector(von_mises_stress, "von_Mises_stress");
 
   // Add the hydrostatic stress
   dealii::Vector<double> hydrostatic_stress =
       get_hydrostatic_stress(stress_tensor);
-  _data_out.add_data_vector(hydrostatic_stress, "hydrostatic stress");
+  _data_out.add_data_vector(hydrostatic_stress, "hydrostatic_stress");
 
   // Add equivalent plastic strain
   dealii::Vector<double> equivalent_strain =
       get_equivalent_plastic_strain(equivalent_plastic_strain);
-  _data_out.add_data_vector(equivalent_strain, "equivalent plastic strain");
+  _data_out.add_data_vector(equivalent_strain, "equivalent_plastic_strain");
 }
 
 template <int dim>
