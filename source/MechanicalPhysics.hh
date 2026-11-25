@@ -15,7 +15,7 @@
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
-#include <deal.II/distributed/solution_transfer.h>
+#include <deal.II/numerics/solution_transfer.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/hp/fe_collection.h>
 
