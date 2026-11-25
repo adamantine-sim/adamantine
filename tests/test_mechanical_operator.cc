@@ -6,6 +6,7 @@
 
 #include <Geometry.hh>
 #include <MechanicalOperator.hh>
+#include <MechanicalOperatorDevice.hh>
 
 #include <deal.II/base/function.h>
 #include <deal.II/base/quadrature_lib.h>
@@ -275,6 +276,26 @@ BOOST_AUTO_TEST_CASE(elastostatic, *utf::tolerance(1e-12))
     for (unsigned int j = 0; j < n_dofs; ++j)
       BOOST_TEST(dst_1[j] - dst_2[j] == 0.);
   }
+
+  adamantine::MechanicalOperatorDevice<dim, 2, 1, 4,
+                                       adamantine::SolidLiquidPowder>
+      matrix_free_operator(communicator, material_properties);
+  matrix_free_operator.reinit(dof_handler, affine_constraints);
+  dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default> mf_src,
+      mf_dst;
+  matrix_free_operator.initialize_dof_vector(mf_src);
+  matrix_free_operator.initialize_dof_vector(mf_dst);
+  for (unsigned int i = 0; i < n_dofs; ++i)
+    src[i] = (i % 7) * 0.1;
+  affine_constraints.set_zero(src);
+  rw_vector.import_elements(src, dealii::VectorOperation::insert);
+  mf_src.import_elements(rw_vector, dealii::VectorOperation::insert);
+  matrix_free_operator.vmult(mf_dst, mf_src);
+  rw_vector.import_elements(mf_dst, dealii::VectorOperation::insert);
+  dst_1.import_elements(rw_vector, dealii::VectorOperation::insert);
+  system_matrix.vmult(dst_2, src);
+  dst_1 -= dst_2;
+  BOOST_CHECK_SMALL(dst_1.l2_norm(), 1.e-10);
 
   // Linear displacement: u = (x, 0, 0) gives
   // a(u,u) = (lambda + 2 mu) |Omega|.

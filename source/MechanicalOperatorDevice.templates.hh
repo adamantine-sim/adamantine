@@ -23,7 +23,7 @@ template <int dim, int fe_degree>
 class LocalMechanicalOperatorDevice
 {
 public:
-  static const unsigned int n_q_points =
+  static unsigned int const n_q_points =
       dealii::Utilities::pow(fe_degree + 1, dim);
 
   using kokkos_default = dealii::MemorySpace::Default::kokkos_space;
@@ -35,7 +35,7 @@ public:
 
   KOKKOS_FUNCTION void operator()(
       typename dealii::Portable::MatrixFree<dim, double>::Data const *gpu_data,
-      const dealii::Portable::DeviceVector<double> &src,
+      dealii::Portable::DeviceVector<double> const &src,
       dealii::Portable::DeviceVector<double> dst) const
   {
     dealii::Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, dim, double>
@@ -52,7 +52,7 @@ public:
                                            double> *fe,
             int const q_point)
     {
-      const int cell = fe->get_current_cell_index();
+      int const cell = fe->get_current_cell_index();
       auto const grad_u = fe->get_gradient(q_point);
       auto const eps = (grad_u + dealii::transpose(grad_u)) * 0.5;
       double const trace_eps = dealii::trace(eps);
@@ -80,7 +80,7 @@ public:
     };
 
 #if DEAL_II_VERSION_GTE(9, 8, 0)
-    gpu_data->for_each_quad_point([&](const int &q_point)
+    gpu_data->for_each_quad_point([&](int const &q_point)
                                   { quad(&fe_eval, q_point); });
 #else
     fe_eval.apply_for_each_quad_point(quad);

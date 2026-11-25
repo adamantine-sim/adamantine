@@ -18,7 +18,6 @@
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
-#include <deal.II/numerics/solution_transfer.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_nothing.h>
 #include <deal.II/fe/fe_q.h>
@@ -29,6 +28,7 @@
 #include <deal.II/lac/read_write_vector.h>
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/vector_operation.h>
+#include <deal.II/numerics/solution_transfer.h>
 
 #ifdef ADAMANTINE_WITH_CALIPER
 #include <caliper/cali.h>

@@ -31,9 +31,9 @@
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/base/types.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
-#include <deal.II/numerics/solution_transfer.h>
 #include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/grid/grid_refinement.h>
+#include <deal.II/numerics/solution_transfer.h>
 #if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
 #include <deal.II/lac/trilinos_tpetra_sparse_matrix.h>
 #else
