@@ -9,14 +9,15 @@
 #include <ClosestSourcePointAdaptation.hh>
 #include <Geometry.hh>
 #include <MechanicalOperator.hh>
+#include <MechanicalOperatorDevice.hh>
 
 #include <deal.II/base/function_parser.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/distributed/cell_data_transfer.templates.h>
-#include <deal.II/distributed/solution_transfer.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/hp/fe_collection.h>
+#include <deal.II/numerics/solution_transfer.h>
 
 #include <tuple>
 #include <utility>
@@ -297,6 +298,9 @@ private:
   std::unique_ptr<MechanicalOperator<dim, n_materials, p_order, MaterialStates,
                                      MemorySpaceType>>
       _mechanical_operator;
+  std::unique_ptr<
+      MechanicalOperatorDevice<dim, 1, n_materials, p_order, MaterialStates>>
+      _mechanical_operator_device;
   /**
    * Reference temperature for each material followed by the initial
    * temperature of the substrate. An empty vector denotes a mechanical-only

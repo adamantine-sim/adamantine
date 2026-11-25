@@ -15,6 +15,7 @@
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/hp/fe_values.h>
 #include <deal.II/lac/la_parallel_vector.h>
+#include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/sundials/kinsol.h>
@@ -110,6 +111,14 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
       std::make_unique<MechanicalOperator<dim, n_materials, p_order,
                                           MaterialStates, MemorySpaceType>>(
           communicator, _material_properties);
+  if constexpr (std::is_same_v<MemorySpaceType, dealii::MemorySpace::Host>)
+  {
+    if (_is_purely_elastic && fe_degree == 1)
+      _mechanical_operator_device =
+          std::make_unique<MechanicalOperatorDevice<dim, 1, n_materials,
+                                                    p_order, MaterialStates>>(
+              communicator, _material_properties);
+  }
 
   // Create the constitutive state used to compute the stress tensor
   unsigned int const n_quad_pts = _q_collection.max_n_quadrature_points();
@@ -337,6 +346,8 @@ void MechanicalPhysics<dim, n_materials, p_order, MaterialStates,
 
   _mechanical_operator->reinit(_dof_handler, _correction_constraints,
                                _q_collection, body_forces);
+  if (_mechanical_operator_device)
+    _mechanical_operator_device->reinit(_dof_handler, _correction_constraints);
 }
 
 template <int dim, int n_materials, int p_order, typename MaterialStates,
@@ -736,28 +747,39 @@ MechanicalPhysics<dim, n_materials, p_order, MaterialStates, MemorySpaceType>::
   dealii::IndexSet locally_owned_dofs = _dof_handler.locally_owned_dofs();
   dealii::IndexSet locally_relevant_dofs =
       dealii::DoFTools::extract_locally_relevant_dofs(_dof_handler);
-#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
-  using TrilinosVectorType = dealii::LinearAlgebra::TpetraWrappers::Vector<
-      double, dealii::MemorySpace::Default>;
-#else
-  using TrilinosVectorType = dealii::TrilinosWrappers::MPI::Vector;
-#endif
-  TrilinosVectorType displacement(
-      locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
-  TrilinosVectorType rhs_device(
-      locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
   dealii::LinearAlgebra::ReadWriteVector<double> rw_vector(locally_owned_dofs);
-
   rw_vector.import_elements(rhs, dealii::VectorOperation::insert);
-  rhs_device.import_elements(rw_vector, dealii::VectorOperation::insert);
-
-  unsigned int const max_iter = _dof_handler.n_dofs() / 10;
-  dealii::SolverControl solver_control(max_iter, tolerance);
-  dealii::SolverCG<TrilinosVectorType> cg(solver_control);
-  cg.solve(_mechanical_operator->system_matrix(), displacement, rhs_device,
-           _mechanical_operator->preconditioner());
-
-  rw_vector.import_elements(displacement, dealii::VectorOperation::insert);
+  dealii::SolverControl solver_control(_dof_handler.n_dofs(), tolerance);
+  if (_mechanical_operator_device)
+  {
+    dealii::LA::distributed::Vector<double, dealii::MemorySpace::Default>
+        displacement, rhs_device;
+    _mechanical_operator_device->initialize_dof_vector(displacement);
+    _mechanical_operator_device->initialize_dof_vector(rhs_device);
+    rhs_device.import_elements(rw_vector, dealii::VectorOperation::insert);
+    dealii::SolverCG<decltype(displacement)> cg(solver_control);
+    cg.solve(*_mechanical_operator_device, displacement, rhs_device,
+             dealii::PreconditionIdentity{});
+    rw_vector.import_elements(displacement, dealii::VectorOperation::insert);
+  }
+  else
+  {
+#if DEAL_II_VERSION_GTE(9, 7, 0) && defined(DEAL_II_TRILINOS_WITH_TPETRA)
+    using TrilinosVectorType = dealii::LinearAlgebra::TpetraWrappers::Vector<
+        double, dealii::MemorySpace::Default>;
+#else
+    using TrilinosVectorType = dealii::TrilinosWrappers::MPI::Vector;
+#endif
+    TrilinosVectorType displacement(
+        locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
+    TrilinosVectorType rhs_device(
+        locally_owned_dofs, _mechanical_operator->rhs().get_mpi_communicator());
+    rhs_device.import_elements(rw_vector, dealii::VectorOperation::insert);
+    dealii::SolverCG<TrilinosVectorType> cg(solver_control);
+    cg.solve(_mechanical_operator->system_matrix(), displacement, rhs_device,
+             _mechanical_operator->preconditioner());
+    rw_vector.import_elements(displacement, dealii::VectorOperation::insert);
+  }
   dealii::LA::distributed::Vector<double, dealii::MemorySpace::Host>
       displacement_host(locally_owned_dofs, locally_relevant_dofs,
                         _mechanical_operator->rhs().get_mpi_communicator());
