@@ -377,6 +377,13 @@ BOOST_AUTO_TEST_CASE(elastoplastic_residual)
   auto const residual = mechanical_physics.evaluate_residual(zero_increment);
   BOOST_CHECK_SMALL(residual.l2_norm(), 1.e-9);
 
+  // The first converged load step commits exactly one plastic increment.
+  for (auto const &cell_state : mechanical_physics.get_constitutive_state())
+    for (auto const &value : cell_state)
+      BOOST_CHECK_SMALL(value.equivalent_plastic_strain -
+                            std::sqrt(2. / 3.) * value.plastic_strain.norm(),
+                        1.e-14);
+
   // A trial evaluation must start from the same state each time.
   // Use a nonzero increment so that the local update is nontrivial.
   auto const state_stress = mechanical_physics.get_stress_tensor();
@@ -821,6 +828,40 @@ BOOST_AUTO_TEST_CASE(elastoplastic_radial_return)
   check_constitutive_tangent(plastic_state, plastic_total_strain,
                              strain_direction);
 
+  // Equivalent plastic strain is a path integral, including reverse loading.
+  auto evaluate = [&](dealii::SymmetricTensor<2, 3> const &strain,
+                      adamantine::MechanicalConstitutiveState<3> const &state)
+  {
+    return std::get<0>(mechanical_physics.evaluate_constitutive_response(
+        strain, 0., 0., lambda, mu, plastic_modulus, isotropic_hardening, 0.,
+        false, state));
+  };
+  BOOST_TEST(elastic_state.equivalent_plastic_strain == 0.);
+  auto const elastic_result = evaluate(elastic_strain, elastic_state);
+  BOOST_TEST(elastic_result.equivalent_plastic_strain == 0.);
+  auto const forward = evaluate(plastic_total_strain, plastic_state);
+  double const expected_increment =
+      std::sqrt(2. / 3.) *
+      (forward.plastic_strain - plastic_state.plastic_strain).norm();
+  BOOST_TEST(expected_increment > 0.);
+  BOOST_CHECK_SMALL(forward.equivalent_plastic_strain - expected_increment,
+                    1.e-14);
+  auto const repeated = evaluate(plastic_total_strain, plastic_state);
+  BOOST_TEST(repeated.equivalent_plastic_strain ==
+             forward.equivalent_plastic_strain);
+  BOOST_TEST(plastic_state.equivalent_plastic_strain == 0.);
+  auto const unloaded = evaluate(forward.plastic_strain, forward);
+  BOOST_TEST(unloaded.equivalent_plastic_strain ==
+             forward.equivalent_plastic_strain);
+  auto const reverse = evaluate(-plastic_total_strain, forward);
+  BOOST_TEST(reverse.equivalent_plastic_strain >
+             forward.equivalent_plastic_strain);
+  BOOST_CHECK_SMALL(
+      reverse.equivalent_plastic_strain - forward.equivalent_plastic_strain -
+          std::sqrt(2. / 3.) *
+              (reverse.plastic_strain - forward.plastic_strain).norm(),
+      1.e-14);
+
   // The committed plastic strain must be used with the current elastic
   // moduli when reconstructing stress; it must not depend on a stored stress
   // value from an earlier constitutive evaluation.
@@ -961,7 +1002,10 @@ BOOST_AUTO_TEST_CASE(cell_data_transfer_refine_coarsen)
   auto constitutive_state = mechanical_physics.get_constitutive_state();
   for (unsigned int cell_id = 0; cell_id < constitutive_state.size(); ++cell_id)
     for (auto &state : constitutive_state[cell_id])
+    {
       state.activation_strain[0][0] = 1.e-5 * (cell_id + 1);
+      state.equivalent_plastic_strain = 0.125;
+    }
   mechanical_physics.set_constitutive_state(constitutive_state);
 
   // Record initial stress values before any mesh adaptation
@@ -993,6 +1037,18 @@ BOOST_AUTO_TEST_CASE(cell_data_transfer_refine_coarsen)
   triangulation.execute_coarsening_and_refinement();
   mechanical_physics.complete_transfer_mpi();
   mechanical_physics.setup_dofs(body_forces);
+
+  auto const equivalent_strain =
+      mechanical_physics.get_equivalent_plastic_strain();
+  unsigned int cell_id = 0;
+  for (auto const &cell :
+       mechanical_physics.get_dof_handler().active_cell_iterators())
+  {
+    if (cell->is_locally_owned())
+      for (double value : equivalent_strain[cell_id])
+        BOOST_CHECK_SMALL(value - 0.125, 1.e-14);
+    ++cell_id;
+  }
 
   // The mesh should be back to its original size
   auto const &final_stress = mechanical_physics.get_stress_tensor();
@@ -1144,6 +1200,7 @@ BOOST_AUTO_TEST_CASE(activation_strain_for_newly_active_cells)
     {
       for (unsigned int q = 0; q < state[target_cell_id].size(); ++q)
       {
+        BOOST_TEST(state[target_cell_id][q].equivalent_plastic_strain == 0.);
         local_activation_strain =
             std::max(local_activation_strain,
                      state[target_cell_id][q].activation_strain.norm());
@@ -1398,6 +1455,8 @@ BOOST_AUTO_TEST_CASE(thermoelastoplastic_radial_return)
                          stress_before_residual[cell_id][q])
                             .norm(),
                         1.e-14);
+      BOOST_TEST(state_after_residual[cell_id][q].equivalent_plastic_strain ==
+                 state_before_residual[cell_id][q].equivalent_plastic_strain);
       BOOST_CHECK_SMALL((state_after_residual[cell_id][q].plastic_strain -
                          state_before_residual[cell_id][q].plastic_strain)
                             .norm(),

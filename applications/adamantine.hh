@@ -98,6 +98,7 @@ void output_pvtu(
           double **, typename MemorySpaceType::kokkos_space>::array_layout>(
           n_time_step, time, temperature, displacement,
           mechanical_physics->get_stress_tensor(),
+          mechanical_physics->get_equivalent_plastic_strain(),
           material_properties.get_state(), material_properties.get_dofs_map(),
           material_properties.get_dof_handler());
     }
@@ -117,6 +118,7 @@ void output_pvtu(
         double **, typename MemorySpaceType::kokkos_space>::array_layout>(
         n_time_step, time, displacement,
         mechanical_physics->get_stress_tensor(),
+        mechanical_physics->get_equivalent_plastic_strain(),
         material_properties.get_state(), material_properties.get_dofs_map(),
         material_properties.get_dof_handler());
   }
@@ -167,7 +169,8 @@ void output_pvtu(
       post_processor.template write_output<typename Kokkos::View<
           double **, typename MemorySpaceType::kokkos_space>::array_layout>(
           n_time_step, time, temperature_host, displacement,
-          mechanical_physics->get_stress_tensor(), state_host,
+          mechanical_physics->get_stress_tensor(),
+          mechanical_physics->get_equivalent_plastic_strain(), state_host,
           material_properties.get_dofs_map(),
           material_properties.get_dof_handler());
     }
@@ -186,7 +189,8 @@ void output_pvtu(
     post_processor.template write_mechanical_output<typename Kokkos::View<
         double **, typename MemorySpaceType::kokkos_space>::array_layout>(
         n_time_step, time, displacement,
-        mechanical_physics->get_stress_tensor(), state_host,
+        mechanical_physics->get_stress_tensor(),
+        mechanical_physics->get_equivalent_plastic_strain(), state_host,
         material_properties.get_dofs_map(),
         material_properties.get_dof_handler());
   }

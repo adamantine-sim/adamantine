@@ -151,6 +151,7 @@ dealii::Vector<double> PostProcessor<dim>::get_hydrostatic_stress(
       _mechanical_dof_handler->get_triangulation().n_active_cells());
   unsigned int const n_quad_pts =
       stress_tensor.size() > 0 ? stress_tensor[0].size() : 0;
+
   unsigned int cell_id = 0;
   for (auto const &cell : _mechanical_dof_handler->active_cell_iterators())
   {
@@ -162,13 +163,39 @@ dealii::Vector<double> PostProcessor<dim>::get_hydrostatic_stress(
         auto const &tensor = stress_tensor[cell_id][q];
         cell_stress += dealii::trace(tensor) / dim;
       }
-
       hydrostatic_stress(cell->active_cell_index()) = cell_stress / n_quad_pts;
     }
     ++cell_id;
   }
-
   return hydrostatic_stress;
+}
+
+template <int dim>
+dealii::Vector<double> PostProcessor<dim>::get_equivalent_plastic_strain(
+    std::vector<std::vector<double>> const &equivalent_plastic_strain)
+{
+  dealii::Vector<double> equivalent_strain(
+      _mechanical_dof_handler->get_triangulation().n_active_cells());
+  unsigned int const n_quad_pts = equivalent_plastic_strain.size() > 0
+                                      ? equivalent_plastic_strain[0].size()
+                                      : 0;
+  unsigned int cell_id = 0;
+  for (auto const &cell : _mechanical_dof_handler->active_cell_iterators())
+  {
+    if (cell->is_locally_owned() && cell->active_fe_index() == 0)
+    {
+      double cell_eq_strain = 0.0;
+      for (unsigned int q = 0; q < n_quad_pts; ++q)
+      {
+        cell_eq_strain += equivalent_plastic_strain[cell_id][q];
+      }
+
+      equivalent_strain(cell->active_cell_index()) =
+          cell_eq_strain / n_quad_pts;
+    }
+    ++cell_id;
+  }
+  return equivalent_strain;
 }
 
 template <int dim>
@@ -184,7 +211,8 @@ void PostProcessor<dim>::mechanical_dataout(
     dealii::LA::distributed::Vector<double> const &displacement,
     StrainPostProcessor<dim> const &strain,
     std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
-        &stress_tensor)
+        &stress_tensor,
+    std::vector<std::vector<double>> const &equivalent_plastic_strain)
 {
   // Add the displacement to the output
   displacement.update_ghost_values();
@@ -208,6 +236,11 @@ void PostProcessor<dim>::mechanical_dataout(
   dealii::Vector<double> hydrostatic_stress =
       get_hydrostatic_stress(stress_tensor);
   _data_out.add_data_vector(hydrostatic_stress, "hydrostatic stress");
+
+  // Add equivalent plastic strain
+  dealii::Vector<double> equivalent_strain =
+      get_equivalent_plastic_strain(equivalent_plastic_strain);
+  _data_out.add_data_vector(equivalent_strain, "equivalent plastic strain");
 }
 
 template <int dim>

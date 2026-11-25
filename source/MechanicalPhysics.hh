@@ -40,6 +40,10 @@ struct MechanicalConstitutiveState
    */
   dealii::SymmetricTensor<2, dim> plastic_strain;
   /**
+   * Accumulated equivalent plastic strain (dimensionless).
+   */
+  double equivalent_plastic_strain = 0.;
+  /**
    * Back-stress tensor used for kinematic hardening in the yield condition.
    */
   dealii::SymmetricTensor<2, dim> back_stress;
@@ -176,6 +180,11 @@ public:
    */
   std::vector<std::vector<dealii::SymmetricTensor<2, dim>>>
   get_stress_tensor() const;
+
+  /**
+   * Committed equivalent plastic strain at each cell and quadrature point.
+   */
+  std::vector<std::vector<double>> get_equivalent_plastic_strain() const;
 
   /**
    * Evaluate the local constitutive response without modifying the state and

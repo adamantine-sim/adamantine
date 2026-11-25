@@ -83,6 +83,7 @@ public:
       dealii::LA::distributed::Vector<double> const &displacement,
       std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
           &stress_tensor,
+      std::vector<std::vector<double>> const &equivalent_plastic_strain,
       Kokkos::View<double **, LayoutType, kokkos_host> state,
       std::unordered_map<dealii::types::global_dof_index, unsigned int> const
           &dofs_map,
@@ -92,16 +93,17 @@ public:
    * Write the different vtu and pvtu files for themo-mechanical problems.
    */
   template <typename LayoutType>
-  void
-  write_output(unsigned int time_step, double time,
-               dealii::LA::distributed::Vector<double> const &temperature,
-               dealii::LA::distributed::Vector<double> const &displacement,
-               std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
-                   &stress_tensor,
-               Kokkos::View<double **, LayoutType, kokkos_host> state,
-               std::unordered_map<dealii::types::global_dof_index,
-                                  unsigned int> const &dofs_map,
-               dealii::DoFHandler<dim> const &material_dof_handler);
+  void write_output(
+      unsigned int time_step, double time,
+      dealii::LA::distributed::Vector<double> const &temperature,
+      dealii::LA::distributed::Vector<double> const &displacement,
+      std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
+          &stress_tensor,
+      std::vector<std::vector<double>> const &equivalent_plastic_strain,
+      Kokkos::View<double **, LayoutType, kokkos_host> state,
+      std::unordered_map<dealii::types::global_dof_index, unsigned int> const
+          &dofs_map,
+      dealii::DoFHandler<dim> const &material_dof_handler);
 
   /**
    * Write the pvd file for Paraview.
@@ -122,6 +124,11 @@ private:
       std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
           &stress_tensor);
   /**
+   * Compute the equivalent plastic strain on each cell.
+   */
+  dealii::Vector<double> get_equivalent_plastic_strain(
+      std::vector<std::vector<double>> const &equivalent_plastic_strain);
+  /**
    * Fill _data_out with thermal data.
    */
   void
@@ -133,7 +140,8 @@ private:
       dealii::LA::distributed::Vector<double> const &displacement,
       StrainPostProcessor<dim> const &strain,
       std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
-          &stress_tensor);
+          &stress_tensor,
+      std::vector<std::vector<double>> const &equivalent_plastic_strain);
   /**
    * Fill _data_out with material data.
    */
@@ -246,6 +254,7 @@ void PostProcessor<dim>::write_mechanical_output(
     dealii::LA::distributed::Vector<double> const &displacement,
     std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
         &stress_tensor,
+    std::vector<std::vector<double>> const &equivalent_plastic_strain,
     Kokkos::View<double **, LayoutType, kokkos_host> state,
     std::unordered_map<dealii::types::global_dof_index, unsigned int> const
         &dofs_map,
@@ -255,7 +264,8 @@ void PostProcessor<dim>::write_mechanical_output(
   _data_out.clear();
   // We need the StrainPostProcessor to live until write_pvtu is done
   StrainPostProcessor<dim> strain;
-  mechanical_dataout(displacement, strain, stress_tensor);
+  mechanical_dataout(displacement, strain, stress_tensor,
+                     equivalent_plastic_strain);
   material_dataout(state, dofs_map, material_dof_handler);
   subdomain_dataout();
   write_pvtu(time_step, time);
@@ -269,6 +279,7 @@ void PostProcessor<dim>::write_output(
     dealii::LA::distributed::Vector<double> const &displacement,
     std::vector<std::vector<dealii::SymmetricTensor<2, dim>>> const
         &stress_tensor,
+    std::vector<std::vector<double>> const &equivalent_plastic_strain,
     Kokkos::View<double **, LayoutType, kokkos_host> state,
     std::unordered_map<dealii::types::global_dof_index, unsigned int> const
         &dofs_map,
@@ -280,7 +291,8 @@ void PostProcessor<dim>::write_output(
   thermal_dataout(temperature);
   // We need the StrainPostProcessor to live until write_pvtu is done
   StrainPostProcessor<dim> strain;
-  mechanical_dataout(displacement, strain, stress_tensor);
+  mechanical_dataout(displacement, strain, stress_tensor,
+                     equivalent_plastic_strain);
   material_dataout(state, dofs_map, material_dof_handler);
   subdomain_dataout();
   write_pvtu(time_step, time);
